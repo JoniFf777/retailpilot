@@ -168,3 +168,13 @@ cython_debug/
 build_plans/
 data/vector_stores/*.pkl
 skills-lock.json
+
+.idea/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.env
+*.log
+.DS_Store
+.venv/
+venv/
