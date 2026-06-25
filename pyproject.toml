@@ -14,6 +14,9 @@ dependencies = [
     "langchain-core>=1.3.3",
     "langchain-anthropic>=0.3.0",
     "langchain-openai>=1.1.14",
+    # Backend API
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
     # LangGraph
     "langgraph>=0.2.0",
     # LangSmith
@@ -35,7 +38,10 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = []
+dev = [
+    "httpx>=0.27.0",
+    "pytest>=8.0.0",
+]
 
 [tool.hatch.build.targets.wheel]
-packages = ["tools", "agents", "deployments", "evaluators"]
+packages = ["tools", "agents", "deployments", "evaluators", "app"]

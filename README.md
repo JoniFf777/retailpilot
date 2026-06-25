@@ -1,29 +1,155 @@
 # AI Engineering Lifecycle on LangSmith Platform
 
-Enterprise workshop series teaching the complete AI engineering lifecycle using LangChain, LangGraph, and LangSmith—centered around building a customer support agent for a fictional online technology e-commerce store called TechHub.
+这是一个基于 LangChain、LangGraph 和 LangSmith 的 AI engineering lifecycle workshop 项目，原始场景是为虚构电商 TechHub 构建 customer support Agent。当前仓库已在此基础上扩展出 ShopMind V1：一个面向中文用户的购物决策 Agent 后端项目。
 
 <div align="center">
     <img src="images/main_graphic.png">
 </div>
 
-## What You'll Build
+## ShopMind V1：Shopping Decision Agent Backend
 
-A customer support agent system featuring:
-- **Multi-agent architecture** with specialized Database and Documents agents coordinated by a Supervisor
-- **Human-in-the-loop (HITL)** customer verification with LangGraph primitives
-- **Evaluation-driven development** using offline evaluation to identify and fix bottlenecks
-- **Production deployment** to LangSmith with online evaluation and data flywheels for continuous improvement
+本仓库已扩展为 **ShopMind V1**，即一个基于 FastAPI + LangChain Agent 的中文购物决策后端。它复用原 TechHub workshop 的 dataset 和 RAG documents，并新增 Agent API、商品工具、用户偏好记忆和基于确认机制的加购流程。
 
-## Quick Setup
+### ShopMind V1 功能
 
-This workshop uses [uv](https://docs.astral.sh/uv/) - a fast Python package installer and resolver. If you don't have it:
+- **FastAPI backend**
+  - `GET /api/health`
+  - `POST /api/chat`
+  - `POST /api/chat/confirm`
+- **Single ShopMind Agent**
+  - 使用 LangChain `create_agent` 构建
+  - 中文 system prompt
+  - 基于 Tool-calling 的购物决策流程
+- **Product tools**
+  - 商品搜索
+  - 商品详情查询
+  - 商品对比
+- **RAG document tools**
+  - 商品规格检索
+  - 政策文档检索
+- **User preference memory**
+  - 读取用户偏好
+  - 保存 budget、brand、usage、style、avoid 等长期偏好
+- **Confirmation-based cart flow**
+  - Agent 创建 `pending_actions`
+  - API confirmation endpoint 执行或取消加购
+  - 敏感购物车写入工具不直接暴露给 Agent
+- **Automated tests**
+  - API tests
+  - 使用 mock model 的 Agent tests
+  - 覆盖 product、preference、cart 行为的 Tool tests
+
+### 技术栈
+
+- **Backend:** FastAPI
+- **Agent:** LangChain `create_agent`
+- **Agent orchestration foundation:** LangGraph-compatible agent graphs
+- **LLM providers:** 通过 LangChain model initialization 接入 OpenAI / Anthropic
+- **Data:** SQLite (`data/structured/techhub.db`)
+- **RAG:** Markdown documents + InMemoryVectorStore
+- **Testing:** pytest + httpx
+- **Observability / evaluation foundation:** 保留 LangSmith workshop 组件
+
+### 运行 FastAPI
+
+```bash
+conda run -n pythonLearn python -m uvicorn app.main:app --reload
+```
+
+API 文档：
+
+- http://127.0.0.1:8000/docs
+- http://127.0.0.1:8000/redoc
+
+### 运行测试
+
+```bash
+conda run -n pythonLearn python -m pytest tests/agents/test_shopmind_agent.py tests/tools/test_cart.py tests/tools/test_preferences.py tests/tools/test_products.py tests/api
+```
+
+当前验证结果：
+
+```text
+38 passed
+```
+
+### ShopMind V1 设计文档
+
+- [架构设计](docs/architecture.md)
+- [Tools 设计](docs/tools_design.md)
+- [API 设计](docs/api_design.md)
+- [安全设计](docs/safety_design.md)
+
+### LangSmith Evaluation
+
+ShopMind V1 已接入 LangSmith evaluation，用于检查 tool calls、response status、敏感操作安全性和回答关键词。
+
+设置 LangSmith 环境变量：
+
+```bash
+# Required for LangSmith dataset/evaluation
+set LANGSMITH_API_KEY=your_langsmith_api_key
+
+# Optional but recommended for trace collection
+set LANGSMITH_TRACING=true
+set LANGSMITH_PROJECT=shopmind-v1
+```
+
+创建或刷新 evaluation dataset：
+
+```bash
+conda run -n pythonLearn python evaluation/create_shopmind_dataset.py
+```
+
+运行 evaluation：
+
+```bash
+conda run -n pythonLearn python evaluation/run_langsmith_eval.py
+```
+
+默认 evaluation 使用确定性的规则型 evaluators：
+
+- `expected_tools_evaluator`
+- `forbidden_tools_evaluator`
+- `status_evaluator`
+- `expected_keywords_evaluator`
+- `count_total_tool_calls_evaluator`
+
+现有 `correctness_evaluator` 也可以复用，但它是 LLM-as-Judge evaluator，会产生额外模型调用成本。需要时请显式开启：
+
+```bash
+set INCLUDE_CORRECTNESS_EVALUATOR=true
+conda run -n pythonLearn python evaluation/run_langsmith_eval.py
+```
+
+### V2 Roadmap
+
+- PostgreSQL + pgvector：用于结构化数据和 vector search 持久化
+- LangGraph interrupt/resume：实现更正式的 human-in-the-loop confirmation
+- Docker Compose：提供可复现的本地部署
+- 更强的 auth/session model：替代调用方直接传入 `user_id`
+- 更完整的 LangSmith evaluation datasets 和 regression checks
+- pending action 过期机制、audit logs 和更严格的 transaction handling
+
+## 原 Workshop 会构建什么
+
+原 workshop 会构建一个 customer support Agent 系统，包含：
+
+- **Multi-agent architecture**：由 Supervisor 协调 Database Agent 和 Documents Agent；
+- **Human-in-the-loop (HITL)**：使用 LangGraph primitives 完成客户验证；
+- **Evaluation-driven development**：通过 offline evaluation 发现并修复瓶颈；
+- **Production deployment**：部署到 LangSmith，并结合 online evaluation 和 data flywheel 持续改进。
+
+## 快速设置
+
+原 workshop 使用 [uv](https://docs.astral.sh/uv/) 管理 Python 依赖。如果本地尚未安装：
 
 ```bash
 # Install uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Then set up the workshop:
+然后设置 workshop 环境：
 
 ```bash
 # Clone repository
@@ -46,9 +172,42 @@ uv run python data/data_generation/build_vectorstore.py
 uv run jupyter lab
 ```
 
-### Embedding Configuration (Optional)
+### Backend API（可选）
 
-By default, the vectorstore uses **HuggingFace embeddings** (local model, no API key required). If you're in an environment where downloading models from HuggingFace is restricted, you can use **OpenAI embeddings** instead:
+当前仓库已包含 ShopMind / RetailPilot API 层的 FastAPI backend。`/api/chat` 会调用独立的 ShopMind Agent。
+
+```bash
+# Start the FastAPI backend
+conda run -n pythonLearn python -m uvicorn app.main:app --reload
+
+# Health check
+curl http://127.0.0.1:8000/api/health
+
+# Chat endpoint
+curl -X POST http://127.0.0.1:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d "{\"message\":\"Add TECH-KEY-010 to my cart\",\"user_id\":\"demo-user\",\"thread_id\":\"demo-thread\"}"
+
+# Confirm a pending add-to-cart action returned by /api/chat
+curl -X POST http://127.0.0.1:8000/api/chat/confirm \
+  -H "Content-Type: application/json" \
+  -d "{\"user_id\":\"demo-user\",\"pending_action_id\":\"<pending_action_id>\",\"confirmed\":true,\"thread_id\":\"demo-thread\"}"
+```
+
+启动后可以访问交互式 API 文档：
+
+- http://127.0.0.1:8000/docs
+- http://127.0.0.1:8000/redoc
+
+运行 API 测试：
+
+```bash
+conda run -n pythonLearn python -m pytest tests/api
+```
+
+### Embedding Configuration（可选）
+
+默认情况下，vectorstore 使用 **HuggingFace embeddings**，本地模型无需 API key。如果当前环境无法下载 HuggingFace 模型，也可以改用 **OpenAI embeddings**：
 
 ```bash
 # Add to your .env file:
@@ -58,18 +217,18 @@ EMBEDDING_PROVIDER=openai
 uv run python data/data_generation/build_vectorstore.py
 ```
 
-## Workshop Outline
+## Workshop 大纲
 
-This workshop consists of three modules that take you from manual tool calling to production deployment:
+原 workshop 包含三个 module，从手动 tool calling 逐步推进到生产部署：
 
-1. **Module 1: Agent Development** - Build from basics to multi-agent systems with HITL
-2. **Module 2: Evaluation & Improvement** - Use eval-driven development to systematically improve agents
-3. **Module 3: Deployment & Continuous Improvement** - Deploy to production and build a data flywheel
+1. **Module 1: Agent Development**：从基础 Agent 到带 HITL 的 multi-agent system；
+2. **Module 2: Evaluation & Improvement**：使用 eval-driven development 系统化改进 Agent；
+3. **Module 3: Deployment & Continuous Improvement**：部署到生产环境并构建 data flywheel。
 
 📚 To get started, see [workshop_modules/README.md](workshop_modules/README.md)
 
 
-## Repo Structure
+## 仓库结构
 
 ```
 langsmith-agent-lifecycle-workshop/
@@ -111,56 +270,58 @@ langsmith-agent-lifecycle-workshop/
 └── pyproject.toml           # Dependencies
 ```
 
-## Key Concepts Covered
+## 涵盖的关键概念
 
-- **Agent Development:** Tool calling, multi-agent systems, supervisor pattern, HITL with interrupts
-- **Evaluation & Testing:** Offline evaluation, LLM-as-judge, trace metrics, eval-driven development
-- **Deployment & Production:** LangSmith deployments, online evaluation, annotation queues, SDK integration
-- **Best Practices:** Factory functions, state management, dynamic prompts, structured outputs, streaming
+- **Agent Development：**Tool calling、multi-agent systems、Supervisor Pattern、HITL with interrupts；
+- **Evaluation & Testing：**Offline evaluation、LLM-as-Judge、trace metrics、eval-driven development；
+- **Deployment & Production：**LangSmith deployments、online evaluation、annotation queues、SDK integration；
+- **Best Practices：**Factory functions、state management、dynamic prompts、structured outputs、streaming。
 
-See [workshop_modules/README.md](workshop_modules/README.md) for detailed breakdown by module.
+各 module 的详细说明见 [workshop_modules/README.md](workshop_modules/README.md)。
 
-## Dataset Overview
+## 数据集概览
 
-The **TechHub dataset** is a high-quality synthetic e-commerce dataset:
-- **50 customers** across consumer, corporate, and home office segments
-- **25 products** (laptops, monitors, keyboards, audio, accessories)
-- **250 orders** spanning 2 years with realistic patterns
-- **439 order items** with product affinity patterns
-- **SQLite database** (156 KB) with full schema and indexes
-- **30 documents** (25 product specs + 5 policies) for RAG
+**TechHub dataset** 是一个高质量合成电商数据集：
 
-All data is ready to use! See `data/data_generation/README.md` for details.
+- **50 customers**，覆盖 consumer、corporate、home office segments；
+- **25 products**，包括 laptops、monitors、keyboards、audio、accessories；
+- **250 orders**，覆盖约 2 年时间范围；
+- **439 order items**，包含商品搭配购买模式；
+- **SQLite database**，约 156 KB，包含完整 schema 和 indexes；
+- **30 documents**，包含 25 个 product specs 和 5 个 policies，用于 RAG。
 
-## Additional Resources
+所有数据都可以直接使用。详情见 `data/data_generation/README.md`。
 
-### Documentation
-- **Data Generation Guide:** `data/data_generation/README.md` - Complete dataset documentation
-- **Database Schema:** `data/structured/SCHEMA.md` - Full schema reference
-- **RAG Documents:** `data/documents/DOCUMENTS_OVERVIEW.md` - Document corpus guide
-- **Agent Architecture:** `agents/README.md` - Agent factory patterns
+## 其他资源
 
-### External Links
+### 文档
+
+- **Data Generation Guide:** `data/data_generation/README.md` - 数据集生成说明
+- **Database Schema:** `data/structured/SCHEMA.md` - 完整 schema 参考
+- **RAG Documents:** `data/documents/DOCUMENTS_OVERVIEW.md` - 文档语料说明
+- **Agent Architecture:** `agents/README.md` - Agent factory pattern 说明
+
+### 外部链接
 - [LangChain Python Docs](https://python.langchain.com)
 - [LangGraph Python Docs](https://langchain-ai.github.io/langgraph)
 - [LangSmith Platform](https://smith.langchain.com)
 - [LangChain Academy](https://academy.langchain.com)
 
-## Prerequisites
+## 前置学习
 
-### Required (Complete Before Workshop)
+### 必修（建议在 workshop 前完成）
 
-Free courses from [LangChain Academy](https://academy.langchain.com):
+来自 [LangChain Academy](https://academy.langchain.com) 的免费课程：
 - [LangChain Essentials - Python](https://academy.langchain.com/courses/langchain-essentials-python) (30 min)
 - [LangGraph Essentials - Python](https://academy.langchain.com/courses/langgraph-essentials-python) (1 hour)
 - [LangSmith Essentials](https://academy.langchain.com/courses/quickstart-langsmith-essentials) (30 min)
 
-### Recommended (For Deeper Understanding)
+### 推荐（用于更深入理解）
 
 - [Foundation: Introduction to LangGraph](https://academy.langchain.com/courses/intro-to-langgraph) (6 hours)
 - [Foundation: Introduction to Agent Observability & Evaluations](https://academy.langchain.com/courses/intro-to-langsmith) (3.5 hours)
 
-### Technical Requirements
+### 技术要求
 
 - **Python 3.10+**
 - **API Keys:**
@@ -170,10 +331,10 @@ Free courses from [LangChain Academy](https://academy.langchain.com):
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+本项目使用 Apache License 2.0，详情见 [LICENSE](LICENSE)。
 
-Educational workshop materials. Synthetic dataset free to use and distribute.
+这是教学 workshop 材料，合成数据集可自由使用和分发。
 
 ---
 
-**Ready to begin?** Open `workshop_modules/module_1/section_1_foundation.ipynb` and start building! 🚀
+**准备开始？**打开 `workshop_modules/module_1/section_1_foundation.ipynb` 开始学习。🚀
