@@ -1,23 +1,24 @@
 # TechHub Document Corpus
 
 **Location:** `data/documents/`  
-**Purpose:** Unstructured content for RAG agent queries  
-**Total:** 30 documents (25 product specs + 5 policies)  
+**Purpose:** 用于 RAG Agent 查询的非结构化内容  
+**Total:** 30 个文档（25 个 product specs + 5 个 policies）  
 **Format:** Markdown
 
-## Overview
+## 概览
 
-Product specifications, setup guides, troubleshooting, and store policies that complement the structured database. Designed for natural language retrieval.
+这些文档补充了结构化数据库中的商品和政策信息，包含 product specifications、setup guides、troubleshooting 和 store policies，主要用于自然语言检索。
 
-**Key features:**
-- Product names and IDs match database exactly
-- Consistent structure across all documents
-- Real specifications from manufacturer sources
-- Policy references consistent across all documents
+**关键特性：**
+
+- Product names 和 product IDs 与数据库保持一致；
+- 所有文档结构统一；
+- 商品规格接近真实厂商资料；
+- 政策引用在所有文档中保持一致。
 
 ---
 
-## Structure
+## 目录结构
 
 ```
 data/documents/
@@ -38,20 +39,21 @@ data/documents/
 
 ---
 
-## Product Documents (25 files)
+## Product Documents（25 个文件）
 
-**Naming:** `{product_id}.md` (e.g., `TECH-LAP-001.md`)
+**命名规则：**`{product_id}.md`，例如 `TECH-LAP-001.md`。
 
-**Standard structure** (7 sections):
-1. Product Overview - target audience, value proposition
-2. Key Specifications - technical specs
-3. Compatibility - OS, connections, works with
-4. What's Included - box contents
-5. Setup & Getting Started - 5-step setup
-6. Common Questions - upgradability, compatibility, warranty
-7. Troubleshooting - 3 common issues with solutions
+**标准结构**（7 个部分）：
 
-**Categories:**
+1. Product Overview：目标用户和核心价值；
+2. Key Specifications：技术规格；
+3. Compatibility：OS、连接方式和兼容设备；
+4. What's Included：包装内容；
+5. Setup & Getting Started：5 步安装/启动流程；
+6. Common Questions：升级、兼容性、保修等问题；
+7. Troubleshooting：常见问题和解决方案。
+
+**类别：**
 - **Laptops** (5): MacBook Air/Pro, Dell XPS, Lenovo ThinkPad, HP Pavilion
 - **Monitors** (4): Dell UltraSharp, LG, Samsung Gaming, BenQ Designer
 - **Keyboards/Mice** (6): Apple Magic, Logitech MX, Gaming, Combos
@@ -60,29 +62,29 @@ data/documents/
 
 ---
 
-## Policy Documents (5 files)
+## Policy Documents（5 个文件）
 
 ### return_policy.md
-Return eligibility, windows, and process.
+退货资格、时间窗口和流程。
 - Unopened: 30-day window
 - Opened: 14-day window
 - 15% restocking fee for opened items over $500
 - Refunds in 5-7 business days
 
 ### warranty_guide.md
-Warranty coverage and claims.
+保修范围和申请流程。
 - 1-year manufacturer warranty on all products
 - Covers defects, excludes damage
 - Claims through manufacturers
 
 ### shipping_guide.md
-Shipping options and timing.
+配送方式和时间。
 - Standard (5-7 days): FREE on $50+
 - Express (2-3 days): $14.99
 - UPS/FedEx/USPS
 
 ### compatibility_guide.md ⭐
-**Critical for multi-agent queries** - cross-product compatibility.
+**对 multi-agent query 很关键**：用于跨商品兼容性判断。
 - Mac/PC compatibility matrix
 - Monitor connections by laptop model
 - USB-C vs Thunderbolt explained
@@ -90,7 +92,7 @@ Shipping options and timing.
 - Adapter requirements
 
 ### support_faq.md
-General support questions.
+通用支持问题。
 - Order tracking
 - Account management
 - Contact: 1-800-555-TECH, support@techhub.com
@@ -98,7 +100,7 @@ General support questions.
 
 ---
 
-## Usage Patterns
+## 使用模式
 
 ### Product Queries
 ```
@@ -127,7 +129,7 @@ General support questions.
 
 ---
 
-## Data Quality
+## 数据质量
 
 **Consistency checks:**
 - ✅ All 25 products have documents
@@ -136,7 +138,7 @@ General support questions.
 - ✅ Policy references consistent (return windows, fees, warranty terms)
 - ✅ Contact info consistent across all documents
 
-**Key policy values** (standardized):
+**关键政策值**（标准化）：
 - 14-day return window for opened electronics
 - 30-day return window for unopened items
 - 15% restocking fee for opened items over $500
@@ -145,16 +147,16 @@ General support questions.
 
 ---
 
-## RAG Tips
+## RAG 使用建议
 
-1. **Document selection:** Use product_id for products, keywords ("return", "warranty") for policies
-2. **Section targeting:** Product docs have predictable structure
-3. **Multi-document:** Some queries need multiple sources (return eligibility = purchase date + policy rules)
-4. **Compatibility guide:** Essential for setup and multi-product questions
+1. **Document selection：**商品问题优先使用 product_id，政策问题使用关键词，例如 "return", "warranty"；
+2. **Section targeting：**Product docs 结构统一，便于定位具体部分；
+3. **Multi-document：**部分问题需要多个来源，例如退货资格 = 购买日期 + policy rules；
+4. **Compatibility guide：**对 setup 和多商品兼容性问题非常重要。
 
 ---
 
-## Additional Resources
+## 相关资源
 
 **Database schema:** `../structured/SCHEMA.md`  
 **Generation process:** `../data_generation/README.md`

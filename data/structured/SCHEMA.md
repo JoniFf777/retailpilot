@@ -1,10 +1,10 @@
 # TechHub Database Schema
 
 **Database:** `techhub.db` (SQLite 3, 156 KB)  
-**Purpose:** E-commerce customer support system for workshop scenarios  
-**Records:** 50 customers, 25 products, 250 orders, 439 order items
+**Purpose:** 用于 workshop 场景的电商客服系统数据库  
+**Records:** 50 个 customers、25 个 products、250 个 orders、439 个 order items
 
-## Tables Overview
+## 表概览
 
 ```
 customers (50)
@@ -20,21 +20,21 @@ products (25)
 
 ## 1. customers
 
-Customer account information.
+客户账号信息。
 
-| Column | Type | Constraints | Description |
+| Column | Type | Constraints | 说明 |
 |--------|------|-------------|-------------|
-| `customer_id` | TEXT | PRIMARY KEY | Format: `CUST-###` |
-| `email` | TEXT | UNIQUE, NOT NULL | Used for verification |
-| `name` | TEXT | NOT NULL | Customer's full name |
-| `phone` | TEXT | | Format: `###-###-####` |
-| `city` | TEXT | NOT NULL | Customer's city |
-| `state` | TEXT | NOT NULL | 2-letter US state code |
+| `customer_id` | TEXT | PRIMARY KEY | 格式：`CUST-###` |
+| `email` | TEXT | UNIQUE, NOT NULL | 用于客户验证 |
+| `name` | TEXT | NOT NULL | 客户全名 |
+| `phone` | TEXT | | 格式：`###-###-####` |
+| `city` | TEXT | NOT NULL | 客户所在城市 |
+| `state` | TEXT | NOT NULL | 美国州代码 |
 | `segment` | TEXT | NOT NULL, CHECK | `'Consumer'`, `'Corporate'`, `'Home Office'` |
 
 **Index:** `idx_customers_email` on `email`
 
-**Distribution:**
+**分布：**
 - Consumer: 40 (80%) - @gmail.com, @yahoo.com, @icloud.com
 - Corporate: 8 (16%) - company domain emails
 - Home Office: 2 (4%)
@@ -43,19 +43,19 @@ Customer account information.
 
 ## 2. products
 
-Product catalog with pricing and availability.
+商品目录，包含价格和库存状态。
 
-| Column | Type | Constraints | Description |
+| Column | Type | Constraints | 说明 |
 |--------|------|-------------|-------------|
-| `product_id` | TEXT | PRIMARY KEY | Format: `TECH-XXX-###` |
-| `name` | TEXT | NOT NULL | Product name with specs |
+| `product_id` | TEXT | PRIMARY KEY | 格式：`TECH-XXX-###` |
+| `name` | TEXT | NOT NULL | 带规格信息的商品名称 |
 | `category` | TEXT | NOT NULL, CHECK | `'Laptops'`, `'Monitors'`, `'Keyboards'`, `'Audio'`, `'Accessories'` |
-| `price` | REAL | NOT NULL, CHECK > 0 | Current price in USD |
-| `in_stock` | INTEGER | NOT NULL, CHECK IN (0, 1) | 1 = in stock, 0 = out of stock |
+| `price` | REAL | NOT NULL, CHECK > 0 | 当前价格，单位 USD |
+| `in_stock` | INTEGER | NOT NULL, CHECK IN (0, 1) | 1 = 有货，0 = 缺货 |
 
 **Index:** `idx_products_category` on `category`
 
-**Categories:**
+**类别：**
 - Laptops (5): $899 - $1,999
 - Monitors (4): $199 - $599
 - Keyboards/Mice (6): $39 - $149
@@ -66,49 +66,50 @@ Product catalog with pricing and availability.
 
 ## 3. orders
 
-Order records tracking purchases over time.
+订单记录，用于追踪客户购买情况。
 
-| Column | Type | Constraints | Description |
+| Column | Type | Constraints | 说明 |
 |--------|------|-------------|-------------|
-| `order_id` | TEXT | PRIMARY KEY | Format: `ORD-YYYY-####` |
+| `order_id` | TEXT | PRIMARY KEY | 格式：`ORD-YYYY-####` |
 | `customer_id` | TEXT | NOT NULL, FOREIGN KEY | References `customers.customer_id` |
-| `order_date` | DATE | NOT NULL | Format: `YYYY-MM-DD` |
+| `order_date` | DATE | NOT NULL | 格式：`YYYY-MM-DD` |
 | `status` | TEXT | NOT NULL, CHECK | `'Processing'`, `'Shipped'`, `'Delivered'`, `'Cancelled'` |
-| `shipped_date` | DATE | | NULL if not shipped |
-| `tracking_number` | TEXT | | Format: `1Z999AA1XXXXXXXX`, NULL if not shipped |
-| `total_amount` | REAL | NOT NULL, CHECK >= 0 | Sum of all line items |
+| `shipped_date` | DATE | | 未发货时为 NULL |
+| `tracking_number` | TEXT | | 格式：`1Z999AA1XXXXXXXX`，未发货时为 NULL |
+| `total_amount` | REAL | NOT NULL, CHECK >= 0 | 所有 order items 的合计金额 |
 
 **Indexes:**
 - `idx_orders_customer` on `customer_id`
 - `idx_orders_date` on `order_date`
 - `idx_orders_status` on `status`
 
-**Status Distribution:**
+**状态分布：**
 - Delivered: 200 (80%)
 - Shipped: 30 (12%)
 - Processing: 17 (7%)
 - Cancelled: 3 (1%)
 
-**Date Range:** October 2023 - October 2025
+**日期范围：**2023 年 10 月至 2025 年 10 月
 
-**Key Rules:**
-- `shipped_date` >= `order_date` when not NULL
-- Processing/Cancelled orders have NULL `shipped_date` and `tracking_number`
-- Cancelled orders have `total_amount` = 0 and no items
+**关键规则：**
+
+- `shipped_date` 非 NULL 时必须大于等于 `order_date`；
+- Processing / Cancelled 订单的 `shipped_date` 和 `tracking_number` 为 NULL；
+- Cancelled 订单的 `total_amount` 为 0，且没有 order items。
 
 ---
 
 ## 4. order_items
 
-Line items for each order.
+订单明细表。
 
-| Column | Type | Constraints | Description |
+| Column | Type | Constraints | 说明 |
 |--------|------|-------------|-------------|
-| `order_item_id` | INTEGER | PRIMARY KEY AUTOINCREMENT | Auto-generated ID |
+| `order_item_id` | INTEGER | PRIMARY KEY AUTOINCREMENT | 自动生成 ID |
 | `order_id` | TEXT | NOT NULL, FOREIGN KEY | References `orders.order_id` |
 | `product_id` | TEXT | NOT NULL, FOREIGN KEY | References `products.product_id` |
-| `quantity` | INTEGER | NOT NULL, CHECK > 0 | Typically 1-5 |
-| `price_per_unit` | REAL | NOT NULL, CHECK > 0 | Price at time of order |
+| `quantity` | INTEGER | NOT NULL, CHECK > 0 | 通常为 1-5 |
+| `price_per_unit` | REAL | NOT NULL, CHECK > 0 | 下单时的商品单价 |
 
 **Indexes:**
 - `idx_order_items_order` on `order_id`
@@ -121,7 +122,7 @@ Line items for each order.
 
 ---
 
-## Common Queries
+## 常见查询
 
 ### Customer Verification (HITL)
 ```sql
@@ -193,49 +194,52 @@ ORDER BY total_revenue DESC;
 
 ---
 
-## Key Constraints
+## 关键约束
 
-**Foreign Keys:**
+**外键：**
 - `orders.customer_id` → `customers.customer_id`
 - `order_items.order_id` → `orders.order_id`
 - `order_items.product_id` → `products.product_id`
 
-**Invariants:**
-1. No orphaned records (all foreign keys valid)
-2. Date consistency: `shipped_date` >= `order_date`
-3. Financial accuracy: order totals match line items
-4. Cancelled orders: zero total, no items
+**不变量：**
+1. 没有孤立记录，所有外键都有效；
+2. 日期一致性：`shipped_date` >= `order_date`；
+3. 金额准确性：订单总额与 line items 一致；
+4. Cancelled 订单总额为 0，且没有明细；
 5. Price bounds: items within ±5% of product price
 
-**Data Quality:**
-- Zero foreign key violations
-- Zero date logic errors
-- 100% order total accuracy
-- All queries execute in <1ms
+**数据质量：**
+
+- 外键违规数量为 0；
+- 日期逻辑错误数量为 0；
+- 订单金额准确率 100%；
+- 常用查询执行时间小于 1ms。
 
 ---
 
-## Query Tips
+## 查询建议
 
-**For SQL Agents:**
-- Use email to look up `customer_id` before querying orders
-- Filter out `status = 'Cancelled'` for revenue analysis
-- Check for NULL in `shipped_date` and `tracking_number`
-- Use explicit JOINs for clarity
-- Apply ROUND() for financial calculations
+**面向 SQL Agent：**
 
-**ID Formats:**
+- 查询订单前可先用 email 查找 `customer_id`；
+- 做收入分析时过滤 `status = 'Cancelled'`；
+- 注意 `shipped_date` 和 `tracking_number` 可能为 NULL；
+- 优先使用显式 JOIN，便于理解；
+- 金额计算可使用 ROUND()。
+
+**ID 格式：**
 - Customer IDs: `CUST-###`
 - Order IDs: `ORD-YYYY-####`
 - Product IDs: `TECH-XXX-###`
 
-**Date Functions:**
-- Dates stored as `YYYY-MM-DD`
-- Use `julianday()` for date arithmetic
+**日期函数：**
+
+- 日期以 `YYYY-MM-DD` 存储；
+- 可以使用 `julianday()` 做日期计算。
 
 ---
 
-## Additional Resources
+## 相关资源
 
 **Data Generation:** `../data_generation/README.md`  
 **Document Corpus:** `../documents/DOCUMENTS_OVERVIEW.md`

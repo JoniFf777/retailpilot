@@ -1,20 +1,21 @@
 # TechHub Dataset Generation
 
-Scripts for generating the synthetic TechHub e-commerce dataset. The dataset is already generated and ready to use - you only need these scripts if you want to regenerate or modify the data.
+本目录包含生成 TechHub 合成电商数据集的脚本。当前数据已经生成并可直接使用；只有在需要重新生成或修改数据时，才需要运行这些脚本。
 
-## Dataset Overview
+## 数据集概览
 
-**What's included:**
-- 50 customers (diverse profiles across Consumer, Corporate, Home Office segments)
-- 25 products (laptops, monitors, keyboards, audio, accessories)
-- 250 orders (2-year span with realistic patterns)
-- ~440 order items (product affinity patterns)
-- SQLite database (156 KB, optimized)
-- 30 documents for RAG (product specs + policies)
+**包含内容：**
 
-## Quick Regeneration
+- 50 个 customers，覆盖 Consumer、Corporate、Home Office 等 segment；
+- 25 个 products，包括 laptops、monitors、keyboards、audio、accessories；
+- 250 个 orders，覆盖约 2 年时间范围；
+- 约 440 条 order items，包含商品搭配购买模式；
+- SQLite database，约 156 KB；
+- 30 个 RAG 文档，包括 product specs 和 policies。
 
-To regenerate the complete dataset:
+## 快速重新生成
+
+如需重新生成完整数据集：
 
 ```bash
 # 1. Generate customers (requires: pip install faker)
@@ -40,61 +41,65 @@ python data/data_generation/build_vectorstore.py
 # EMBEDDING_PROVIDER=openai python data/data_generation/build_vectorstore.py
 ```
 
-**Total time:** ~5 minutes
+**总耗时：**约 5 分钟。
 
-**Note:** Products are manually defined in `data/structured/products.json` (edit directly to modify).
+**注意：**商品数据手动定义在 `data/structured/products.json` 中，如需修改商品请直接编辑该文件。
 
-### Embedding Provider Options
+### Embedding Provider 选项
 
-The vectorstore supports two embedding providers:
+vectorstore 支持两种 embedding provider：
 
-- **HuggingFace (default)**: Local model, no API key required, 2.5 MB file
-- **OpenAI**: Requires `OPENAI_API_KEY`, 4.7 MB file, works in restricted environments
+- **HuggingFace（默认）**：本地模型，不需要 API key，文件约 2.5 MB；
+- **OpenAI**：需要 `OPENAI_API_KEY`，文件约 4.7 MB，适合 HuggingFace 下载受限的环境。
 
-Configure via `EMBEDDING_PROVIDER` in `.env` (defaults to `huggingface`).
+通过 `.env` 中的 `EMBEDDING_PROVIDER` 配置，默认值为 `huggingface`。
 
-## Generation Scripts
+## 生成脚本
 
-| Script | Output | Purpose |
+| Script | Output | 用途 |
 |--------|--------|---------|
-| `generate_customers.py` | `customers.json` | 50 customer profiles with Faker |
-| `generate_orders.py` | `orders.json` | 250 orders with temporal patterns |
-| `generate_order_items.py` | `order_items.json` | ~440 items with product affinity |
-| `create_database.py` | `techhub.db` | SQLite database with schema |
-| `validate_database.py` | Validation report | Data quality checks |
-| `build_vectorstore.py` | `techhub_vectorstore_{provider}.pkl` | RAG embeddings (HuggingFace or OpenAI) |
+| `generate_customers.py` | `customers.json` | 使用 Faker 生成 50 个 customer profile |
+| `generate_orders.py` | `orders.json` | 生成 250 个带时间分布模式的 orders |
+| `generate_order_items.py` | `order_items.json` | 生成约 440 条带商品关联模式的 order items |
+| `create_database.py` | `techhub.db` | 创建带 schema 的 SQLite database |
+| `validate_database.py` | Validation report | 执行数据质量检查 |
+| `build_vectorstore.py` | `techhub_vectorstore_{provider}.pkl` | 构建 RAG embeddings，支持 HuggingFace 或 OpenAI |
 
-## Key Features
+## 关键特性
 
-**Realistic patterns:**
-- Seasonal order variations (Q4 spike)
-- Power law customer distribution (20% = 60% of orders)
-- Product affinity (laptops with accessories, monitors with keyboards)
-- Status distribution: 80% Delivered, 12% Shipped, 7% Processing, 1% Cancelled
+**真实感模式：**
 
-**Reproducible:**
-- Fixed random seeds (42) for consistent regeneration
-- Change seeds in scripts for different variations
+- 季节性订单波动，例如 Q4 spike；
+- 幂律 customer 分布，例如少数客户贡献多数订单；
+- 商品搭配购买模式，例如 laptop 搭配 accessories、monitor 搭配 keyboard；
+- status 分布：80% Delivered、12% Shipped、7% Processing、1% Cancelled。
 
-## Customization
+**可复现：**
 
-Edit constants in each script:
-- `NUM_CUSTOMERS`, `NUM_ORDERS` - adjust counts
-- `CURRENT_DATE` - change date anchor
-- `random.seed(42)` - change for different patterns
+- 固定 random seed 为 42，便于稳定重新生成；
+- 如需生成不同分布，可修改脚本中的 seed。
 
-See script comments for detailed customization options.
+## 自定义
 
-## Data Quality
+可以修改各脚本中的常量：
 
-Validation checks ensure:
-- Zero foreign key violations
-- Correct date logic (shipped_date >= order_date)
-- Order totals match line items
-- Price variations within ±5%
-- All queries execute in <1ms
+- `NUM_CUSTOMERS`、`NUM_ORDERS`：调整数据量；
+- `CURRENT_DATE`：调整日期锚点；
+- `random.seed(42)`：调整随机分布。
 
-## Additional Documentation
+更多细节可查看脚本内注释。
+
+## 数据质量
+
+校验脚本会检查：
+
+- 外键无孤立记录；
+- 日期逻辑正确，例如 `shipped_date >= order_date`；
+- 订单总额与订单明细一致；
+- 价格波动在 ±5% 内；
+- 常用查询在 1ms 内完成。
+
+## 相关文档
 
 - **Database schema:** `../structured/SCHEMA.md`
 - **Document corpus:** `../documents/DOCUMENTS_OVERVIEW.md`

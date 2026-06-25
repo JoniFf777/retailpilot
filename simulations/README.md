@@ -1,10 +1,10 @@
 # TechHub Agent Simulation System
 
-Automated system for generating realistic customer support traces for demo and testing purposes against the deployed `supervisor_hitl_sql_agent`.
+本目录提供自动化模拟系统，用于针对已部署的 `supervisor_hitl_sql_agent` 生成接近真实客服场景的 trace，方便 demo、测试和 LangSmith Insights 分析。
 
-## Overview
+## 概览
 
-This simulation system creates realistic multi-turn conversations with the deployed TechHub agent using:
+该系统会与已部署的 TechHub Agent 进行多轮对话，核心能力包括：
 - **Dynamic scenario generation** — queries the real TechHub SQLite DB to pick customers and their order history, then uses an LLM to generate grounded opening queries
 - **12 scenario archetypes** covering all LangSmith Insights topic clusters (order status, complaints, returns, product research, policies, corporate inquiries, and more)
 - **Automatic HITL interrupt handling** (email verification)
@@ -12,17 +12,17 @@ This simulation system creates realistic multi-turn conversations with the deplo
 - **LangSmith trace tagging** with `archetype_id`, `generation_mode`, `segment`, and `sentiment` for rich Insights filtering
 - **GitHub Actions automation** — 6 scheduled runs/day on weekdays, naturally spread across business hours
 
-## Quick Start
+## 快速开始
 
-### Prerequisites
+### 前置条件
 
-- Deployed TechHub agent running on LangSmith
-- Environment variables set in `.env`:
+- 已部署并可访问的 TechHub Agent；
+- `.env` 中已配置环境变量：
   - `LANGSMITH_API_KEY`
   - `ANTHROPIC_API_KEY`
   - `LANGGRAPH_DEPLOYMENT_URL`
 
-### Basic Usage
+### 基本用法
 
 ```bash
 # Run 1 dynamic conversation (default)
@@ -48,24 +48,25 @@ uv run python simulations/run_simulation.py --url https://custom-deployment.lang
 
 ### `--mode dynamic` (default)
 
-Generates scenarios on-the-fly by:
-1. Querying the SQLite DB for a random real customer + their recent order history
-2. Selecting a weighted archetype based on customer segment
-3. Calling an LLM to generate a grounded opening query referencing actual orders
+运行时动态生成场景：
 
-Results in infinite variety with realistic, data-grounded conversations.
+1. 从 SQLite DB 中随机选择真实 customer 及其 recent order history；
+2. 根据 customer segment 加权选择 archetype；
+3. 调用 LLM 生成引用真实订单的开场问题。
+
+这种模式可以生成多样化且有数据依据的对话。
 
 ### `--mode static`
 
-Uses the 10 hardcoded personas in `scenarios.json`. Original behavior, unchanged.
+使用 `scenarios.json` 中的 10 个固定 persona。该模式保留原始行为。
 
 ### `--mode mixed`
 
-Splits evenly between static and dynamic scenarios, shuffled together.
+将 static 和 dynamic 场景混合运行，并打乱顺序。
 
 ## Dynamic Archetypes
 
-12 archetypes covering all LangSmith Insights topic clusters:
+共 12 个 archetypes，覆盖 LangSmith Insights 的主要主题：
 
 | Archetype | Verification Required | Primary Agent | Sentiment Skew |
 |---|---|---|---|
@@ -82,55 +83,55 @@ Splits evenly between static and dynamic scenarios, shuffled together.
 | `home_office_setup` | No | Docs | Home Office weighted |
 | `loyalty_inquiry` | Yes | SQL | Even split |
 
-## Static Scenarios (scenarios.json)
+## Static Scenarios（`scenarios.json`）
 
-For reference, the 10 static scenarios remain available via `--mode static`:
+以下 10 个 static scenarios 可通过 `--mode static` 使用：
 
-**Requiring email verification**: `power_user_analytics`, `corporate_buyer_bulk`, `order_tracker_simple`, `support_seeker_account_issue`, `multi_order_analysis`, `angry_delayed_order`, `frustrated_wrong_item`
+**需要 email verification：**`power_user_analytics`, `corporate_buyer_bulk`, `order_tracker_simple`, `support_seeker_account_issue`, `multi_order_analysis`, `angry_delayed_order`, `frustrated_wrong_item`
 
-**No verification**: `product_researcher_no_auth`, `policy_question_warranty`, `product_spec_deep_dive`
+**不需要 verification：**`product_researcher_no_auth`, `policy_question_warranty`, `product_spec_deep_dive`
 
 ## GitHub Actions Automation
 
 The workflow in `.github/workflows/simulate_traffic.yml` runs 1 dynamic conversation 6 times per weekday at 2-hour intervals (9am–5:30pm ET), producing naturally spread traffic patterns for LangSmith dashboards.
 
-### Required GitHub Secrets
+### 必需的 GitHub Secrets
 
-Add these in **Settings > Secrets and variables > Actions**:
+在 **Settings > Secrets and variables > Actions** 中添加：
 
-| Secret | Description |
+| Secret | 说明 |
 |---|---|
-| `ANTHROPIC_API_KEY` | Anthropic API key for LLM calls |
-| `LANGSMITH_API_KEY` | LangSmith API key for tracing |
-| `LANGGRAPH_DEPLOYMENT_URL` | Your LangGraph deployment URL |
+| `ANTHROPIC_API_KEY` | 用于 LLM 调用的 Anthropic API key |
+| `LANGSMITH_API_KEY` | 用于 tracing 的 LangSmith API key |
+| `LANGGRAPH_DEPLOYMENT_URL` | LangGraph deployment URL |
 
-### Manual Trigger
+### 手动触发
 
 From the **Actions** tab → **Simulate TechHub Traffic** → **Run workflow**, you can set `count` and `mode` to run on demand.
 
-## Finding Simulation Traces in LangSmith
+## 在 LangSmith 中查找模拟 Trace
 
-### Filter by Simulation Source
+### 按 Simulation Source 过滤
 
 ```
 metadata.source = "automated_simulation"
 ```
 
-### Filter by Generation Mode
+### 按 Generation Mode 过滤
 
 ```
 metadata.generation_mode = "dynamic"   # LLM+DB generated
 metadata.generation_mode = "static"    # From scenarios.json
 ```
 
-### Filter by Archetype
+### 按 Archetype 过滤
 
 ```
 metadata.archetype_id = "delayed_order_complaint"
 metadata.archetype_id = "product_research"
 ```
 
-### Filter by Persona / Sentiment
+### 按 Persona / Sentiment 过滤
 
 ```
 metadata.persona_type = "Corporate"
@@ -138,9 +139,9 @@ metadata.sentiment = "negative"
 metadata.requires_verification = true
 ```
 
-## How It Works
+## 工作原理
 
-### Architecture
+### 架构流程
 
 1. **Scenario Generation** — Dynamic mode queries DB for real customer + orders, picks weighted archetype, calls LLM to generate opening query. Static mode loads from `scenarios.json`.
 2. **Thread Creation** — Creates LangSmith thread with simulation metadata (`archetype_id`, `generation_mode`, `sentiment`, etc.)
@@ -152,7 +153,7 @@ metadata.requires_verification = true
 5. **Follow-up Generation** — LLM generates 2-6 realistic follow-up questions based on persona, sentiment, and conversation history
 6. **Natural Ending** — Conversation ends when persona is satisfied or max turns reached
 
-## Configuration
+## 配置
 
 Edit `simulations/simulation_config.py` to customize:
 
@@ -163,7 +164,7 @@ MAX_TURNS_PER_CONVERSATION = 8         # Max turns before forced end
 SCENARIO_SELECTION = "random"          # random | round_robin | all (static mode only)
 ```
 
-## Project Structure
+## 项目结构
 
 ```
 simulations/
@@ -179,7 +180,7 @@ simulations/
 └── simulate_traffic.yml           # Scheduled GitHub Actions automation
 ```
 
-## Troubleshooting
+## 故障排查
 
 ### Deployment URL Not Found
 
@@ -208,7 +209,7 @@ simulations/
 
 **Solution**: Check deployment status in LangSmith Studio and verify URL is correct
 
-## Success Metrics
+## 成功指标
 
 - **>95% completion rate** — Very few errors
 - **3-5 average turns** — Realistic conversation length

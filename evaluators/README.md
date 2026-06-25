@@ -1,19 +1,19 @@
 # Evaluators
 
-Evaluation functions for measuring agent performance in Module 2. These evaluators are built inline in Module 2, Section 1 and then refactored here for reuse.
+本目录包含原 TechHub workshop 中用于评测 Agent 表现的 evaluator。ShopMind V1 在 `evaluation/` 目录中新增了更偏业务规则的 evaluator，并复用了这里的通用 evaluator。
 
-## Available Evaluators
+## 可用 Evaluator
 
-| Evaluator | Type | Measures | Returns |
+| Evaluator | 类型 | 衡量内容 | 返回 |
 |-----------|------|----------|---------|
-| `correctness_evaluator` | Reference-based | Factual accuracy against ground truth | Boolean (True/False) |
-| `count_total_tool_calls_evaluator` | Trace-based | Efficiency via tool invocation count | Integer (count) |
+| `correctness_evaluator` | Reference-based | 使用 LLM-as-Judge 对比参考答案，评估事实正确性 | Boolean |
+| `count_total_tool_calls_evaluator` | Trace-based | 统计一次执行中的 Tool 调用次数 | Integer |
 
-## Usage
+## 用法
 
-### Correctness Evaluator (LLM-as-Judge)
+### correctness_evaluator
 
-Compares agent output against reference output using an LLM judge:
+`correctness_evaluator` 会使用 LLM-as-Judge，将 Agent 输出与 reference output 对比：
 
 ```python
 from evaluators import correctness_evaluator
@@ -27,14 +27,17 @@ result = correctness_evaluator(
 # Returns: {"key": "correctness", "score": True, "comment": "reasoning..."}
 ```
 
-**What it checks:**
-- Factual accuracy
-- Completeness
-- Logical consistency
+它主要检查：
 
-### Tool Call Counter (Trace-Based)
+- 事实准确性；
+- 回答完整性；
+- 逻辑一致性。
 
-Counts tool invocations across the entire execution trace:
+注意：这是 LLM-as-Judge，会产生额外模型调用成本。ShopMind V1 的默认 evaluation 不自动启用它。
+
+### count_total_tool_calls_evaluator
+
+`count_total_tool_calls_evaluator` 会遍历 LangSmith trace，统计 Tool 调用次数：
 
 ```python
 from evaluators import count_total_tool_calls_evaluator
@@ -48,13 +51,15 @@ result = count_total_tool_calls_evaluator(run)
 # Returns: {"key": "total_tool_calls", "score": 7}
 ```
 
-**What it measures:**
-- Execution efficiency
-- Number of tool calls (lower is often better)
+它适合衡量：
 
-## Using in Experiments
+- 执行效率；
+- 是否出现不必要的 Tool 调用；
+- 改造前后 Tool 调用数量是否下降。
 
-Both evaluators work with LangSmith's `evaluate()` function:
+## 在 LangSmith Experiment 中使用
+
+两个 evaluator 都可以传给 LangSmith 的 `evaluate()`：
 
 ```python
 from langsmith import Client
@@ -73,18 +78,18 @@ results = client.evaluate(
 )
 ```
 
-## Evaluator Signatures
+## Evaluator 签名
 
-LangSmith automatically routes evaluators based on their function signature:
+LangSmith 会根据函数签名自动判断 evaluator 类型。
 
-**Reference-based** (compares outputs to ground truth):
+Reference-based evaluator：
 ```python
 def evaluator(inputs: dict, outputs: dict, reference_outputs: dict) -> dict:
     # Has access to example data and expected outputs
     pass
 ```
 
-**Trace-based** (analyzes execution metadata):
+Trace-based evaluator：
 ```python
 from langsmith.schemas import Run
 
@@ -93,12 +98,11 @@ def evaluator(run: Run) -> dict:
     pass
 ```
 
-You can mix both types in a single experiment.
+同一个 experiment 中可以混合使用这两种 evaluator。
 
-## Module 2 Learning Path
+## Module 2 学习路径
 
-**Section 1**: Build evaluators inline to understand evaluation concepts
+- Section 1：在 notebook 中从零构建 evaluator，理解 evaluation 概念；
+- Section 2：复用这里的 evaluator，重点学习 eval-driven development workflow。
 
-**Section 2**: Import these pre-built evaluators to focus on eval-driven development workflow
-
-See the notebooks for detailed explanations of evaluation principles and best practices.
+ShopMind V1 的评测入口见 `evaluation/` 目录。
