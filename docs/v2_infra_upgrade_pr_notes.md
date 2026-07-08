@@ -17,6 +17,12 @@ Major changes:
 - Add PostgreSQL health endpoint.
 - Add SQLite-backed unit tests and opt-in PostgreSQL integration tests.
 
+Final branch commits:
+
+- `cd68257` Add ShopMind V2 PostgreSQL infrastructure
+- `58a2425` Add repository agent guidance
+- `f5d79a4` Add Chinese workshop materials
+
 ## Recommended Staging Scope
 
 Recommended V2 infra files to stage:
@@ -42,11 +48,6 @@ Review separately before staging:
 
 ```bash
 data/structured/techhub.db
-AGENTS.md
-workshop_modules/README_zh_CN.md
-workshop_modules/module_1/*_zh_CN.ipynb
-workshop_modules/module_2/*_zh_CN.ipynb
-workshop_modules/module_3/*_zh_CN.ipynb
 ```
 
 Current `techhub.db` audit:
@@ -57,9 +58,8 @@ Current `techhub.db` audit:
   order_items `439`.
 - Runtime state tables are empty: user_preferences `0`, cart_items `0`,
   pending_actions `0`.
-- The SQLite file remains a binary diff at the same byte size, so it should not
-  be staged with the V2 infra changes unless the team intentionally updates the
-  V1 fixture.
+- The SQLite file was restored after the audit and is not included in the final
+  branch changes.
 
 ## Validation
 
@@ -139,9 +139,6 @@ This PR does not introduce:
 
 ## Follow-Up Candidates
 
-- Decide whether to restore or keep `data/structured/techhub.db`.
-- Decide whether `AGENTS.md` should be tracked.
-- Decide whether translated workshop notebooks belong in a separate PR.
 - Add CI job for default tests.
 - Add optional CI/manual job for `RUN_POSTGRES_INTEGRATION=1`.
 - Address `langchain_community` deprecation in the legacy V1 database tooling.
