@@ -1,0 +1,11 @@
+[
+  {
+    "order_id": "ORD-2024-0001",
+    "customer_id": "CUST-001",
+    "order_date": "2024-01-15",
+    "status": "Delivered",
+    "shipped_date": "2024-01-16",
+    "tracking_number": "1Z999AA100000001",
+    "total_amount": 1199.0
+  }
+]

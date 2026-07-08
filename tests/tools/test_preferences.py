@@ -1,8 +1,11 @@
-import sqlite3
+from contextlib import contextmanager
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-from config import DEFAULT_DB_PATH
+from app.db.base import Base
+import tools.preferences as preference_tools
 from tools.preferences import (
     add_user_preference,
     clear_user_preferences,
@@ -15,27 +18,25 @@ TEST_USER_ID = "TEST_PREF_USER"
 
 
 @pytest.fixture(autouse=True)
-def cleanup_test_user_preferences():
-    ensure_user_preferences_table()
-    clear_user_preferences.invoke({"user_id": TEST_USER_ID})
+def preference_repository_session(monkeypatch):
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    @contextmanager
+    def fake_preference_session():
+        yield session
+
+    monkeypatch.setattr(
+        preference_tools, "_get_preference_session", fake_preference_session
+    )
     yield
-    clear_user_preferences.invoke({"user_id": TEST_USER_ID})
+    session.close()
 
 
-def test_ensure_user_preferences_table_creates_table() -> None:
-    ensure_user_preferences_table()
-
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        row = connection.execute(
-            """
-            SELECT name
-            FROM sqlite_master
-            WHERE type = 'table' AND name = 'user_preferences'
-            """
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] == "user_preferences"
+def test_ensure_user_preferences_table_is_compatibility_noop() -> None:
+    assert ensure_user_preferences_table() is None
 
 
 def test_get_user_preferences_returns_chinese_message_when_empty() -> None:

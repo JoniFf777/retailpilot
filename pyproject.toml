@@ -17,6 +17,11 @@ dependencies = [
     # Backend API
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
+    # PostgreSQL persistence
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "psycopg[binary]>=3.2.0",
+    "socksio>=1.0.0",
     # LangGraph
     "langgraph>=0.2.0",
     # LangSmith

@@ -1,0 +1,16 @@
+[
+  {
+    "product_id": "TECH-LAP-001",
+    "name": "MacBook Air M2",
+    "category": "Laptops",
+    "price": 1199.0,
+    "in_stock": 1
+  },
+  {
+    "product_id": "TECH-ACC-001",
+    "name": "USB-C Hub",
+    "category": "Accessories",
+    "price": 49.0,
+    "in_stock": 1
+  }
+]

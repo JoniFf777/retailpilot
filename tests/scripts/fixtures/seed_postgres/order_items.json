@@ -1,0 +1,9 @@
+[
+  {
+    "order_item_id": 1,
+    "order_id": "ORD-2024-0001",
+    "product_id": "TECH-LAP-001",
+    "quantity": 1,
+    "price_per_unit": 1199.0
+  }
+]

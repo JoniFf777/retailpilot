@@ -1,4 +1,69 @@
+from contextlib import contextmanager
+
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.db.base import Base
+from app.db.models import Product
+import tools.products as product_tools
 from tools.products import compare_products, get_product_detail, search_products
+
+
+@pytest.fixture(autouse=True)
+def product_repository_session(monkeypatch):
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.add_all(
+        [
+            Product(
+                product_id="TECH-LAP-001",
+                name="MacBook Air M2 (13-inch, 256GB)",
+                category="Laptops",
+                price=1199.00,
+                in_stock=True,
+            ),
+            Product(
+                product_id="TECH-LAP-005",
+                name="Dell XPS 15",
+                category="Laptops",
+                price=1899.00,
+                in_stock=True,
+            ),
+            Product(
+                product_id="TECH-ACC-021",
+                name="USB-C Cable",
+                category="Accessories",
+                price=19.00,
+                in_stock=True,
+            ),
+            Product(
+                product_id="TECH-ACC-022",
+                name="Laptop Stand",
+                category="Accessories",
+                price=39.00,
+                in_stock=True,
+            ),
+            Product(
+                product_id="TECH-ACC-023",
+                name="Premium Dock",
+                category="Accessories",
+                price=79.00,
+                in_stock=True,
+            ),
+        ]
+    )
+    session.commit()
+
+    @contextmanager
+    def fake_product_session():
+        yield session
+
+    monkeypatch.setattr(product_tools, "_get_product_session", fake_product_session)
+    yield
+    session.close()
 
 
 def test_search_products_returns_product_list() -> None:

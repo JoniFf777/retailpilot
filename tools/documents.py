@@ -1,115 +1,92 @@
 """
 Documents tools for searching TechHub product documentation and policies.
 
-These tools provide semantic search over:
+These tools provide semantic search over PostgreSQL + pgvector documents:
 - Product documentation (specs, features, setup guides)
 - Store policies (returns, warranties, shipping)
-
-The vectorstore is pre-built from markdown documents and uses:
-- Configurable embeddings (HuggingFace by default, or OpenAI)
-- InMemoryVectorStore for fast retrieval
-- VectorStoreRetriever for proper tracing and Runnable interface
-- Metadata filtering to separate products from policies
+- Metadata filtering through the repository layer
 
 Tools use response_format="content_and_artifact" to return both:
 - Formatted content string for the LLM
 - Raw Document objects as artifacts for downstream processing and LangSmith tracing
 """
 
-import pickle
+from contextlib import contextmanager
+from typing import Any, Sequence
 
 from langchain_core.documents import Document
 from langchain_core.tools import tool
-from langchain_core.vectorstores import InMemoryVectorStore
 
-from config import DEFAULT_VECTORSTORE_PATH
+from app.core.settings import get_settings
+from app.repositories import documents as document_repository
 
-# Module-level vectorstore and retrievers (lazy loaded)
-_vectorstore = None
-_product_retriever = None
-_policy_retriever = None
+# Module-level embedding model (lazy loaded)
+_embeddings = None
 
 
-def get_vectorstore():
-    """Lazy load the vectorstore.
+@contextmanager
+def _get_document_session():
+    from app.db.session import SessionLocal
 
-    Creates the vectorstore on first call, then returns the cached instance
-    for all subsequent calls. If the vectorstore doesn't exist, builds it automatically.
-
-    Returns:
-        InMemoryVectorStore: Cached vectorstore instance.
-    """
-    global _vectorstore
-    if _vectorstore is None:
-        if not DEFAULT_VECTORSTORE_PATH.exists():
-            # Auto-build vectorstore if it doesn't exist
-            print(
-                f"Vectorstore not found at {DEFAULT_VECTORSTORE_PATH}. Building now..."
-            )
-            from data.data_generation.build_vectorstore import build_vectorstore
-
-            build_vectorstore()
-
-        with open(DEFAULT_VECTORSTORE_PATH, "rb") as f:
-            data = pickle.load(f)
-
-        # Handle both old format (direct vectorstore) and new format (dict with store + provider)
-        if isinstance(data, dict) and "store" in data and "provider" in data:
-            # New format: reconstruct vectorstore with embeddings
-            from data.data_generation.build_vectorstore import get_embeddings
-
-            embeddings = get_embeddings(data["provider"])
-            _vectorstore = InMemoryVectorStore(embedding=embeddings)
-            _vectorstore.store = data["store"]
-        else:
-            # Old format: direct vectorstore pickle (backwards compatibility)
-            _vectorstore = data
-
-    return _vectorstore
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
-def get_product_retriever():
-    """Lazy load the product documents retriever.
+def get_embeddings():
+    """Lazy load the configured embedding model."""
+    global _embeddings
+    if _embeddings is None:
+        from data.data_generation.build_vectorstore import get_embeddings as build_embeddings
 
-    Creates the retriever on first call, then returns the cached instance
-    for all subsequent calls.
+        settings = get_settings()
+        _embeddings = build_embeddings(settings.embedding_provider)
+    return _embeddings
 
-    Returns:
-        VectorStoreRetriever: Cached retriever for product documents.
-    """
-    global _product_retriever
-    if _product_retriever is None:
-        vectorstore = get_vectorstore()
-        _product_retriever = vectorstore.as_retriever(
-            search_type="similarity",
-            search_kwargs={
-                "k": 3,
-                "filter": lambda doc: doc.metadata.get("doc_type") == "product",
-            },
+
+def _embed_query(query: str) -> Sequence[float]:
+    return get_embeddings().embed_query(query)
+
+
+def _document_dict_to_langchain_document(document: dict[str, Any]) -> Document:
+    metadata = dict(document.get("metadata") or {})
+    for key in (
+        "doc_type",
+        "source_path",
+        "source_name",
+        "product_id",
+        "product_name",
+        "policy_name",
+        "chunk_index",
+        "embedding_provider",
+        "embedding_model",
+    ):
+        value = document.get(key)
+        if value is not None:
+            metadata.setdefault(key, value)
+    if "score" in document:
+        metadata["score"] = document["score"]
+    return Document(page_content=document["content"], metadata=metadata)
+
+
+def _fetch_product_documents(query: str) -> list[Document]:
+    query_embedding = _embed_query(query)
+    with _get_document_session() as session:
+        results = document_repository.search_product_documents(
+            session, query_embedding, k=3
         )
-    return _product_retriever
+    return [_document_dict_to_langchain_document(result) for result in results]
 
 
-def get_policy_retriever():
-    """Lazy load the policy documents retriever.
-
-    Creates the retriever on first call, then returns the cached instance
-    for all subsequent calls.
-
-    Returns:
-        VectorStoreRetriever: Cached retriever for policy documents.
-    """
-    global _policy_retriever
-    if _policy_retriever is None:
-        vectorstore = get_vectorstore()
-        _policy_retriever = vectorstore.as_retriever(
-            search_type="similarity",
-            search_kwargs={
-                "k": 2,
-                "filter": lambda doc: doc.metadata.get("doc_type") == "policy",
-            },
+def _fetch_policy_documents(query: str) -> list[Document]:
+    query_embedding = _embed_query(query)
+    with _get_document_session() as session:
+        results = document_repository.search_policy_documents(
+            session, query_embedding, k=2
         )
-    return _policy_retriever
+    return [_document_dict_to_langchain_document(result) for result in results]
 
 
 @tool(response_format="content_and_artifact")
@@ -131,10 +108,7 @@ def search_product_docs(query: str) -> tuple[str, list[Document]]:
         - formatted_content: Clean string for the LLM with product info
         - documents: List of raw Document objects for downstream use and tracing
     """
-    retriever = get_product_retriever()
-
-    # Use retriever to get documents (better tracing in LangSmith)
-    results = retriever.invoke(query)
+    results = _fetch_product_documents(query)
 
     if not results:
         return "No relevant product documentation found.", []
@@ -169,10 +143,7 @@ def search_policy_docs(query: str) -> tuple[str, list[Document]]:
         - formatted_content: Clean string for the LLM with policy info
         - documents: List of raw Document objects for downstream use and tracing
     """
-    retriever = get_policy_retriever()
-
-    # Use retriever to get documents (better tracing in LangSmith)
-    results = retriever.invoke(query)
+    results = _fetch_policy_documents(query)
 
     if not results:
         return "No relevant policy information found.", []

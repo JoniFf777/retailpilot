@@ -1,9 +1,13 @@
 import re
-import sqlite3
+from contextlib import contextmanager
 
 import pytest
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.orm import sessionmaker
 
-from config import DEFAULT_DB_PATH
+from app.db.base import Base
+from app.db.models import CartItem, PendingAction, Product
+import tools.cart as cart_tools
 from tools.cart import (
     cancel_pending_action,
     clear_cart_items,
@@ -20,13 +24,29 @@ TEST_PRODUCT_ID = "TECH-KEY-010"
 
 
 @pytest.fixture(autouse=True)
-def cleanup_test_cart_data():
-    ensure_cart_tables()
-    clear_cart_items.invoke({"user_id": TEST_USER_ID})
-    clear_cart_items.invoke({"user_id": OTHER_USER_ID})
+def cart_repository_session(monkeypatch):
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.add(
+        Product(
+            product_id=TEST_PRODUCT_ID,
+            name="Apple Magic Keyboard",
+            category="Keyboards",
+            price=99.00,
+            in_stock=True,
+        )
+    )
+    session.commit()
+
+    @contextmanager
+    def fake_cart_session():
+        yield session
+
+    monkeypatch.setattr(cart_tools, "_get_cart_session", fake_cart_session)
     yield
-    clear_cart_items.invoke({"user_id": TEST_USER_ID})
-    clear_cart_items.invoke({"user_id": OTHER_USER_ID})
+    session.close()
 
 
 def _extract_pending_action_id(result: str) -> str:
@@ -36,49 +56,30 @@ def _extract_pending_action_id(result: str) -> str:
 
 
 def _count_cart_items(user_id: str) -> int:
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        row = connection.execute(
-            "SELECT COUNT(*) FROM cart_items WHERE user_id = ?",
-            (user_id,),
-        ).fetchone()
-    return row[0]
+    with cart_tools._get_cart_session() as session:
+        return session.scalar(
+            select(func.count()).select_from(CartItem).where(CartItem.user_id == user_id)
+        )
 
 
 def _count_pending_actions(user_id: str) -> int:
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        row = connection.execute(
-            "SELECT COUNT(*) FROM pending_actions WHERE user_id = ?",
-            (user_id,),
-        ).fetchone()
-    return row[0]
+    with cart_tools._get_cart_session() as session:
+        return session.scalar(
+            select(func.count())
+            .select_from(PendingAction)
+            .where(PendingAction.user_id == user_id)
+        )
 
 
 def _get_pending_action_status(pending_action_id: str) -> str:
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        row = connection.execute(
-            "SELECT status FROM pending_actions WHERE id = ?",
-            (pending_action_id,),
-        ).fetchone()
-    assert row is not None
-    return row[0]
+    with cart_tools._get_cart_session() as session:
+        action = session.get(PendingAction, pending_action_id)
+    assert action is not None
+    return action.status
 
 
-def test_ensure_cart_tables_creates_tables() -> None:
-    ensure_cart_tables()
-
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        table_names = {
-            row[0]
-            for row in connection.execute(
-                """
-                SELECT name
-                FROM sqlite_master
-                WHERE type = 'table' AND name IN ('cart_items', 'pending_actions')
-                """
-            ).fetchall()
-        }
-
-    assert table_names == {"cart_items", "pending_actions"}
+def test_ensure_cart_tables_is_compatibility_noop() -> None:
+    assert ensure_cart_tables() is None
 
 
 def test_prepare_add_to_cart_does_not_insert_cart_item() -> None:
