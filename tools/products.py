@@ -1,16 +1,16 @@
-"""ShopMind V1 product tools.
+"""ShopMind product tools.
 
-These tools query the existing TechHub SQLite product catalog and return
-Chinese, LLM-readable responses for future ShopMind Agent use.
+These tools query the product catalog through the V2 repository layer and
+return Chinese, LLM-readable responses for the ShopMind Agent.
 """
 
-import sqlite3
+from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Sequence
 
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-from config import DEFAULT_DB_PATH
+from app.repositories import products as product_repository
 from tools.documents import search_policy_docs, search_product_docs
 
 
@@ -59,6 +59,17 @@ class CompareProductsInput(BaseModel):
 ProductRow = Dict[str, Any]
 
 
+@contextmanager
+def _get_product_session():
+    from app.db.session import SessionLocal
+
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
 def _fetch_products(
     query: Optional[str] = None,
     category: Optional[str] = None,
@@ -66,70 +77,20 @@ def _fetch_products(
     in_stock_only: bool = True,
     limit: int = 5,
 ) -> List[ProductRow]:
-    clauses: List[str] = []
-    params: List[Any] = []
-
-    if query:
-        normalized_query = f"%{query.strip()}%"
-        clauses.append("(name LIKE ? OR category LIKE ?)")
-        params.extend([normalized_query, normalized_query])
-
-    if category:
-        clauses.append("LOWER(category) = LOWER(?)")
-        params.append(category.strip())
-
-    if max_price is not None:
-        clauses.append("price <= ?")
-        params.append(max_price)
-
-    if in_stock_only:
-        clauses.append("in_stock = 1")
-
-    sql = """
-        SELECT product_id, name, category, price, in_stock
-        FROM products
-    """
-    if clauses:
-        sql += " WHERE " + " AND ".join(clauses)
-    sql += " ORDER BY price ASC, name ASC LIMIT ?"
-    params.append(limit)
-
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        connection.row_factory = sqlite3.Row
-        rows = connection.execute(sql, params).fetchall()
-
-    return [dict(row) for row in rows]
+    with _get_product_session() as session:
+        return product_repository.search_products(
+            session,
+            query=query,
+            category=category,
+            max_price=max_price,
+            in_stock_only=in_stock_only,
+            limit=limit,
+        )
 
 
 def _find_product(product_identifier: str) -> Optional[ProductRow]:
-    identifier = product_identifier.strip()
-
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        connection.row_factory = sqlite3.Row
-
-        exact_match = connection.execute(
-            """
-            SELECT product_id, name, category, price, in_stock
-            FROM products
-            WHERE product_id = ?
-            """,
-            (identifier,),
-        ).fetchone()
-        if exact_match:
-            return dict(exact_match)
-
-        fuzzy_match = connection.execute(
-            """
-            SELECT product_id, name, category, price, in_stock
-            FROM products
-            WHERE name LIKE ?
-            ORDER BY price ASC, name ASC
-            LIMIT 1
-            """,
-            (f"%{identifier}%",),
-        ).fetchone()
-
-    return dict(fuzzy_match) if fuzzy_match else None
+    with _get_product_session() as session:
+        return product_repository.get_product_detail(session, product_identifier)
 
 
 def _stock_status(product: ProductRow) -> str:

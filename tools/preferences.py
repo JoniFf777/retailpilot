@@ -1,21 +1,19 @@
-"""ShopMind V1 user preference tools.
+"""ShopMind user preference tools.
 
-These tools store lightweight user preferences in the existing TechHub SQLite
-database. They are intentionally independent from the Agent and API layers so
-they can be tested and evolved separately.
+These tools store lightweight user preferences through the V2 repository layer
+and return Chinese, LLM-readable responses for the ShopMind Agent.
 """
 
-import sqlite3
-from datetime import datetime, timezone
+from contextlib import contextmanager
 from typing import Any, Dict, List
 
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-from config import DEFAULT_DB_PATH
+from app.repositories import preferences as preference_repository
 
 
-ALLOWED_PREFERENCE_TYPES = {"budget", "brand", "avoid", "usage", "style", "other"}
+ALLOWED_PREFERENCE_TYPES = preference_repository.ALLOWED_PREFERENCE_TYPES
 
 
 class GetUserPreferencesInput(BaseModel):
@@ -36,51 +34,29 @@ class ClearUserPreferencesInput(BaseModel):
     user_id: str = Field(..., min_length=1, description="用户 ID，用于清空该用户的全部偏好记录。")
 
 
+@contextmanager
+def _get_preference_session():
+    from app.db.session import SessionLocal
+
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
 def ensure_user_preferences_table() -> None:
-    """Ensure the user_preferences table exists in the existing SQLite database."""
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS user_preferences (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                preference_type TEXT NOT NULL,
-                preference_value TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        connection.commit()
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    """Compatibility shim; V2 schema is managed by Alembic migrations."""
+    return None
 
 
 def _normalize_preference_type(preference_type: str) -> tuple[str, bool]:
-    normalized = preference_type.strip().lower()
-    if normalized in ALLOWED_PREFERENCE_TYPES:
-        return normalized, False
-    return "other", True
+    return preference_repository._normalize_preference_type(preference_type)
 
 
 def _fetch_user_preferences(user_id: str) -> List[Dict[str, Any]]:
-    ensure_user_preferences_table()
-
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        connection.row_factory = sqlite3.Row
-        rows = connection.execute(
-            """
-            SELECT id, user_id, preference_type, preference_value, created_at, updated_at
-            FROM user_preferences
-            WHERE user_id = ?
-            ORDER BY id ASC
-            """,
-            (user_id,),
-        ).fetchall()
-
-    return [dict(row) for row in rows]
+    with _get_preference_session() as session:
+        return preference_repository.get_user_preferences(session, user_id)
 
 
 def _format_preference_type(preference_type: str) -> str:
@@ -134,23 +110,24 @@ def add_user_preference(user_id: str, preference_type: str, preference_value: st
     - 返回中文成功提示；
     - 如果 preference_type 不在允许范围内，会自动归为 other，并在返回中明确说明。
     """
-    ensure_user_preferences_table()
-    normalized_type, was_invalid_type = _normalize_preference_type(preference_type)
-    now = _now_iso()
-
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        connection.execute(
-            """
-            INSERT INTO user_preferences (
-                user_id, preference_type, preference_value, created_at, updated_at
+    with _get_preference_session() as session:
+        try:
+            preference = preference_repository.add_user_preference(
+                session,
+                user_id=user_id,
+                preference_type=preference_type,
+                preference_value=preference_value,
             )
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (user_id, normalized_type, preference_value.strip(), now, now),
-        )
-        connection.commit()
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
 
-    type_message = f"偏好类型 {preference_type} 不在允许范围内，已归类为 other。" if was_invalid_type else f"偏好类型：{normalized_type}。"
+    type_message = (
+        f"偏好类型 {preference_type} 不在允许范围内，已归类为 other。"
+        if preference["was_invalid_type"]
+        else f"偏好类型：{preference['preference_type']}。"
+    )
     return (
         f"已为用户 {user_id} 记录购物偏好：{preference_value.strip()}。\n"
         f"{type_message}"
@@ -167,17 +144,15 @@ def clear_user_preferences(user_id: str) -> str:
     返回内容：
     - 返回中文清理结果，说明删除了多少条偏好记录。
     """
-    ensure_user_preferences_table()
+    with _get_preference_session() as session:
+        try:
+            result = preference_repository.clear_user_preferences(session, user_id)
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
 
-    with sqlite3.connect(DEFAULT_DB_PATH) as connection:
-        cursor = connection.execute(
-            "DELETE FROM user_preferences WHERE user_id = ?",
-            (user_id,),
-        )
-        connection.commit()
-        deleted_count = cursor.rowcount
-
-    return f"已清空用户 {user_id} 的购物偏好，共删除 {deleted_count} 条记录。"
+    return f"已清空用户 {user_id} 的购物偏好，共删除 {result['deleted_count']} 条记录。"
 
 
 __all__ = [

@@ -1,8 +1,17 @@
+from contextlib import contextmanager
+
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage, ToolMessage
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 import agents.shopmind_agent as shopmind_agent_module
 from agents.shopmind_agent import SHOPMIND_TOOLS, create_shopmind_agent, invoke_shopmind_agent
+from app.db.base import Base
+from app.db.models import Product
+import tools.products as product_tools
 
 
 class ToolCallingFakeChatModel(FakeMessagesListChatModel):
@@ -18,6 +27,45 @@ class CapturingFakeAgent:
     def invoke(self, invocation_input):
         self.invocation_input = invocation_input
         return self.raw_result
+
+
+@pytest.fixture(autouse=True)
+def product_repository_session(monkeypatch):
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.add_all(
+        [
+            Product(
+                product_id="TECH-KEY-010",
+                name="Logitech MX Keys",
+                category="Keyboards",
+                price=119.00,
+                in_stock=True,
+            ),
+            Product(
+                product_id="TECH-KEY-011",
+                name="Mechanical Gaming Keyboard",
+                category="Keyboards",
+                price=149.00,
+                in_stock=True,
+            ),
+        ]
+    )
+    session.commit()
+
+    @contextmanager
+    def fake_product_session():
+        yield session
+
+    monkeypatch.setattr(product_tools, "_get_product_session", fake_product_session)
+    yield
+    session.close()
 
 
 def test_create_shopmind_agent_can_create_with_mock_model() -> None:
