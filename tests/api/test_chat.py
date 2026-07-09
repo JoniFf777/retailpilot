@@ -247,7 +247,22 @@ async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> 
         lambda: SimpleNamespace(
             shopmind_agent_mode="multi",
             shopmind_supervisor_router="llm",
+            workshop_model="openai:gpt-5-nano",
         ),
+    )
+
+    class FakeLLMRouter:
+        def route(self, message: str, user_id: str | None = None) -> dict:
+            return {"router_type": "llm"}
+
+    def fake_create_supervisor_router(router_mode: str, model=None):
+        calls.append(("router_factory", router_mode, model))
+        return FakeLLMRouter()
+
+    monkeypatch.setattr(
+        agent_dependency,
+        "create_supervisor_router",
+        fake_create_supervisor_router,
     )
 
     def fake_multi_agent(
@@ -278,7 +293,10 @@ async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> 
         )
 
     assert response.status_code == 200
-    assert calls == [("推荐键盘", "user-001", "thread-001", "llm_fallback")]
+    assert calls == [
+        ("router_factory", "llm", "openai:gpt-5-nano"),
+        ("推荐键盘", "user-001", "thread-001", "llm"),
+    ]
     assert response.json()["answer"] == "multi agent answer"
 
 

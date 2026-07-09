@@ -1,7 +1,11 @@
 """Supervisor routing adapters for the ShopMind multi-agent graph."""
 
 from collections.abc import Callable
-from typing import Literal, NotRequired, Protocol, TypedDict, cast
+from typing import Any, Literal, NotRequired, Protocol, TypedDict, cast
+
+from langchain.chat_models import init_chat_model
+
+from config import DEFAULT_MODEL
 
 
 PRODUCT_KEYWORDS = (
@@ -99,6 +103,14 @@ SORTED_ALLOWED_READ_ROUTES: list[ReadRoute] = [
     "product_agent",
     "rag_agent",
 ]
+ROUTER_SYSTEM_PROMPT = """You route ShopMind read-only shopping support requests.
+
+Choose one or more allowed routes:
+- product_agent: product search, catalog facts, price, inventory, comparisons
+- rag_agent: policies, returns, warranty, shipping, specs, compatibility, docs
+- preference_agent: personal preferences or budget, only when user_id is present
+
+Never choose decision_agent or write tools. Return only structured fields."""
 
 
 DecisionProvider = Callable[[LLMSupervisorRouterInput], LLMSupervisorRouterOutput]
@@ -118,6 +130,57 @@ class SupervisorRouter(Protocol):
 def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
     lowered = text.lower()
     return any(keyword.lower() in lowered for keyword in keywords)
+
+
+def _build_langchain_router_messages(
+    payload: LLMSupervisorRouterInput,
+) -> list[dict[str, str]]:
+    allowed_routes = ", ".join(payload["allowed_routes"])
+    user_id_status = "present" if payload["user_id"] else "missing"
+    return [
+        {"role": "system", "content": ROUTER_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                f"Message: {payload['message']}\n"
+                f"User ID status: {user_id_status}\n"
+                f"Allowed routes: {allowed_routes}"
+            ),
+        },
+    ]
+
+
+def _coerce_provider_output(output: object) -> LLMSupervisorRouterOutput:
+    if hasattr(output, "model_dump"):
+        dumped = output.model_dump(exclude_none=True)
+        return cast(LLMSupervisorRouterOutput, dumped)
+    if isinstance(output, dict):
+        return cast(LLMSupervisorRouterOutput, output)
+    return {}
+
+
+def create_langchain_supervisor_decision_provider(
+    model: Any | None = None,
+) -> DecisionProvider:
+    """Create a lazy LangChain structured-output provider for LLM routing."""
+
+    configured_model = model or DEFAULT_MODEL
+    structured_router: Any | None = None
+
+    def provider(payload: LLMSupervisorRouterInput) -> LLMSupervisorRouterOutput:
+        nonlocal structured_router
+        if structured_router is None:
+            llm = (
+                init_chat_model(configured_model, configurable_fields=["model"])
+                if isinstance(configured_model, str)
+                else configured_model
+            )
+            structured_router = llm.with_structured_output(LLMSupervisorRouterOutput)
+
+        output = structured_router.invoke(_build_langchain_router_messages(payload))
+        return _coerce_provider_output(output)
+
+    return provider
 
 
 class DeterministicSupervisorRouter:
@@ -163,12 +226,7 @@ class DeterministicSupervisorRouter:
 
 
 class LLMSupervisorRouter:
-    """Structured-output router shell with deterministic fallback.
-
-    The provider is intentionally a callable for now so tests can exercise the
-    contract without invoking a real model. A future implementation can pass a
-    LangChain structured-output model here.
-    """
+    """Structured-output router with deterministic fallback."""
 
     def __init__(
         self,
@@ -241,8 +299,16 @@ class LLMSupervisorRouter:
         }
 
 
-def create_supervisor_router(router_mode: str | None = None) -> SupervisorRouter:
+def create_supervisor_router(
+    router_mode: str | None = None,
+    *,
+    model: Any | None = None,
+    decision_provider: DecisionProvider | None = None,
+) -> SupervisorRouter:
     normalized = (router_mode or "deterministic").strip().lower()
     if normalized == "llm":
-        return LLMSupervisorRouter()
+        return LLMSupervisorRouter(
+            decision_provider=decision_provider
+            or create_langchain_supervisor_decision_provider(model=model)
+        )
     return DeterministicSupervisorRouter()

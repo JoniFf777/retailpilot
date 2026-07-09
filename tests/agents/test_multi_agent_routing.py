@@ -11,6 +11,7 @@ from agents.shopmind_multi_agent.supervisor_router import (
     LLMSupervisorRouterInput,
     LLMSupervisorRouterOutput,
     LLMSupervisorRouter,
+    create_langchain_supervisor_decision_provider,
     create_supervisor_router,
 )
 
@@ -68,6 +69,28 @@ class RagOnlyTestRouter:
             "requires_user_id_for_preferences": False,
             "router_type": "test",
         }
+
+
+class FakeStructuredRouterModel:
+    def __init__(self, output: dict) -> None:
+        self.output = output
+        self.messages = None
+
+    def invoke(self, messages: list[dict[str, str]]) -> dict:
+        self.messages = messages
+        return self.output
+
+
+class FakeChatModel:
+    def __init__(self, output: dict) -> None:
+        self.output = output
+        self.schema = None
+        self.structured_model: FakeStructuredRouterModel | None = None
+
+    def with_structured_output(self, schema):
+        self.schema = schema
+        self.structured_model = FakeStructuredRouterModel(self.output)
+        return self.structured_model
 
 
 def _invoke(message: str, user_id: str = "USER-001") -> dict:
@@ -317,6 +340,41 @@ def test_llm_supervisor_router_normalizes_invalid_confidence() -> None:
     assert decision["router_type"] == "llm"
 
 
+def test_langchain_supervisor_provider_uses_structured_output_contract() -> None:
+    fake_model = FakeChatModel(
+        {
+            "routes": ["preference_agent"],
+            "routing_reasons": {
+                "preference_agent": "structured_model_detected_preferences"
+            },
+            "confidence": "high",
+            "requires_user_id_for_preferences": False,
+        }
+    )
+    provider = create_langchain_supervisor_decision_provider(model=fake_model)
+
+    decision = build_supervisor_decision(
+        "我的偏好适合什么",
+        user_id="USER-001",
+        router=LLMSupervisorRouter(decision_provider=provider),
+    )
+
+    assert fake_model.schema is LLMSupervisorRouterOutput
+    assert fake_model.structured_model is not None
+    messages = fake_model.structured_model.messages
+    assert messages is not None
+    assert messages[0]["role"] == "system"
+    assert "decision_agent" in messages[0]["content"]
+    assert "Allowed routes: preference_agent, product_agent, rag_agent" in messages[1][
+        "content"
+    ]
+    assert decision["routes"] == ["preference_agent"]
+    assert decision["routing_reasons"] == {
+        "preference_agent": "structured_model_detected_preferences"
+    }
+    assert decision["router_type"] == "llm"
+
+
 def test_llm_supervisor_router_falls_back_on_invalid_routes() -> None:
     router = LLMSupervisorRouter(
         decision_provider=lambda payload: {
@@ -347,9 +405,15 @@ def test_llm_supervisor_router_falls_back_when_unconfigured() -> None:
 
 def test_create_supervisor_router_from_config_mode() -> None:
     deterministic = create_supervisor_router("deterministic")
-    llm = create_supervisor_router("llm")
+    llm = create_supervisor_router(
+        "llm",
+        decision_provider=lambda payload: {
+            "routes": ["product_agent"],
+            "confidence": "high",
+        },
+    )
     invalid = create_supervisor_router("unknown")
 
     assert deterministic.route("推荐键盘")["router_type"] == "deterministic"
-    assert llm.route("推荐键盘")["router_type"] == "llm_fallback"
+    assert llm.route("推荐键盘")["router_type"] == "llm"
     assert invalid.route("推荐键盘")["router_type"] == "deterministic"
