@@ -50,10 +50,20 @@
 - **Testing:** pytest + httpx
 - **Observability / evaluation foundation:** 保留 LangSmith workshop 组件
 
+### 本地命令约定
+
+本仓库本地开发使用已有 conda 环境 `pythonLearn`。不要创建新的 Python 环境，也不要直接运行 `python`、`pytest` 或 `uv run`。
+
+所有本地 Python 命令使用：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe ...
+```
+
 ### 运行 FastAPI
 
 ```bash
-conda run -n pythonLearn python -m uvicorn app.main:app --reload
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m uvicorn app.main:app --reload
 ```
 
 API 文档：
@@ -91,7 +101,7 @@ VECTOR_DIMENSION=768
 创建 V2.0 结构化业务表：
 
 ```bash
-conda run -n pythonLearn alembic upgrade head
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
 ```
 
 这会创建 `customers`、`products`、`orders`、`order_items`、`user_preferences`、`cart_items` 和 `pending_actions`。当前阶段仍然不会导入 SQLite 数据，也不会让现有 Tools 切换到 PostgreSQL。
@@ -99,7 +109,7 @@ conda run -n pythonLearn alembic upgrade head
 导入原始结构化数据：
 
 ```bash
-conda run -n pythonLearn python scripts/seed_postgres.py --clear
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/seed_postgres.py --clear
 ```
 
 seed 脚本会从 `data/structured/customers.json`、`products.json`、`orders.json` 和 `order_items.json` 导入 PostgreSQL。`user_preferences`、`cart_items` 和 `pending_actions` 是运行时状态表，不会由 seed 脚本导入。
@@ -107,7 +117,7 @@ seed 脚本会从 `data/structured/customers.json`、`products.json`、`orders.j
 ### 运行测试
 
 ```bash
-conda run -n pythonLearn python -m pytest tests/agents/test_shopmind_agent.py tests/tools/test_cart.py tests/tools/test_preferences.py tests/tools/test_products.py tests/api
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/agents/test_shopmind_agent.py tests/tools/test_cart.py tests/tools/test_preferences.py tests/tools/test_products.py tests/api
 ```
 
 当前验证结果：
@@ -115,6 +125,16 @@ conda run -n pythonLearn python -m pytest tests/agents/test_shopmind_agent.py te
 ```text
 38 passed
 ```
+
+### GitHub Actions CI
+
+主分支已配置默认 CI：`.github/workflows/ci.yml`。CI 使用 GitHub runner 的 Python 3.13，安装项目依赖后运行默认回归：
+
+```bash
+python -m pytest tests/config tests/db tests/repositories tests/scripts tests/tools tests/api tests/agents tests/evaluation tests/integration
+```
+
+该 CI 不启动真实 PostgreSQL。`tests/integration` 默认只运行 guard，真实 PostgreSQL integration 仍需本地显式设置 `RUN_POSTGRES_INTEGRATION=1` 后执行。
 
 ### ShopMind V1 设计文档
 
@@ -141,13 +161,13 @@ set LANGSMITH_PROJECT=shopmind-v1
 创建或刷新 evaluation dataset：
 
 ```bash
-conda run -n pythonLearn python evaluation/create_shopmind_dataset.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/create_shopmind_dataset.py
 ```
 
 运行 evaluation：
 
 ```bash
-conda run -n pythonLearn python evaluation/run_langsmith_eval.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
 ```
 
 默认 evaluation 使用确定性的规则型 evaluators：
@@ -162,7 +182,7 @@ conda run -n pythonLearn python evaluation/run_langsmith_eval.py
 
 ```bash
 set INCLUDE_CORRECTNESS_EVALUATOR=true
-conda run -n pythonLearn python evaluation/run_langsmith_eval.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
 ```
 
 ### V2 Roadmap
@@ -185,22 +205,14 @@ conda run -n pythonLearn python evaluation/run_langsmith_eval.py
 
 ## 快速设置
 
-原 workshop 使用 [uv](https://docs.astral.sh/uv/) 管理 Python 依赖。如果本地尚未安装：
+本地开发使用已有 conda 环境 `pythonLearn`。不要创建新的 Python 环境，也不要直接运行 `python`、`pytest` 或 `uv run`。
 
-```bash
-# Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-然后设置 workshop 环境：
+设置 workshop 环境：
 
 ```bash
 # Clone repository
 git clone https://github.com/langchain-ai/langsmith-agent-lifecycle-workshop.git
 cd langsmith-agent-lifecycle-workshop
-
-# Install dependencies (creates virtual environment automatically)
-uv sync
 
 # Configure API keys
 cp .env.example .env
@@ -209,10 +221,10 @@ cp .env.example .env
 #   LANGSMITH_API_KEY=lsv2_pt_...
 
 # Build vectorstore (one-time setup, ~60 seconds)
-uv run python data/data_generation/build_vectorstore.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe data/data_generation/build_vectorstore.py
 
 # Launch Jupyter
-uv run jupyter lab
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m jupyter lab
 ```
 
 ### Backend API（可选）
@@ -221,7 +233,7 @@ uv run jupyter lab
 
 ```bash
 # Start the FastAPI backend
-conda run -n pythonLearn python -m uvicorn app.main:app --reload
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m uvicorn app.main:app --reload
 
 # Health check
 curl http://127.0.0.1:8000/api/health
@@ -245,7 +257,7 @@ curl -X POST http://127.0.0.1:8000/api/chat/confirm \
 运行 API 测试：
 
 ```bash
-conda run -n pythonLearn python -m pytest tests/api
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/api
 ```
 
 ### V2.0 PostgreSQL / pgvector（可选）
@@ -263,8 +275,8 @@ docker compose ps postgres
 
 ```bash
 docker compose up -d postgres
-conda run -n pythonLearn alembic upgrade head
-conda run -n pythonLearn python scripts/seed_postgres.py --clear
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/seed_postgres.py --clear
 ```
 
 当前 migration 只创建结构化业务表，不创建 pgvector documents 表；seed 脚本只导入 customers、products、orders 和 order_items。RAG 迁移会放到 V2.1。现有 ShopMind V1 Tools、Agent 和 API 仍继续使用 SQLite / InMemoryVectorStore。
@@ -298,23 +310,23 @@ V2.1 开始引入 pgvector RAG schema：
 
 ```bash
 docker compose up -d postgres
-conda run -n pythonLearn alembic upgrade head
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
 ```
 
 索引 markdown documents 到 pgvector：
 
 ```bash
 # 只读取和切分文档，不连接数据库、不生成 embeddings
-conda run -n pythonLearn python scripts/index_documents_pgvector.py --dry-run
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --dry-run
 
 # 写入 PostgreSQL documents 表
-conda run -n pythonLearn python scripts/index_documents_pgvector.py --clear
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --clear
 ```
 
 也可以只处理一种文档类型：
 
 ```bash
-conda run -n pythonLearn python scripts/index_documents_pgvector.py --dry-run --doc-type policy
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --dry-run --doc-type policy
 ```
 
 当前脚本会读取 `data/documents/products/*.md` 和 `data/documents/policies/*.md`，切分 chunk，并在非 dry-run 模式下生成 embeddings 后写入 `documents` 表。
@@ -338,7 +350,7 @@ V2.1 第四阶段已将 `tools/documents.py` 切换到 Documents Repository：
 V2.2 新增只读 PostgreSQL smoke check：
 
 ```bash
-conda run -n pythonLearn python scripts/smoke_postgres.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smoke_postgres.py
 ```
 
 该脚本只读取 `DATABASE_URL` 指向的数据库，不清空、不写入数据。检查内容包括：
@@ -360,40 +372,41 @@ TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5432/retailpi
 然后只对该独立库执行 migration、seed、documents index 和 smoke check：
 
 ```bash
-conda run -n pythonLearn alembic upgrade head
-conda run -n pythonLearn python scripts/seed_postgres.py --clear
-conda run -n pythonLearn python scripts/index_documents_pgvector.py --clear
-conda run -n pythonLearn python scripts/smoke_postgres.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/seed_postgres.py --clear
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --clear
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smoke_postgres.py
 ```
 
 如需额外验证 LangChain Tool 层，可运行：
 
 ```bash
-conda run -n pythonLearn python scripts/smoke_postgres.py --include-tools
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smoke_postgres.py --include-tools
 ```
 
 `--include-tools` 会加载 embedding model，耗时更长。普通测试仍不依赖真实 PostgreSQL；真实库 integration 测试默认跳过，仅在显式设置环境变量后运行：
 
 ```bash
-RUN_POSTGRES_INTEGRATION=1 conda run -n pythonLearn python -m pytest tests/integration
+$env:RUN_POSTGRES_INTEGRATION="1"
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/integration
 ```
 
 如果希望按标准顺序初始化并验证本地 V2 PostgreSQL，可以使用 bootstrap 脚本。默认只打印计划，不执行任何操作：
 
 ```bash
-conda run -n pythonLearn python scripts/bootstrap_postgres.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py
 ```
 
 执行 Alembic、seed、documents index 和 smoke。因为该命令会清空并重导 V2 seed/documents 数据，必须显式添加 `--confirm-clear`：
 
 ```bash
-conda run -n pythonLearn python scripts/bootstrap_postgres.py --execute --confirm-clear
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py --execute --confirm-clear
 ```
 
 如果 documents 已经索引过，只想快速重建结构化 seed 并验证：
 
 ```bash
-conda run -n pythonLearn python scripts/bootstrap_postgres.py --execute --confirm-clear --skip-documents
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py --execute --confirm-clear --skip-documents
 ```
 
 可选参数：
@@ -403,7 +416,7 @@ conda run -n pythonLearn python scripts/bootstrap_postgres.py --execute --confir
 - `--skip-documents`：跳过 pgvector documents 重新索引；
 - `--skip-smoke`：跳过 smoke check；
 - `--include-tool-smoke`：在 smoke 中额外调用 LangChain Tools，会加载 embedding model；
-- `--run-integration`：执行 `RUN_POSTGRES_INTEGRATION=1 pytest tests/integration`。
+- `--run-integration`：执行真实 PostgreSQL integration 测试，等价于先设置 `RUN_POSTGRES_INTEGRATION=1`，再运行 `conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/integration`。
 
 Integration 测试包含两类：
 
@@ -413,7 +426,7 @@ Integration 测试包含两类：
 - `tests/integration/test_postgres_api.py`：验证 FastAPI `/api/health/postgres` 和 `/api/chat/confirm` 能端到端使用 PostgreSQL。
 
 写路径测试会生成唯一 `integration-smoke-*` user_id，并在测试前后清理该用户的 `user_preferences`、`cart_items` 和 `pending_actions`。
-未设置 `RUN_POSTGRES_INTEGRATION=1` 时，integration 模块会在加载重依赖前快速跳过；`tests/integration/test_integration_guard.py` 确保默认运行 `pytest tests/integration` 也能稳定返回成功。
+未设置 `RUN_POSTGRES_INTEGRATION=1` 时，integration 模块会在加载重依赖前快速跳过；`tests/integration/test_integration_guard.py` 确保默认 integration 测试目录也能稳定返回成功。
 
 V2.2 也新增了 PostgreSQL health endpoint：
 
@@ -434,7 +447,7 @@ V2.2 也新增了 PostgreSQL health endpoint：
 EMBEDDING_PROVIDER=openai
 
 # Rebuild the vectorstore with OpenAI embeddings
-uv run python data/data_generation/build_vectorstore.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe data/data_generation/build_vectorstore.py
 ```
 
 ## Workshop 大纲

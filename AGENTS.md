@@ -15,9 +15,6 @@ The workshop progresses through three modules:
 
 ### Environment Setup
 ```bash
-# Install dependencies (creates .venv automatically)
-uv sync
-
 # Configure environment
 cp .env.example .env
 # Edit .env with your API keys
@@ -26,7 +23,7 @@ cp .env.example .env
 # Build vectorstore (required one-time setup, ~60 seconds)
 # Uses HuggingFace embeddings by default (local, no API key)
 # Set EMBEDDING_PROVIDER=openai in .env to use OpenAI embeddings instead
-uv run python data/data_generation/build_vectorstore.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe data/data_generation/build_vectorstore.py
 
 # Note: Changing EMBEDDING_PROVIDER requires rebuilding the vectorstore
 ```
@@ -34,7 +31,7 @@ uv run python data/data_generation/build_vectorstore.py
 ### Development
 ```bash
 # Launch Jupyter for workshop notebooks
-uv run jupyter lab
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m jupyter lab
 
 # Test LangGraph deployments locally
 langgraph dev
@@ -45,8 +42,8 @@ langgraph dev --graph supervisor_hitl_sql_agent
 
 ### Running Python Scripts
 ```bash
-# All Python commands should use uv
-uv run python <script.py>
+# All local Python commands must use the existing pythonLearn conda environment
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe <script.py>
 ```
 
 ## Architecture Overview
@@ -272,7 +269,7 @@ Optional configuration:
 
 ## Common Gotchas
 
-- **Vectorstore not found**: Must run `uv run python data/data_generation/build_vectorstore.py` before using RAG tools. If changing `EMBEDDING_PROVIDER`, must rebuild vectorstore
+- **Vectorstore not found**: Must run `conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe data/data_generation/build_vectorstore.py` before using RAG tools. If changing `EMBEDDING_PROVIDER`, must rebuild vectorstore
 - **Checkpointer conflicts**: Use `use_checkpointer=False` for production deployments (LangSmith manages state)
 - **State schema mismatches**: Shared keys in custom state must match parent/subgraph schemas
 - **Path resolution**: `config.py` handles both local (`Path(__file__).parent`) and LangSmith deployment (`/deps/...`) paths
@@ -287,5 +284,5 @@ Do not run `python`, `pytest`, or `uv run` directly.
 Use:
 
 ```bash
-conda run -n pythonLearn python -m pytest tests/api
-conda run -n pythonLearn python -m pip install fastapi pytest httpx
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/api
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pip install fastapi pytest httpx
