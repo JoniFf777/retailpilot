@@ -28,4 +28,5 @@ Use this checklist before opening or merging changes into `main`.
 ## CI
 
 - [ ] Confirm the GitHub Actions default CI passes.
+- [ ] Run the manual PostgreSQL Integration workflow when database schema, repository behavior, pgvector documents, or PostgreSQL-backed API paths change.
 - [ ] Keep true PostgreSQL integration out of default CI unless the workflow explicitly provisions an isolated PostgreSQL + pgvector service.

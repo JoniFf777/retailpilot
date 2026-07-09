@@ -136,6 +136,8 @@ python -m pytest tests/config tests/db tests/repositories tests/scripts tests/to
 
 该 CI 不启动真实 PostgreSQL。`tests/integration` 默认只运行 guard，真实 PostgreSQL integration 仍需本地显式设置 `RUN_POSTGRES_INTEGRATION=1` 后执行。
 
+真实 PostgreSQL + pgvector integration 已配置为手动 workflow：`.github/workflows/postgres_integration.yml`。该 workflow 会启动 `pgvector/pgvector:pg16` 服务，执行 Alembic migration、seed、documents pgvector index、smoke check 和 `RUN_POSTGRES_INTEGRATION=1` 的 integration 测试。它会下载或复用 HuggingFace embedding model cache，因此不放进默认 PR/push 门禁。
+
 ### ShopMind V1 设计文档
 
 - [架构设计](docs/architecture.md)
