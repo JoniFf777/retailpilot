@@ -11,6 +11,7 @@ from evaluators.evaluators import (
     correctness_evaluator,
     count_total_tool_calls_evaluator,
 )
+from evaluation.shopmind_router_eval import expected_routes_evaluator
 
 
 def _as_list(value: Any) -> list[str]:
@@ -122,5 +123,5 @@ __all__ = [
     "forbidden_tools_evaluator",
     "status_evaluator",
     "expected_keywords_evaluator",
+    "expected_routes_evaluator",
 ]
-
