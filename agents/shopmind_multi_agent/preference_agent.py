@@ -12,9 +12,31 @@ from .state import ShopMindMultiAgentState
 PREFERENCE_AGENT_TOOLS = guard_tools("preference_agent", [get_user_preferences])
 
 
-def _compact_text(text: str, max_chars: int = 500) -> str:
-    collapsed = re.sub(r"\s+", " ", text).strip()
-    return collapsed[:max_chars]
+def _preference_count(text: str) -> int:
+    if "暂无" in text or "尚未记录" in text:
+        return 0
+    numbered_items = re.findall(r"(?:^|\s)\d+\.", text)
+    return len(numbered_items)
+
+
+def _build_preference_summary(result: str, user_id: str) -> dict[str, Any]:
+    preference_count = _preference_count(result)
+    has_preferences = preference_count > 0
+    summary = (
+        f"偏好读取完成：记录 {preference_count} 条。"
+        if has_preferences
+        else "偏好读取完成：暂无已记录偏好。"
+    )
+
+    return {
+        "summary": summary,
+        "source": "get_user_preferences",
+        "user_id": user_id,
+        "preference_count": preference_count,
+        "has_preferences": has_preferences,
+        "confidence": "medium" if has_preferences else "low",
+        "raw_result_stored": False,
+    }
 
 
 def preference_agent_node(
@@ -31,11 +53,7 @@ def preference_agent_node(
     executed_routes.append("preference_agent")
 
     return {
-        "preference_summary": {
-            "summary": _compact_text(str(result)),
-            "source": "get_user_preferences",
-            "raw_result_stored": False,
-        },
+        "preference_summary": _build_preference_summary(str(result), user_id),
         "executed_routes": executed_routes,
         "current_route": None,
         "tool_calls": tool_calls,

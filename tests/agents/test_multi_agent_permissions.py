@@ -96,8 +96,10 @@ def test_prompt_injection_in_rag_does_not_create_write_or_pending_action() -> No
 
     assert "add_to_cart" not in result["tool_calls"]
     assert "prepare_add_to_cart" not in result["tool_calls"]
+    assert "add_to_cart" not in str(result["rag_summary"])
     assert "pending_action_id" not in str(result)
     assert result["rag_summary"]["security_notes"]
+    assert result["rag_summary"]["raw_result_stored"] is False
     assert "rag_prompt_injection_detected" in result["safety_flags"]
 
 
