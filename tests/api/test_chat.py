@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -123,6 +125,109 @@ async def test_chat_returns_pending_action_when_confirmation_required(monkeypatc
         "user_id": "user-001",
         "thread_id": "thread-001",
         "pending_action_id": pending_action_id,
+    }
+
+
+@pytest.mark.anyio
+async def test_chat_uses_single_agent_by_default(monkeypatch) -> None:
+    calls = []
+
+    monkeypatch.setattr(
+        agent_dependency,
+        "get_settings",
+        lambda: SimpleNamespace(shopmind_agent_mode="single"),
+    )
+
+    def fake_single_agent(message: str, user_id: str | None = None) -> dict:
+        calls.append(("single", message, user_id))
+        return {
+            "answer": "single agent answer",
+            "status": "completed",
+            "tool_calls": ["search_products"],
+        }
+
+    def fake_multi_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict:
+        calls.append(("multi", message, user_id, thread_id))
+        return {"answer": "multi agent answer", "status": "completed", "tool_calls": []}
+
+    monkeypatch.setattr(agent_dependency, "invoke_shopmind_agent", fake_single_agent)
+    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/chat",
+            json={
+                "message": "推荐一个键盘",
+                "user_id": "user-001",
+                "thread_id": "thread-001",
+            },
+        )
+
+    assert response.status_code == 200
+    assert calls == [("single", "推荐一个键盘", "user-001")]
+    assert response.json() == {
+        "answer": "single agent answer",
+        "status": "completed",
+        "tool_calls": ["search_products"],
+        "user_id": "user-001",
+        "thread_id": "thread-001",
+        "pending_action_id": None,
+    }
+
+
+@pytest.mark.anyio
+async def test_chat_multi_mode_keeps_response_schema(monkeypatch) -> None:
+    calls = []
+
+    monkeypatch.setattr(
+        agent_dependency,
+        "get_settings",
+        lambda: SimpleNamespace(shopmind_agent_mode="multi"),
+    )
+
+    def fake_multi_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict:
+        calls.append((message, user_id, thread_id))
+        return {
+            "answer": "multi agent answer",
+            "status": "completed",
+            "tool_calls": ["search_products", "search_policy_docs"],
+            "raw_result": {
+                "routes": ["product_agent", "rag_agent"],
+                "final_response": "internal detail",
+            },
+        }
+
+    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/chat",
+            json={
+                "message": "推荐键盘并说明退货政策",
+                "user_id": "user-001",
+                "thread_id": "thread-001",
+            },
+        )
+
+    assert response.status_code == 200
+    assert calls == [("推荐键盘并说明退货政策", "user-001", "thread-001")]
+    assert response.json() == {
+        "answer": "multi agent answer",
+        "status": "completed",
+        "tool_calls": ["search_products", "search_policy_docs"],
+        "user_id": "user-001",
+        "thread_id": "thread-001",
+        "pending_action_id": None,
     }
 
 
