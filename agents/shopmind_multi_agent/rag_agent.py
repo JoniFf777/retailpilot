@@ -7,6 +7,7 @@ from langchain_core.documents import Document
 
 from tools.documents import search_policy_docs, search_product_docs
 
+from .observability import append_agent_step
 from .permissions import guard_tools, tools_by_name
 from .state import ShopMindMultiAgentState
 from .supervisor import get_last_user_message
@@ -116,4 +117,13 @@ def rag_agent_node(
         "current_route": None,
         "safety_flags": safety_flags,
         "tool_calls": tool_calls,
+        "agent_steps": append_agent_step(
+            state,
+            node="rag_agent",
+            event="completed",
+            route="rag_agent",
+            tool_name=tool_name,
+            doc_type=_doc_type(tool_name),
+            security_note_count=len(security_notes),
+        ),
     }

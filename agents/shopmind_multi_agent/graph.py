@@ -5,6 +5,7 @@ from typing import Any, Callable
 from langgraph.graph import END, START, StateGraph
 
 from .decision_agent import decision_agent_node
+from .observability import append_agent_step
 from .product_agent import product_agent_node
 from .rag_agent import rag_agent_node
 from .state import ShopMindMultiAgentState
@@ -21,9 +22,26 @@ def route_dispatcher_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
 
     for route in routes:
         if route not in executed_routes:
-            return {"current_route": route}
+            return {
+                "current_route": route,
+                "agent_steps": append_agent_step(
+                    state,
+                    node="route_dispatcher",
+                    event="selected_route",
+                    selected_route=route,
+                    executed_routes=executed_routes,
+                ),
+            }
 
-    return {"current_route": None}
+    return {
+        "current_route": None,
+        "agent_steps": append_agent_step(
+            state,
+            node="route_dispatcher",
+            event="selected_decision_agent",
+            executed_routes=executed_routes,
+        ),
+    }
 
 
 def next_route(state: ShopMindMultiAgentState) -> str:
@@ -83,6 +101,7 @@ def invoke_shopmind_multi_agent(
             "thread_id": thread_id,
             "safety_flags": [],
             "tool_calls": [],
+            "agent_steps": [],
         }
     )
 

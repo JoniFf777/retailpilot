@@ -5,6 +5,7 @@ from typing import Any, Mapping
 
 from tools.preferences import get_user_preferences
 
+from .observability import append_agent_step
 from .permissions import guard_tools, tools_by_name
 from .state import ShopMindMultiAgentState
 
@@ -57,4 +58,12 @@ def preference_agent_node(
         "executed_routes": executed_routes,
         "current_route": None,
         "tool_calls": tool_calls,
+        "agent_steps": append_agent_step(
+            state,
+            node="preference_agent",
+            event="completed",
+            route="preference_agent",
+            tool_name="get_user_preferences",
+            has_user_id=bool(user_id),
+        ),
     }

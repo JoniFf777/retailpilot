@@ -21,3 +21,4 @@ class ShopMindMultiAgentState(TypedDict, total=False):
     final_response: Optional[str]
     safety_flags: list[str]
     tool_calls: list[str]
+    agent_steps: list[dict[str, Any]]

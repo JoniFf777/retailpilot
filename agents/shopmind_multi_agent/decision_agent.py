@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from .observability import append_agent_step
 from .state import ShopMindMultiAgentState
 
 
@@ -83,4 +84,12 @@ def decision_agent_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
         },
         "final_response": final_response,
         "current_route": None,
+        "agent_steps": append_agent_step(
+            state,
+            node="decision_agent",
+            event="completed",
+            answer_type=_answer_type(used_summaries, security_notes),
+            used_summaries=used_summaries,
+            requires_followup=requires_followup,
+        ),
     }

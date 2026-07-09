@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from .observability import append_agent_step
 from .state import ShopMindMultiAgentState
 
 
@@ -103,4 +104,11 @@ def supervisor_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
         "current_route": None,
         "safety_flags": list(state.get("safety_flags", [])),
         "tool_calls": list(state.get("tool_calls", [])),
+        "agent_steps": append_agent_step(
+            state,
+            node="supervisor",
+            event="routed",
+            routes=routes,
+            intent="read_path",
+        ),
     }

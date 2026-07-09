@@ -91,6 +91,7 @@ def test_prompt_injection_in_rag_does_not_create_write_or_pending_action() -> No
         "executed_routes": [],
         "tool_calls": [],
         "safety_flags": [],
+        "agent_steps": [],
     }
 
     result = rag_agent_node(state, tools=tools_by_name([guarded_docs_tool]))
@@ -98,10 +99,13 @@ def test_prompt_injection_in_rag_does_not_create_write_or_pending_action() -> No
     assert "add_to_cart" not in result["tool_calls"]
     assert "prepare_add_to_cart" not in result["tool_calls"]
     assert "add_to_cart" not in str(result["rag_summary"])
+    assert "add_to_cart" not in str(result["agent_steps"])
     assert "pending_action_id" not in str(result)
     assert result["rag_summary"]["security_notes"]
     assert result["rag_summary"]["raw_result_stored"] is False
     assert "rag_prompt_injection_detected" in result["safety_flags"]
+    assert result["agent_steps"][-1]["node"] == "rag_agent"
+    assert result["agent_steps"][-1]["security_note_count"] == 1
 
     decision = decision_agent_node(
         {
@@ -109,11 +113,13 @@ def test_prompt_injection_in_rag_does_not_create_write_or_pending_action() -> No
             "executed_routes": result["executed_routes"],
             "tool_calls": result["tool_calls"],
             "safety_flags": result["safety_flags"],
+            "agent_steps": result["agent_steps"],
         }
     )
     assert decision["decision"]["answer_type"] == "safe_read_summary"
     assert decision["decision"]["security_notes"] == result["rag_summary"]["security_notes"]
     assert "add_to_cart" not in str(decision["decision"])
+    assert "add_to_cart" not in str(decision["agent_steps"])
 
 
 def test_product_agent_real_tool_set_is_read_only() -> None:
