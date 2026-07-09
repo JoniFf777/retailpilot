@@ -12,19 +12,24 @@ from .product_agent import PRODUCT_AGENT_TOOLS, product_agent_node
 from .rag_agent import RAG_AGENT_TOOLS, rag_agent_node
 from .preference_agent import PREFERENCE_AGENT_TOOLS, preference_agent_node
 from .supervisor import (
+    DEFAULT_SUPERVISOR_ROUTER,
     SUPERVISOR_TOOLS,
     build_supervisor_decision,
     determine_routes,
     supervisor_node,
 )
+from .supervisor_router import DeterministicSupervisorRouter, SupervisorRouter
 
 __all__ = [
     "AGENT_TOOL_ALLOWLIST",
     "DECISION_AGENT_TOOLS",
+    "DEFAULT_SUPERVISOR_ROUTER",
+    "DeterministicSupervisorRouter",
     "PRODUCT_AGENT_TOOLS",
     "RAG_AGENT_TOOLS",
     "PREFERENCE_AGENT_TOOLS",
     "SUPERVISOR_TOOLS",
+    "SupervisorRouter",
     "ToolPermissionError",
     "build_supervisor_decision",
     "create_shopmind_multi_agent_graph",

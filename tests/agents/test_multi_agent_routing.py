@@ -51,6 +51,19 @@ def _graph():
     )
 
 
+class RagOnlyTestRouter:
+    def route(self, message: str, user_id: str | None = None) -> dict:
+        return {
+            "intent": "read_path",
+            "routes": ["rag_agent"],
+            "routing_reasons": {"rag_agent": "test_router_forced_rag"},
+            "confidence": "low",
+            "fallback_used": False,
+            "requires_user_id_for_preferences": False,
+            "router_type": "test",
+        }
+
+
 def _invoke(message: str, user_id: str = "USER-001") -> dict:
     return _graph().invoke(
         {
@@ -75,6 +88,7 @@ def test_product_search_question_routes_to_product_agent() -> None:
     }
     assert result["supervisor_decision"]["confidence"] == "high"
     assert result["supervisor_decision"]["fallback_used"] is False
+    assert result["supervisor_decision"]["router_type"] == "deterministic"
     assert result["executed_routes"] == ["product_agent"]
     assert result["tool_calls"] == ["search_products"]
     assert result["product_summary"]["product_count"] == 1
@@ -142,6 +156,7 @@ def test_mixed_question_runs_read_agents_in_order() -> None:
     assert "RAW_PREFERENCE_SHOULD_NOT_LEAK" not in str(result["agent_steps"])
     assert result["agent_steps"][0]["confidence"] == "high"
     assert result["agent_steps"][0]["fallback_used"] is False
+    assert result["agent_steps"][0]["router_type"] == "deterministic"
 
 
 def test_decision_agent_runs_once_after_all_routes() -> None:
@@ -200,3 +215,39 @@ def test_supervisor_decision_records_fallback_and_missing_user_id() -> None:
 
     assert preference_without_user["routes"] == ["product_agent"]
     assert preference_without_user["requires_user_id_for_preferences"] is True
+
+
+def test_graph_can_use_injected_supervisor_router() -> None:
+    product_tools = tools_by_name([guard_tool("product_agent", fake_search_products)])
+    rag_tools = tools_by_name(
+        [
+            guard_tool("rag_agent", fake_search_product_docs),
+            guard_tool("rag_agent", fake_search_policy_docs),
+        ]
+    )
+    graph = create_shopmind_multi_agent_graph(
+        product_tools=product_tools,
+        rag_tools=rag_tools,
+        preference_tools={},
+        supervisor_router=RagOnlyTestRouter(),
+    )
+
+    result = graph.invoke(
+        {
+            "messages": [{"role": "user", "content": "推荐一个键盘"}],
+            "user_id": "USER-001",
+            "thread_id": "THREAD-001",
+            "tool_calls": [],
+            "safety_flags": [],
+            "agent_steps": [],
+        }
+    )
+
+    assert result["routes"] == ["rag_agent"]
+    assert result["executed_routes"] == ["rag_agent"]
+    assert result["supervisor_decision"]["router_type"] == "test"
+    assert result["supervisor_decision"]["routing_reasons"] == {
+        "rag_agent": "test_router_forced_rag"
+    }
+    assert result["tool_calls"] == ["search_product_docs"]
+    assert result["agent_steps"][0]["router_type"] == "test"
