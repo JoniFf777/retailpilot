@@ -71,9 +71,9 @@ API 文档：
 - http://127.0.0.1:8000/docs
 - http://127.0.0.1:8000/redoc
 
-### V2.0 本地 PostgreSQL（可选）
+### ShopMind V2：PostgreSQL / pgvector 数据层
 
-V2.0 基础设施升级会引入 PostgreSQL + pgvector。当前阶段只提供本地数据库容器和统一配置读取，还没有迁移 SQLite 数据，也没有改造现有 Tools、Agent 或 API。
+ShopMind V2 基础设施升级已完成。结构化数据、运行时状态和 RAG documents 都已经具备 PostgreSQL / pgvector 路径；`tools/products.py`、`tools/preferences.py`、`tools/cart.py` 和 `tools/documents.py` 已切换到 Repository-backed 数据访问，同时保持现有 FastAPI `/api/chat` 与 `/api/chat/confirm` 合约不变。
 
 启动数据库：
 
@@ -96,15 +96,13 @@ TEST_DATABASE_URL=postgresql+psycopg://retailpilot:retailpilot@127.0.0.1:5432/re
 VECTOR_DIMENSION=768
 ```
 
-注意：此阶段数据库启动后是空的。后续步骤才会加入 schema migration、数据导入、pgvector 文档索引和 Tool 数据层改造。
-
-创建 V2.0 结构化业务表：
+创建或升级 V2 schema：
 
 ```bash
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
 ```
 
-这会创建 `customers`、`products`、`orders`、`order_items`、`user_preferences`、`cart_items` 和 `pending_actions`。当前阶段仍然不会导入 SQLite 数据，也不会让现有 Tools 切换到 PostgreSQL。
+这会创建结构化业务表、运行时状态表和 `documents` pgvector 表。
 
 导入原始结构化数据：
 
@@ -113,6 +111,18 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/see
 ```
 
 seed 脚本会从 `data/structured/customers.json`、`products.json`、`orders.json` 和 `order_items.json` 导入 PostgreSQL。`user_preferences`、`cart_items` 和 `pending_actions` 是运行时状态表，不会由 seed 脚本导入。
+
+索引 markdown documents 到 pgvector：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --clear
+```
+
+完整初始化和验证也可以使用 bootstrap 脚本：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py --execute --confirm-clear
+```
 
 ### 运行测试
 
@@ -187,14 +197,15 @@ set INCLUDE_CORRECTNESS_EVALUATOR=true
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
 ```
 
-### V2 Roadmap
+### V3 Roadmap
 
-- PostgreSQL + pgvector：用于结构化数据和 vector search 持久化
-- LangGraph interrupt/resume：实现更正式的 human-in-the-loop confirmation
-- Docker Compose：提供可复现的本地部署
-- 更强的 auth/session model：替代调用方直接传入 `user_id`
-- 更完整的 LangSmith evaluation datasets 和 regression checks
-- pending action 过期机制、audit logs 和更严格的 transaction handling
+V2 数据层已经收口。下一条主线是 V3 multi-agent：
+
+- LangGraph Supervisor + in-process subgraphs；
+- 按 Agent 隔离 tool 权限；
+- read path 先拆 Product / RAG / Preference / Decision；
+- pending action / HITL 写路径后续再升级；
+- A2A 仅在 Agent 拆成独立远程服务时再评估。
 
 ## 原 Workshop 会构建什么
 
@@ -262,94 +273,39 @@ curl -X POST http://127.0.0.1:8000/api/chat/confirm \
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/api
 ```
 
-### V2.0 PostgreSQL / pgvector（可选）
+### V2 PostgreSQL / pgvector（可选）
 
-本地 PostgreSQL + pgvector 由 Docker Compose 提供：
+ShopMind V2 的 PostgreSQL + pgvector 数据路径已经完成：
+
+- Docker Compose 提供本地 `pgvector/pgvector:pg16`；
+- `app/core/settings.py` 统一读取 `DATABASE_URL`、`TEST_DATABASE_URL`、`EMBEDDING_PROVIDER` 和 `VECTOR_DIMENSION`；
+- Alembic 创建结构化业务表、运行时状态表和 `documents` pgvector 表；
+- `app/repositories/` 提供 products、preferences、cart、documents Repository；
+- `tools/products.py`、`tools/preferences.py`、`tools/cart.py` 和 `tools/documents.py` 已使用 Repository-backed PostgreSQL 路径；
+- FastAPI `/api/chat`、`/api/chat/confirm` 和 Tool 名称/返回格式保持兼容。
+
+本地启动数据库：
 
 ```bash
 docker compose up -d postgres
 docker compose ps postgres
 ```
 
-当前阶段只是启动数据库并提供 `app/core/settings.py` 统一读取 `DATABASE_URL`、`TEST_DATABASE_URL` 和 `VECTOR_DIMENSION`。SQLite 数据、Markdown RAG documents 和现有 Tools 仍然按 V1 路径运行，尚未迁移到 PostgreSQL 或 pgvector。
-
-如果需要在本地 PostgreSQL 中创建 V2.0 结构化 schema，先启动容器，然后运行 Alembic：
+初始化 schema、结构化 seed 和 pgvector documents：
 
 ```bash
-docker compose up -d postgres
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/seed_postgres.py --clear
-```
-
-当前 migration 只创建结构化业务表，不创建 pgvector documents 表；seed 脚本只导入 customers、products、orders 和 order_items。RAG 迁移会放到 V2.1。现有 ShopMind V1 Tools、Agent 和 API 仍继续使用 SQLite / InMemoryVectorStore。
-
-V2.0 也新增了 PostgreSQL Repository 层：
-
-- `app/repositories/products.py`
-- `app/repositories/preferences.py`
-- `app/repositories/cart.py`
-
-这些 Repository 使用 SQLAlchemy `Session` 访问 PostgreSQL 业务表，返回结构化 dict/list，供后续 Tools 迁移使用。当前 ShopMind V1 的 `tools/products.py`、`tools/preferences.py`、`tools/cart.py` 尚未切换到 Repository，运行时仍使用 SQLite。
-
-Tools 已开始分批切到 Repository：
-
-- `tools/products.py` 保持 `search_products`、`get_product_detail`、`compare_products` 的 Tool 名称和中文返回格式；
-- `tools/preferences.py` 保持用户偏好 Tool 名称和中文返回格式；
-- `tools/cart.py` 保持 pending action 加购确认流、跨用户保护、重复确认保护和中文返回格式；
-- 内部结构化数据访问改走 `app.repositories.*`；
-- Tool 测试使用 SQLAlchemy SQLite in-memory session mock Repository 层，不依赖 Docker 或真实 PostgreSQL。
-
-`tools/documents.py` 已在 V2.1 第四阶段切换到 Documents Repository；Agent 和 API 的调用契约保持不变。
-
-V2.1 开始引入 pgvector RAG schema：
-
-- Alembic migration 会执行 `CREATE EXTENSION IF NOT EXISTS vector`；
-- 新增 `documents` 表，用于后续保存 markdown chunks、metadata 和 embedding；
-- 当前 embedding 列维度为 `vector(768)`，匹配默认 HuggingFace `sentence-transformers/all-mpnet-base-v2`；
-- 当前阶段只创建 schema，不导入 markdown documents，也不切换 `tools/documents.py`。
-
-运行到最新 schema：
-
-```bash
-docker compose up -d postgres
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
-```
-
-索引 markdown documents 到 pgvector：
-
-```bash
-# 只读取和切分文档，不连接数据库、不生成 embeddings
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --dry-run
-
-# 写入 PostgreSQL documents 表
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --clear
 ```
 
-也可以只处理一种文档类型：
+只读取和切分文档、不连接数据库、不生成 embeddings：
 
 ```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --dry-run --doc-type policy
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --dry-run
 ```
 
-当前脚本会读取 `data/documents/products/*.md` 和 `data/documents/policies/*.md`，切分 chunk，并在非 dry-run 模式下生成 embeddings 后写入 `documents` 表。
-
-V2.1 也新增了 Documents Repository：
-
-- `app/repositories/documents.py`
-- `search_product_documents(session, query_embedding, k=3)`
-- `search_policy_documents(session, query_embedding, k=2)`
-
-Repository 在 PostgreSQL 下使用 pgvector cosine distance 排序；在 SQLite 单测下使用 deterministic fallback，避免测试依赖 Docker 或 pgvector。
-
-V2.1 第四阶段已将 `tools/documents.py` 切换到 Documents Repository：
-
-- `search_product_docs` 和 `search_policy_docs` 的 Tool 名称、输入参数和 `content_and_artifact` 返回格式保持不变；
-- Tool 内部会根据 `EMBEDDING_PROVIDER` 懒加载 embedding model；
-- 查询时先生成 query embedding，再通过 `app.repositories.documents` 访问 PostgreSQL `documents` 表；
-- 返回给 Agent 的内容格式和 LangChain `Document` artifacts 保持兼容；
-- 测试仍使用 SQLAlchemy SQLite in-memory 和 monkeypatch，不依赖 Docker 或真实 PostgreSQL。
-
-V2.2 新增只读 PostgreSQL smoke check：
+只读 PostgreSQL smoke check：
 
 ```bash
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smoke_postgres.py
@@ -430,13 +386,13 @@ Integration 测试包含两类：
 写路径测试会生成唯一 `integration-smoke-*` user_id，并在测试前后清理该用户的 `user_preferences`、`cart_items` 和 `pending_actions`。
 未设置 `RUN_POSTGRES_INTEGRATION=1` 时，integration 模块会在加载重依赖前快速跳过；`tests/integration/test_integration_guard.py` 确保默认 integration 测试目录也能稳定返回成功。
 
-V2.2 也新增了 PostgreSQL health endpoint：
+PostgreSQL health endpoint：
 
 - `GET /api/health`：保持原有轻量健康检查，只返回 `{"status": "ok"}`；
 - `GET /api/health/postgres`：只读检查 `DATABASE_URL` 指向的 PostgreSQL，返回当前 database、user 和 Alembic version；
 - 如果 PostgreSQL 不可用，`/api/health/postgres` 返回 HTTP 503，不影响原有 `/api/health`。
 
-提交或交接 V2 基础设施升级前，请参考：
+V2 最终交接记录：
 
 - `docs/v2_infra_upgrade_handoff.md`
 

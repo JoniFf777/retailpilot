@@ -1,10 +1,27 @@
 # ShopMind V2 Infra Upgrade Handoff
 
-This document summarizes the current V2 infrastructure upgrade state and the
-files that should be reviewed before staging or opening a PR.
+This document is the final handoff record for the completed V2 infrastructure
+upgrade.
 
-For a PR-ready summary, staging scope, and rollback notes, see
+For the original PR summary, staging scope, and rollback notes, see
 `docs/v2_infra_upgrade_pr_notes.md`.
+
+## Completion Status
+
+V2 is complete and merged to `main`.
+
+Completed scope:
+
+- PostgreSQL + pgvector local infrastructure.
+- Centralized V2 settings.
+- SQLAlchemy models and Alembic migrations.
+- Repository layers for products, preferences, cart, and documents.
+- Repository-backed Tools for structured data and RAG documents.
+- PostgreSQL health endpoint.
+- Seed, documents index, smoke, and bootstrap scripts.
+- Default GitHub Actions CI.
+- Manual PostgreSQL integration GitHub Actions workflow.
+- Default regression and PostgreSQL integration coverage.
 
 ## Current Database Path
 
@@ -19,7 +36,7 @@ The default Docker Compose service also binds `5432:5432`. If the host already
 runs PostgreSQL on port 5432, prefer using an isolated database on the existing
 server instead of starting the compose service.
 
-## V2 Files To Include
+## V2 File Scope
 
 Infrastructure and configuration:
 
@@ -70,9 +87,9 @@ Docs:
 - `docs/architecture.md`
 - `docs/v2_infra_upgrade_handoff.md`
 
-## Files To Review Before Staging
+## Files Reviewed Before Merge
 
-Do not stage these without an explicit decision:
+These files were reviewed during the V2 merge process:
 
 - `data/structured/techhub.db`
   - Current audit: `techhub.db-journal` is not present, the file is not
@@ -126,6 +143,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\boo
 
 - Default regression: `90 passed, 4 skipped, 1 warning`
 - PostgreSQL integration: `10 passed`
+- Manual GitHub Actions PostgreSQL Integration workflow: passed
 - Smoke database Alembic version: `0002_documents_pgvector`
 - Seed counts: customers `50`, products `25`, orders `250`, order_items `439`
 - Documents counts: product `298`, policy `39`
