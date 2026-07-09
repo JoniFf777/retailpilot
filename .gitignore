@@ -169,6 +169,7 @@ cython_debug/
 build_plans/
 data/vector_stores/*.pkl
 .hf-cache-smoke*/
+pytest-cache-files-*/
 skills-lock.json
 
 .idea/
