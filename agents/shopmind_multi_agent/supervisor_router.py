@@ -91,6 +91,9 @@ class SupervisorRouteDecision(TypedDict):
     requires_user_id_for_preferences: bool
     router_type: str
     fallback_reason: NotRequired[str]
+    fallback_router_type: NotRequired[str]
+    router_provider: NotRequired[str]
+    router_model: NotRequired[str]
 
 
 ALLOWED_READ_ROUTES: set[ReadRoute] = {
@@ -157,6 +160,13 @@ def _coerce_provider_output(output: object) -> LLMSupervisorRouterOutput:
     if isinstance(output, dict):
         return cast(LLMSupervisorRouterOutput, output)
     return {}
+
+
+def _describe_model(model: Any | None) -> str:
+    configured_model = model or DEFAULT_MODEL
+    if isinstance(configured_model, str):
+        return configured_model
+    return configured_model.__class__.__name__
 
 
 def create_langchain_supervisor_decision_provider(
@@ -232,9 +242,15 @@ class LLMSupervisorRouter:
         self,
         decision_provider: DecisionProvider | None = None,
         fallback_router: SupervisorRouter | None = None,
+        provider_type: str | None = None,
+        model_name: str | None = None,
     ) -> None:
         self.decision_provider = decision_provider
         self.fallback_router = fallback_router or DeterministicSupervisorRouter()
+        self.router_provider = provider_type or (
+            "callable" if decision_provider is not None else None
+        )
+        self.router_model = model_name
 
     def route(
         self,
@@ -263,8 +279,15 @@ class LLMSupervisorRouter:
         reason: str,
     ) -> SupervisorRouteDecision:
         decision = dict(self.fallback_router.route(message, user_id=user_id))
+        fallback_router_type = decision.get("router_type")
         decision["router_type"] = "llm_fallback"
         decision["fallback_reason"] = reason
+        if fallback_router_type:
+            decision["fallback_router_type"] = str(fallback_router_type)
+        if self.router_provider:
+            decision["router_provider"] = self.router_provider
+        if self.router_model:
+            decision["router_model"] = self.router_model
         return cast(SupervisorRouteDecision, decision)
 
     def _normalize_decision(
@@ -286,7 +309,7 @@ class LLMSupervisorRouter:
             confidence = "medium"
         normalized_confidence = cast(Confidence, confidence)
 
-        return {
+        normalized_decision: SupervisorRouteDecision = {
             "intent": "read_path",
             "routes": routes,
             "routing_reasons": routing_reasons,
@@ -297,6 +320,11 @@ class LLMSupervisorRouter:
             ),
             "router_type": "llm",
         }
+        if self.router_provider:
+            normalized_decision["router_provider"] = self.router_provider
+        if self.router_model:
+            normalized_decision["router_model"] = self.router_model
+        return normalized_decision
 
 
 def create_supervisor_router(
@@ -309,6 +337,12 @@ def create_supervisor_router(
     if normalized == "llm":
         return LLMSupervisorRouter(
             decision_provider=decision_provider
-            or create_langchain_supervisor_decision_provider(model=model)
+            or create_langchain_supervisor_decision_provider(model=model),
+            provider_type=(
+                "custom_callable"
+                if decision_provider is not None
+                else "langchain_structured_output"
+            ),
+            model_name=None if decision_provider is not None else _describe_model(model),
         )
     return DeterministicSupervisorRouter()

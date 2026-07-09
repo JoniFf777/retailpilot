@@ -380,7 +380,9 @@ def test_llm_supervisor_router_falls_back_on_invalid_routes() -> None:
         decision_provider=lambda payload: {
             "routes": ["decision_agent"],
             "confidence": "high",
-        }
+        },
+        provider_type="custom_callable",
+        model_name="test-router",
     )
 
     decision = build_supervisor_decision("推荐一个键盘", user_id="USER-001", router=router)
@@ -388,6 +390,9 @@ def test_llm_supervisor_router_falls_back_on_invalid_routes() -> None:
     assert decision["routes"] == ["product_agent"]
     assert decision["router_type"] == "llm_fallback"
     assert decision["fallback_reason"] == "invalid_routes"
+    assert decision["fallback_router_type"] == "deterministic"
+    assert decision["router_provider"] == "custom_callable"
+    assert decision["router_model"] == "test-router"
     assert decision["fallback_used"] is False
 
 
@@ -417,3 +422,55 @@ def test_create_supervisor_router_from_config_mode() -> None:
     assert deterministic.route("推荐键盘")["router_type"] == "deterministic"
     assert llm.route("推荐键盘")["router_type"] == "llm"
     assert invalid.route("推荐键盘")["router_type"] == "deterministic"
+
+
+def test_create_supervisor_router_records_langchain_metadata() -> None:
+    fake_model = FakeChatModel(
+        {
+            "routes": ["rag_agent"],
+            "confidence": "high",
+        }
+    )
+    llm = create_supervisor_router("llm", model=fake_model)
+
+    decision = llm.route("看看退货政策", user_id="USER-001")
+
+    assert decision["router_type"] == "llm"
+    assert decision["router_provider"] == "langchain_structured_output"
+    assert decision["router_model"] == "FakeChatModel"
+
+
+def test_graph_records_llm_router_observability_metadata() -> None:
+    product_tools = tools_by_name([guard_tool("product_agent", fake_search_products)])
+    graph = create_shopmind_multi_agent_graph(
+        product_tools=product_tools,
+        rag_tools={},
+        preference_tools={},
+        supervisor_router=LLMSupervisorRouter(
+            decision_provider=lambda payload: {
+                "routes": ["decision_agent"],
+                "confidence": "high",
+            },
+            provider_type="custom_callable",
+            model_name="test-router",
+        ),
+    )
+
+    result = graph.invoke(
+        {
+            "messages": [{"role": "user", "content": "推荐一个键盘"}],
+            "user_id": "USER-001",
+            "thread_id": "THREAD-001",
+            "tool_calls": [],
+            "safety_flags": [],
+            "agent_steps": [],
+        }
+    )
+
+    supervisor_step = result["agent_steps"][0]
+    assert result["supervisor_decision"]["router_type"] == "llm_fallback"
+    assert supervisor_step["router_type"] == "llm_fallback"
+    assert supervisor_step["router_provider"] == "custom_callable"
+    assert supervisor_step["router_model"] == "test-router"
+    assert supervisor_step["fallback_reason"] == "invalid_routes"
+    assert supervisor_step["fallback_router_type"] == "deterministic"
