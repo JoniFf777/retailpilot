@@ -8,6 +8,8 @@ from agents.shopmind_multi_agent.supervisor import (
     determine_routes,
 )
 from agents.shopmind_multi_agent.supervisor_router import (
+    LLMSupervisorRouterInput,
+    LLMSupervisorRouterOutput,
     LLMSupervisorRouter,
     create_supervisor_router,
 )
@@ -258,7 +260,7 @@ def test_graph_can_use_injected_supervisor_router() -> None:
 
 
 def test_llm_supervisor_router_uses_structured_provider() -> None:
-    def provider(payload: dict) -> dict:
+    def provider(payload: LLMSupervisorRouterInput) -> LLMSupervisorRouterOutput:
         assert payload["message"] == "推荐键盘并看看退货政策"
         assert payload["user_id"] == "USER-001"
         assert payload["allowed_routes"] == [
@@ -289,6 +291,29 @@ def test_llm_supervisor_router_uses_structured_provider() -> None:
     }
     assert decision["confidence"] == "high"
     assert decision["fallback_used"] is False
+    assert decision["router_type"] == "llm"
+
+
+def test_llm_supervisor_router_normalizes_invalid_confidence() -> None:
+    def provider(payload: LLMSupervisorRouterInput) -> dict:
+        assert payload["allowed_routes"] == [
+            "preference_agent",
+            "product_agent",
+            "rag_agent",
+        ]
+        return {
+            "routes": ["rag_agent"],
+            "confidence": "certain",
+        }
+
+    decision = build_supervisor_decision(
+        "看看退货政策",
+        router=LLMSupervisorRouter(decision_provider=provider),
+    )
+
+    assert decision["routes"] == ["rag_agent"]
+    assert decision["routing_reasons"] == {"rag_agent": "llm_selected_route"}
+    assert decision["confidence"] == "medium"
     assert decision["router_type"] == "llm"
 
 

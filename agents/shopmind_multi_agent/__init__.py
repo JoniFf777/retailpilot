@@ -20,7 +20,10 @@ from .supervisor import (
 )
 from .supervisor_router import (
     DeterministicSupervisorRouter,
+    LLMSupervisorRouterInput,
+    LLMSupervisorRouterOutput,
     LLMSupervisorRouter,
+    SupervisorRouteDecision,
     SupervisorRouter,
     create_supervisor_router,
 )
@@ -30,11 +33,14 @@ __all__ = [
     "DECISION_AGENT_TOOLS",
     "DEFAULT_SUPERVISOR_ROUTER",
     "DeterministicSupervisorRouter",
+    "LLMSupervisorRouterInput",
+    "LLMSupervisorRouterOutput",
     "LLMSupervisorRouter",
     "PRODUCT_AGENT_TOOLS",
     "RAG_AGENT_TOOLS",
     "PREFERENCE_AGENT_TOOLS",
     "SUPERVISOR_TOOLS",
+    "SupervisorRouteDecision",
     "SupervisorRouter",
     "ToolPermissionError",
     "build_supervisor_decision",
