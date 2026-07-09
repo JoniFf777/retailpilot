@@ -18,13 +18,18 @@ from .supervisor import (
     determine_routes,
     supervisor_node,
 )
-from .supervisor_router import DeterministicSupervisorRouter, SupervisorRouter
+from .supervisor_router import (
+    DeterministicSupervisorRouter,
+    LLMSupervisorRouter,
+    SupervisorRouter,
+)
 
 __all__ = [
     "AGENT_TOOL_ALLOWLIST",
     "DECISION_AGENT_TOOLS",
     "DEFAULT_SUPERVISOR_ROUTER",
     "DeterministicSupervisorRouter",
+    "LLMSupervisorRouter",
     "PRODUCT_AGENT_TOOLS",
     "RAG_AGENT_TOOLS",
     "PREFERENCE_AGENT_TOOLS",

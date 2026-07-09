@@ -1,5 +1,6 @@
 """Supervisor routing adapters for the ShopMind multi-agent graph."""
 
+from collections.abc import Callable
 from typing import Any, Protocol
 
 
@@ -53,6 +54,10 @@ PREFERENCE_KEYWORDS = (
     "personal",
     "budget",
 )
+ALLOWED_READ_ROUTES = {"product_agent", "rag_agent", "preference_agent"}
+
+
+DecisionProvider = Callable[[dict[str, Any]], dict[str, Any]]
 
 
 class SupervisorRouter(Protocol):
@@ -102,4 +107,79 @@ class DeterministicSupervisorRouter:
                 not user_id and _contains_any(message, PREFERENCE_KEYWORDS)
             ),
             "router_type": "deterministic",
+        }
+
+
+class LLMSupervisorRouter:
+    """Structured-output router shell with deterministic fallback.
+
+    The provider is intentionally a callable for now so tests can exercise the
+    contract without invoking a real model. A future implementation can pass a
+    LangChain structured-output model here.
+    """
+
+    def __init__(
+        self,
+        decision_provider: DecisionProvider | None = None,
+        fallback_router: SupervisorRouter | None = None,
+    ) -> None:
+        self.decision_provider = decision_provider
+        self.fallback_router = fallback_router or DeterministicSupervisorRouter()
+
+    def route(self, message: str, user_id: str | None = None) -> dict[str, Any]:
+        if self.decision_provider is None:
+            return self._fallback(message, user_id, reason="provider_not_configured")
+
+        try:
+            decision = self.decision_provider(
+                {
+                    "message": message,
+                    "user_id": user_id,
+                    "allowed_routes": sorted(ALLOWED_READ_ROUTES),
+                }
+            )
+            return self._normalize_decision(decision, message, user_id)
+        except Exception:
+            return self._fallback(message, user_id, reason="provider_error")
+
+    def _fallback(
+        self,
+        message: str,
+        user_id: str | None,
+        *,
+        reason: str,
+    ) -> dict[str, Any]:
+        decision = dict(self.fallback_router.route(message, user_id=user_id))
+        decision["router_type"] = "llm_fallback"
+        decision["fallback_reason"] = reason
+        return decision
+
+    def _normalize_decision(
+        self,
+        decision: dict[str, Any],
+        message: str,
+        user_id: str | None,
+    ) -> dict[str, Any]:
+        routes = list(decision.get("routes") or [])
+        if not routes or any(route not in ALLOWED_READ_ROUTES for route in routes):
+            return self._fallback(message, user_id, reason="invalid_routes")
+
+        routing_reasons = dict(decision.get("routing_reasons") or {})
+        for route in routes:
+            routing_reasons.setdefault(route, "llm_selected_route")
+
+        confidence = str(decision.get("confidence") or "medium")
+        if confidence not in {"low", "medium", "high"}:
+            confidence = "medium"
+
+        return {
+            "intent": "read_path",
+            "routes": routes,
+            "routing_reasons": routing_reasons,
+            "confidence": confidence,
+            "fallback_used": False,
+            "requires_user_id_for_preferences": bool(
+                decision.get("requires_user_id_for_preferences", False)
+            ),
+            "router_type": "llm",
         }

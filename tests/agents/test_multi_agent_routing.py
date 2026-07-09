@@ -7,6 +7,7 @@ from agents.shopmind_multi_agent.supervisor import (
     build_supervisor_decision,
     determine_routes,
 )
+from agents.shopmind_multi_agent.supervisor_router import LLMSupervisorRouter
 
 
 @tool("search_products")
@@ -251,3 +252,66 @@ def test_graph_can_use_injected_supervisor_router() -> None:
     }
     assert result["tool_calls"] == ["search_product_docs"]
     assert result["agent_steps"][0]["router_type"] == "test"
+
+
+def test_llm_supervisor_router_uses_structured_provider() -> None:
+    def provider(payload: dict) -> dict:
+        assert payload["message"] == "推荐键盘并看看退货政策"
+        assert payload["user_id"] == "USER-001"
+        assert payload["allowed_routes"] == [
+            "preference_agent",
+            "product_agent",
+            "rag_agent",
+        ]
+        return {
+            "routes": ["product_agent", "rag_agent"],
+            "routing_reasons": {
+                "product_agent": "llm_detected_product_need",
+                "rag_agent": "llm_detected_policy_need",
+            },
+            "confidence": "high",
+            "requires_user_id_for_preferences": False,
+        }
+
+    decision = build_supervisor_decision(
+        "推荐键盘并看看退货政策",
+        user_id="USER-001",
+        router=LLMSupervisorRouter(decision_provider=provider),
+    )
+
+    assert decision["routes"] == ["product_agent", "rag_agent"]
+    assert decision["routing_reasons"] == {
+        "product_agent": "llm_detected_product_need",
+        "rag_agent": "llm_detected_policy_need",
+    }
+    assert decision["confidence"] == "high"
+    assert decision["fallback_used"] is False
+    assert decision["router_type"] == "llm"
+
+
+def test_llm_supervisor_router_falls_back_on_invalid_routes() -> None:
+    router = LLMSupervisorRouter(
+        decision_provider=lambda payload: {
+            "routes": ["decision_agent"],
+            "confidence": "high",
+        }
+    )
+
+    decision = build_supervisor_decision("推荐一个键盘", user_id="USER-001", router=router)
+
+    assert decision["routes"] == ["product_agent"]
+    assert decision["router_type"] == "llm_fallback"
+    assert decision["fallback_reason"] == "invalid_routes"
+    assert decision["fallback_used"] is False
+
+
+def test_llm_supervisor_router_falls_back_when_unconfigured() -> None:
+    decision = build_supervisor_decision(
+        "我的偏好适合什么",
+        user_id="USER-001",
+        router=LLMSupervisorRouter(),
+    )
+
+    assert decision["routes"] == ["preference_agent"]
+    assert decision["router_type"] == "llm_fallback"
+    assert decision["fallback_reason"] == "provider_not_configured"
