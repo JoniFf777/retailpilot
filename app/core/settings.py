@@ -30,6 +30,7 @@ DEFAULT_VECTOR_DIMENSION = 768
 DEFAULT_LANGSMITH_TRACING = True
 DEFAULT_LANGSMITH_PROJECT = "langsmith-agent-lifecycle-workshop"
 DEFAULT_WORKSHOP_MODEL = "anthropic:claude-haiku-4-5"
+DEFAULT_SHOPMIND_AGENT_MODE = "single"
 
 
 def _load_dotenv() -> None:
@@ -72,6 +73,7 @@ class Settings(BaseModel):
     langsmith_tracing: bool = Field(default=DEFAULT_LANGSMITH_TRACING)
     langsmith_project: str = Field(default=DEFAULT_LANGSMITH_PROJECT)
     workshop_model: str = Field(default=DEFAULT_WORKSHOP_MODEL)
+    shopmind_agent_mode: str = Field(default=DEFAULT_SHOPMIND_AGENT_MODE)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -92,6 +94,14 @@ class Settings(BaseModel):
                 "LANGSMITH_PROJECT", DEFAULT_LANGSMITH_PROJECT
             ),
             workshop_model=os.getenv("WORKSHOP_MODEL", DEFAULT_WORKSHOP_MODEL),
+            shopmind_agent_mode=(
+                "multi"
+                if os.getenv("SHOPMIND_AGENT_MODE", DEFAULT_SHOPMIND_AGENT_MODE)
+                .strip()
+                .lower()
+                == "multi"
+                else DEFAULT_SHOPMIND_AGENT_MODE
+            ),
         )
 
 

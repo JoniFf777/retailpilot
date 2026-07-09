@@ -12,9 +12,14 @@ def anyio_backend() -> str:
 
 @pytest.mark.anyio
 async def test_chat_returns_agent_answer(monkeypatch) -> None:
-    def fake_call_shopmind_agent(message: str, user_id: str | None = None) -> dict:
+    def fake_call_shopmind_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict:
         assert message == "推荐一个键盘"
         assert user_id == "user-001"
+        assert thread_id == "thread-001"
         return {
             "answer": "可以考虑 Logitech MX Keys，它适合办公使用。",
             "tool_calls": ["search_products"],
@@ -48,9 +53,14 @@ async def test_chat_returns_agent_answer(monkeypatch) -> None:
 async def test_chat_accepts_chinese_message(monkeypatch) -> None:
     captured = {}
 
-    def fake_call_shopmind_agent(message: str, user_id: str | None = None) -> dict:
+    def fake_call_shopmind_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict:
         captured["message"] = message
         captured["user_id"] = user_id
+        captured["thread_id"] = thread_id
         return {
             "answer": "已收到你的中文问题。",
             "status": "completed",
@@ -66,6 +76,7 @@ async def test_chat_accepts_chinese_message(monkeypatch) -> None:
     assert response.status_code == 200
     assert captured["message"] == "我想买一台适合办公的显示器"
     assert captured["user_id"] is None
+    assert captured["thread_id"] is None
     assert response.json()["answer"] == "已收到你的中文问题。"
     assert response.json()["status"] == "completed"
     assert response.json()["tool_calls"] == []
@@ -76,9 +87,14 @@ async def test_chat_accepts_chinese_message(monkeypatch) -> None:
 async def test_chat_returns_pending_action_when_confirmation_required(monkeypatch) -> None:
     pending_action_id = "123e4567-e89b-12d3-a456-426614174000"
 
-    def fake_call_shopmind_agent(message: str, user_id: str | None = None) -> dict:
+    def fake_call_shopmind_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict:
         assert message == "帮我把这个键盘加入购物车"
         assert user_id == "user-001"
+        assert thread_id == "thread-001"
         return {
             "answer": "我已为你生成待确认加购，请确认是否加入购物车。",
             "status": "confirmation_required",
