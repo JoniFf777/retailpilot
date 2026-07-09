@@ -58,6 +58,10 @@ def _citations(documents: list[Document]) -> list[dict[str, Any]]:
     return citations
 
 
+def _doc_type(tool_name: str) -> str:
+    return "policy" if tool_name == "search_policy_docs" else "product"
+
+
 def _security_notes(text: str) -> list[str]:
     lowered = text.lower()
     if any(pattern.lower() in lowered for pattern in INJECTION_PATTERNS):
@@ -92,12 +96,21 @@ def rag_agent_node(
     if security_notes:
         safety_flags.append("rag_prompt_injection_detected")
 
+    safe_summary = (
+        "检索内容包含疑似不可信指令，已屏蔽原文并仅保留安全记录。"
+        if security_notes
+        else _compact_text(content)
+    )
+
     return {
         "rag_summary": {
-            "summary": _compact_text(content),
+            "summary": safe_summary,
+            "source": tool_name,
+            "doc_type": _doc_type(tool_name),
             "citations": _citations(documents),
             "confidence": "medium" if content else "low",
             "security_notes": security_notes,
+            "raw_result_stored": False,
         },
         "executed_routes": executed_routes,
         "current_route": None,

@@ -28,7 +28,49 @@ def _compact_text(text: str, max_chars: int = 500) -> str:
 
 
 def _product_ids(text: str) -> list[str]:
-    return re.findall(r"TECH-[A-Z]{3}-\d{3}", text.upper())
+    return sorted(set(re.findall(r"TECH-[A-Z]{3}-\d{3}", text.upper())))
+
+
+def _product_count(text: str, product_ids: list[str]) -> int:
+    match = re.search(r"找到\s+(\d+)\s+个", text)
+    if match:
+        return int(match.group(1))
+    if "没有找到" in text:
+        return 0
+    return len(product_ids)
+
+
+def _confidence(product_count: int, product_ids: list[str]) -> str:
+    if product_count > 0 and product_ids:
+        return "high"
+    if product_count > 0:
+        return "medium"
+    return "low"
+
+
+def _build_product_summary(
+    content: str,
+    tool_name: str,
+    query: str,
+) -> dict[str, Any]:
+    product_ids = _product_ids(content)
+    product_count = _product_count(content, product_ids)
+
+    if product_count == 0:
+        summary = "商品读取完成：未找到匹配商品。"
+    else:
+        id_part = f"；商品 ID {', '.join(product_ids[:5])}" if product_ids else ""
+        summary = f"商品读取完成：匹配商品数量 {product_count}{id_part}。"
+
+    return {
+        "summary": summary,
+        "source": tool_name,
+        "query": _compact_text(query, max_chars=160),
+        "product_count": product_count,
+        "product_ids": product_ids[:5],
+        "confidence": _confidence(product_count, product_ids),
+        "raw_result_stored": False,
+    }
 
 
 def product_agent_node(
@@ -56,11 +98,11 @@ def product_agent_node(
     executed_routes.append("product_agent")
 
     return {
-        "product_summary": {
-            "summary": _compact_text(_content_from_tool_result(result)),
-            "source": tool_name,
-            "raw_result_stored": False,
-        },
+        "product_summary": _build_product_summary(
+            _content_from_tool_result(result),
+            tool_name,
+            message,
+        ),
         "executed_routes": executed_routes,
         "current_route": None,
         "tool_calls": tool_calls,

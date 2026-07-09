@@ -8,7 +8,7 @@ from agents.shopmind_multi_agent.supervisor import determine_routes
 @tool("search_products")
 def fake_search_products(query: str, limit: int = 5) -> str:
     """Fake product search."""
-    return "找到 1 个符合条件的商品：测试键盘（TECH-KEY-001）"
+    return "找到 1 个符合条件的商品：测试键盘（TECH-KEY-001）。RAW_PRODUCT_DETAIL_SHOULD_NOT_LEAK"
 
 
 @tool("search_product_docs")
@@ -26,7 +26,7 @@ def fake_search_policy_docs(query: str) -> str:
 @tool("get_user_preferences")
 def fake_get_user_preferences(user_id: str) -> str:
     """Fake preference read."""
-    return f"用户 {user_id} 偏好：安静键盘。"
+    return f"用户 {user_id} 的购物偏好： 1. 风格（style）：安静键盘。RAW_PREFERENCE_SHOULD_NOT_LEAK"
 
 
 def _graph():
@@ -65,6 +65,11 @@ def test_product_search_question_routes_to_product_agent() -> None:
     assert result["routes"] == ["product_agent"]
     assert result["executed_routes"] == ["product_agent"]
     assert result["tool_calls"] == ["search_products"]
+    assert result["product_summary"]["product_count"] == 1
+    assert result["product_summary"]["product_ids"] == ["TECH-KEY-001"]
+    assert result["product_summary"]["confidence"] == "high"
+    assert result["product_summary"]["raw_result_stored"] is False
+    assert "RAW_PRODUCT_DETAIL_SHOULD_NOT_LEAK" not in str(result["product_summary"])
 
 
 def test_document_or_policy_question_routes_to_rag_agent() -> None:
@@ -73,6 +78,9 @@ def test_document_or_policy_question_routes_to_rag_agent() -> None:
     assert result["routes"] == ["rag_agent"]
     assert result["executed_routes"] == ["rag_agent"]
     assert result["tool_calls"] == ["search_policy_docs"]
+    assert result["rag_summary"]["source"] == "search_policy_docs"
+    assert result["rag_summary"]["doc_type"] == "policy"
+    assert result["rag_summary"]["raw_result_stored"] is False
 
 
 def test_preference_question_routes_to_preference_agent() -> None:
@@ -81,6 +89,11 @@ def test_preference_question_routes_to_preference_agent() -> None:
     assert result["routes"] == ["preference_agent"]
     assert result["executed_routes"] == ["preference_agent"]
     assert result["tool_calls"] == ["get_user_preferences"]
+    assert result["preference_summary"]["user_id"] == "USER-001"
+    assert result["preference_summary"]["preference_count"] == 1
+    assert result["preference_summary"]["has_preferences"] is True
+    assert result["preference_summary"]["raw_result_stored"] is False
+    assert "RAW_PREFERENCE_SHOULD_NOT_LEAK" not in str(result["preference_summary"])
 
 
 def test_mixed_question_runs_read_agents_in_order() -> None:
