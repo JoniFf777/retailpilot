@@ -187,14 +187,20 @@ async def test_chat_multi_mode_keeps_response_schema(monkeypatch) -> None:
     monkeypatch.setattr(
         agent_dependency,
         "get_settings",
-        lambda: SimpleNamespace(shopmind_agent_mode="multi"),
+        lambda: SimpleNamespace(
+            shopmind_agent_mode="multi",
+            shopmind_supervisor_router="deterministic",
+        ),
     )
 
     def fake_multi_agent(
         message: str,
         user_id: str | None = None,
         thread_id: str | None = None,
+        supervisor_router=None,
     ) -> dict:
+        assert supervisor_router is not None
+        assert supervisor_router.route("推荐一个键盘")["router_type"] == "deterministic"
         calls.append((message, user_id, thread_id))
         return {
             "answer": "multi agent answer",
@@ -229,6 +235,51 @@ async def test_chat_multi_mode_keeps_response_schema(monkeypatch) -> None:
         "thread_id": "thread-001",
         "pending_action_id": None,
     }
+
+
+@pytest.mark.anyio
+async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> None:
+    calls = []
+
+    monkeypatch.setattr(
+        agent_dependency,
+        "get_settings",
+        lambda: SimpleNamespace(
+            shopmind_agent_mode="multi",
+            shopmind_supervisor_router="llm",
+        ),
+    )
+
+    def fake_multi_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+        supervisor_router=None,
+    ) -> dict:
+        decision = supervisor_router.route(message, user_id=user_id)
+        calls.append((message, user_id, thread_id, decision["router_type"]))
+        return {
+            "answer": "multi agent answer",
+            "status": "completed",
+            "tool_calls": [],
+        }
+
+    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/chat",
+            json={
+                "message": "推荐键盘",
+                "user_id": "user-001",
+                "thread_id": "thread-001",
+            },
+        )
+
+    assert response.status_code == 200
+    assert calls == [("推荐键盘", "user-001", "thread-001", "llm_fallback")]
+    assert response.json()["answer"] == "multi agent answer"
 
 
 @pytest.mark.anyio

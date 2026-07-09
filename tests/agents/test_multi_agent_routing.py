@@ -7,7 +7,10 @@ from agents.shopmind_multi_agent.supervisor import (
     build_supervisor_decision,
     determine_routes,
 )
-from agents.shopmind_multi_agent.supervisor_router import LLMSupervisorRouter
+from agents.shopmind_multi_agent.supervisor_router import (
+    LLMSupervisorRouter,
+    create_supervisor_router,
+)
 
 
 @tool("search_products")
@@ -315,3 +318,13 @@ def test_llm_supervisor_router_falls_back_when_unconfigured() -> None:
     assert decision["routes"] == ["preference_agent"]
     assert decision["router_type"] == "llm_fallback"
     assert decision["fallback_reason"] == "provider_not_configured"
+
+
+def test_create_supervisor_router_from_config_mode() -> None:
+    deterministic = create_supervisor_router("deterministic")
+    llm = create_supervisor_router("llm")
+    invalid = create_supervisor_router("unknown")
+
+    assert deterministic.route("推荐键盘")["router_type"] == "deterministic"
+    assert llm.route("推荐键盘")["router_type"] == "llm_fallback"
+    assert invalid.route("推荐键盘")["router_type"] == "deterministic"

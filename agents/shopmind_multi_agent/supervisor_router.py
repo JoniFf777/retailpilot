@@ -183,3 +183,10 @@ class LLMSupervisorRouter:
             ),
             "router_type": "llm",
         }
+
+
+def create_supervisor_router(router_mode: str | None = None) -> SupervisorRouter:
+    normalized = (router_mode or "deterministic").strip().lower()
+    if normalized == "llm":
+        return LLMSupervisorRouter()
+    return DeterministicSupervisorRouter()

@@ -100,8 +100,9 @@ def invoke_shopmind_multi_agent(
     message: str,
     user_id: str | None = None,
     thread_id: str | None = None,
+    supervisor_router: SupervisorRouter | None = None,
 ) -> dict[str, Any]:
-    graph = create_shopmind_multi_agent_graph()
+    graph = create_shopmind_multi_agent_graph(supervisor_router=supervisor_router)
     raw_result = graph.invoke(
         {
             "messages": [{"role": "user", "content": message}],

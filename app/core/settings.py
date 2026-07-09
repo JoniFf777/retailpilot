@@ -31,6 +31,7 @@ DEFAULT_LANGSMITH_TRACING = True
 DEFAULT_LANGSMITH_PROJECT = "langsmith-agent-lifecycle-workshop"
 DEFAULT_WORKSHOP_MODEL = "anthropic:claude-haiku-4-5"
 DEFAULT_SHOPMIND_AGENT_MODE = "single"
+DEFAULT_SHOPMIND_SUPERVISOR_ROUTER = "deterministic"
 
 
 def _load_dotenv() -> None:
@@ -74,6 +75,7 @@ class Settings(BaseModel):
     langsmith_project: str = Field(default=DEFAULT_LANGSMITH_PROJECT)
     workshop_model: str = Field(default=DEFAULT_WORKSHOP_MODEL)
     shopmind_agent_mode: str = Field(default=DEFAULT_SHOPMIND_AGENT_MODE)
+    shopmind_supervisor_router: str = Field(default=DEFAULT_SHOPMIND_SUPERVISOR_ROUTER)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -101,6 +103,17 @@ class Settings(BaseModel):
                 .lower()
                 == "multi"
                 else DEFAULT_SHOPMIND_AGENT_MODE
+            ),
+            shopmind_supervisor_router=(
+                "llm"
+                if os.getenv(
+                    "SHOPMIND_SUPERVISOR_ROUTER",
+                    DEFAULT_SHOPMIND_SUPERVISOR_ROUTER,
+                )
+                .strip()
+                .lower()
+                == "llm"
+                else DEFAULT_SHOPMIND_SUPERVISOR_ROUTER
             ),
         )
 

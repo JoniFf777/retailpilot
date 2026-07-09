@@ -22,6 +22,7 @@ from .supervisor_router import (
     DeterministicSupervisorRouter,
     LLMSupervisorRouter,
     SupervisorRouter,
+    create_supervisor_router,
 )
 
 __all__ = [
@@ -38,6 +39,7 @@ __all__ = [
     "ToolPermissionError",
     "build_supervisor_decision",
     "create_shopmind_multi_agent_graph",
+    "create_supervisor_router",
     "decision_agent_node",
     "determine_routes",
     "guard_tool",

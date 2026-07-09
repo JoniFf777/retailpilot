@@ -2,7 +2,10 @@
 
 from typing import Any, Optional
 
-from agents.shopmind_multi_agent import invoke_shopmind_multi_agent
+from agents.shopmind_multi_agent import (
+    create_supervisor_router,
+    invoke_shopmind_multi_agent,
+)
 from agents.shopmind_agent import invoke_shopmind_agent
 from app.core.settings import get_settings
 from tools.cart import cancel_pending_action, confirm_add_to_cart
@@ -18,11 +21,15 @@ def call_shopmind_agent(
     This thin wrapper keeps route handlers simple and gives tests a stable
     monkeypatch target so API tests do not need to call a real LLM.
     """
-    if get_settings().shopmind_agent_mode == "multi":
+    settings = get_settings()
+    if settings.shopmind_agent_mode == "multi":
         return invoke_shopmind_multi_agent(
             message=message,
             user_id=user_id,
             thread_id=thread_id,
+            supervisor_router=create_supervisor_router(
+                getattr(settings, "shopmind_supervisor_router", "deterministic")
+            ),
         )
 
     return invoke_shopmind_agent(message=message, user_id=user_id)
