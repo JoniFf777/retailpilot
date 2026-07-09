@@ -1,6 +1,7 @@
 from langchain_core.tools import tool
 
 from agents.shopmind_multi_agent import create_shopmind_multi_agent_graph
+from agents.shopmind_multi_agent.decision_agent import decision_agent_node
 from agents.shopmind_multi_agent.permissions import guard_tool, tools_by_name
 from agents.shopmind_multi_agent.supervisor import determine_routes
 
@@ -116,9 +117,34 @@ def test_decision_agent_runs_once_after_all_routes() -> None:
     result = _invoke("结合我的偏好推荐键盘，并看看退货政策")
 
     assert result["decision"]["used_routes"] == result["executed_routes"]
+    assert result["decision"]["answer_type"] == "combined_read_summary"
+    assert result["decision"]["used_summaries"] == [
+        "product_summary",
+        "rag_summary",
+        "preference_summary",
+    ]
+    assert result["decision"]["requires_followup"] is False
+    assert result["decision"]["followup_reason"] is None
+    assert result["decision"]["tool_calls"] == result["tool_calls"]
     assert result["final_response"].count("商品信息") == 1
     assert result["final_response"].count("文档/政策信息") == 1
     assert result["final_response"].count("用户偏好") == 1
+
+
+def test_decision_agent_requires_followup_without_read_summaries() -> None:
+    result = decision_agent_node(
+        {
+            "executed_routes": [],
+            "tool_calls": [],
+            "safety_flags": [],
+        }
+    )
+
+    assert result["decision"]["answer_type"] == "insufficient_context"
+    assert result["decision"]["used_summaries"] == []
+    assert result["decision"]["requires_followup"] is True
+    assert result["decision"]["followup_reason"] == "no_read_summary_available"
+    assert result["final_response"] == "我目前没有检索到足够的信息，请补充商品、政策或偏好相关问题。"
 
 
 def test_routes_do_not_include_decision_agent() -> None:
