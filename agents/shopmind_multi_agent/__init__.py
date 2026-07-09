@@ -25,6 +25,7 @@ from .supervisor_router import (
     LLMSupervisorRouter,
     SupervisorRouteDecision,
     SupervisorRouter,
+    create_langchain_supervisor_decision_provider,
     create_supervisor_router,
 )
 
@@ -44,6 +45,7 @@ __all__ = [
     "SupervisorRouter",
     "ToolPermissionError",
     "build_supervisor_decision",
+    "create_langchain_supervisor_decision_provider",
     "create_shopmind_multi_agent_graph",
     "create_supervisor_router",
     "decision_agent_node",

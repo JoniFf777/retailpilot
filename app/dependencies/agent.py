@@ -28,7 +28,8 @@ def call_shopmind_agent(
             user_id=user_id,
             thread_id=thread_id,
             supervisor_router=create_supervisor_router(
-                getattr(settings, "shopmind_supervisor_router", "deterministic")
+                getattr(settings, "shopmind_supervisor_router", "deterministic"),
+                model=getattr(settings, "workshop_model", None),
             ),
         )
 
