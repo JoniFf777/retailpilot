@@ -11,6 +11,7 @@ from .rag_agent import rag_agent_node
 from .state import ShopMindMultiAgentState
 from .preference_agent import preference_agent_node
 from .supervisor import supervisor_node
+from .supervisor_router import SupervisorRouter
 
 
 READ_AGENT_ROUTES = ("product_agent", "rag_agent", "preference_agent")
@@ -55,14 +56,21 @@ def _bind_node(
     return lambda state: node(state, tools=tools)
 
 
+def _bind_supervisor_node(
+    router: SupervisorRouter | None,
+) -> Callable[[ShopMindMultiAgentState], dict[str, Any]]:
+    return lambda state: supervisor_node(state, router=router)
+
+
 def create_shopmind_multi_agent_graph(
     product_tools: Any | None = None,
     rag_tools: Any | None = None,
     preference_tools: Any | None = None,
+    supervisor_router: SupervisorRouter | None = None,
 ):
     graph = StateGraph(ShopMindMultiAgentState)
 
-    graph.add_node("supervisor", supervisor_node)
+    graph.add_node("supervisor", _bind_supervisor_node(supervisor_router))
     graph.add_node("route_dispatcher", route_dispatcher_node)
     graph.add_node("product_agent", _bind_node(product_agent_node, product_tools))
     graph.add_node("rag_agent", _bind_node(rag_agent_node, rag_tools))
