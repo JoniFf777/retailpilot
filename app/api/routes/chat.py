@@ -12,6 +12,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     result = agent_dependency.call_shopmind_agent(
         message=request.message,
         user_id=request.user_id,
+        thread_id=request.thread_id,
     )
 
     return ChatResponse(

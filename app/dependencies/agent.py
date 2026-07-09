@@ -2,16 +2,29 @@
 
 from typing import Any, Optional
 
+from agents.shopmind_multi_agent import invoke_shopmind_multi_agent
 from agents.shopmind_agent import invoke_shopmind_agent
+from app.core.settings import get_settings
 from tools.cart import cancel_pending_action, confirm_add_to_cart
 
 
-def call_shopmind_agent(message: str, user_id: Optional[str] = None) -> dict[str, Any]:
+def call_shopmind_agent(
+    message: str,
+    user_id: Optional[str] = None,
+    thread_id: Optional[str] = None,
+) -> dict[str, Any]:
     """Call the ShopMind Agent behind the API boundary.
 
     This thin wrapper keeps route handlers simple and gives tests a stable
     monkeypatch target so API tests do not need to call a real LLM.
     """
+    if get_settings().shopmind_agent_mode == "multi":
+        return invoke_shopmind_multi_agent(
+            message=message,
+            user_id=user_id,
+            thread_id=thread_id,
+        )
+
     return invoke_shopmind_agent(message=message, user_id=user_id)
 
 

@@ -1,5 +1,6 @@
 from app.core.settings import (
     DEFAULT_DATABASE_URL,
+    DEFAULT_SHOPMIND_AGENT_MODE,
     DEFAULT_TEST_DATABASE_URL,
     Settings,
 )
@@ -43,3 +44,20 @@ def test_settings_reads_database_urls_from_environment(monkeypatch):
     )
     assert settings.vector_dimension == 1536
     assert settings.langsmith_tracing is False
+
+
+def test_settings_defaults_shopmind_agent_mode_to_single(monkeypatch):
+    monkeypatch.delenv("SHOPMIND_AGENT_MODE", raising=False)
+    monkeypatch.setattr("app.core.settings.load_dotenv", None)
+
+    settings = Settings.from_env()
+
+    assert settings.shopmind_agent_mode == DEFAULT_SHOPMIND_AGENT_MODE
+
+
+def test_settings_reads_multi_agent_mode(monkeypatch):
+    monkeypatch.setenv("SHOPMIND_AGENT_MODE", "multi")
+
+    settings = Settings.from_env()
+
+    assert settings.shopmind_agent_mode == "multi"
