@@ -5,6 +5,7 @@ from typing import Any, Mapping
 
 from tools.products import compare_products, get_product_detail, search_products
 
+from .observability import append_agent_step
 from .permissions import guard_tools, tools_by_name
 from .state import ShopMindMultiAgentState
 from .supervisor import get_last_user_message
@@ -106,4 +107,12 @@ def product_agent_node(
         "executed_routes": executed_routes,
         "current_route": None,
         "tool_calls": tool_calls,
+        "agent_steps": append_agent_step(
+            state,
+            node="product_agent",
+            event="completed",
+            route="product_agent",
+            tool_name=tool_name,
+            summary_keys=["product_count", "product_ids", "confidence"],
+        ),
     }

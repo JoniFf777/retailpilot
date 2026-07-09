@@ -56,6 +56,7 @@ def _invoke(message: str, user_id: str = "USER-001") -> dict:
             "thread_id": "THREAD-001",
             "tool_calls": [],
             "safety_flags": [],
+            "agent_steps": [],
         }
     )
 
@@ -111,6 +112,24 @@ def test_mixed_question_runs_read_agents_in_order() -> None:
         "search_policy_docs",
         "get_user_preferences",
     ]
+    assert [step["node"] for step in result["agent_steps"]] == [
+        "supervisor",
+        "route_dispatcher",
+        "product_agent",
+        "route_dispatcher",
+        "rag_agent",
+        "route_dispatcher",
+        "preference_agent",
+        "route_dispatcher",
+        "decision_agent",
+    ]
+    assert [step["index"] for step in result["agent_steps"]] == list(range(1, 10))
+    assert result["agent_steps"][1]["selected_route"] == "product_agent"
+    assert result["agent_steps"][3]["selected_route"] == "rag_agent"
+    assert result["agent_steps"][5]["selected_route"] == "preference_agent"
+    assert result["agent_steps"][7]["event"] == "selected_decision_agent"
+    assert "RAW_PRODUCT_DETAIL_SHOULD_NOT_LEAK" not in str(result["agent_steps"])
+    assert "RAW_PREFERENCE_SHOULD_NOT_LEAK" not in str(result["agent_steps"])
 
 
 def test_decision_agent_runs_once_after_all_routes() -> None:
@@ -126,6 +145,8 @@ def test_decision_agent_runs_once_after_all_routes() -> None:
     assert result["decision"]["requires_followup"] is False
     assert result["decision"]["followup_reason"] is None
     assert result["decision"]["tool_calls"] == result["tool_calls"]
+    assert result["agent_steps"][-1]["node"] == "decision_agent"
+    assert result["agent_steps"][-1]["answer_type"] == "combined_read_summary"
     assert result["final_response"].count("商品信息") == 1
     assert result["final_response"].count("文档/政策信息") == 1
     assert result["final_response"].count("用户偏好") == 1
