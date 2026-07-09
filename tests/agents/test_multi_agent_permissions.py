@@ -11,6 +11,7 @@ from agents.shopmind_multi_agent import (
     guard_tool,
 )
 from agents.shopmind_multi_agent.permissions import tools_by_name
+from agents.shopmind_multi_agent.decision_agent import decision_agent_node
 from agents.shopmind_multi_agent.rag_agent import rag_agent_node
 
 
@@ -101,6 +102,18 @@ def test_prompt_injection_in_rag_does_not_create_write_or_pending_action() -> No
     assert result["rag_summary"]["security_notes"]
     assert result["rag_summary"]["raw_result_stored"] is False
     assert "rag_prompt_injection_detected" in result["safety_flags"]
+
+    decision = decision_agent_node(
+        {
+            "rag_summary": result["rag_summary"],
+            "executed_routes": result["executed_routes"],
+            "tool_calls": result["tool_calls"],
+            "safety_flags": result["safety_flags"],
+        }
+    )
+    assert decision["decision"]["answer_type"] == "safe_read_summary"
+    assert decision["decision"]["security_notes"] == result["rag_summary"]["security_notes"]
+    assert "add_to_cart" not in str(decision["decision"])
 
 
 def test_product_agent_real_tool_set_is_read_only() -> None:
