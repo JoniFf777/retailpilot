@@ -11,7 +11,12 @@ from .permissions import (
 from .product_agent import PRODUCT_AGENT_TOOLS, product_agent_node
 from .rag_agent import RAG_AGENT_TOOLS, rag_agent_node
 from .preference_agent import PREFERENCE_AGENT_TOOLS, preference_agent_node
-from .supervisor import SUPERVISOR_TOOLS, determine_routes, supervisor_node
+from .supervisor import (
+    SUPERVISOR_TOOLS,
+    build_supervisor_decision,
+    determine_routes,
+    supervisor_node,
+)
 
 __all__ = [
     "AGENT_TOOL_ALLOWLIST",
@@ -21,6 +26,7 @@ __all__ = [
     "PREFERENCE_AGENT_TOOLS",
     "SUPERVISOR_TOOLS",
     "ToolPermissionError",
+    "build_supervisor_decision",
     "create_shopmind_multi_agent_graph",
     "decision_agent_node",
     "determine_routes",

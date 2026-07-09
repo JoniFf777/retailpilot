@@ -3,7 +3,10 @@ from langchain_core.tools import tool
 from agents.shopmind_multi_agent import create_shopmind_multi_agent_graph
 from agents.shopmind_multi_agent.decision_agent import decision_agent_node
 from agents.shopmind_multi_agent.permissions import guard_tool, tools_by_name
-from agents.shopmind_multi_agent.supervisor import determine_routes
+from agents.shopmind_multi_agent.supervisor import (
+    build_supervisor_decision,
+    determine_routes,
+)
 
 
 @tool("search_products")
@@ -64,7 +67,14 @@ def _invoke(message: str, user_id: str = "USER-001") -> dict:
 def test_product_search_question_routes_to_product_agent() -> None:
     result = _invoke("推荐一个键盘")
 
+    assert result["supervisor_decision"]["intent"] == "read_path"
     assert result["routes"] == ["product_agent"]
+    assert result["supervisor_decision"]["routes"] == ["product_agent"]
+    assert result["supervisor_decision"]["routing_reasons"] == {
+        "product_agent": "matched_product_keywords"
+    }
+    assert result["supervisor_decision"]["confidence"] == "high"
+    assert result["supervisor_decision"]["fallback_used"] is False
     assert result["executed_routes"] == ["product_agent"]
     assert result["tool_calls"] == ["search_products"]
     assert result["product_summary"]["product_count"] == 1
@@ -130,6 +140,8 @@ def test_mixed_question_runs_read_agents_in_order() -> None:
     assert result["agent_steps"][7]["event"] == "selected_decision_agent"
     assert "RAW_PRODUCT_DETAIL_SHOULD_NOT_LEAK" not in str(result["agent_steps"])
     assert "RAW_PREFERENCE_SHOULD_NOT_LEAK" not in str(result["agent_steps"])
+    assert result["agent_steps"][0]["confidence"] == "high"
+    assert result["agent_steps"][0]["fallback_used"] is False
 
 
 def test_decision_agent_runs_once_after_all_routes() -> None:
@@ -172,3 +184,19 @@ def test_routes_do_not_include_decision_agent() -> None:
     routes = determine_routes("结合我的偏好推荐键盘，并看看退货政策", user_id="USER-001")
 
     assert "decision_agent" not in routes
+
+
+def test_supervisor_decision_records_fallback_and_missing_user_id() -> None:
+    fallback_decision = build_supervisor_decision("随便看看")
+
+    assert fallback_decision["routes"] == ["product_agent"]
+    assert fallback_decision["routing_reasons"] == {
+        "product_agent": "fallback_to_product_read"
+    }
+    assert fallback_decision["confidence"] == "medium"
+    assert fallback_decision["fallback_used"] is True
+
+    preference_without_user = build_supervisor_decision("我的偏好适合什么")
+
+    assert preference_without_user["routes"] == ["product_agent"]
+    assert preference_without_user["requires_user_id_for_preferences"] is True

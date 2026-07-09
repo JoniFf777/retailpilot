@@ -9,6 +9,7 @@ class ShopMindMultiAgentState(TypedDict, total=False):
     thread_id: Optional[str]
 
     intent: Optional[str]
+    supervisor_decision: Optional[dict[str, Any]]
     routes: list[str]
     executed_routes: list[str]
     current_route: Optional[str]
