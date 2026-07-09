@@ -98,6 +98,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\boo
 
 - Default regression: `90 passed, 4 skipped, 1 warning`
 - PostgreSQL integration: `10 passed`
+- Manual GitHub Actions PostgreSQL Integration workflow: passed
 - Smoke database Alembic version: `0002_documents_pgvector`
 - Seed counts: customers `50`, products `25`, orders `250`, order_items `439`
 - Documents counts: product `298`, policy `39`
@@ -137,8 +138,9 @@ This PR does not introduce:
 - A new Agent contract
 - A new public chat API contract
 
-## Follow-Up Candidates
+## V2 Closure
 
-- Add CI job for default tests.
-- Add optional CI/manual job for `RUN_POSTGRES_INTEGRATION=1`.
-- Address `langchain_community` deprecation in the legacy V1 database tooling.
+- Default GitHub Actions CI has been added and merged.
+- Manual PostgreSQL integration CI has been added and merged.
+- V2 infrastructure is closed. Future work should start from V3 planning unless it is a bug fix.
+- Remaining non-blocking cleanup: address the `langchain_community` deprecation in the legacy V1 database tooling.
