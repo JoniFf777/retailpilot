@@ -76,29 +76,54 @@ def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
     return any(keyword.lower() in lowered for keyword in keywords)
 
 
-def determine_routes(message: str, user_id: str | None = None) -> list[str]:
+def build_supervisor_decision(
+    message: str,
+    user_id: str | None = None,
+) -> dict[str, Any]:
     routes: list[str] = []
+    routing_reasons: dict[str, str] = {}
+    fallback_used = False
 
     if _contains_any(message, PRODUCT_KEYWORDS):
         routes.append("product_agent")
+        routing_reasons["product_agent"] = "matched_product_keywords"
     if _contains_any(message, RAG_KEYWORDS):
         routes.append("rag_agent")
+        routing_reasons["rag_agent"] = "matched_document_or_policy_keywords"
     if user_id and _contains_any(message, PREFERENCE_KEYWORDS):
         routes.append("preference_agent")
+        routing_reasons["preference_agent"] = "matched_preference_keywords_with_user_id"
 
     if not routes:
         routes.append("product_agent")
+        routing_reasons["product_agent"] = "fallback_to_product_read"
+        fallback_used = True
 
-    return routes
+    return {
+        "intent": "read_path",
+        "routes": routes,
+        "routing_reasons": routing_reasons,
+        "confidence": "medium" if fallback_used else "high",
+        "fallback_used": fallback_used,
+        "requires_user_id_for_preferences": (
+            not user_id and _contains_any(message, PREFERENCE_KEYWORDS)
+        ),
+    }
+
+
+def determine_routes(message: str, user_id: str | None = None) -> list[str]:
+    return list(build_supervisor_decision(message, user_id=user_id)["routes"])
 
 
 def supervisor_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
     message = get_last_user_message(state)
     user_id = state.get("user_id")
-    routes = determine_routes(message, user_id=user_id)
+    supervisor_decision = build_supervisor_decision(message, user_id=user_id)
+    routes = list(supervisor_decision["routes"])
 
     return {
-        "intent": "read_path",
+        "intent": supervisor_decision["intent"],
+        "supervisor_decision": supervisor_decision,
         "routes": routes,
         "executed_routes": [],
         "current_route": None,
@@ -109,6 +134,8 @@ def supervisor_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
             node="supervisor",
             event="routed",
             routes=routes,
-            intent="read_path",
+            intent=supervisor_decision["intent"],
+            confidence=supervisor_decision["confidence"],
+            fallback_used=supervisor_decision["fallback_used"],
         ),
     }
