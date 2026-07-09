@@ -70,5 +70,9 @@ def supervisor_node(
             confidence=supervisor_decision["confidence"],
             fallback_used=supervisor_decision["fallback_used"],
             router_type=supervisor_decision.get("router_type"),
+            router_provider=supervisor_decision.get("router_provider"),
+            router_model=supervisor_decision.get("router_model"),
+            fallback_reason=supervisor_decision.get("fallback_reason"),
+            fallback_router_type=supervisor_decision.get("fallback_router_type"),
         ),
     }
