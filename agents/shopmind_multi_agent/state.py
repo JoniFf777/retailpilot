@@ -20,6 +20,7 @@ class ShopMindMultiAgentState(TypedDict, total=False):
 
     decision: Optional[dict[str, Any]]
     final_response: Optional[str]
+    handoff_reason: Optional[str]
     safety_flags: list[str]
     tool_calls: list[str]
     agent_steps: list[dict[str, Any]]

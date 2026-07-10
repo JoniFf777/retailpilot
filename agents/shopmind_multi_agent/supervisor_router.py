@@ -58,9 +58,39 @@ PREFERENCE_KEYWORDS = (
     "personal",
     "budget",
 )
+WRITE_INTENT_KEYWORDS = (
+    "\u52a0\u5165\u8d2d\u7269\u8f66",
+    "\u52a0\u8d2d",
+    "\u4e0b\u5355",
+    "\u8d2d\u4e70",
+    "\u4e70\u4e0b",
+    "\u786e\u8ba4\u8d2d\u4e70",
+    "\u786e\u8ba4\u52a0\u5165",
+    "\u6e05\u7a7a\u8d2d\u7269\u8f66",
+    "\u4fdd\u5b58\u504f\u597d",
+    "\u8bb0\u4f4f",
+    "\u4e0d\u8981\u63a8\u8350",
+    "\u4ee5\u540e\u522b",
+    "add to cart",
+    "put it in my cart",
+    "put this in my cart",
+    "buy it",
+    "purchase it",
+    "checkout",
+    "place order",
+    "confirm order",
+    "clear cart",
+    "save preference",
+    "remember that",
+    "do not recommend",
+    "don't recommend",
+    "never recommend",
+)
+WRITE_INTENT_SAFETY_FLAG = "write_intent_blocked"
+WRITE_INTENT_HANDOFF_REASON = "read_only_multi_agent_write_intent"
 ReadRoute = Literal["product_agent", "rag_agent", "preference_agent"]
 Confidence = Literal["low", "medium", "high"]
-SupervisorIntent = Literal["read_path"]
+SupervisorIntent = Literal["read_path", "write_path_unsupported"]
 
 
 class LLMSupervisorRouterInput(TypedDict):
@@ -94,6 +124,8 @@ class SupervisorRouteDecision(TypedDict):
     fallback_router_type: NotRequired[str]
     router_provider: NotRequired[str]
     router_model: NotRequired[str]
+    safety_flags: NotRequired[list[str]]
+    handoff_reason: NotRequired[str]
 
 
 ALLOWED_READ_ROUTES: set[ReadRoute] = {
@@ -133,6 +165,36 @@ class SupervisorRouter(Protocol):
 def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
     lowered = text.lower()
     return any(keyword.lower() in lowered for keyword in keywords)
+
+
+def is_write_intent(message: str) -> bool:
+    """Return True when a request asks the read-only graph to mutate state."""
+
+    return _contains_any(message, WRITE_INTENT_KEYWORDS)
+
+
+def _write_intent_decision(
+    *,
+    router_type: str,
+    router_provider: str | None = None,
+    router_model: str | None = None,
+) -> SupervisorRouteDecision:
+    decision: SupervisorRouteDecision = {
+        "intent": "write_path_unsupported",
+        "routes": [],
+        "routing_reasons": {},
+        "confidence": "high",
+        "fallback_used": False,
+        "requires_user_id_for_preferences": False,
+        "router_type": router_type,
+        "safety_flags": [WRITE_INTENT_SAFETY_FLAG],
+        "handoff_reason": WRITE_INTENT_HANDOFF_REASON,
+    }
+    if router_provider:
+        decision["router_provider"] = router_provider
+    if router_model:
+        decision["router_model"] = router_model
+    return decision
 
 
 def _build_langchain_router_messages(
@@ -201,6 +263,9 @@ class DeterministicSupervisorRouter:
         message: str,
         user_id: str | None = None,
     ) -> SupervisorRouteDecision:
+        if is_write_intent(message):
+            return _write_intent_decision(router_type="deterministic")
+
         routes: list[ReadRoute] = []
         routing_reasons: dict[str, str] = {}
         fallback_used = False
@@ -257,6 +322,13 @@ class LLMSupervisorRouter:
         message: str,
         user_id: str | None = None,
     ) -> SupervisorRouteDecision:
+        if is_write_intent(message):
+            return _write_intent_decision(
+                router_type="llm_guardrail",
+                router_provider=self.router_provider,
+                router_model=self.router_model,
+            )
+
         if self.decision_provider is None:
             return self._fallback(message, user_id, reason="provider_not_configured")
 
