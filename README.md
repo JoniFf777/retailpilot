@@ -154,7 +154,7 @@ python -m pytest tests/config tests/db tests/repositories tests/scripts tests/to
 - [Tools 设计](docs/tools_design.md)
 - [API 设计](docs/api_design.md)
 - [安全设计](docs/safety_design.md)
-- [V3.4 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
+- [V3.5 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
 ### ShopMind V3 write handoff
 
@@ -165,6 +165,15 @@ V3 multi-agent mode keeps read agents read-only, then bridges write intents into
 - same-thread candidate selection such as `选 1`, creating the normal pending action
 - out-of-range selections such as `选 3`, returning a clarification without writing
 - database-backed candidate context: 10-minute TTL and at most 100 active contexts
+
+V3.5 also exposes candidate-context debug metadata for store, miss, selection,
+out-of-range, and clear events when `include_debug=true`.
+
+Expired or overflow candidate contexts can also be cleaned explicitly:
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/cleanup_candidate_contexts.py
+```
 
 ### LangSmith Evaluation
 

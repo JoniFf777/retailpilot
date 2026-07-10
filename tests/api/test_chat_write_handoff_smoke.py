@@ -238,9 +238,18 @@ async def test_multi_agent_write_handoff_selects_candidate_by_number(
     assert candidate_body["tool_calls"] == []
     assert candidate_body["pending_action_id"] is None
     assert TEST_PRODUCT_ID in candidate_body["answer"]
+    assert candidate_body["debug"]["write_handoff_debug"]["candidate_context"][
+        "events"
+    ][-1]["event"] == "candidate_context_stored"
     assert selection_response.status_code == 200
     assert selection_body["status"] == "confirmation_required"
     assert selection_body["tool_calls"] == ["prepare_add_to_cart"]
+    assert [
+        event["event"]
+        for event in selection_body["debug"]["write_handoff_debug"][
+            "candidate_context"
+        ]["events"]
+    ] == ["candidate_context_selected", "candidate_context_cleared"]
     assert selection_body["debug"]["multi_agent_debug"]["supervisor_decision"][
         "intent"
     ] == "write_path_unsupported"

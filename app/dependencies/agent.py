@@ -51,6 +51,9 @@ def _attach_multi_agent_handoff_debug(
         },
         "multi_agent_debug": multi_debug,
     }
+    handoff_debug = handoff_result.get("debug")
+    if isinstance(handoff_debug, dict):
+        result["debug"]["write_handoff_debug"] = handoff_debug
     return result
 
 

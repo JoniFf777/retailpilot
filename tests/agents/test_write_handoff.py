@@ -21,6 +21,10 @@ TEST_USER_ID = "WRITE_HANDOFF_USER"
 TEST_PRODUCT_ID = "TECH-KEY-001"
 
 
+def _candidate_context_events(result: dict) -> list[dict]:
+    return result["debug"]["candidate_context"]["events"]
+
+
 def test_extract_product_id_normalizes_explicit_id() -> None:
     assert extract_product_id("帮我把 tech-key-001 加入购物车") == TEST_PRODUCT_ID
 
@@ -329,5 +333,80 @@ def test_write_handoff_prepares_add_to_cart(monkeypatch) -> None:
     assert pending_action.thread_id == "thread-write-native"
     assert pending_action.status == "pending"
     assert pending_action.payload_json == {"product_id": TEST_PRODUCT_ID, "quantity": 2}
+
+    session.close()
+
+
+def test_write_handoff_reports_candidate_context_debug_events(monkeypatch) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.add_all(
+        [
+            Product(
+                product_id=TEST_PRODUCT_ID,
+                name="Test Keyboard",
+                category="Keyboards",
+                price=49.00,
+                in_stock=True,
+            ),
+            Product(
+                product_id="TECH-KEY-002",
+                name="Premium Keyboard",
+                category="Keyboards",
+                price=99.00,
+                in_stock=True,
+            ),
+        ]
+    )
+    session.commit()
+
+    @contextmanager
+    def fake_session():
+        yield session
+
+    monkeypatch.setattr(
+        "agents.shopmind_multi_agent.write_handoff._get_product_session",
+        fake_session,
+    )
+    monkeypatch.setattr(cart_tools, "_get_cart_session", fake_session)
+
+    thread_id = "thread-candidate-debug-events"
+    candidate_result = invoke_write_handoff(
+        "add this keyboard to cart quantity 2",
+        user_id=TEST_USER_ID,
+        thread_id=thread_id,
+    )
+    selection_result = invoke_write_handoff(
+        "1",
+        user_id=TEST_USER_ID,
+        thread_id=thread_id,
+    )
+    miss_result = invoke_write_handoff(
+        "1",
+        user_id=TEST_USER_ID,
+        thread_id="thread-candidate-debug-miss",
+    )
+
+    assert _candidate_context_events(candidate_result)[-1] == {
+        "index": 1,
+        "event": "candidate_context_stored",
+        "candidate_count": 2,
+        "quantity": 2,
+        "ttl_seconds": 600,
+        "max_contexts": 100,
+    }
+    assert [event["event"] for event in _candidate_context_events(selection_result)] == [
+        "candidate_context_selected",
+        "candidate_context_cleared",
+    ]
+    assert _candidate_context_events(selection_result)[0]["quantity"] == 2
+    assert _candidate_context_events(selection_result)[1]["cleared"] is True
+    assert _candidate_context_events(miss_result)[0] == {
+        "index": 1,
+        "event": "candidate_context_missed",
+        "selection": 1,
+    }
 
     session.close()
