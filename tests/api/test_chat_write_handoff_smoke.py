@@ -1,4 +1,3 @@
-import re
 from contextlib import contextmanager
 
 import pytest
@@ -11,7 +10,6 @@ from app.db.models import CartItem, PendingAction, Product
 from app.dependencies import agent as agent_dependency
 from app.main import app
 import tools.cart as cart_tools
-from tools.cart import prepare_add_to_cart
 
 
 TEST_USER_ID = "API_WRITE_HANDOFF_USER"
@@ -49,12 +47,6 @@ def cart_session(monkeypatch):
     session.close()
 
 
-def _extract_pending_action_id(text: str) -> str:
-    match = re.search(r"pending_action_id[：:]\s*([0-9a-f-]+)", text)
-    assert match is not None, text
-    return match.group(1)
-
-
 def _cart_item_count(session, user_id: str) -> int:
     return session.scalar(
         select(func.count()).select_from(CartItem).where(CartItem.user_id == user_id)
@@ -78,65 +70,6 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
             },
         )(),
     )
-
-    def fake_multi_agent(
-        message: str,
-        user_id: str | None = None,
-        thread_id: str | None = None,
-        supervisor_router=None,
-    ) -> dict:
-        assert message == f"帮我把 {TEST_PRODUCT_ID} 加入购物车"
-        assert user_id == TEST_USER_ID
-        assert thread_id == "thread-write-smoke"
-        return {
-            "answer": "当前 V3 多 Agent 路径只支持只读查询。",
-            "status": "completed",
-            "tool_calls": [],
-            "debug": {
-                "supervisor_decision": {
-                    "intent": "write_path_unsupported",
-                    "routes": [],
-                    "safety_flags": ["write_intent_blocked"],
-                },
-                "decision": {
-                    "answer_type": "write_path_handoff",
-                    "followup_reason": "read_only_multi_agent_write_intent",
-                },
-            },
-            "raw_result": {
-                "decision": {
-                    "answer_type": "write_path_handoff",
-                    "followup_reason": "read_only_multi_agent_write_intent",
-                },
-            },
-        }
-
-    def fake_single_agent(
-        message: str,
-        user_id: str | None = None,
-        thread_id: str | None = None,
-    ) -> dict:
-        assert message == f"帮我把 {TEST_PRODUCT_ID} 加入购物车"
-        assert user_id == TEST_USER_ID
-        assert thread_id == "thread-write-smoke"
-        tool_result = prepare_add_to_cart.invoke(
-            {
-                "user_id": user_id,
-                "product_id": TEST_PRODUCT_ID,
-                "quantity": 1,
-                "thread_id": thread_id,
-            }
-        )
-        pending_action_id = _extract_pending_action_id(tool_result)
-        return {
-            "answer": "我已为你生成待确认加购，请确认是否加入购物车。",
-            "status": "confirmation_required",
-            "tool_calls": ["prepare_add_to_cart"],
-            "pending_action_id": pending_action_id,
-        }
-
-    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
-    monkeypatch.setattr(agent_dependency, "invoke_shopmind_agent", fake_single_agent)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -172,7 +105,14 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
     assert chat_body["debug"]["multi_agent_handoff"]["status"] == (
         "confirmation_required"
     )
+    assert chat_body["debug"]["multi_agent_handoff"]["to"] == "v3_write_handoff_path"
+    assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["intent"] == (
+        "write_path_unsupported"
+    )
     assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
+    assert "write_intent_blocked" in chat_body["debug"]["multi_agent_debug"][
+        "safety_flags"
+    ]
     assert pending_action is not None
     assert pending_action.thread_id == "thread-write-smoke"
     assert pending_action.status == "confirmed"
