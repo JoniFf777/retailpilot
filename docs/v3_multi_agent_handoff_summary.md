@@ -4,7 +4,7 @@ This document summarizes the current V3 first-stage state so a future Codex thre
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into the existing confirmation-based write flow.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler.
 
 Runtime switches:
 
@@ -99,8 +99,8 @@ In `app/dependencies/agent.py`, `call_shopmind_agent` now:
 
 1. Runs V3 first when `SHOPMIND_AGENT_MODE=multi`.
 2. Detects `decision.answer_type == "write_path_handoff"`.
-3. Calls the existing single-agent write confirmation path.
-4. Returns the single-agent `confirmation_required` response.
+3. Calls the native V3 write handoff handler.
+4. Returns the handler's `confirmation_required` response when the request has an explicit product ID.
 5. Preserves V3 guardrail metadata under `debug.multi_agent_handoff` and `debug.multi_agent_debug` when `include_debug=true`.
 
 The bridge keeps the user-facing API behavior unchanged:
@@ -118,8 +118,7 @@ The bridge keeps the user-facing API behavior unchanged:
 `thread_id` is now propagated through the bridge:
 
 - `/api/chat` receives `thread_id`.
-- `call_shopmind_agent` passes it into the single-agent write path.
-- `invoke_shopmind_agent` includes thread context in the user message.
+- `call_shopmind_agent` passes it into the native V3 write handoff handler.
 - `prepare_add_to_cart` receives the thread ID.
 - `pending_actions.thread_id` persists it.
 
@@ -136,8 +135,13 @@ Important tests:
 - `tests/api/test_chat.py`
   - multi mode response schema
   - debug metadata
-  - fake V3 handoff bridge
+  - mocked V3 handoff result
   - real V3 guardrail to handoff bridge
+- `tests/agents/test_write_handoff.py`
+  - explicit product ID parsing
+  - missing `user_id` handling
+  - ambiguous write request handling
+  - native `prepare_add_to_cart` invocation
 - `tests/api/test_chat_write_handoff_smoke.py`
   - `/api/chat` creates pending action through handoff
   - `/api/chat/confirm` confirms it
@@ -147,20 +151,20 @@ Important tests:
 Latest full local validation:
 
 ```text
-147 passed, 4 skipped
+151 passed, 4 skipped
 router eval deterministic: 6/6
 router eval llm-fallback: 6/6
 ```
 
 ## Recommended next step
 
-V3.3 should remove the temporary dependency on the V1 single-agent write path by introducing a native V3 write handoff handler.
+V3.3 has started removing the temporary dependency on the V1 single-agent write path by introducing a native V3 write handoff handler.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
-- Add a small deterministic write handoff parser for explicit product IDs.
-- For ambiguous write requests, return a clarification response instead of calling tools.
+- Keep expanding deterministic write handoff parsing only where the request is explicit.
+- For ambiguous write requests, keep returning a clarification response instead of calling tools.
 - For clear add-to-cart requests, call `prepare_add_to_cart` directly and return `confirmation_required`.
 - Keep `/api/chat/confirm` unchanged.
 

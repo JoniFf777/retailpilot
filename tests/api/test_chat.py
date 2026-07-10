@@ -347,12 +347,12 @@ async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(monkeypat
             },
         }
 
-    def fake_single_agent(
+    def fake_write_handoff(
         message: str,
         user_id: str | None = None,
         thread_id: str | None = None,
     ) -> dict:
-        calls.append(("single", message, user_id, thread_id))
+        calls.append(("write_handoff", message, user_id, thread_id))
         return {
             "answer": "我已为你生成待确认加购，请确认是否加入购物车。",
             "status": "confirmation_required",
@@ -361,7 +361,7 @@ async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(monkeypat
         }
 
     monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
-    monkeypatch.setattr(agent_dependency, "invoke_shopmind_agent", fake_single_agent)
+    monkeypatch.setattr(agent_dependency, "invoke_write_handoff", fake_write_handoff)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -379,7 +379,12 @@ async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(monkeypat
     assert response.status_code == 200
     assert calls == [
         ("multi", "帮我把 TECH-KEY-001 加入购物车", "user-001", "thread-001"),
-        ("single", "帮我把 TECH-KEY-001 加入购物车", "user-001", "thread-001"),
+        (
+            "write_handoff",
+            "帮我把 TECH-KEY-001 加入购物车",
+            "user-001",
+            "thread-001",
+        ),
     ]
     assert body["answer"] == "我已为你生成待确认加购，请确认是否加入购物车。"
     assert body["status"] == "confirmation_required"
@@ -387,7 +392,7 @@ async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(monkeypat
     assert body["pending_action_id"] == pending_action_id
     assert body["debug"]["multi_agent_handoff"] == {
         "from": "multi_agent_read_path",
-        "to": "single_agent_write_path",
+        "to": "v3_write_handoff_path",
         "reason": "read_only_multi_agent_write_intent",
         "status": "confirmation_required",
     }
@@ -411,12 +416,12 @@ async def test_chat_multi_mode_uses_real_v3_guardrail_for_write_handoff(
         ),
     )
 
-    def fake_single_agent(
+    def fake_write_handoff(
         message: str,
         user_id: str | None = None,
         thread_id: str | None = None,
     ) -> dict:
-        calls.append(("single", message, user_id, thread_id))
+        calls.append(("write_handoff", message, user_id, thread_id))
         return {
             "answer": "我已为你生成待确认加购，请确认是否加入购物车。",
             "status": "confirmation_required",
@@ -424,7 +429,7 @@ async def test_chat_multi_mode_uses_real_v3_guardrail_for_write_handoff(
             "pending_action_id": pending_action_id,
         }
 
-    monkeypatch.setattr(agent_dependency, "invoke_shopmind_agent", fake_single_agent)
+    monkeypatch.setattr(agent_dependency, "invoke_write_handoff", fake_write_handoff)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -443,7 +448,12 @@ async def test_chat_multi_mode_uses_real_v3_guardrail_for_write_handoff(
 
     assert response.status_code == 200
     assert calls == [
-        ("single", "帮我把 TECH-KEY-001 加入购物车", "user-001", "thread-001")
+        (
+            "write_handoff",
+            "帮我把 TECH-KEY-001 加入购物车",
+            "user-001",
+            "thread-001",
+        )
     ]
     assert body["status"] == "confirmation_required"
     assert body["tool_calls"] == ["prepare_add_to_cart"]

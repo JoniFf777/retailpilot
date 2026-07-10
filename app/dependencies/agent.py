@@ -6,6 +6,7 @@ from agents.shopmind_multi_agent import (
     create_supervisor_router,
     invoke_shopmind_multi_agent,
 )
+from agents.shopmind_multi_agent.write_handoff import invoke_write_handoff
 from agents.shopmind_agent import invoke_shopmind_agent
 from app.core.settings import get_settings
 from tools.cart import cancel_pending_action, confirm_add_to_cart
@@ -26,16 +27,16 @@ def _extract_multi_agent_decision(result: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
-def _requires_single_agent_write_handoff(result: dict[str, Any]) -> bool:
+def _requires_write_handoff(result: dict[str, Any]) -> bool:
     decision = _extract_multi_agent_decision(result)
     return decision.get("answer_type") == WRITE_PATH_HANDOFF_ANSWER_TYPE
 
 
 def _attach_multi_agent_handoff_debug(
-    single_agent_result: dict[str, Any],
+    handoff_result: dict[str, Any],
     multi_agent_result: dict[str, Any],
 ) -> dict[str, Any]:
-    result = dict(single_agent_result)
+    result = dict(handoff_result)
     multi_debug = multi_agent_result.get("debug")
     if not isinstance(multi_debug, dict):
         return result
@@ -44,9 +45,9 @@ def _attach_multi_agent_handoff_debug(
     result["debug"] = {
         "multi_agent_handoff": {
             "from": "multi_agent_read_path",
-            "to": "single_agent_write_path",
+            "to": "v3_write_handoff_path",
             "reason": decision.get("followup_reason"),
-            "status": single_agent_result.get("status"),
+            "status": handoff_result.get("status"),
         },
         "multi_agent_debug": multi_debug,
     }
@@ -74,14 +75,14 @@ def call_shopmind_agent(
                 model=getattr(settings, "workshop_model", None),
             ),
         )
-        if _requires_single_agent_write_handoff(multi_agent_result):
-            single_agent_result = invoke_shopmind_agent(
+        if _requires_write_handoff(multi_agent_result):
+            handoff_result = invoke_write_handoff(
                 message=message,
                 user_id=user_id,
                 thread_id=thread_id,
             )
             return _attach_multi_agent_handoff_debug(
-                single_agent_result,
+                handoff_result,
                 multi_agent_result,
             )
 
