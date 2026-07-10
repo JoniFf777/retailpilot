@@ -55,3 +55,7 @@ class ConfirmChatRequest(BaseModel):
         default=None,
         description="Optional conversation/thread identifier echoed back to the caller.",
     )
+    include_debug: bool = Field(
+        default=False,
+        description="Return optional debug metadata for evaluation and troubleshooting.",
+    )

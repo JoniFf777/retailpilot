@@ -27,6 +27,10 @@ async def confirm_chat(request: ConfirmChatRequest) -> ChatResponse:
             "pending_action_id": request.pending_action_id,
         }
 
+    response_kwargs = {}
+    if request.include_debug and result.get("debug") is not None:
+        response_kwargs["debug"] = result["debug"]
+
     return ChatResponse(
         answer=result.get("answer", ""),
         status=result.get("status", "completed"),
@@ -34,4 +38,5 @@ async def confirm_chat(request: ConfirmChatRequest) -> ChatResponse:
         user_id=request.user_id,
         thread_id=request.thread_id,
         pending_action_id=result.get("pending_action_id", request.pending_action_id),
+        **response_kwargs,
     )

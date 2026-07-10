@@ -227,7 +227,8 @@ V3 multi-agent 模式下，加购请求会先经过 read-only guardrail，再进
   "user_id": "demo-user",
   "pending_action_id": "123e4567-e89b-12d3-a456-426614174000",
   "confirmed": true,
-  "thread_id": "demo-thread"
+  "thread_id": "demo-thread",
+  "include_debug": false
 }
 ```
 
@@ -239,6 +240,8 @@ V3 multi-agent 模式下，加购请求会先经过 read-only guardrail，再进
 | `pending_action_id` | string | 是 | 待确认动作 ID |
 | `confirmed` | boolean | 是 | `true` 表示确认，`false` 表示取消 |
 | `thread_id` | string/null | 否 | 会话 ID，V1 主要透传 |
+
+`include_debug` is optional and defaults to `false`. When set to `true`, the response can include confirmation debug metadata.
 
 ### confirmed=true Response
 
@@ -265,6 +268,40 @@ V3 multi-agent 模式下，加购请求会先经过 read-only guardrail，再进
   "pending_action_id": "123e4567-e89b-12d3-a456-426614174000"
 }
 ```
+
+### Confirm Debug Response
+
+When `include_debug=true`, `/api/chat/confirm` can include stable confirmation metadata:
+
+```json
+{
+  "answer": "Confirmed add-to-cart action.",
+  "status": "completed",
+  "tool_calls": ["confirm_add_to_cart"],
+  "user_id": "demo-user",
+  "thread_id": "demo-thread",
+  "pending_action_id": "123e4567-e89b-12d3-a456-426614174000",
+  "debug": {
+    "confirmation": {
+      "events": [
+        {
+          "index": 1,
+          "event": "pending_action_confirmed",
+          "requested_confirmation": true,
+          "status": "completed",
+          "tool_call": "confirm_add_to_cart"
+        }
+      ]
+    }
+  }
+}
+```
+
+Confirmation event names:
+
+- `pending_action_confirmed`
+- `pending_action_cancelled`
+- `pending_action_failed`
 
 ## status 说明
 

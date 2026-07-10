@@ -1,10 +1,10 @@
-# V3.5 Multi-Agent Handoff Summary
+# V3.6 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.5 adds candidate-context debug metadata and a manual cleanup script for expired or overflow rows.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.6 adds confirmation debug metadata for `/api/chat/confirm`, building on the candidate-context debug metadata and manual cleanup script from V3.5.
 
 Runtime switches:
 
@@ -141,6 +141,26 @@ Current candidate-context event names:
 - `candidate_context_out_of_range`
 - `candidate_context_cleared`
 
+`/api/chat/confirm` also accepts `include_debug=true` and can expose confirmation-completion metadata:
+
+```json
+{
+  "debug": {
+    "confirmation": {
+      "events": [
+        {"event": "pending_action_confirmed"}
+      ]
+    }
+  }
+}
+```
+
+Current confirmation event names:
+
+- `pending_action_confirmed`
+- `pending_action_cancelled`
+- `pending_action_failed`
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -230,6 +250,7 @@ Important tests:
   - missing product ID and missing `user_id` return clarifications without pending actions
   - candidate selection by number creates the normal confirmation-required action
   - write handoff debug metadata is exposed through API debug output
+  - confirmation debug metadata is exposed through API debug output
   - out-of-range candidate selection returns a clarification without pending actions
 - `tests/scripts/test_cleanup_candidate_contexts.py`
   - explicit cleanup deletes expired rows and oldest overflow rows
@@ -241,21 +262,21 @@ Important tests:
 Latest full local validation:
 
 ```text
-175 passed, 4 skipped
+178 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.5 keeps the native V3 write handoff path confirmation-based, database-backed, and observable through stable debug metadata.
+V3.6 keeps the native V3 write handoff path confirmation-based, database-backed, and observable through stable debug metadata across both preparation and confirmation.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
-- Consider adding aggregate LangSmith/eval reporting for candidate-context event rates.
-- Consider adding confirmation-completion observability to `/api/chat/confirm`.
+- Consider adding aggregate LangSmith/eval reporting for candidate-context and confirmation event rates.
+- Consider adding a small operational dashboard or exported counters for these event groups.
 - Keep `/api/chat/confirm` unchanged.
 
 This would make V3 own both read orchestration and confirmation preparation while preserving the same public API contract.
