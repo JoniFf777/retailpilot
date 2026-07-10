@@ -53,6 +53,10 @@ def _cart_item_count(session, user_id: str) -> int:
     )
 
 
+def _cart_item_quantity(session, user_id: str) -> int:
+    return session.scalar(select(CartItem.quantity).where(CartItem.user_id == user_id))
+
+
 @pytest.mark.anyio
 async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
     monkeypatch,
@@ -76,7 +80,7 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
         chat_response = await client.post(
             "/api/chat",
             json={
-                "message": f"帮我把 {TEST_PRODUCT_ID} 加入购物车",
+                "message": f"帮我把 {TEST_PRODUCT_ID} 加入购物车 2 个",
                 "user_id": TEST_USER_ID,
                 "thread_id": "thread-write-smoke",
                 "include_debug": True,
@@ -115,9 +119,11 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
     ]
     assert pending_action is not None
     assert pending_action.thread_id == "thread-write-smoke"
+    assert pending_action.payload_json == {"product_id": TEST_PRODUCT_ID, "quantity": 2}
     assert pending_action.status == "confirmed"
     assert confirm_response.status_code == 200
     assert confirm_body["status"] == "completed"
     assert confirm_body["tool_calls"] == ["confirm_add_to_cart"]
     assert confirm_body["pending_action_id"] == pending_action_id
     assert _cart_item_count(cart_session, TEST_USER_ID) == 1
+    assert _cart_item_quantity(cart_session, TEST_USER_ID) == 2

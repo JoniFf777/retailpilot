@@ -155,7 +155,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 
 默认 `deterministic` 与 `llm-fallback` 模式不调用真实 LLM。只有显式使用 `--router llm` 时才会通过 `WORKSHOP_MODEL` 或 `--model` 调用结构化模型。
 
-V3.3 已开始将写入准备逻辑从 V1 single-agent 桥接中拆出。当前原生 V3 write handoff handler 支持明确商品 ID 的加购请求；缺少 `user_id` 或商品 ID 不明确时，会返回澄清说明，不直接调用写工具。
+V3.3 已开始将写入准备逻辑从 V1 single-agent 桥接中拆出。当前原生 V3 write handoff handler 支持明确商品 ID 和简单数量的加购请求；缺少 `user_id` 或商品 ID 不明确时，会返回澄清说明，不直接调用写工具。
 
 ## V2.0 第一阶段：本地 PostgreSQL + pgvector
 

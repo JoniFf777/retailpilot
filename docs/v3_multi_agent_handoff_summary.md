@@ -122,6 +122,15 @@ The bridge keeps the user-facing API behavior unchanged:
 - `prepare_add_to_cart` receives the thread ID.
 - `pending_actions.thread_id` persists it.
 
+## Quantity handling
+
+The native V3 write handoff handler defaults quantity to `1`. It can also parse simple explicit quantities before calling `prepare_add_to_cart`, including:
+
+- Arabic-number patterns such as `2 个`, `quantity 3`, `x4`
+- Common Chinese-number patterns such as `两个`
+
+Ambiguous quantities are intentionally ignored for now and fall back to `1`.
+
 The API smoke test asserts the stored pending action row keeps the original thread ID.
 
 ## Test coverage
@@ -139,6 +148,7 @@ Important tests:
   - real V3 guardrail to handoff bridge
 - `tests/agents/test_write_handoff.py`
   - explicit product ID parsing
+  - simple quantity parsing
   - missing `user_id` handling
   - ambiguous write request handling
   - native `prepare_add_to_cart` invocation
@@ -151,7 +161,7 @@ Important tests:
 Latest full local validation:
 
 ```text
-151 passed, 4 skipped
+153 passed, 4 skipped
 router eval deterministic: 6/6
 router eval llm-fallback: 6/6
 ```
