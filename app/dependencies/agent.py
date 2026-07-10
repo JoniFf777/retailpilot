@@ -11,6 +11,48 @@ from app.core.settings import get_settings
 from tools.cart import cancel_pending_action, confirm_add_to_cart
 
 
+WRITE_PATH_HANDOFF_ANSWER_TYPE = "write_path_handoff"
+
+
+def _extract_multi_agent_decision(result: dict[str, Any]) -> dict[str, Any]:
+    raw_result = result.get("raw_result")
+    if isinstance(raw_result, dict) and isinstance(raw_result.get("decision"), dict):
+        return raw_result["decision"]
+
+    debug = result.get("debug")
+    if isinstance(debug, dict) and isinstance(debug.get("decision"), dict):
+        return debug["decision"]
+
+    return {}
+
+
+def _requires_single_agent_write_handoff(result: dict[str, Any]) -> bool:
+    decision = _extract_multi_agent_decision(result)
+    return decision.get("answer_type") == WRITE_PATH_HANDOFF_ANSWER_TYPE
+
+
+def _attach_multi_agent_handoff_debug(
+    single_agent_result: dict[str, Any],
+    multi_agent_result: dict[str, Any],
+) -> dict[str, Any]:
+    result = dict(single_agent_result)
+    multi_debug = multi_agent_result.get("debug")
+    if not isinstance(multi_debug, dict):
+        return result
+
+    decision = _extract_multi_agent_decision(multi_agent_result)
+    result["debug"] = {
+        "multi_agent_handoff": {
+            "from": "multi_agent_read_path",
+            "to": "single_agent_write_path",
+            "reason": decision.get("followup_reason"),
+            "status": single_agent_result.get("status"),
+        },
+        "multi_agent_debug": multi_debug,
+    }
+    return result
+
+
 def call_shopmind_agent(
     message: str,
     user_id: Optional[str] = None,
@@ -23,7 +65,7 @@ def call_shopmind_agent(
     """
     settings = get_settings()
     if settings.shopmind_agent_mode == "multi":
-        return invoke_shopmind_multi_agent(
+        multi_agent_result = invoke_shopmind_multi_agent(
             message=message,
             user_id=user_id,
             thread_id=thread_id,
@@ -32,6 +74,14 @@ def call_shopmind_agent(
                 model=getattr(settings, "workshop_model", None),
             ),
         )
+        if _requires_single_agent_write_handoff(multi_agent_result):
+            single_agent_result = invoke_shopmind_agent(message=message, user_id=user_id)
+            return _attach_multi_agent_handoff_debug(
+                single_agent_result,
+                multi_agent_result,
+            )
+
+        return multi_agent_result
 
     return invoke_shopmind_agent(message=message, user_id=user_id)
 
