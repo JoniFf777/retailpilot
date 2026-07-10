@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, TypedDict
 
 from app.repositories import products as product_repository
 from tools.cart import prepare_add_to_cart
@@ -32,6 +32,19 @@ CHINESE_DIGITS = {
     "九": 9,
     "十": 10,
 }
+CANDIDATE_SELECTION_PATTERN = re.compile(
+    r"^\s*(?:选|选择|就选|就要|要|第)\s*([1-9])\s*(?:个|号|款|项)?\s*$"
+)
+BARE_SELECTION_PATTERN = re.compile(r"^\s*([1-9])\s*$")
+CANDIDATE_SELECTION_KEYWORDS = (
+    "选",
+    "选择",
+    "就选",
+    "就要",
+    "第一个",
+    "第二个",
+    "第三个",
+)
 CATEGORY_KEYWORDS = (
     ("Keyboards", ("键盘", "keyboard", "keyboards")),
     ("Monitors", ("显示器", "monitor", "monitors")),
@@ -52,6 +65,14 @@ QUERY_STOPWORDS = {
     "quantity",
     "qty",
 }
+
+
+class CandidateContext(TypedDict):
+    product_ids: list[str]
+    quantity: int
+
+
+_CANDIDATE_CONTEXTS: dict[tuple[str, str], CandidateContext] = {}
 
 
 @contextmanager
@@ -87,6 +108,94 @@ def extract_quantity(message: str) -> int:
         return CHINESE_DIGITS[match.group(1)]
 
     return 1
+
+
+def _candidate_context_key(
+    user_id: str | None,
+    thread_id: str | None,
+) -> tuple[str, str] | None:
+    if not user_id or not thread_id:
+        return None
+    return (user_id, thread_id)
+
+
+def store_candidate_context(
+    *,
+    user_id: str | None,
+    thread_id: str | None,
+    candidates: list[dict[str, Any]],
+    quantity: int,
+) -> None:
+    """Store a short-lived in-process candidate list for same-thread selection."""
+
+    key = _candidate_context_key(user_id, thread_id)
+    if key is None or not candidates:
+        return
+
+    _CANDIDATE_CONTEXTS[key] = {
+        "product_ids": [str(product["product_id"]) for product in candidates],
+        "quantity": quantity,
+    }
+
+
+def get_candidate_context(
+    user_id: str | None,
+    thread_id: str | None,
+) -> CandidateContext | None:
+    key = _candidate_context_key(user_id, thread_id)
+    return _CANDIDATE_CONTEXTS.get(key) if key else None
+
+
+def clear_candidate_context(user_id: str | None, thread_id: str | None) -> None:
+    key = _candidate_context_key(user_id, thread_id)
+    if key:
+        _CANDIDATE_CONTEXTS.pop(key, None)
+
+
+def extract_candidate_selection(message: str) -> int | None:
+    """Extract a 1-based candidate selection index from a short follow-up."""
+
+    match = CANDIDATE_SELECTION_PATTERN.fullmatch(message)
+    if match:
+        return int(match.group(1))
+
+    match = BARE_SELECTION_PATTERN.fullmatch(message)
+    if match:
+        return int(match.group(1))
+
+    for index, text in enumerate(("第一个", "第二个", "第三个"), 1):
+        if text in message:
+            return index
+    return None
+
+
+def is_candidate_selection_message(message: str) -> bool:
+    """Return True for short messages that likely choose a prior candidate."""
+
+    stripped = message.strip()
+    if extract_candidate_selection(stripped) is not None:
+        return True
+    return any(keyword == stripped for keyword in CANDIDATE_SELECTION_KEYWORDS)
+
+
+def resolve_candidate_selection(
+    message: str,
+    user_id: str | None,
+    thread_id: str | None,
+) -> tuple[str, int] | None:
+    selection = extract_candidate_selection(message)
+    context = get_candidate_context(user_id, thread_id)
+    if selection is None or context is None:
+        return None
+
+    product_ids = context["product_ids"]
+    if selection < 1 or selection > len(product_ids):
+        return None
+
+    quantity = extract_quantity(message)
+    if quantity == 1:
+        quantity = context["quantity"]
+    return product_ids[selection - 1], quantity
 
 
 def infer_product_category(message: str) -> str | None:
@@ -175,16 +284,26 @@ def invoke_write_handoff(
             "tool_calls": [],
         }
 
+    selected_candidate = resolve_candidate_selection(message, user_id, thread_id)
     product_id = extract_product_id(message)
+    quantity = extract_quantity(message)
+    if selected_candidate:
+        product_id, quantity = selected_candidate
+
     if product_id is None:
         candidates = find_product_candidates(message)
+        store_candidate_context(
+            user_id=user_id,
+            thread_id=thread_id,
+            candidates=candidates,
+            quantity=quantity,
+        )
         return {
             "answer": _format_product_id_clarification(candidates),
             "status": "completed",
             "tool_calls": [],
         }
 
-    quantity = extract_quantity(message)
     tool_result = prepare_add_to_cart.invoke(
         {
             "user_id": user_id,
@@ -201,6 +320,7 @@ def invoke_write_handoff(
             "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
         }
 
+    clear_candidate_context(user_id, thread_id)
     return {
         "answer": (
             f"我已为商品 {product_id} 生成待确认加购，数量 {quantity}，"

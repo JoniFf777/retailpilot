@@ -145,6 +145,8 @@ If either is missing, the handler returns a completed clarification response, ca
 
 When the request has no explicit product ID but includes a recognizable product category or conservative English product keyword, the handler performs a read-only catalog lookup and includes up to three in-stock candidate product IDs in the clarification. This keeps the write path explicit: the user still has to reply with a concrete `TECH-...` ID before `prepare_add_to_cart` can run.
 
+If the ambiguous request includes a `thread_id`, the handler stores the candidate product IDs and requested quantity in an in-process, same-thread candidate context. A follow-up such as `选 1` or `第一个` in the same `user_id` + `thread_id` can then resolve to the selected product and create the normal confirmation-required pending action. Without matching candidate context, selection-only messages still return a clarification and do not write.
+
 Local router eval now includes a fixed write-intent guardrail case for a missing-product-ID add-to-cart request. The case expects:
 
 - `routes: []`
@@ -162,6 +164,7 @@ Important tests:
   - read routing
   - LLM router fallback
   - write-intent guardrail
+  - candidate selection messages route to write handoff instead of read agents
 - `tests/api/test_chat.py`
   - multi mode response schema
   - debug metadata
@@ -171,6 +174,7 @@ Important tests:
   - explicit product ID parsing
   - simple quantity parsing
   - ambiguous product-category requests return catalog candidates
+  - same-thread numeric candidate selection creates a pending action
   - missing `user_id` handling
   - ambiguous write request handling
   - native `prepare_add_to_cart` invocation
@@ -180,6 +184,7 @@ Important tests:
   - cart item is written
   - pending action stores original `thread_id`
   - missing product ID and missing `user_id` return clarifications without pending actions
+  - candidate selection by number creates the normal confirmation-required action
 - `tests/evaluation/test_shopmind_evaluators.py`
   - router eval includes a write-intent guardrail sample
   - debug metadata accepts expected empty routes for write handoff cases
@@ -188,7 +193,7 @@ Important tests:
 Latest full local validation:
 
 ```text
-162 passed, 4 skipped
+166 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```

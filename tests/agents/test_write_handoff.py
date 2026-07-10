@@ -4,6 +4,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker
 
 from agents.shopmind_multi_agent.write_handoff import (
+    clear_candidate_context,
     extract_product_id,
     find_product_candidates,
     infer_product_category,
@@ -103,6 +104,79 @@ def test_write_handoff_suggests_candidates_without_creating_action(monkeypatch) 
     assert pending_count == 0
 
     session.close()
+
+
+def test_write_handoff_resolves_same_thread_candidate_selection(monkeypatch) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.add_all(
+        [
+            Product(
+                product_id=TEST_PRODUCT_ID,
+                name="Test Keyboard",
+                category="Keyboards",
+                price=49.00,
+                in_stock=True,
+            ),
+            Product(
+                product_id="TECH-KEY-002",
+                name="Premium Keyboard",
+                category="Keyboards",
+                price=99.00,
+                in_stock=True,
+            ),
+        ]
+    )
+    session.commit()
+
+    @contextmanager
+    def fake_session():
+        yield session
+
+    monkeypatch.setattr(
+        "agents.shopmind_multi_agent.write_handoff._get_product_session",
+        fake_session,
+    )
+    monkeypatch.setattr(cart_tools, "_get_cart_session", fake_session)
+
+    thread_id = "thread-candidate-selection"
+    first_result = invoke_write_handoff(
+        "帮我把这个键盘加入购物车 2 个",
+        user_id=TEST_USER_ID,
+        thread_id=thread_id,
+    )
+    second_result = invoke_write_handoff(
+        "选 1",
+        user_id=TEST_USER_ID,
+        thread_id=thread_id,
+    )
+    pending_action = session.get(PendingAction, second_result["pending_action_id"])
+
+    assert first_result["status"] == "completed"
+    assert first_result["tool_calls"] == []
+    assert TEST_PRODUCT_ID in first_result["answer"]
+    assert second_result["status"] == "confirmation_required"
+    assert second_result["tool_calls"] == ["prepare_add_to_cart"]
+    assert pending_action is not None
+    assert pending_action.thread_id == thread_id
+    assert pending_action.payload_json == {"product_id": TEST_PRODUCT_ID, "quantity": 2}
+
+    session.close()
+    clear_candidate_context(TEST_USER_ID, thread_id)
+
+
+def test_write_handoff_does_not_resolve_selection_without_context() -> None:
+    result = invoke_write_handoff(
+        "选 1",
+        user_id=TEST_USER_ID,
+        thread_id="thread-without-candidates",
+    )
+
+    assert result["status"] == "completed"
+    assert result["tool_calls"] == []
+    assert "商品 ID" in result["answer"]
 
 
 def test_find_product_candidates_uses_catalog_category(monkeypatch) -> None:
