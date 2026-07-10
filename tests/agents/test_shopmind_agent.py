@@ -148,17 +148,23 @@ def test_product_spec_question_tends_to_call_detail_or_docs_tool(monkeypatch) ->
     )
 
 
-def test_invoke_shopmind_agent_passes_user_id_in_context(monkeypatch) -> None:
+def test_invoke_shopmind_agent_passes_user_and_thread_context(monkeypatch) -> None:
     fake_agent = CapturingFakeAgent(
         raw_result={"messages": [AIMessage(content="我会结合你的偏好进行推荐。")]}
     )
     monkeypatch.setattr(shopmind_agent_module, "create_shopmind_agent", lambda: fake_agent)
 
-    result = invoke_shopmind_agent("推荐一个键盘", user_id="USER-001")
+    result = invoke_shopmind_agent(
+        "推荐一个键盘",
+        user_id="USER-001",
+        thread_id="THREAD-001",
+    )
 
     user_message = fake_agent.invocation_input["messages"][0]["content"]
     assert "当前用户 ID 是 USER-001" in user_message
     assert "请先读取该用户偏好" in user_message
+    assert "当前 thread_id 是 THREAD-001" in user_message
+    assert "请把该 thread_id 传给 prepare_add_to_cart" in user_message
     assert "用户问题：推荐一个键盘" in user_message
     assert result["answer"] == "我会结合你的偏好进行推荐。"
 

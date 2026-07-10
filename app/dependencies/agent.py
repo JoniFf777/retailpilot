@@ -75,7 +75,11 @@ def call_shopmind_agent(
             ),
         )
         if _requires_single_agent_write_handoff(multi_agent_result):
-            single_agent_result = invoke_shopmind_agent(message=message, user_id=user_id)
+            single_agent_result = invoke_shopmind_agent(
+                message=message,
+                user_id=user_id,
+                thread_id=thread_id,
+            )
             return _attach_multi_agent_handoff_debug(
                 single_agent_result,
                 multi_agent_result,
@@ -83,7 +87,7 @@ def call_shopmind_agent(
 
         return multi_agent_result
 
-    return invoke_shopmind_agent(message=message, user_id=user_id)
+    return invoke_shopmind_agent(message=message, user_id=user_id, thread_id=thread_id)
 
 
 def confirm_pending_action(

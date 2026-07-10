@@ -138,8 +138,12 @@ async def test_chat_uses_single_agent_by_default(monkeypatch) -> None:
         lambda: SimpleNamespace(shopmind_agent_mode="single"),
     )
 
-    def fake_single_agent(message: str, user_id: str | None = None) -> dict:
-        calls.append(("single", message, user_id))
+    def fake_single_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict:
+        calls.append(("single", message, user_id, thread_id))
         return {
             "answer": "single agent answer",
             "status": "completed",
@@ -169,7 +173,7 @@ async def test_chat_uses_single_agent_by_default(monkeypatch) -> None:
         )
 
     assert response.status_code == 200
-    assert calls == [("single", "推荐一个键盘", "user-001")]
+    assert calls == [("single", "推荐一个键盘", "user-001", "thread-001")]
     assert response.json() == {
         "answer": "single agent answer",
         "status": "completed",
@@ -343,8 +347,12 @@ async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(monkeypat
             },
         }
 
-    def fake_single_agent(message: str, user_id: str | None = None) -> dict:
-        calls.append(("single", message, user_id))
+    def fake_single_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict:
+        calls.append(("single", message, user_id, thread_id))
         return {
             "answer": "我已为你生成待确认加购，请确认是否加入购物车。",
             "status": "confirmation_required",
@@ -371,7 +379,7 @@ async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(monkeypat
     assert response.status_code == 200
     assert calls == [
         ("multi", "帮我把 TECH-KEY-001 加入购物车", "user-001", "thread-001"),
-        ("single", "帮我把 TECH-KEY-001 加入购物车", "user-001"),
+        ("single", "帮我把 TECH-KEY-001 加入购物车", "user-001", "thread-001"),
     ]
     assert body["answer"] == "我已为你生成待确认加购，请确认是否加入购物车。"
     assert body["status"] == "confirmation_required"
