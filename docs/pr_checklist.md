@@ -14,6 +14,22 @@ Use this checklist before opening or merging changes into `main`.
 - [ ] Update README or docs when commands, environment variables, schemas, workflows, or developer setup steps change.
 - [ ] Keep local Python commands on the existing `pythonLearn` conda environment. Do not create a new Python environment and do not use `python`, `pytest`, or `uv run` directly.
 
+## ShopMind V3 Router / Multi-Agent Changes
+
+- [ ] If supervisor routing, multi-agent graph behavior, route eval cases, or router documentation changed, run the deterministic router eval:
+
+  ```bash
+  conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic
+  ```
+
+- [ ] If LLM router fallback behavior or observability changed, run the no-model fallback check:
+
+  ```bash
+  conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router llm-fallback
+  ```
+
+- [ ] Only run `evaluation/run_router_eval.py --router llm` when you intentionally want a real structured model call and have configured provider credentials.
+
 ## PostgreSQL Changes
 
 - [ ] If database schema or repository behavior changed, run the default tests above.
