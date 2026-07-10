@@ -1,10 +1,10 @@
-# V3.4 Multi-Agent Handoff Summary
+# V3.5 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.5 adds candidate-context debug metadata and a manual cleanup script for expired or overflow rows.
 
 Runtime switches:
 
@@ -114,6 +114,33 @@ The bridge keeps the user-facing API behavior unchanged:
 }
 ```
 
+When `include_debug=true`, write handoff results can include stable candidate-context observability metadata under:
+
+```json
+{
+  "debug": {
+    "write_handoff_debug": {
+      "candidate_context": {
+        "events": [
+          {"event": "candidate_context_stored"},
+          {"event": "candidate_context_selected"},
+          {"event": "candidate_context_cleared"}
+        ]
+      }
+    }
+  }
+}
+```
+
+Current candidate-context event names:
+
+- `candidate_context_stored`
+- `candidate_context_skipped`
+- `candidate_context_missed`
+- `candidate_context_selected`
+- `candidate_context_out_of_range`
+- `candidate_context_cleared`
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -151,6 +178,12 @@ If the user selects a number outside the current candidate range, the handler re
 
 Candidate contexts are bounded in the database: entries expire after 10 minutes, and the repository keeps at most 100 contexts by pruning the oldest entries.
 
+Request-time pruning still runs when candidate contexts are saved. V3.5 also adds an explicit cleanup command for low-traffic environments where expired rows may not be touched often:
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/cleanup_candidate_contexts.py
+```
+
 Local router eval now includes a fixed write-intent guardrail case for a missing-product-ID add-to-cart request. The case expects:
 
 - `routes: []`
@@ -180,7 +213,7 @@ Important tests:
   - ambiguous product-category requests return catalog candidates
   - same-thread numeric candidate selection creates a pending action
   - out-of-range candidate selections clarify without writing
-  - candidate contexts expire and prune oldest entries at the cache limit
+  - candidate-context debug events for store, miss, selection, and clear
   - missing `user_id` handling
   - ambiguous write request handling
   - native `prepare_add_to_cart` invocation
@@ -196,7 +229,10 @@ Important tests:
   - pending action stores original `thread_id`
   - missing product ID and missing `user_id` return clarifications without pending actions
   - candidate selection by number creates the normal confirmation-required action
+  - write handoff debug metadata is exposed through API debug output
   - out-of-range candidate selection returns a clarification without pending actions
+- `tests/scripts/test_cleanup_candidate_contexts.py`
+  - explicit cleanup deletes expired rows and oldest overflow rows
 - `tests/evaluation/test_shopmind_evaluators.py`
   - router eval includes a write-intent guardrail sample
   - debug metadata accepts expected empty routes for write handoff cases
@@ -205,21 +241,21 @@ Important tests:
 Latest full local validation:
 
 ```text
-173 passed, 4 skipped
+175 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.4 has moved candidate selection context from process memory into the database and keeps the native V3 write handoff path confirmation-based.
+V3.5 keeps the native V3 write handoff path confirmation-based, database-backed, and observable through stable debug metadata.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
-- Add observability counters for clarification, candidate selection, out-of-range selection, pending action creation, and confirmation completion.
-- Consider a background cleanup job for expired `candidate_contexts` rows if traffic is low enough that request-time pruning is insufficient.
+- Consider adding aggregate LangSmith/eval reporting for candidate-context event rates.
+- Consider adding confirmation-completion observability to `/api/chat/confirm`.
 - Keep `/api/chat/confirm` unchanged.
 
 This would make V3 own both read orchestration and confirmation preparation while preserving the same public API contract.

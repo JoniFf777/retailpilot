@@ -21,14 +21,19 @@ from app.repositories import documents as document_repository
 from app.repositories import products as product_repository
 
 
-EXPECTED_ALEMBIC_VERSION = "0002_documents_pgvector"
+EXPECTED_ALEMBIC_VERSION = "0003_candidate_contexts"
 STRUCTURED_TABLES = {
     "customers": Customer,
     "products": Product,
     "orders": Order,
     "order_items": OrderItem,
 }
-RUNTIME_TABLES = {"user_preferences", "cart_items", "pending_actions"}
+RUNTIME_TABLES = {
+    "user_preferences",
+    "cart_items",
+    "pending_actions",
+    "candidate_contexts",
+}
 DOCUMENT_TABLE = "documents"
 REQUIRED_TABLES = set(STRUCTURED_TABLES) | RUNTIME_TABLES | {DOCUMENT_TABLE}
 

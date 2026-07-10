@@ -10,6 +10,11 @@ from app.repositories import candidate_contexts as candidate_context_repository
 from app.repositories import products as product_repository
 from tools.cart import prepare_add_to_cart
 
+from .observability import (
+    append_candidate_context_event,
+    build_candidate_context_debug,
+)
+
 
 WRITE_HANDOFF_TOOL_CALL = "prepare_add_to_cart"
 DEFAULT_CANDIDATE_CONTEXT_TTL_SECONDS = 600
@@ -128,15 +133,25 @@ def store_candidate_context(
     thread_id: str | None,
     candidates: list[dict[str, Any]],
     quantity: int,
-) -> None:
-    """Store a short-lived in-process candidate list for same-thread selection."""
+) -> dict[str, Any]:
+    """Store a short-lived database-backed candidate list for same-thread selection."""
 
-    if _candidate_context_key(user_id, thread_id) is None or not candidates:
-        return
+    if _candidate_context_key(user_id, thread_id) is None:
+        return {
+            "event": "candidate_context_skipped",
+            "reason": "missing_scope",
+            "candidate_count": len(candidates),
+        }
+    if not candidates:
+        return {
+            "event": "candidate_context_skipped",
+            "reason": "no_candidates",
+            "candidate_count": 0,
+        }
 
     with _get_product_session() as session:
         try:
-            candidate_context_repository.save_candidate_context(
+            context = candidate_context_repository.save_candidate_context(
                 session,
                 user_id=user_id,
                 thread_id=thread_id,
@@ -146,6 +161,19 @@ def store_candidate_context(
                 max_contexts=MAX_CANDIDATE_CONTEXTS,
             )
             session.commit()
+            if context is None:
+                return {
+                    "event": "candidate_context_skipped",
+                    "reason": "invalid_context",
+                    "candidate_count": len(candidates),
+                }
+            return {
+                "event": "candidate_context_stored",
+                "candidate_count": len(context["product_ids"]),
+                "quantity": context["quantity"],
+                "ttl_seconds": DEFAULT_CANDIDATE_CONTEXT_TTL_SECONDS,
+                "max_contexts": MAX_CANDIDATE_CONTEXTS,
+            }
         except Exception:
             session.rollback()
             raise
@@ -172,18 +200,19 @@ def get_candidate_context(
             raise
 
 
-def clear_candidate_context(user_id: str | None, thread_id: str | None) -> None:
+def clear_candidate_context(user_id: str | None, thread_id: str | None) -> bool:
     if _candidate_context_key(user_id, thread_id) is None:
-        return
+        return False
 
     with _get_product_session() as session:
         try:
-            candidate_context_repository.clear_candidate_context(
+            cleared = candidate_context_repository.clear_candidate_context(
                 session,
                 user_id=user_id,
                 thread_id=thread_id,
             )
             session.commit()
+            return cleared
         except Exception:
             session.rollback()
             raise
@@ -221,9 +250,15 @@ def resolve_candidate_selection(
     thread_id: str | None,
 ) -> CandidateSelectionResult | None:
     selection = extract_candidate_selection(message)
-    context = get_candidate_context(user_id, thread_id)
-    if selection is None or context is None:
+    if selection is None:
         return None
+
+    context = get_candidate_context(user_id, thread_id)
+    if context is None:
+        return {
+            "status": "missing_context",
+            "selection": selection,
+        }
 
     product_ids = context["product_ids"]
     if selection < 1 or selection > len(product_ids):
@@ -332,6 +367,8 @@ def invoke_write_handoff(
 ) -> dict[str, Any]:
     """Prepare a confirmation-required write action for explicit V3 requests."""
 
+    candidate_context_events: list[dict[str, Any]] = []
+
     if not user_id:
         return {
             "answer": "需要先提供 user_id，才能为你创建待确认的加购动作。",
@@ -348,7 +385,19 @@ def invoke_write_handoff(
     )
     resolved_from_candidate = False
     if selected_candidate is not None:
+        if selected_candidate["status"] == "missing_context":
+            candidate_context_events = append_candidate_context_event(
+                candidate_context_events,
+                event="candidate_context_missed",
+                selection=int(selected_candidate["selection"]),
+            )
         if selected_candidate["status"] == "out_of_range":
+            candidate_context_events = append_candidate_context_event(
+                candidate_context_events,
+                event="candidate_context_out_of_range",
+                selection=int(selected_candidate["selection"]),
+                candidate_count=int(selected_candidate["candidate_count"]),
+            )
             return {
                 "answer": _format_candidate_selection_out_of_range(
                     int(selected_candidate["selection"]),
@@ -356,23 +405,35 @@ def invoke_write_handoff(
                 ),
                 "status": "completed",
                 "tool_calls": [],
+                "debug": build_candidate_context_debug(candidate_context_events),
             }
-        product_id = selected_candidate["product_id"]
-        quantity = int(selected_candidate["quantity"])
-        resolved_from_candidate = True
+        if selected_candidate["status"] == "selected":
+            product_id = selected_candidate["product_id"]
+            quantity = int(selected_candidate["quantity"])
+            resolved_from_candidate = True
+            candidate_context_events = append_candidate_context_event(
+                candidate_context_events,
+                event="candidate_context_selected",
+                quantity=quantity,
+            )
 
     if product_id is None:
         candidates = find_product_candidates(message)
-        store_candidate_context(
+        store_event = store_candidate_context(
             user_id=user_id,
             thread_id=thread_id,
             candidates=candidates,
             quantity=quantity,
         )
+        candidate_context_events = append_candidate_context_event(
+            candidate_context_events,
+            **store_event,
+        )
         return {
             "answer": _format_product_id_clarification(candidates),
             "status": "completed",
             "tool_calls": [],
+            "debug": build_candidate_context_debug(candidate_context_events),
         }
 
     tool_result = prepare_add_to_cart.invoke(
@@ -385,15 +446,23 @@ def invoke_write_handoff(
     )
     pending_action_id = extract_pending_action_id(tool_result)
     if not pending_action_id:
-        return {
+        result = {
             "answer": tool_result,
             "status": "failed",
             "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
         }
+        if candidate_context_events:
+            result["debug"] = build_candidate_context_debug(candidate_context_events)
+        return result
 
     if resolved_from_candidate:
-        clear_candidate_context(user_id, thread_id)
-    return {
+        cleared = clear_candidate_context(user_id, thread_id)
+        candidate_context_events = append_candidate_context_event(
+            candidate_context_events,
+            event="candidate_context_cleared",
+            cleared=cleared,
+        )
+    result = {
         "answer": (
             f"我已为商品 {product_id} 生成待确认加购，数量 {quantity}，"
             "请确认是否加入购物车。"
@@ -402,3 +471,6 @@ def invoke_write_handoff(
         "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
         "pending_action_id": pending_action_id,
     }
+    if candidate_context_events:
+        result["debug"] = build_candidate_context_debug(candidate_context_events)
+    return result
