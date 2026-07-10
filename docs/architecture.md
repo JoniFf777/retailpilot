@@ -117,6 +117,40 @@ V2 数据基础设施升级已经收口：
 
 以下 V2.0/V2.1/V2.2 章节保留为阶段演进记录；最终运行状态以上述完成状态为准。下一条主线是 V3 multi-agent，而不是继续扩展 V2。
 
+## V3 当前状态：Read-only Multi-Agent Router
+
+V3 已进入 read-only multi-agent 路径。当前实现仍保持 `/api/chat` 响应合约兼容，并通过配置开关渐进启用：
+
+```text
+SHOPMIND_AGENT_MODE=multi
+SHOPMIND_SUPERVISOR_ROUTER=deterministic | llm
+```
+
+当前 V3 read path 包含：
+
+- `supervisor`：生成结构化路由决策；
+- `product_agent`：只读商品检索与商品摘要；
+- `rag_agent`：只读商品文档 / 政策文档检索与摘要；
+- `preference_agent`：只读用户偏好摘要；
+- `decision_agent`：合并各 read agent 的结构化摘要，生成最终回答；
+- tool allowlist guard：按 agent 隔离工具权限，避免 read path 调用写工具；
+- `agent_steps`：记录 supervisor、route dispatcher、各 read agent 和 decision agent 的执行轨迹。
+
+Supervisor router 支持两种模式：
+
+- `deterministic`：默认关键字路由，不调用模型；
+- `llm`：LangChain structured-output router，失败时回退到 deterministic router，并在 `supervisor_decision` / `agent_steps` 中记录 `router_provider`、`router_model`、`fallback_reason` 和 `fallback_router_type`。
+
+Router 离线评估脚本用于在改路由逻辑前后快速比较固定中文样本的命中率和 fallback 分布：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router llm-fallback
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic --json
+```
+
+默认 `deterministic` 与 `llm-fallback` 模式不调用真实 LLM。只有显式使用 `--router llm` 时才会通过 `WORKSHOP_MODEL` 或 `--model` 调用结构化模型。
+
 ## V2.0 第一阶段：本地 PostgreSQL + pgvector
 
 V2.0 第一阶段加入本地 PostgreSQL + pgvector 容器和统一配置读取。这个阶段曾保持 V1 Tools、Agent 和 API 行为不变；最终 V2 已完成 Tool 数据层迁移。
