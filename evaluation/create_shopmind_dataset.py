@@ -1,12 +1,18 @@
-"""Create or refresh the LangSmith dataset for ShopMind V1 evaluation.
+"""Create or refresh LangSmith datasets for ShopMind evaluation.
 
 Usage:
-    conda run -n pythonLearn python evaluation/create_shopmind_dataset.py
+    conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/create_shopmind_dataset.py
+    conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/create_shopmind_dataset.py --target v3-router
 """
 
 from __future__ import annotations
 
+import argparse
+from typing import Sequence
+
 from langsmith import Client
+
+from evaluation.shopmind_router_eval import ROUTER_EVAL_CASES
 
 
 DATASET_NAME = "shopmind-v1-eval"
@@ -15,6 +21,12 @@ DATASET_DESCRIPTION = (
     "sensitive operation safety, and response quality."
 )
 SEED_METADATA = {"source": "shopmind-v1-seed"}
+V3_ROUTER_DATASET_NAME = "shopmind-v3-router-eval"
+V3_ROUTER_DATASET_DESCRIPTION = (
+    "ShopMind V3 read-only multi-agent router dataset covering supervisor "
+    "routes and debug metadata."
+)
+V3_ROUTER_SEED_METADATA = {"source": "shopmind-v3-router-seed"}
 
 
 SHOPMIND_EXAMPLES = [
@@ -182,27 +194,48 @@ SHOPMIND_EXAMPLES = [
 ]
 
 
-def create_or_refresh_dataset(client: Client | None = None):
-    """Create the ShopMind dataset and refresh seeded examples."""
-    client = client or Client()
+SHOPMIND_V3_ROUTER_EXAMPLES = [
+    {
+        "inputs": {
+            **({"user_id": case.get("user_id")} if case.get("user_id") else {}),
+            "message": case["message"],
+            "include_debug": True,
+        },
+        "outputs": {
+            "expected_routes": case["expected_routes"],
+            "expected_status": "completed",
+        },
+        "metadata": {"case": case["name"], "target": "v3-router"},
+    }
+    for case in ROUTER_EVAL_CASES
+]
 
-    if client.has_dataset(dataset_name=DATASET_NAME):
-        dataset = client.read_dataset(dataset_name=DATASET_NAME)
+
+def _create_or_refresh_seeded_dataset(
+    *,
+    client: Client,
+    dataset_name: str,
+    dataset_description: str,
+    seed_metadata: dict,
+    examples_to_seed: list[dict],
+):
+    if client.has_dataset(dataset_name=dataset_name):
+        dataset = client.read_dataset(dataset_name=dataset_name)
     else:
         dataset = client.create_dataset(
-            DATASET_NAME,
-            description=DATASET_DESCRIPTION,
+            dataset_name,
+            description=dataset_description,
         )
 
     existing_seed_examples = list(
-        client.list_examples(dataset_id=dataset.id, metadata=SEED_METADATA)
+        client.list_examples(dataset_id=dataset.id, metadata=seed_metadata)
     )
     if existing_seed_examples:
         client.delete_examples([example.id for example in existing_seed_examples])
 
     examples = []
-    for index, example in enumerate(SHOPMIND_EXAMPLES, 1):
-        metadata = {**SEED_METADATA, **example.get("metadata", {}), "index": index}
+    for index, example in enumerate(examples_to_seed, 1):
+        metadata = {**seed_metadata, **example.get("metadata", {}), "index": index}
         examples.append(
             {
                 "inputs": example["inputs"],
@@ -215,12 +248,52 @@ def create_or_refresh_dataset(client: Client | None = None):
     return dataset
 
 
-def main() -> None:
-    dataset = create_or_refresh_dataset()
-    print(f"Dataset ready: {dataset.name}")
-    print(f"Examples seeded: {len(SHOPMIND_EXAMPLES)}")
+def create_or_refresh_dataset(client: Client | None = None):
+    """Create the ShopMind dataset and refresh seeded examples."""
+    client = client or Client()
+    return _create_or_refresh_seeded_dataset(
+        client=client,
+        dataset_name=DATASET_NAME,
+        dataset_description=DATASET_DESCRIPTION,
+        seed_metadata=SEED_METADATA,
+        examples_to_seed=SHOPMIND_EXAMPLES,
+    )
+
+
+def create_or_refresh_v3_router_dataset(client: Client | None = None):
+    """Create the ShopMind V3 router dataset and refresh seeded examples."""
+    client = client or Client()
+    return _create_or_refresh_seeded_dataset(
+        client=client,
+        dataset_name=V3_ROUTER_DATASET_NAME,
+        dataset_description=V3_ROUTER_DATASET_DESCRIPTION,
+        seed_metadata=V3_ROUTER_SEED_METADATA,
+        examples_to_seed=SHOPMIND_V3_ROUTER_EXAMPLES,
+    )
+
+
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Create ShopMind eval datasets.")
+    parser.add_argument(
+        "--target",
+        choices=["v1", "v3-router", "all"],
+        default="v1",
+        help="Dataset target to create or refresh.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    args = parse_args(argv)
+    if args.target in {"v1", "all"}:
+        dataset = create_or_refresh_dataset()
+        print(f"Dataset ready: {dataset.name}")
+        print(f"Examples seeded: {len(SHOPMIND_EXAMPLES)}")
+    if args.target in {"v3-router", "all"}:
+        dataset = create_or_refresh_v3_router_dataset()
+        print(f"Dataset ready: {dataset.name}")
+        print(f"Examples seeded: {len(SHOPMIND_V3_ROUTER_EXAMPLES)}")
 
 
 if __name__ == "__main__":
     main()
-

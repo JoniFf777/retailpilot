@@ -197,6 +197,25 @@ set INCLUDE_CORRECTNESS_EVALUATOR=true
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
 ```
 
+V3 read-only multi-agent router 也可以接入 LangSmith evaluation。先创建或刷新 V3 router dataset：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/create_shopmind_dataset.py --target v3-router
+```
+
+再运行 V3 router evaluation。默认使用 deterministic router，不会调用真实模型：
+
+```bash
+set SHOPMIND_EVAL_TARGET=v3-router
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
+```
+
+该模式使用：
+
+- `status_evaluator`
+- `expected_routes_evaluator`
+- `debug_metadata_evaluator`
+
 ### ShopMind V3 Router Offline Eval
 
 V3 multi-agent supervisor router 已提供本地离线评估脚本，用固定中文样本检查路由命中率、fallback rate 和失败明细。默认模式不会调用真实模型：

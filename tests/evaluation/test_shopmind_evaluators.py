@@ -6,6 +6,16 @@ from evaluation.shopmind_evaluators import (
     forbidden_tools_evaluator,
     status_evaluator,
 )
+from evaluation.create_shopmind_dataset import (
+    SHOPMIND_V3_ROUTER_EXAMPLES,
+    V3_ROUTER_DATASET_NAME,
+)
+from evaluation.run_langsmith_eval import (
+    V1_EVAL_TARGET,
+    V3_ROUTER_EVAL_TARGET,
+    build_evaluators as build_langsmith_evaluators,
+    resolve_eval_config,
+)
 from evaluation.shopmind_router_eval import (
     ROUTER_EVAL_CASES,
     evaluate_supervisor_router,
@@ -167,6 +177,37 @@ def test_run_router_eval_llm_fallback_mode_uses_unconfigured_router() -> None:
 
     assert summary["exact_match_rate"] == 1.0
     assert summary["fallback_count"] == len(ROUTER_EVAL_CASES)
+
+
+def test_v3_router_dataset_examples_include_expected_routes() -> None:
+    assert len(SHOPMIND_V3_ROUTER_EXAMPLES) == len(ROUTER_EVAL_CASES)
+    assert all(
+        example["inputs"]["include_debug"] is True
+        and example["outputs"]["expected_status"] == "completed"
+        and example["outputs"]["expected_routes"]
+        for example in SHOPMIND_V3_ROUTER_EXAMPLES
+    )
+
+
+def test_run_langsmith_eval_keeps_v1_evaluators_by_default() -> None:
+    evaluators = build_langsmith_evaluators(target=V1_EVAL_TARGET)
+
+    assert expected_tools_evaluator in evaluators
+    assert expected_routes_evaluator not in evaluators
+    assert debug_metadata_evaluator not in evaluators
+
+
+def test_run_langsmith_eval_builds_v3_router_evaluators() -> None:
+    evaluators = build_langsmith_evaluators(target=V3_ROUTER_EVAL_TARGET)
+    config = resolve_eval_config(V3_ROUTER_EVAL_TARGET)
+
+    assert evaluators == [
+        status_evaluator,
+        expected_routes_evaluator,
+        debug_metadata_evaluator,
+    ]
+    assert config["dataset"] == V3_ROUTER_DATASET_NAME
+    assert config["experiment_prefix"] == "shopmind-v3-router"
 
 
 def test_expected_tools_evaluator_passes_when_all_expected_tools_called() -> None:
