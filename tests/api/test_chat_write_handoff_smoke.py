@@ -53,6 +53,10 @@ def _cart_item_count(session, user_id: str) -> int:
     )
 
 
+def _pending_action_count(session) -> int:
+    return session.scalar(select(func.count()).select_from(PendingAction))
+
+
 def _cart_item_quantity(session, user_id: str) -> int:
     return session.scalar(select(CartItem.quantity).where(CartItem.user_id == user_id))
 
@@ -127,3 +131,98 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
     assert confirm_body["pending_action_id"] == pending_action_id
     assert _cart_item_count(cart_session, TEST_USER_ID) == 1
     assert _cart_item_quantity(cart_session, TEST_USER_ID) == 2
+
+
+@pytest.mark.anyio
+async def test_multi_agent_write_handoff_clarifies_missing_product_id(
+    monkeypatch,
+    cart_session,
+) -> None:
+    monkeypatch.setattr(
+        agent_dependency,
+        "get_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "shopmind_agent_mode": "multi",
+                "shopmind_supervisor_router": "deterministic",
+            },
+        )(),
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        chat_response = await client.post(
+            "/api/chat",
+            json={
+                "message": "帮我把这个键盘加入购物车",
+                "user_id": TEST_USER_ID,
+                "thread_id": "thread-write-missing-product",
+                "include_debug": True,
+            },
+        )
+
+    chat_body = chat_response.json()
+
+    assert chat_response.status_code == 200
+    assert chat_body["status"] == "completed"
+    assert chat_body["tool_calls"] == []
+    assert chat_body["pending_action_id"] is None
+    assert "商品 ID" in chat_body["answer"]
+    assert chat_body["debug"]["multi_agent_handoff"]["status"] == "completed"
+    assert chat_body["debug"]["multi_agent_handoff"]["to"] == "v3_write_handoff_path"
+    assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["intent"] == (
+        "write_path_unsupported"
+    )
+    assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
+    assert "write_intent_blocked" in chat_body["debug"]["multi_agent_debug"][
+        "safety_flags"
+    ]
+    assert _pending_action_count(cart_session) == 0
+    assert _cart_item_count(cart_session, TEST_USER_ID) == 0
+
+
+@pytest.mark.anyio
+async def test_multi_agent_write_handoff_clarifies_missing_user_id(
+    monkeypatch,
+    cart_session,
+) -> None:
+    monkeypatch.setattr(
+        agent_dependency,
+        "get_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "shopmind_agent_mode": "multi",
+                "shopmind_supervisor_router": "deterministic",
+            },
+        )(),
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        chat_response = await client.post(
+            "/api/chat",
+            json={
+                "message": f"帮我把 {TEST_PRODUCT_ID} 加入购物车",
+                "thread_id": "thread-write-missing-user",
+                "include_debug": True,
+            },
+        )
+
+    chat_body = chat_response.json()
+
+    assert chat_response.status_code == 200
+    assert chat_body["status"] == "completed"
+    assert chat_body["tool_calls"] == []
+    assert chat_body["pending_action_id"] is None
+    assert "user_id" in chat_body["answer"]
+    assert chat_body["debug"]["multi_agent_handoff"]["status"] == "completed"
+    assert chat_body["debug"]["multi_agent_handoff"]["to"] == "v3_write_handoff_path"
+    assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["intent"] == (
+        "write_path_unsupported"
+    )
+    assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
+    assert _pending_action_count(cart_session) == 0

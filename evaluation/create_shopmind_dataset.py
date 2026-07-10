@@ -204,6 +204,40 @@ SHOPMIND_V3_ROUTER_EXAMPLES = [
         "outputs": {
             "expected_routes": case["expected_routes"],
             "expected_status": "completed",
+            **(
+                {"expected_intent": case["expected_intent"]}
+                if case.get("expected_intent")
+                else {}
+            ),
+            **(
+                {"expected_answer_type": case["expected_answer_type"]}
+                if case.get("expected_answer_type")
+                else {}
+            ),
+            **(
+                {"expected_safety_flags": case["expected_safety_flags"]}
+                if case.get("expected_safety_flags")
+                else {}
+            ),
+            **(
+                {"forbidden_tools": case["forbidden_tools"]}
+                if case.get("forbidden_tools")
+                else {}
+            ),
+            **(
+                {"expected_keywords": case["expected_keywords"]}
+                if case.get("expected_keywords")
+                else {}
+            ),
+            **(
+                {
+                    "expected_pending_action_present": case[
+                        "expected_pending_action_present"
+                    ]
+                }
+                if "expected_pending_action_present" in case
+                else {}
+            ),
         },
         "metadata": {"case": case["name"], "target": "v3-router"},
     }

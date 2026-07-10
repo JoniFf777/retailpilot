@@ -1,4 +1,4 @@
-# V3.2 Multi-Agent Handoff Summary
+# V3.3 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
@@ -64,7 +64,8 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 Expected current result for deterministic and llm-fallback fixed samples:
 
 ```text
-exact matches: 6/6
+deterministic exact matches: 7/7
+llm-fallback exact matches: 7/7
 failures: none
 ```
 
@@ -133,6 +134,24 @@ Ambiguous quantities are intentionally ignored for now and fall back to `1`.
 
 The API smoke test asserts the stored pending action row keeps the original thread ID.
 
+## Clarification handling
+
+The native V3 write handoff handler only prepares a confirmation action when the request has both:
+
+- a `user_id`
+- an explicit product ID such as `TECH-KEY-001`
+
+If either is missing, the handler returns a completed clarification response, calls no write tools, and does not create a pending action.
+
+Local router eval now includes a fixed write-intent guardrail case for a missing-product-ID add-to-cart request. The case expects:
+
+- `routes: []`
+- `intent: write_path_unsupported`
+- `answer_type: write_path_handoff`
+- `write_intent_blocked`
+- no `pending_action_id`
+- no `prepare_add_to_cart` or `confirm_add_to_cart` tool call
+
 ## Test coverage
 
 Important tests:
@@ -157,18 +176,23 @@ Important tests:
   - `/api/chat/confirm` confirms it
   - cart item is written
   - pending action stores original `thread_id`
+  - missing product ID and missing `user_id` return clarifications without pending actions
+- `tests/evaluation/test_shopmind_evaluators.py`
+  - router eval includes a write-intent guardrail sample
+  - debug metadata accepts expected empty routes for write handoff cases
+  - pending action presence can be asserted in deterministic eval
 
 Latest full local validation:
 
 ```text
-153 passed, 4 skipped
-router eval deterministic: 6/6
-router eval llm-fallback: 6/6
+159 passed, 4 skipped
+router eval deterministic: 7/7
+router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.3 has started removing the temporary dependency on the V1 single-agent write path by introducing a native V3 write handoff handler.
+V3.3 has removed the temporary dependency on the V1 single-agent write path for add-to-cart preparation by introducing and testing a native V3 write handoff handler.
 
 Suggested shape:
 

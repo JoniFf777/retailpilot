@@ -29,6 +29,7 @@ from evaluation.shopmind_evaluators import (
     expected_routes_evaluator,
     expected_tools_evaluator,
     forbidden_tools_evaluator,
+    pending_action_evaluator,
     status_evaluator,
 )
 
@@ -66,6 +67,9 @@ def build_evaluators(
             status_evaluator,
             expected_routes_evaluator,
             debug_metadata_evaluator,
+            forbidden_tools_evaluator,
+            expected_keywords_evaluator,
+            pending_action_evaluator,
         ]
 
     evaluators = [

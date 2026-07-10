@@ -4,6 +4,7 @@ from evaluation.shopmind_evaluators import (
     expected_routes_evaluator,
     expected_tools_evaluator,
     forbidden_tools_evaluator,
+    pending_action_evaluator,
     status_evaluator,
 )
 from evaluation.create_shopmind_dataset import (
@@ -121,6 +122,73 @@ def test_debug_metadata_evaluator_reports_route_mismatch() -> None:
     assert "rag_agent" in result["comment"]
 
 
+def test_debug_metadata_evaluator_accepts_write_guardrail_empty_routes() -> None:
+    result = debug_metadata_evaluator(
+        inputs={},
+        outputs={
+            "debug": {
+                "supervisor_decision": {
+                    "intent": "write_path_unsupported",
+                    "routes": [],
+                    "router_type": "deterministic",
+                    "safety_flags": ["write_intent_blocked"],
+                },
+                "decision": {"answer_type": "write_path_handoff"},
+                "safety_flags": ["write_intent_blocked"],
+                "agent_steps": [
+                    {
+                        "index": 1,
+                        "node": "supervisor",
+                        "event": "routed",
+                    }
+                ],
+            }
+        },
+        reference_outputs={
+            "expected_routes": [],
+            "expected_intent": "write_path_unsupported",
+            "expected_answer_type": "write_path_handoff",
+            "expected_safety_flags": ["write_intent_blocked"],
+        },
+    )
+
+    assert result["score"] is True
+
+
+def test_debug_metadata_evaluator_reports_write_guardrail_mismatch() -> None:
+    result = debug_metadata_evaluator(
+        inputs={},
+        outputs={
+            "debug": {
+                "supervisor_decision": {
+                    "intent": "read_path",
+                    "routes": ["product_agent"],
+                    "router_type": "deterministic",
+                },
+                "decision": {"answer_type": "product_read_summary"},
+                "agent_steps": [
+                    {
+                        "index": 1,
+                        "node": "supervisor",
+                        "event": "routed",
+                    }
+                ],
+            }
+        },
+        reference_outputs={
+            "expected_routes": [],
+            "expected_intent": "write_path_unsupported",
+            "expected_answer_type": "write_path_handoff",
+            "expected_safety_flags": ["write_intent_blocked"],
+        },
+    )
+
+    assert result["score"] is False
+    assert "Intent mismatch" in result["comment"]
+    assert "Answer type mismatch" in result["comment"]
+    assert "Missing safety flags" in result["comment"]
+
+
 def test_router_eval_cases_cover_core_read_routes() -> None:
     expected_case_names = {
         "product_recommendation",
@@ -129,6 +197,7 @@ def test_router_eval_cases_cover_core_read_routes() -> None:
         "preference_without_user",
         "mixed_product_policy_preference",
         "fallback_general_browse",
+        "write_missing_product_id_guardrail",
     }
 
     assert {case["name"] for case in ROUTER_EVAL_CASES} == expected_case_names
@@ -173,7 +242,7 @@ def test_run_router_eval_cli_prints_deterministic_summary(capsys) -> None:
     assert exit_code == 0
     assert "ShopMind router eval" in output
     assert "router: deterministic" in output
-    assert "exact matches: 6/6 (100.0%)" in output
+    assert "exact matches: 7/7 (100.0%)" in output
     assert "failures: none" in output
 
 
@@ -182,7 +251,7 @@ def test_run_router_eval_cli_prints_json_summary(capsys) -> None:
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert '"total": 6' in output
+    assert '"total": 7' in output
     assert '"exact_match_rate": 1.0' in output
 
 
@@ -192,7 +261,7 @@ def test_run_router_eval_llm_fallback_mode_uses_unconfigured_router() -> None:
     summary = evaluate_supervisor_router(router=router)
 
     assert summary["exact_match_rate"] == 1.0
-    assert summary["fallback_count"] == len(ROUTER_EVAL_CASES)
+    assert summary["fallback_count"] == len(ROUTER_EVAL_CASES) - 1
 
 
 def test_run_router_eval_target_mode_scores_fake_target(capsys, monkeypatch) -> None:
@@ -229,7 +298,7 @@ def test_run_router_eval_target_mode_scores_fake_target(capsys, monkeypatch) -> 
     output = capsys.readouterr().out
     assert exit_code == 0
     assert "ShopMind V3 router target eval" in output
-    assert "checks: 3/3 (100.0%)" in output
+    assert "checks: 6/6 (100.0%)" in output
     assert "failures: none" in output
 
 
@@ -263,8 +332,8 @@ def test_evaluate_v3_router_target_reports_evaluator_failure() -> None:
         ),
     )
 
-    assert summary["passed_checks"] == 1
-    assert summary["total_checks"] == 3
+    assert summary["passed_checks"] == 4
+    assert summary["total_checks"] == 6
     assert summary["failures"][0]["case"] == "needs_rag"
     assert summary["failures"][0]["evaluator"] == "expected_routes"
     assert summary["failures"][1]["evaluator"] == "debug_metadata"
@@ -275,9 +344,17 @@ def test_v3_router_dataset_examples_include_expected_routes() -> None:
     assert all(
         example["inputs"]["include_debug"] is True
         and example["outputs"]["expected_status"] == "completed"
-        and example["outputs"]["expected_routes"]
+        and "expected_routes" in example["outputs"]
         for example in SHOPMIND_V3_ROUTER_EXAMPLES
     )
+    write_case = next(
+        example
+        for example in SHOPMIND_V3_ROUTER_EXAMPLES
+        if example["metadata"]["case"] == "write_missing_product_id_guardrail"
+    )
+    assert write_case["outputs"]["expected_routes"] == []
+    assert write_case["outputs"]["expected_intent"] == "write_path_unsupported"
+    assert write_case["outputs"]["expected_pending_action_present"] is False
 
 
 def test_run_langsmith_eval_keeps_v1_evaluators_by_default() -> None:
@@ -296,6 +373,9 @@ def test_run_langsmith_eval_builds_v3_router_evaluators() -> None:
         status_evaluator,
         expected_routes_evaluator,
         debug_metadata_evaluator,
+        forbidden_tools_evaluator,
+        expected_keywords_evaluator,
+        pending_action_evaluator,
     ]
     assert config["dataset"] == V3_ROUTER_DATASET_NAME
     assert config["experiment_prefix"] == "shopmind-v3-router"
@@ -341,6 +421,27 @@ def test_forbidden_tools_evaluator_fails_when_forbidden_tool_called() -> None:
 
     assert result["score"] is False
     assert "confirm_add_to_cart" in result["comment"]
+
+
+def test_pending_action_evaluator_passes_when_absent_as_expected() -> None:
+    result = pending_action_evaluator(
+        inputs={},
+        outputs={"pending_action_id": None},
+        reference_outputs={"expected_pending_action_present": False},
+    )
+
+    assert result["score"] is True
+
+
+def test_pending_action_evaluator_fails_when_unexpected_pending_action_exists() -> None:
+    result = pending_action_evaluator(
+        inputs={},
+        outputs={"pending_action_id": "pending-001"},
+        reference_outputs={"expected_pending_action_present": False},
+    )
+
+    assert result["score"] is False
+    assert "Expected pending_action_id presence" in result["comment"]
 
 
 def test_status_evaluator_passes_when_status_matches() -> None:

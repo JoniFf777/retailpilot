@@ -20,6 +20,9 @@ from evaluation.run_langsmith_eval import shopmind_v3_router_target
 from evaluation.shopmind_evaluators import (
     debug_metadata_evaluator,
     expected_routes_evaluator,
+    expected_keywords_evaluator,
+    forbidden_tools_evaluator,
+    pending_action_evaluator,
     status_evaluator,
 )
 from agents.shopmind_multi_agent.supervisor_router import (
@@ -37,6 +40,9 @@ TARGET_EVALUATORS = (
     status_evaluator,
     expected_routes_evaluator,
     debug_metadata_evaluator,
+    forbidden_tools_evaluator,
+    expected_keywords_evaluator,
+    pending_action_evaluator,
 )
 
 
@@ -86,6 +92,24 @@ def format_summary(router_mode: str, summary: RouterEvalSummary) -> str:
     return "\n".join(lines)
 
 
+def _reference_outputs_for_case(case: RouterEvalCase) -> dict[str, Any]:
+    reference_outputs: dict[str, Any] = {
+        "expected_routes": case["expected_routes"],
+        "expected_status": "completed",
+    }
+    for key in (
+        "expected_intent",
+        "expected_answer_type",
+        "expected_safety_flags",
+        "forbidden_tools",
+        "expected_keywords",
+        "expected_pending_action_present",
+    ):
+        if key in case:
+            reference_outputs[key] = case[key]
+    return reference_outputs
+
+
 def evaluate_v3_router_target(
     target_fn: TargetFn | None = None,
     cases: tuple[RouterEvalCase, ...] | None = None,
@@ -103,10 +127,7 @@ def evaluate_v3_router_target(
             "message": case["message"],
             "include_debug": True,
         }
-        reference_outputs = {
-            "expected_routes": case["expected_routes"],
-            "expected_status": "completed",
-        }
+        reference_outputs = _reference_outputs_for_case(case)
         outputs = active_target(inputs)
 
         for evaluator in TARGET_EVALUATORS:

@@ -13,6 +13,12 @@ class RouterEvalCase(TypedDict):
     message: str
     expected_routes: list[str]
     user_id: NotRequired[str | None]
+    expected_intent: NotRequired[str]
+    expected_answer_type: NotRequired[str]
+    expected_safety_flags: NotRequired[list[str]]
+    forbidden_tools: NotRequired[list[str]]
+    expected_keywords: NotRequired[list[str]]
+    expected_pending_action_present: NotRequired[bool]
 
 
 class RouterEvalFailure(TypedDict):
@@ -23,6 +29,8 @@ class RouterEvalFailure(TypedDict):
     missing_routes: list[str]
     unexpected_routes: list[str]
     router_type: str | None
+    expected_intent: NotRequired[str]
+    actual_intent: NotRequired[str | None]
     fallback_reason: NotRequired[str]
 
 
@@ -71,6 +79,18 @@ ROUTER_EVAL_CASES: tuple[RouterEvalCase, ...] = (
         "message": "随便看看",
         "user_id": None,
         "expected_routes": ["product_agent"],
+    },
+    {
+        "name": "write_missing_product_id_guardrail",
+        "message": "帮我把这个键盘加入购物车",
+        "user_id": "USER-001",
+        "expected_routes": [],
+        "expected_intent": "write_path_unsupported",
+        "expected_answer_type": "write_path_handoff",
+        "expected_safety_flags": ["write_intent_blocked"],
+        "forbidden_tools": ["prepare_add_to_cart", "confirm_add_to_cart"],
+        "expected_keywords": ["只读"],
+        "expected_pending_action_present": False,
     },
 )
 
@@ -159,8 +179,13 @@ def evaluate_supervisor_router(
         actual_routes = _as_list(decision.get("routes"))
         expected_routes = case["expected_routes"]
         comparison = compare_routes(expected_routes, actual_routes)
+        expected_intent = case.get("expected_intent")
+        actual_intent = decision.get("intent")
+        intent_matches = (
+            expected_intent is None or expected_intent == actual_intent
+        )
 
-        if comparison["score"]:
+        if comparison["score"] and intent_matches:
             exact_matches += 1
         else:
             failure: RouterEvalFailure = {
@@ -172,6 +197,9 @@ def evaluate_supervisor_router(
                 "unexpected_routes": comparison["unexpected_routes"],
                 "router_type": decision.get("router_type"),
             }
+            if expected_intent is not None:
+                failure["expected_intent"] = expected_intent
+                failure["actual_intent"] = actual_intent
             fallback_reason = decision.get("fallback_reason")
             if fallback_reason:
                 failure["fallback_reason"] = str(fallback_reason)
