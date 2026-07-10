@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import time
 from contextlib import contextmanager
 from typing import Any, TypedDict
 
@@ -11,6 +12,8 @@ from tools.cart import prepare_add_to_cart
 
 
 WRITE_HANDOFF_TOOL_CALL = "prepare_add_to_cart"
+DEFAULT_CANDIDATE_CONTEXT_TTL_SECONDS = 600
+MAX_CANDIDATE_CONTEXTS = 100
 PRODUCT_ID_PATTERN = re.compile(r"\bTECH-[A-Z]{3}-\d{3}\b", re.IGNORECASE)
 PENDING_ACTION_PATTERN = re.compile(r"pending_action_id[：:]\s*([0-9a-fA-F-]+)")
 ARABIC_QUANTITY_PATTERNS = (
@@ -70,9 +73,11 @@ QUERY_STOPWORDS = {
 class CandidateContext(TypedDict):
     product_ids: list[str]
     quantity: int
+    created_at: float
 
 
 _CANDIDATE_CONTEXTS: dict[tuple[str, str], CandidateContext] = {}
+_now = time.monotonic
 
 
 @contextmanager
@@ -119,6 +124,42 @@ def _candidate_context_key(
     return (user_id, thread_id)
 
 
+def _is_candidate_context_expired(
+    context: CandidateContext,
+    *,
+    now: float | None = None,
+) -> bool:
+    current_time = _now() if now is None else now
+    return (
+        current_time - context["created_at"]
+        > DEFAULT_CANDIDATE_CONTEXT_TTL_SECONDS
+    )
+
+
+def prune_candidate_contexts(*, now: float | None = None) -> None:
+    """Remove expired entries and keep the in-process candidate cache bounded."""
+
+    current_time = _now() if now is None else now
+    expired_keys = [
+        key
+        for key, context in _CANDIDATE_CONTEXTS.items()
+        if _is_candidate_context_expired(context, now=current_time)
+    ]
+    for key in expired_keys:
+        _CANDIDATE_CONTEXTS.pop(key, None)
+
+    overflow_count = len(_CANDIDATE_CONTEXTS) - MAX_CANDIDATE_CONTEXTS
+    if overflow_count <= 0:
+        return
+
+    oldest_keys = sorted(
+        _CANDIDATE_CONTEXTS,
+        key=lambda key: _CANDIDATE_CONTEXTS[key]["created_at"],
+    )[:overflow_count]
+    for key in oldest_keys:
+        _CANDIDATE_CONTEXTS.pop(key, None)
+
+
 def store_candidate_context(
     *,
     user_id: str | None,
@@ -132,10 +173,13 @@ def store_candidate_context(
     if key is None or not candidates:
         return
 
+    prune_candidate_contexts()
     _CANDIDATE_CONTEXTS[key] = {
         "product_ids": [str(product["product_id"]) for product in candidates],
         "quantity": quantity,
+        "created_at": _now(),
     }
+    prune_candidate_contexts()
 
 
 def get_candidate_context(
@@ -143,7 +187,16 @@ def get_candidate_context(
     thread_id: str | None,
 ) -> CandidateContext | None:
     key = _candidate_context_key(user_id, thread_id)
-    return _CANDIDATE_CONTEXTS.get(key) if key else None
+    if key is None:
+        return None
+
+    context = _CANDIDATE_CONTEXTS.get(key)
+    if context is None:
+        return None
+    if _is_candidate_context_expired(context):
+        _CANDIDATE_CONTEXTS.pop(key, None)
+        return None
+    return context
 
 
 def clear_candidate_context(user_id: str | None, thread_id: str | None) -> None:
