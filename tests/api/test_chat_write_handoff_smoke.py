@@ -111,15 +111,20 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
             },
         }
 
-    def fake_single_agent(message: str, user_id: str | None = None) -> dict:
+    def fake_single_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict:
         assert message == f"帮我把 {TEST_PRODUCT_ID} 加入购物车"
         assert user_id == TEST_USER_ID
+        assert thread_id == "thread-write-smoke"
         tool_result = prepare_add_to_cart.invoke(
             {
                 "user_id": user_id,
                 "product_id": TEST_PRODUCT_ID,
                 "quantity": 1,
-                "thread_id": "thread-write-smoke",
+                "thread_id": thread_id,
             }
         )
         pending_action_id = _extract_pending_action_id(tool_result)
