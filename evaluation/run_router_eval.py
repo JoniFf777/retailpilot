@@ -6,14 +6,22 @@ Usage:
 Optional:
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --router llm-fallback
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --router llm --model openai:gpt-5-nano
+    conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode target
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+from typing import Any, Callable
 from typing import Sequence
 
+from evaluation.run_langsmith_eval import shopmind_v3_router_target
+from evaluation.shopmind_evaluators import (
+    debug_metadata_evaluator,
+    expected_routes_evaluator,
+    status_evaluator,
+)
 from agents.shopmind_multi_agent.supervisor_router import (
     DeterministicSupervisorRouter,
     LLMSupervisorRouter,
@@ -21,6 +29,15 @@ from agents.shopmind_multi_agent.supervisor_router import (
     create_supervisor_router,
 )
 from evaluation.shopmind_router_eval import RouterEvalSummary, evaluate_supervisor_router
+from evaluation.shopmind_router_eval import ROUTER_EVAL_CASES, RouterEvalCase
+
+
+TargetFn = Callable[[dict[str, Any]], dict[str, Any]]
+TARGET_EVALUATORS = (
+    status_evaluator,
+    expected_routes_evaluator,
+    debug_metadata_evaluator,
+)
 
 
 def build_router(router_mode: str, model: str | None = None) -> SupervisorRouter:
@@ -69,9 +86,96 @@ def format_summary(router_mode: str, summary: RouterEvalSummary) -> str:
     return "\n".join(lines)
 
 
+def evaluate_v3_router_target(
+    target_fn: TargetFn | None = None,
+    cases: tuple[RouterEvalCase, ...] | None = None,
+) -> dict[str, Any]:
+    """Run the local V3 router target and its rule-based evaluators."""
+    active_target = target_fn or shopmind_v3_router_target
+    active_cases = cases or ROUTER_EVAL_CASES
+    failures: list[dict[str, Any]] = []
+    evaluator_totals = {evaluator.__name__: 0 for evaluator in TARGET_EVALUATORS}
+    evaluator_passes = {evaluator.__name__: 0 for evaluator in TARGET_EVALUATORS}
+
+    for case in active_cases:
+        inputs = {
+            **({"user_id": case.get("user_id")} if case.get("user_id") else {}),
+            "message": case["message"],
+            "include_debug": True,
+        }
+        reference_outputs = {
+            "expected_routes": case["expected_routes"],
+            "expected_status": "completed",
+        }
+        outputs = active_target(inputs)
+
+        for evaluator in TARGET_EVALUATORS:
+            result = evaluator(inputs, outputs, reference_outputs)
+            evaluator_name = evaluator.__name__
+            evaluator_totals[evaluator_name] += 1
+            if result["score"]:
+                evaluator_passes[evaluator_name] += 1
+            else:
+                failures.append(
+                    {
+                        "case": case["name"],
+                        "evaluator": result["key"],
+                        "comment": result["comment"],
+                    }
+                )
+
+    total_checks = sum(evaluator_totals.values())
+    passed_checks = sum(evaluator_passes.values())
+    return {
+        "total_cases": len(active_cases),
+        "total_checks": total_checks,
+        "passed_checks": passed_checks,
+        "pass_rate": passed_checks / total_checks if total_checks else 0.0,
+        "evaluator_passes": evaluator_passes,
+        "evaluator_totals": evaluator_totals,
+        "failures": failures,
+    }
+
+
+def format_target_summary(summary: dict[str, Any]) -> str:
+    lines = [
+        "ShopMind V3 router target eval",
+        f"cases: {summary['total_cases']}",
+        (
+            "checks: "
+            f"{summary['passed_checks']}/{summary['total_checks']} "
+            f"({_percent(summary['pass_rate'])})"
+        ),
+    ]
+    for evaluator_name, passed in summary["evaluator_passes"].items():
+        total = summary["evaluator_totals"][evaluator_name]
+        lines.append(f"{evaluator_name}: {passed}/{total}")
+
+    if not summary["failures"]:
+        lines.append("failures: none")
+        return "\n".join(lines)
+
+    lines.append("failures:")
+    for failure in summary["failures"]:
+        lines.append(
+            "- "
+            f"{failure['case']} {failure['evaluator']}: {failure['comment']}"
+        )
+    return "\n".join(lines)
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run fixed offline route checks for the ShopMind supervisor."
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["router", "target"],
+        default="router",
+        help=(
+            "router checks supervisor route decisions only; target invokes the "
+            "V3 multi-agent target and runs rule-based evaluators."
+        ),
     )
     parser.add_argument(
         "--router",
@@ -97,6 +201,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.mode == "target":
+        summary = evaluate_v3_router_target()
+        if args.json:
+            print(json.dumps(summary, ensure_ascii=False, indent=2))
+        else:
+            print(format_target_summary(summary))
+        return 0
+
     router = build_router(args.router, model=args.model)
     summary = evaluate_supervisor_router(router=router)
 

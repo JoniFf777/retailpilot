@@ -20,7 +20,7 @@ from evaluation.shopmind_router_eval import (
     ROUTER_EVAL_CASES,
     evaluate_supervisor_router,
 )
-from evaluation.run_router_eval import build_router, main
+from evaluation.run_router_eval import evaluate_v3_router_target, build_router, main
 
 
 def test_expected_routes_evaluator_passes_when_routes_match() -> None:
@@ -42,6 +42,22 @@ def test_expected_routes_evaluator_fails_when_route_missing() -> None:
 
     assert result["score"] is False
     assert "rag_agent" in result["comment"]
+
+
+def test_expected_routes_evaluator_reads_routes_from_debug_metadata() -> None:
+    result = expected_routes_evaluator(
+        inputs={},
+        outputs={
+            "debug": {
+                "supervisor_decision": {
+                    "routes": ["product_agent", "rag_agent"],
+                }
+            }
+        },
+        reference_outputs={"expected_routes": ["rag_agent", "product_agent"]},
+    )
+
+    assert result["score"] is True
 
 
 def test_debug_metadata_evaluator_passes_with_supervisor_trace() -> None:
@@ -177,6 +193,81 @@ def test_run_router_eval_llm_fallback_mode_uses_unconfigured_router() -> None:
 
     assert summary["exact_match_rate"] == 1.0
     assert summary["fallback_count"] == len(ROUTER_EVAL_CASES)
+
+
+def test_run_router_eval_target_mode_scores_fake_target(capsys, monkeypatch) -> None:
+    def fake_target(inputs: dict) -> dict:
+        return {
+            "status": "completed",
+            "debug": {
+                "supervisor_decision": {
+                    "routes": ["product_agent"],
+                    "router_type": "deterministic",
+                },
+                "agent_steps": [
+                    {
+                        "index": 1,
+                        "node": "supervisor",
+                        "event": "routed",
+                    }
+                ],
+            },
+        }
+
+    monkeypatch.setattr("evaluation.run_router_eval.ROUTER_EVAL_CASES", (
+        {
+            "name": "fake_product",
+            "message": "推荐键盘",
+            "user_id": "USER-001",
+            "expected_routes": ["product_agent"],
+        },
+    ))
+    monkeypatch.setattr("evaluation.run_router_eval.shopmind_v3_router_target", fake_target)
+
+    exit_code = main(["--mode", "target"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "ShopMind V3 router target eval" in output
+    assert "checks: 3/3 (100.0%)" in output
+    assert "failures: none" in output
+
+
+def test_evaluate_v3_router_target_reports_evaluator_failure() -> None:
+    def fake_target(inputs: dict) -> dict:
+        return {
+            "status": "completed",
+            "debug": {
+                "supervisor_decision": {
+                    "routes": ["product_agent"],
+                    "router_type": "deterministic",
+                },
+                "agent_steps": [
+                    {
+                        "index": 1,
+                        "node": "supervisor",
+                        "event": "routed",
+                    }
+                ],
+            },
+        }
+
+    summary = evaluate_v3_router_target(
+        target_fn=fake_target,
+        cases=(
+            {
+                "name": "needs_rag",
+                "message": "退货政策",
+                "expected_routes": ["rag_agent"],
+            },
+        ),
+    )
+
+    assert summary["passed_checks"] == 1
+    assert summary["total_checks"] == 3
+    assert summary["failures"][0]["case"] == "needs_rag"
+    assert summary["failures"][0]["evaluator"] == "expected_routes"
+    assert summary["failures"][1]["evaluator"] == "debug_metadata"
 
 
 def test_v3_router_dataset_examples_include_expected_routes() -> None:

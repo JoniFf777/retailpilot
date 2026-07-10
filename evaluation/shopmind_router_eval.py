@@ -86,6 +86,17 @@ def _as_list(value: Any) -> list[str]:
 
 
 def _routes_from_outputs(outputs: dict) -> list[str]:
+    debug = outputs.get("debug")
+    if isinstance(debug, dict):
+        supervisor_decision = debug.get("supervisor_decision")
+        if isinstance(supervisor_decision, dict):
+            routes = supervisor_decision.get("routes")
+            if routes is not None:
+                return _as_list(routes)
+        routes = debug.get("routes")
+        if routes is not None:
+            return _as_list(routes)
+
     supervisor_decision = outputs.get("supervisor_decision")
     if isinstance(supervisor_decision, dict):
         routes = supervisor_decision.get("routes")
