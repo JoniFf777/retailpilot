@@ -212,9 +212,9 @@ V3.3 has removed the temporary dependency on the V1 single-agent write path for 
 Suggested shape:
 
 - Keep V3 read agents read-only.
-- Keep expanding deterministic write handoff parsing only where the request is explicit.
-- For ambiguous write requests, keep returning a clarification response instead of calling tools.
-- For clear add-to-cart requests, call `prepare_add_to_cart` directly and return `confirmation_required`.
+- Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
+- Consider moving candidate context from in-process memory to a durable store if V3 handoff needs to survive process restarts or multi-worker deployment.
+- Add observability counters for clarification, candidate selection, out-of-range selection, pending action creation, and confirmation completion.
 - Keep `/api/chat/confirm` unchanged.
 
 This would make V3 own both read orchestration and confirmation preparation while preserving the same public API contract.
