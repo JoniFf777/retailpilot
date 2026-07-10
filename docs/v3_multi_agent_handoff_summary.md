@@ -1,10 +1,10 @@
-# V3.3 Multi-Agent Handoff Summary
+# V3.4 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available.
 
 Runtime switches:
 
@@ -145,11 +145,11 @@ If either is missing, the handler returns a completed clarification response, ca
 
 When the request has no explicit product ID but includes a recognizable product category or conservative English product keyword, the handler performs a read-only catalog lookup and includes up to three in-stock candidate product IDs in the clarification. This keeps the write path explicit: the user still has to reply with a concrete `TECH-...` ID before `prepare_add_to_cart` can run.
 
-If the ambiguous request includes a `thread_id`, the handler stores the candidate product IDs and requested quantity in an in-process, same-thread candidate context. A follow-up such as `选 1` or `第一个` in the same `user_id` + `thread_id` can then resolve to the selected product and create the normal confirmation-required pending action. Without matching candidate context, selection-only messages still return a clarification and do not write.
+If the ambiguous request includes a `thread_id`, the handler stores the candidate product IDs and requested quantity in a database-backed, same-thread candidate context. A follow-up such as `选 1` or `第一个` in the same `user_id` + `thread_id` can then resolve to the selected product and create the normal confirmation-required pending action. Without matching candidate context, selection-only messages still return a clarification and do not write.
 
 If the user selects a number outside the current candidate range, the handler returns a completed clarification such as `当前候选只有 1-2`, calls no write tools, creates no pending action, and keeps the candidate context so the user can retry.
 
-Candidate contexts are bounded in memory: entries expire after 10 minutes, and the in-process cache keeps at most 100 contexts by pruning the oldest entries.
+Candidate contexts are bounded in the database: entries expire after 10 minutes, and the repository keeps at most 100 contexts by pruning the oldest entries.
 
 Local router eval now includes a fixed write-intent guardrail case for a missing-product-ID add-to-cart request. The case expects:
 
@@ -184,6 +184,11 @@ Important tests:
   - missing `user_id` handling
   - ambiguous write request handling
   - native `prepare_add_to_cart` invocation
+- `tests/repositories/test_candidate_contexts_repository.py`
+  - database-backed candidate context save/read
+  - expired context deletion
+  - oldest-row pruning at the cache limit
+  - explicit context clearing
 - `tests/api/test_chat_write_handoff_smoke.py`
   - `/api/chat` creates pending action through handoff
   - `/api/chat/confirm` confirms it
@@ -200,21 +205,21 @@ Important tests:
 Latest full local validation:
 
 ```text
-170 passed, 4 skipped
+173 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.3 has removed the temporary dependency on the V1 single-agent write path for add-to-cart preparation by introducing and testing a native V3 write handoff handler.
+V3.4 has moved candidate selection context from process memory into the database and keeps the native V3 write handoff path confirmation-based.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
-- Consider moving candidate context from in-process memory to a durable store if V3 handoff needs to survive process restarts or multi-worker deployment.
 - Add observability counters for clarification, candidate selection, out-of-range selection, pending action creation, and confirmation completion.
+- Consider a background cleanup job for expired `candidate_contexts` rows if traffic is low enough that request-time pruning is insufficient.
 - Keep `/api/chat/confirm` unchanged.
 
 This would make V3 own both read orchestration and confirmation preparation while preserving the same public API contract.

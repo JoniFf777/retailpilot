@@ -154,7 +154,7 @@ python -m pytest tests/config tests/db tests/repositories tests/scripts tests/to
 - [Tools 设计](docs/tools_design.md)
 - [API 设计](docs/api_design.md)
 - [安全设计](docs/safety_design.md)
-- [V3.3 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
+- [V3.4 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
 ### ShopMind V3 write handoff
 
@@ -164,7 +164,7 @@ V3 multi-agent mode keeps read agents read-only, then bridges write intents into
 - missing product IDs, returning catalog candidates without creating pending actions
 - same-thread candidate selection such as `选 1`, creating the normal pending action
 - out-of-range selections such as `选 3`, returning a clarification without writing
-- bounded candidate context: 10-minute TTL and at most 100 in-process contexts
+- database-backed candidate context: 10-minute TTL and at most 100 active contexts
 
 ### LangSmith Evaluation
 
