@@ -134,7 +134,11 @@ SHOPMIND_SUPERVISOR_ROUTER=deterministic | llm
 - `preference_agent`：只读用户偏好摘要；
 - `decision_agent`：合并各 read agent 的结构化摘要，生成最终回答；
 - tool allowlist guard：按 agent 隔离工具权限，避免 read path 调用写工具；
-- `agent_steps`：记录 supervisor、route dispatcher、各 read agent 和 decision agent 的执行轨迹。
+- write-intent guard：识别加购、下单、清空购物车和保存偏好等写意图，返回 `write_path_unsupported` / `write_intent_blocked`，不执行 read agents；
+- handoff bridge：当 V3 返回 `write_path_handoff` 时，API dependency 会桥接到现有确认式写入路径，返回 `confirmation_required` 和 `pending_action_id`；
+- thread handoff：`thread_id` 会贯通到 `prepare_add_to_cart`，并持久化到 pending action；
+- `agent_steps`：记录 supervisor、route dispatcher、各 read agent 和 decision agent 的执行轨迹；
+- `include_debug`：可返回 `supervisor_decision`、`agent_steps`、`decision`、`safety_flags`，以及写意图场景下的 `multi_agent_handoff` / `multi_agent_debug`。
 
 Supervisor router 支持两种模式：
 
@@ -150,6 +154,8 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 ```
 
 默认 `deterministic` 与 `llm-fallback` 模式不调用真实 LLM。只有显式使用 `--router llm` 时才会通过 `WORKSHOP_MODEL` 或 `--model` 调用结构化模型。
+
+V3 第一阶段到这里已经形成可回归的 read-only multi-agent + confirmation handoff 闭环。下一阶段可以把当前桥接到 V1 single-agent 的写入准备逻辑，拆成原生 V3 write handoff handler。
 
 ## V2.0 第一阶段：本地 PostgreSQL + pgvector
 

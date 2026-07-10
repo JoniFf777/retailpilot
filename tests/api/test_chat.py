@@ -396,6 +396,71 @@ async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(monkeypat
 
 
 @pytest.mark.anyio
+async def test_chat_multi_mode_uses_real_v3_guardrail_for_write_handoff(
+    monkeypatch,
+) -> None:
+    calls = []
+    pending_action_id = "123e4567-e89b-12d3-a456-426614174111"
+
+    monkeypatch.setattr(
+        agent_dependency,
+        "get_settings",
+        lambda: SimpleNamespace(
+            shopmind_agent_mode="multi",
+            shopmind_supervisor_router="deterministic",
+        ),
+    )
+
+    def fake_single_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ) -> dict:
+        calls.append(("single", message, user_id, thread_id))
+        return {
+            "answer": "我已为你生成待确认加购，请确认是否加入购物车。",
+            "status": "confirmation_required",
+            "tool_calls": ["prepare_add_to_cart"],
+            "pending_action_id": pending_action_id,
+        }
+
+    monkeypatch.setattr(agent_dependency, "invoke_shopmind_agent", fake_single_agent)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/chat",
+            json={
+                "message": "帮我把 TECH-KEY-001 加入购物车",
+                "user_id": "user-001",
+                "thread_id": "thread-001",
+                "include_debug": True,
+            },
+        )
+
+    body = response.json()
+    handoff_debug = body["debug"]["multi_agent_debug"]
+
+    assert response.status_code == 200
+    assert calls == [
+        ("single", "帮我把 TECH-KEY-001 加入购物车", "user-001", "thread-001")
+    ]
+    assert body["status"] == "confirmation_required"
+    assert body["tool_calls"] == ["prepare_add_to_cart"]
+    assert body["pending_action_id"] == pending_action_id
+    assert body["debug"]["multi_agent_handoff"]["reason"] == (
+        "read_only_multi_agent_write_intent"
+    )
+    assert handoff_debug["supervisor_decision"]["intent"] == "write_path_unsupported"
+    assert handoff_debug["supervisor_decision"]["routes"] == []
+    assert handoff_debug["routes"] == []
+    assert handoff_debug["executed_routes"] == []
+    assert handoff_debug["decision"]["answer_type"] == "write_path_handoff"
+    assert "write_intent_blocked" in handoff_debug["safety_flags"]
+    assert "raw_result" not in body
+
+
+@pytest.mark.anyio
 async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> None:
     calls = []
 
