@@ -1,14 +1,14 @@
-# ShopMind V1 API 设计
+# ShopMind API 设计
 
 ## API 总览
 
-ShopMind V1 提供三个 FastAPI 接口：
+ShopMind 提供三个 FastAPI 接口：
 
 - `GET /api/health`
 - `POST /api/chat`
 - `POST /api/chat/confirm`
 
-其中 `/api/chat` 调用 ShopMind Agent，`/api/chat/confirm` 用于确认或取消待确认动作。
+其中 `/api/chat` 调用 ShopMind Agent，`/api/chat/confirm` 用于确认或取消待确认动作。V3 multi-agent 模式保持同一 API 合约，并可通过 `include_debug` 返回额外调试元数据。
 
 ## GET /api/health
 
@@ -89,6 +89,77 @@ ShopMind V1 提供三个 FastAPI 接口：
   }
 }
 ```
+
+V3 read-only multi-agent 的常见 debug 字段：
+
+| 字段 | 含义 |
+| --- | --- |
+| `supervisor_decision` | supervisor 的结构化路由决策，包括 `intent`、`routes`、`routing_reasons`、`confidence`、`router_type` 等 |
+| `agent_steps` | 执行轨迹，记录 supervisor、route dispatcher、各 read agent 和 decision agent 的步骤 |
+| `routes` | supervisor 计划执行的 read agent 路由 |
+| `executed_routes` | 实际已执行的 read agent 路由 |
+| `decision` | decision agent 的最终结构化决策，例如 `answer_type`、`used_summaries`、`requires_followup` |
+| `safety_flags` | 安全标记，例如 `rag_prompt_injection_detected` 或 `write_intent_blocked` |
+
+当 `SHOPMIND_SUPERVISOR_ROUTER=llm` 时，`supervisor_decision` 和 `agent_steps` 可能额外包含：
+
+| 字段 | 含义 |
+| --- | --- |
+| `router_provider` | LLM router provider 类型，例如 `langchain_structured_output` |
+| `router_model` | LLM router 使用的模型名 |
+| `fallback_reason` | LLM router 回退原因，例如 `provider_error`、`invalid_routes` |
+| `fallback_router_type` | 回退使用的 router 类型 |
+
+### V3 write-intent handoff debug Response
+
+V3 multi-agent 路径是 read-only。用户请求加购、下单、清空购物车或保存偏好等写操作时，V3 会先返回 `write_path_handoff` 决策，然后 API dependency 会桥接到现有确认式写入路径。此时业务响应仍然是 `confirmation_required`，但 debug 会保留 V3 guardrail 轨迹。
+
+```json
+{
+  "answer": "我已为你生成待确认加购，请确认是否加入购物车。",
+  "status": "confirmation_required",
+  "tool_calls": ["prepare_add_to_cart"],
+  "user_id": "demo-user",
+  "thread_id": "demo-thread",
+  "pending_action_id": "123e4567-e89b-12d3-a456-426614174000",
+  "debug": {
+    "multi_agent_handoff": {
+      "from": "multi_agent_read_path",
+      "to": "single_agent_write_path",
+      "reason": "read_only_multi_agent_write_intent",
+      "status": "confirmation_required"
+    },
+    "multi_agent_debug": {
+      "supervisor_decision": {
+        "intent": "write_path_unsupported",
+        "routes": [],
+        "router_type": "deterministic",
+        "safety_flags": ["write_intent_blocked"],
+        "handoff_reason": "read_only_multi_agent_write_intent"
+      },
+      "routes": [],
+      "executed_routes": [],
+      "decision": {
+        "status": "handoff_required",
+        "answer_type": "write_path_handoff",
+        "requires_followup": true,
+        "followup_reason": "read_only_multi_agent_write_intent",
+        "safety_flags": ["write_intent_blocked"],
+        "tool_calls": []
+      },
+      "safety_flags": ["write_intent_blocked"]
+    }
+  }
+}
+```
+
+调用方可按以下规则处理：
+
+| 条件 | 建议处理 |
+| --- | --- |
+| `status == "confirmation_required"` 且有 `pending_action_id` | 展示确认 UI，并调用 `/api/chat/confirm` 完成确认或取消 |
+| `debug.multi_agent_handoff.reason == "read_only_multi_agent_write_intent"` | 说明本次请求先经过 V3 read-only guardrail，再桥接到确认式写入路径 |
+| `debug.multi_agent_debug.supervisor_decision.safety_flags` 包含 `write_intent_blocked` | 表示 V3 没有执行 read agents，也没有直接调用写工具 |
 
 ### confirmation_required Response
 
