@@ -52,6 +52,10 @@ def supervisor_node(
         router=router,
     )
     routes = list(supervisor_decision["routes"])
+    safety_flags = list(state.get("safety_flags", []))
+    for flag in supervisor_decision.get("safety_flags", []):
+        if flag not in safety_flags:
+            safety_flags.append(flag)
 
     return {
         "intent": supervisor_decision["intent"],
@@ -59,7 +63,8 @@ def supervisor_node(
         "routes": routes,
         "executed_routes": [],
         "current_route": None,
-        "safety_flags": list(state.get("safety_flags", [])),
+        "handoff_reason": supervisor_decision.get("handoff_reason"),
+        "safety_flags": safety_flags,
         "tool_calls": list(state.get("tool_calls", [])),
         "agent_steps": append_agent_step(
             state,
@@ -74,5 +79,7 @@ def supervisor_node(
             router_model=supervisor_decision.get("router_model"),
             fallback_reason=supervisor_decision.get("fallback_reason"),
             fallback_router_type=supervisor_decision.get("fallback_router_type"),
+            handoff_reason=supervisor_decision.get("handoff_reason"),
+            safety_flags=supervisor_decision.get("safety_flags", []),
         ),
     }

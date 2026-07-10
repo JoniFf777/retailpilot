@@ -273,6 +273,41 @@ def test_supervisor_decision_records_fallback_and_missing_user_id() -> None:
     assert preference_without_user["requires_user_id_for_preferences"] is True
 
 
+def test_write_intent_bypasses_read_agents_and_requires_handoff() -> None:
+    result = _invoke("Please add to cart TECH-KEY-001")
+
+    assert result["supervisor_decision"]["intent"] == "write_path_unsupported"
+    assert result["supervisor_decision"]["routes"] == []
+    assert result["supervisor_decision"]["confidence"] == "high"
+    assert result["supervisor_decision"]["fallback_used"] is False
+    assert result["supervisor_decision"]["router_type"] == "deterministic"
+    assert result["supervisor_decision"]["safety_flags"] == ["write_intent_blocked"]
+    assert (
+        result["supervisor_decision"]["handoff_reason"]
+        == "read_only_multi_agent_write_intent"
+    )
+    assert result["routes"] == []
+    assert result["executed_routes"] == []
+    assert result["tool_calls"] == []
+    assert result["safety_flags"] == ["write_intent_blocked"]
+    assert result["decision"]["status"] == "handoff_required"
+    assert result["decision"]["answer_type"] == "write_path_handoff"
+    assert result["decision"]["used_summaries"] == []
+    assert result["decision"]["requires_followup"] is True
+    assert (
+        result["decision"]["followup_reason"]
+        == "read_only_multi_agent_write_intent"
+    )
+    assert [step["node"] for step in result["agent_steps"]] == [
+        "supervisor",
+        "route_dispatcher",
+        "decision_agent",
+    ]
+    assert result["agent_steps"][1]["event"] == "selected_decision_agent"
+    assert result["agent_steps"][2]["event"] == "handoff_required"
+    assert "V3" in result["final_response"]
+
+
 def test_graph_can_use_injected_supervisor_router() -> None:
     product_tools = tools_by_name([guard_tool("product_agent", fake_search_products)])
     rag_tools = tools_by_name(
@@ -433,6 +468,29 @@ def test_llm_supervisor_router_falls_back_when_unconfigured() -> None:
     assert decision["routes"] == ["preference_agent"]
     assert decision["router_type"] == "llm_fallback"
     assert decision["fallback_reason"] == "provider_not_configured"
+
+
+def test_llm_supervisor_router_blocks_write_intent_before_provider() -> None:
+    def provider(payload: LLMSupervisorRouterInput) -> LLMSupervisorRouterOutput:
+        raise AssertionError("provider should not be called for write intent")
+
+    decision = build_supervisor_decision(
+        "Please add to cart TECH-KEY-001",
+        user_id="USER-001",
+        router=LLMSupervisorRouter(
+            decision_provider=provider,
+            provider_type="custom_callable",
+            model_name="test-router",
+        ),
+    )
+
+    assert decision["intent"] == "write_path_unsupported"
+    assert decision["routes"] == []
+    assert decision["router_type"] == "llm_guardrail"
+    assert decision["router_provider"] == "custom_callable"
+    assert decision["router_model"] == "test-router"
+    assert decision["safety_flags"] == ["write_intent_blocked"]
+    assert decision["handoff_reason"] == "read_only_multi_agent_write_intent"
 
 
 def test_create_supervisor_router_from_config_mode() -> None:
