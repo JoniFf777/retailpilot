@@ -1,4 +1,5 @@
 from evaluation.shopmind_evaluators import (
+    debug_metadata_evaluator,
     expected_keywords_evaluator,
     expected_routes_evaluator,
     expected_tools_evaluator,
@@ -26,6 +27,67 @@ def test_expected_routes_evaluator_fails_when_route_missing() -> None:
     result = expected_routes_evaluator(
         inputs={},
         outputs={"routes": ["product_agent"]},
+        reference_outputs={"expected_routes": ["product_agent", "rag_agent"]},
+    )
+
+    assert result["score"] is False
+    assert "rag_agent" in result["comment"]
+
+
+def test_debug_metadata_evaluator_passes_with_supervisor_trace() -> None:
+    result = debug_metadata_evaluator(
+        inputs={},
+        outputs={
+            "debug": {
+                "supervisor_decision": {
+                    "routes": ["product_agent"],
+                    "router_type": "deterministic",
+                },
+                "agent_steps": [
+                    {
+                        "index": 1,
+                        "node": "supervisor",
+                        "event": "routed",
+                    }
+                ],
+            }
+        },
+        reference_outputs={"expected_routes": ["product_agent"]},
+    )
+
+    assert result["score"] is True
+
+
+def test_debug_metadata_evaluator_fails_when_debug_missing() -> None:
+    result = debug_metadata_evaluator(
+        inputs={},
+        outputs={"answer": "missing debug"},
+        reference_outputs={},
+    )
+
+    assert result["score"] is False
+    assert "Missing supervisor_decision" in result["comment"]
+    assert "agent_steps is missing or empty" in result["comment"]
+
+
+def test_debug_metadata_evaluator_reports_route_mismatch() -> None:
+    result = debug_metadata_evaluator(
+        inputs={},
+        outputs={
+            "debug": {
+                "supervisor_decision": {
+                    "routes": ["product_agent"],
+                    "router_type": "deterministic",
+                },
+                "agent_steps": [
+                    {
+                        "index": 1,
+                        "node": "supervisor",
+                        "event": "routed",
+                    }
+                ],
+            }
+        },
         reference_outputs={"expected_routes": ["product_agent", "rag_agent"]},
     )
 
