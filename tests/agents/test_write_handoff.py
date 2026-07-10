@@ -4,12 +4,19 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker
 
 from agents.shopmind_multi_agent.write_handoff import (
+    DEFAULT_CANDIDATE_CONTEXT_TTL_SECONDS,
+    MAX_CANDIDATE_CONTEXTS,
+    _CANDIDATE_CONTEXTS,
     clear_candidate_context,
     extract_product_id,
     find_product_candidates,
+    get_candidate_context,
     infer_product_category,
     extract_quantity,
     invoke_write_handoff,
+    prune_candidate_contexts,
+    resolve_candidate_selection,
+    store_candidate_context,
 )
 from app.db.base import Base
 from app.db.models import PendingAction, Product
@@ -165,6 +172,56 @@ def test_write_handoff_resolves_same_thread_candidate_selection(monkeypatch) -> 
 
     session.close()
     clear_candidate_context(TEST_USER_ID, thread_id)
+
+
+def test_candidate_context_expires(monkeypatch) -> None:
+    _CANDIDATE_CONTEXTS.clear()
+    times = iter(
+        [
+            100.0,
+            100.0,
+            100.0,
+            100.0 + DEFAULT_CANDIDATE_CONTEXT_TTL_SECONDS + 1,
+        ]
+    )
+    monkeypatch.setattr(
+        "agents.shopmind_multi_agent.write_handoff._now",
+        lambda: next(times),
+    )
+
+    store_candidate_context(
+        user_id=TEST_USER_ID,
+        thread_id="thread-expired",
+        candidates=[{"product_id": TEST_PRODUCT_ID}],
+        quantity=1,
+    )
+    result = resolve_candidate_selection(
+        "选 1",
+        TEST_USER_ID,
+        "thread-expired",
+    )
+
+    assert result is None
+    assert get_candidate_context(TEST_USER_ID, "thread-expired") is None
+    assert _CANDIDATE_CONTEXTS == {}
+
+
+def test_candidate_context_prunes_oldest_when_capacity_exceeded() -> None:
+    _CANDIDATE_CONTEXTS.clear()
+    for index in range(MAX_CANDIDATE_CONTEXTS + 1):
+        _CANDIDATE_CONTEXTS[(TEST_USER_ID, f"thread-{index}")] = {
+            "product_ids": [f"TECH-KEY-{index:03d}"],
+            "quantity": 1,
+            "created_at": float(index),
+        }
+
+    prune_candidate_contexts(now=float(MAX_CANDIDATE_CONTEXTS + 1))
+
+    assert len(_CANDIDATE_CONTEXTS) == MAX_CANDIDATE_CONTEXTS
+    assert (TEST_USER_ID, "thread-0") not in _CANDIDATE_CONTEXTS
+    assert (TEST_USER_ID, f"thread-{MAX_CANDIDATE_CONTEXTS}") in _CANDIDATE_CONTEXTS
+
+    _CANDIDATE_CONTEXTS.clear()
 
 
 def test_write_handoff_does_not_resolve_selection_without_context() -> None:
