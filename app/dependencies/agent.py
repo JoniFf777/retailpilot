@@ -6,6 +6,10 @@ from agents.shopmind_multi_agent import (
     create_supervisor_router,
     invoke_shopmind_multi_agent,
 )
+from agents.shopmind_multi_agent.observability import (
+    append_confirmation_event,
+    build_confirmation_debug,
+)
 from agents.shopmind_multi_agent.write_handoff import invoke_write_handoff
 from agents.shopmind_agent import invoke_shopmind_agent
 from app.core.settings import get_settings
@@ -101,22 +105,54 @@ def confirm_pending_action(
 ) -> dict[str, Any]:
     """Confirm or cancel a pending action behind the API boundary."""
     if confirmed:
+        tool_call = "confirm_add_to_cart"
         answer = confirm_add_to_cart.invoke(
             {"pending_action_id": pending_action_id, "user_id": user_id}
         )
+        status = "completed" if answer.startswith("已确认") else "failed"
+        event = (
+            "pending_action_confirmed"
+            if status == "completed"
+            else "pending_action_failed"
+        )
         return {
             "answer": answer,
-            "status": "completed" if answer.startswith("已确认") else "failed",
-            "tool_calls": ["confirm_add_to_cart"],
+            "status": status,
+            "tool_calls": [tool_call],
             "pending_action_id": pending_action_id,
+            "debug": build_confirmation_debug(
+                append_confirmation_event(
+                    None,
+                    event=event,
+                    requested_confirmation=True,
+                    status=status,
+                    tool_call=tool_call,
+                )
+            ),
         }
 
+    tool_call = "cancel_pending_action"
     answer = cancel_pending_action.invoke(
         {"pending_action_id": pending_action_id, "user_id": user_id}
     )
+    status = "cancelled" if answer.startswith("已取消") else "failed"
+    event = (
+        "pending_action_cancelled"
+        if status == "cancelled"
+        else "pending_action_failed"
+    )
     return {
         "answer": answer,
-        "status": "cancelled" if answer.startswith("已取消") else "failed",
-        "tool_calls": ["cancel_pending_action"],
+        "status": status,
+        "tool_calls": [tool_call],
         "pending_action_id": pending_action_id,
+        "debug": build_confirmation_debug(
+            append_confirmation_event(
+                None,
+                event=event,
+                requested_confirmation=False,
+                status=status,
+                tool_call=tool_call,
+            )
+        ),
     }

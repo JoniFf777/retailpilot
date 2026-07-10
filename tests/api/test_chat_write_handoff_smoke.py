@@ -107,6 +107,7 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
                 "pending_action_id": pending_action_id,
                 "confirmed": True,
                 "thread_id": "thread-write-smoke",
+                "include_debug": True,
             },
         )
 
@@ -135,6 +136,9 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
     assert confirm_body["status"] == "completed"
     assert confirm_body["tool_calls"] == ["confirm_add_to_cart"]
     assert confirm_body["pending_action_id"] == pending_action_id
+    assert confirm_body["debug"]["confirmation"]["events"][0]["event"] == (
+        "pending_action_confirmed"
+    )
     assert _cart_item_count(cart_session, TEST_USER_ID) == 1
     assert _cart_item_quantity(cart_session, TEST_USER_ID) == 2
 

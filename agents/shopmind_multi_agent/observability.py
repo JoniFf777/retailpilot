@@ -56,3 +56,28 @@ def build_candidate_context_debug(
     events: list[dict[str, Any]],
 ) -> dict[str, dict[str, list[dict[str, Any]]]]:
     return {"candidate_context": {"events": events}}
+
+
+def append_confirmation_event(
+    events: list[dict[str, Any]] | None,
+    *,
+    event: str,
+    **metadata: Any,
+) -> list[dict[str, Any]]:
+    """Append stable pending-action confirmation observability metadata."""
+
+    confirmation_events = list(events or [])
+    confirmation_events.append(
+        {
+            "index": len(confirmation_events) + 1,
+            "event": event,
+            **_clean_metadata(metadata),
+        }
+    )
+    return confirmation_events
+
+
+def build_confirmation_debug(
+    events: list[dict[str, Any]],
+) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    return {"confirmation": {"events": events}}
