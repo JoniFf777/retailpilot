@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,6 +12,10 @@ class ChatRequest(BaseModel):
     thread_id: Optional[str] = Field(
         default=None,
         description="Optional conversation/thread identifier for future Agent memory.",
+    )
+    include_debug: bool = Field(
+        default=False,
+        description="Return optional debug metadata for evaluation and troubleshooting.",
     )
 
 
@@ -36,6 +40,10 @@ class ChatResponse(BaseModel):
     pending_action_id: Optional[str] = Field(
         default=None,
         description="Pending action identifier when user confirmation is required.",
+    )
+    debug: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Optional structured debug metadata when requested.",
     )
 
 

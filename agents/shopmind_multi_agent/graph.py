@@ -15,6 +15,23 @@ from .supervisor_router import SupervisorRouter
 
 
 READ_AGENT_ROUTES = ("product_agent", "rag_agent", "preference_agent")
+DEBUG_METADATA_KEYS = (
+    "supervisor_decision",
+    "agent_steps",
+    "routes",
+    "executed_routes",
+    "decision",
+    "safety_flags",
+)
+
+
+def build_multi_agent_debug_metadata(raw_result: dict[str, Any]) -> dict[str, Any]:
+    """Return stable, non-raw metadata for API debug/evaluation consumers."""
+    return {
+        key: raw_result[key]
+        for key in DEBUG_METADATA_KEYS
+        if raw_result.get(key) is not None
+    }
 
 
 def route_dispatcher_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
@@ -118,5 +135,6 @@ def invoke_shopmind_multi_agent(
         "answer": raw_result.get("final_response", ""),
         "status": "completed",
         "tool_calls": raw_result.get("tool_calls", []),
+        "debug": build_multi_agent_debug_metadata(raw_result),
         "raw_result": raw_result,
     }

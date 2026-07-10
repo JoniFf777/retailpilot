@@ -32,7 +32,8 @@ ShopMind V1 提供三个 FastAPI 接口：
 {
   "message": "帮我把 TECH-KEY-010 加入购物车",
   "user_id": "demo-user",
-  "thread_id": "demo-thread"
+  "thread_id": "demo-thread",
+  "include_debug": false
 }
 ```
 
@@ -43,6 +44,7 @@ ShopMind V1 提供三个 FastAPI 接口：
 | `message` | string | 是 | 用户输入 |
 | `user_id` | string/null | 否 | 用户 ID，用于偏好记忆、购物车和待确认动作 |
 | `thread_id` | string/null | 否 | 会话 ID，V1 主要透传，后续可用于多轮状态 |
+| `include_debug` | boolean | 否 | 默认 `false`。设为 `true` 时返回精简调试元数据 |
 
 ### completed Response
 
@@ -54,6 +56,37 @@ ShopMind V1 提供三个 FastAPI 接口：
   "user_id": "demo-user",
   "thread_id": "demo-thread",
   "pending_action_id": null
+}
+```
+
+### 可选 debug Response
+
+当请求设置 `"include_debug": true`，且后端运行在 V3 multi-agent 路径时，响应会额外包含精简 `debug` 字段。默认响应不包含该字段，也不会暴露完整 `raw_result`。
+
+```json
+{
+  "answer": "可以考虑测试键盘。",
+  "status": "completed",
+  "tool_calls": ["search_products"],
+  "user_id": "demo-user",
+  "thread_id": "demo-thread",
+  "pending_action_id": null,
+  "debug": {
+    "supervisor_decision": {
+      "routes": ["product_agent"],
+      "router_type": "deterministic"
+    },
+    "agent_steps": [
+      {
+        "index": 1,
+        "node": "supervisor",
+        "event": "routed",
+        "router_type": "deterministic"
+      }
+    ],
+    "routes": ["product_agent"],
+    "executed_routes": ["product_agent"]
+  }
 }
 ```
 

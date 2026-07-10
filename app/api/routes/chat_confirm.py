@@ -7,7 +7,11 @@ from app.schemas.chat import ChatResponse, ConfirmChatRequest
 router = APIRouter()
 
 
-@router.post("/chat/confirm", response_model=ChatResponse)
+@router.post(
+    "/chat/confirm",
+    response_model=ChatResponse,
+    response_model_exclude_unset=True,
+)
 async def confirm_chat(request: ConfirmChatRequest) -> ChatResponse:
     try:
         result = agent_dependency.confirm_pending_action(

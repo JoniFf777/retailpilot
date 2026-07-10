@@ -238,6 +238,68 @@ async def test_chat_multi_mode_keeps_response_schema(monkeypatch) -> None:
 
 
 @pytest.mark.anyio
+async def test_chat_can_include_multi_agent_debug_metadata(monkeypatch) -> None:
+    monkeypatch.setattr(
+        agent_dependency,
+        "get_settings",
+        lambda: SimpleNamespace(
+            shopmind_agent_mode="multi",
+            shopmind_supervisor_router="deterministic",
+        ),
+    )
+
+    def fake_multi_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+        supervisor_router=None,
+    ) -> dict:
+        return {
+            "answer": "multi agent answer",
+            "status": "completed",
+            "tool_calls": ["search_products"],
+            "debug": {
+                "supervisor_decision": {
+                    "routes": ["product_agent"],
+                    "router_type": "deterministic",
+                },
+                "agent_steps": [
+                    {
+                        "index": 1,
+                        "node": "supervisor",
+                        "router_type": "deterministic",
+                    }
+                ],
+            },
+            "raw_result": {
+                "final_response": "internal detail",
+                "product_summary": {"raw_detail": "SHOULD_NOT_LEAK"},
+            },
+        }
+
+    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/chat",
+            json={
+                "message": "推荐键盘",
+                "user_id": "user-001",
+                "thread_id": "thread-001",
+                "include_debug": True,
+            },
+        )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["debug"]["supervisor_decision"]["routes"] == ["product_agent"]
+    assert body["debug"]["agent_steps"][0]["node"] == "supervisor"
+    assert "raw_result" not in body
+    assert "SHOULD_NOT_LEAK" not in str(body)
+
+
+@pytest.mark.anyio
 async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> None:
     calls = []
 
