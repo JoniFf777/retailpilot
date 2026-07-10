@@ -9,6 +9,7 @@ from app.db.base import Base
 from app.db.models import CartItem, PendingAction, Product
 from app.dependencies import agent as agent_dependency
 from app.main import app
+from agents.shopmind_multi_agent import write_handoff as write_handoff_module
 import tools.cart as cart_tools
 
 
@@ -43,6 +44,11 @@ def cart_session(monkeypatch):
         yield session
 
     monkeypatch.setattr(cart_tools, "_get_cart_session", fake_cart_session)
+    monkeypatch.setattr(
+        write_handoff_module,
+        "_get_product_session",
+        fake_cart_session,
+    )
     yield session
     session.close()
 
@@ -170,6 +176,7 @@ async def test_multi_agent_write_handoff_clarifies_missing_product_id(
     assert chat_body["tool_calls"] == []
     assert chat_body["pending_action_id"] is None
     assert "商品 ID" in chat_body["answer"]
+    assert TEST_PRODUCT_ID in chat_body["answer"]
     assert chat_body["debug"]["multi_agent_handoff"]["status"] == "completed"
     assert chat_body["debug"]["multi_agent_handoff"]["to"] == "v3_write_handoff_path"
     assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["intent"] == (
