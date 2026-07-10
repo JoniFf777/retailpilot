@@ -173,7 +173,7 @@ V3 multi-agent 模式下，加购请求会先经过 read-only guardrail，再进
 | `选 3`，但当前只有 2 个候选 | 返回 `completed` 澄清，提示候选范围，不调用写工具，不创建 pending action |
 | 缺少 `user_id` | 返回 `completed` 澄清，提示需要 `user_id`，不调用写工具 |
 
-候选上下文只保存在进程内，并按 `user_id + thread_id` 绑定。上下文 10 分钟过期，最多保留 100 条，超过后清理最旧记录。调用方应始终在候选澄清和后续选择中传同一个 `thread_id`。
+候选上下文保存在数据库 `candidate_contexts` 表中，并按 `user_id + thread_id` 绑定。上下文 10 分钟过期，最多保留 100 条，超过后清理最旧记录。调用方应始终在候选澄清和后续选择中传同一个 `thread_id`。
 
 候选澄清响应示例：
 

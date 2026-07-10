@@ -221,6 +221,26 @@ class PendingAction(Base):
     )
 
 
+class CandidateContext(Base):
+    __tablename__ = "candidate_contexts"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_candidate_contexts_quantity_positive"),
+        Index("idx_candidate_contexts_expires_at", "expires_at"),
+    )
+
+    user_id: Mapped[str] = mapped_column(String, primary_key=True)
+    thread_id: Mapped[str] = mapped_column(String, primary_key=True)
+    product_ids: Mapped[list[str]] = mapped_column(JSONB_TYPE, nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class Document(Base):
     __tablename__ = "documents"
     __table_args__ = (

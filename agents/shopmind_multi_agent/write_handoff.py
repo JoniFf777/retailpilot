@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
-import time
 from contextlib import contextmanager
 from typing import Any, TypedDict
 
+from app.repositories import candidate_contexts as candidate_context_repository
 from app.repositories import products as product_repository
 from tools.cart import prepare_add_to_cart
 
@@ -70,22 +70,12 @@ QUERY_STOPWORDS = {
 }
 
 
-class CandidateContext(TypedDict):
-    product_ids: list[str]
-    quantity: int
-    created_at: float
-
-
 class CandidateSelectionResult(TypedDict, total=False):
     status: str
     product_id: str
     quantity: int
     selection: int
     candidate_count: int
-
-
-_CANDIDATE_CONTEXTS: dict[tuple[str, str], CandidateContext] = {}
-_now = time.monotonic
 
 
 @contextmanager
@@ -132,42 +122,6 @@ def _candidate_context_key(
     return (user_id, thread_id)
 
 
-def _is_candidate_context_expired(
-    context: CandidateContext,
-    *,
-    now: float | None = None,
-) -> bool:
-    current_time = _now() if now is None else now
-    return (
-        current_time - context["created_at"]
-        > DEFAULT_CANDIDATE_CONTEXT_TTL_SECONDS
-    )
-
-
-def prune_candidate_contexts(*, now: float | None = None) -> None:
-    """Remove expired entries and keep the in-process candidate cache bounded."""
-
-    current_time = _now() if now is None else now
-    expired_keys = [
-        key
-        for key, context in _CANDIDATE_CONTEXTS.items()
-        if _is_candidate_context_expired(context, now=current_time)
-    ]
-    for key in expired_keys:
-        _CANDIDATE_CONTEXTS.pop(key, None)
-
-    overflow_count = len(_CANDIDATE_CONTEXTS) - MAX_CANDIDATE_CONTEXTS
-    if overflow_count <= 0:
-        return
-
-    oldest_keys = sorted(
-        _CANDIDATE_CONTEXTS,
-        key=lambda key: _CANDIDATE_CONTEXTS[key]["created_at"],
-    )[:overflow_count]
-    for key in oldest_keys:
-        _CANDIDATE_CONTEXTS.pop(key, None)
-
-
 def store_candidate_context(
     *,
     user_id: str | None,
@@ -177,40 +131,62 @@ def store_candidate_context(
 ) -> None:
     """Store a short-lived in-process candidate list for same-thread selection."""
 
-    key = _candidate_context_key(user_id, thread_id)
-    if key is None or not candidates:
+    if _candidate_context_key(user_id, thread_id) is None or not candidates:
         return
 
-    prune_candidate_contexts()
-    _CANDIDATE_CONTEXTS[key] = {
-        "product_ids": [str(product["product_id"]) for product in candidates],
-        "quantity": quantity,
-        "created_at": _now(),
-    }
-    prune_candidate_contexts()
+    with _get_product_session() as session:
+        try:
+            candidate_context_repository.save_candidate_context(
+                session,
+                user_id=user_id,
+                thread_id=thread_id,
+                product_ids=[str(product["product_id"]) for product in candidates],
+                quantity=quantity,
+                ttl_seconds=DEFAULT_CANDIDATE_CONTEXT_TTL_SECONDS,
+                max_contexts=MAX_CANDIDATE_CONTEXTS,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
 
 
 def get_candidate_context(
     user_id: str | None,
     thread_id: str | None,
-) -> CandidateContext | None:
-    key = _candidate_context_key(user_id, thread_id)
-    if key is None:
+) -> dict[str, Any] | None:
+    if _candidate_context_key(user_id, thread_id) is None:
         return None
 
-    context = _CANDIDATE_CONTEXTS.get(key)
-    if context is None:
-        return None
-    if _is_candidate_context_expired(context):
-        _CANDIDATE_CONTEXTS.pop(key, None)
-        return None
-    return context
+    with _get_product_session() as session:
+        try:
+            context = candidate_context_repository.get_candidate_context(
+                session,
+                user_id=user_id,
+                thread_id=thread_id,
+            )
+            session.commit()
+            return context
+        except Exception:
+            session.rollback()
+            raise
 
 
 def clear_candidate_context(user_id: str | None, thread_id: str | None) -> None:
-    key = _candidate_context_key(user_id, thread_id)
-    if key:
-        _CANDIDATE_CONTEXTS.pop(key, None)
+    if _candidate_context_key(user_id, thread_id) is None:
+        return
+
+    with _get_product_session() as session:
+        try:
+            candidate_context_repository.clear_candidate_context(
+                session,
+                user_id=user_id,
+                thread_id=thread_id,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
 
 
 def extract_candidate_selection(message: str) -> int | None:
@@ -363,10 +339,15 @@ def invoke_write_handoff(
             "tool_calls": [],
         }
 
-    selected_candidate = resolve_candidate_selection(message, user_id, thread_id)
     product_id = extract_product_id(message)
     quantity = extract_quantity(message)
-    if selected_candidate:
+    selected_candidate = (
+        None
+        if product_id is not None
+        else resolve_candidate_selection(message, user_id, thread_id)
+    )
+    resolved_from_candidate = False
+    if selected_candidate is not None:
         if selected_candidate["status"] == "out_of_range":
             return {
                 "answer": _format_candidate_selection_out_of_range(
@@ -378,6 +359,7 @@ def invoke_write_handoff(
             }
         product_id = selected_candidate["product_id"]
         quantity = int(selected_candidate["quantity"])
+        resolved_from_candidate = True
 
     if product_id is None:
         candidates = find_product_candidates(message)
@@ -409,7 +391,8 @@ def invoke_write_handoff(
             "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
         }
 
-    clear_candidate_context(user_id, thread_id)
+    if resolved_from_candidate:
+        clear_candidate_context(user_id, thread_id)
     return {
         "answer": (
             f"我已为商品 {product_id} 生成待确认加购，数量 {quantity}，"

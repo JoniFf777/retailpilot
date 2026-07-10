@@ -15,6 +15,7 @@ def test_metadata_contains_structured_business_tables():
         "user_preferences",
         "cart_items",
         "pending_actions",
+        "candidate_contexts",
     }
 
     assert expected_tables.issubset(set(Base.metadata.tables))
@@ -50,6 +51,21 @@ def test_pending_actions_keeps_v1_payload_column_name():
     pending_actions = Base.metadata.tables["pending_actions"]
 
     assert "payload_json" in pending_actions.c
+
+
+def test_candidate_contexts_table_contains_selection_context_columns():
+    candidate_contexts = Base.metadata.tables["candidate_contexts"]
+    expected_columns = {
+        "user_id",
+        "thread_id",
+        "product_ids",
+        "quantity",
+        "expires_at",
+        "created_at",
+        "updated_at",
+    }
+
+    assert expected_columns.issubset(set(candidate_contexts.c.keys()))
 
 
 def test_alembic_revision_ids_fit_default_version_table():
