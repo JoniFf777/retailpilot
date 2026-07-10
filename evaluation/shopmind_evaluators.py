@@ -91,6 +91,36 @@ def status_evaluator(
     }
 
 
+def pending_action_evaluator(
+    inputs: dict,
+    outputs: dict,
+    reference_outputs: dict,
+) -> dict:
+    """Check whether a pending action is present only when expected."""
+    expected_present = reference_outputs.get("expected_pending_action_present")
+    if expected_present is None:
+        return {
+            "key": "pending_action",
+            "score": True,
+            "comment": "No pending action expectation configured.",
+        }
+
+    actual_present = bool(outputs.get("pending_action_id"))
+    score = bool(expected_present) == actual_present
+    return {
+        "key": "pending_action",
+        "score": score,
+        "comment": (
+            f"Pending action presence matched: {actual_present}."
+            if score
+            else (
+                "Expected pending_action_id presence "
+                f"{bool(expected_present)!r}, got {actual_present!r}."
+            )
+        ),
+    }
+
+
 def expected_keywords_evaluator(
     inputs: dict,
     outputs: dict,
@@ -131,13 +161,14 @@ def debug_metadata_evaluator(
         problems.append("Missing supervisor_decision.")
     else:
         routes = _as_list(supervisor_decision.get("routes"))
-        if not routes:
+        expected_routes_configured = "expected_routes" in reference_outputs
+        if not expected_routes_configured and not routes:
             problems.append("supervisor_decision.routes is empty.")
         if not supervisor_decision.get("router_type"):
             problems.append("supervisor_decision.router_type is missing.")
 
         expected_routes = _as_list(reference_outputs.get("expected_routes"))
-        if expected_routes:
+        if expected_routes_configured:
             comparison = compare_routes(expected_routes, routes)
             if not comparison["score"]:
                 problems.append(
@@ -145,6 +176,39 @@ def debug_metadata_evaluator(
                     f"missing={comparison['missing_routes']}, "
                     f"unexpected={comparison['unexpected_routes']}."
                 )
+        expected_intent = reference_outputs.get("expected_intent")
+        if expected_intent and supervisor_decision.get("intent") != expected_intent:
+            problems.append(
+                "Intent mismatch: "
+                f"expected={expected_intent}, "
+                f"actual={supervisor_decision.get('intent')}."
+            )
+
+        expected_safety_flags = _as_list(
+            reference_outputs.get("expected_safety_flags")
+        )
+        if expected_safety_flags:
+            actual_safety_flags = set(_as_list(metadata.get("safety_flags")))
+            actual_safety_flags.update(
+                _as_list(supervisor_decision.get("safety_flags"))
+            )
+            missing_flags = [
+                flag for flag in expected_safety_flags if flag not in actual_safety_flags
+            ]
+            if missing_flags:
+                problems.append(f"Missing safety flags: {missing_flags}.")
+
+    expected_answer_type = reference_outputs.get("expected_answer_type")
+    if expected_answer_type:
+        decision = metadata.get("decision")
+        actual_answer_type = (
+            decision.get("answer_type") if isinstance(decision, dict) else None
+        )
+        if actual_answer_type != expected_answer_type:
+            problems.append(
+                "Answer type mismatch: "
+                f"expected={expected_answer_type}, actual={actual_answer_type}."
+            )
 
     agent_steps = metadata.get("agent_steps")
     if not isinstance(agent_steps, list) or not agent_steps:
@@ -178,6 +242,7 @@ __all__ = [
     "debug_metadata_evaluator",
     "expected_tools_evaluator",
     "forbidden_tools_evaluator",
+    "pending_action_evaluator",
     "status_evaluator",
     "expected_keywords_evaluator",
     "expected_routes_evaluator",

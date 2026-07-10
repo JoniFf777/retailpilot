@@ -154,7 +154,7 @@ python -m pytest tests/config tests/db tests/repositories tests/scripts tests/to
 - [Tools 设计](docs/tools_design.md)
 - [API 设计](docs/api_design.md)
 - [安全设计](docs/safety_design.md)
-- [V3.2 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
+- [V3.3 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
 ### LangSmith Evaluation
 
@@ -230,9 +230,9 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 ```text
 ShopMind router eval
 router: deterministic
-cases: 6
-exact matches: 6/6 (100.0%)
-fallbacks: 1/6 (16.7%)
+cases: 7
+exact matches: 7/7 (100.0%)
+fallbacks: 1/7 (14.3%)
 failures: none
 ```
 
