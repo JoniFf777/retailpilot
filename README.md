@@ -156,6 +156,16 @@ python -m pytest tests/config tests/db tests/repositories tests/scripts tests/to
 - [安全设计](docs/safety_design.md)
 - [V3.3 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
+### ShopMind V3 write handoff
+
+V3 multi-agent mode keeps read agents read-only, then bridges write intents into the native confirmation-based handoff path. Add-to-cart now supports:
+
+- explicit product IDs such as `TECH-KEY-001`, returning `confirmation_required`
+- missing product IDs, returning catalog candidates without creating pending actions
+- same-thread candidate selection such as `选 1`, creating the normal pending action
+- out-of-range selections such as `选 3`, returning a clarification without writing
+- bounded candidate context: 10-minute TTL and at most 100 in-process contexts
+
 ### LangSmith Evaluation
 
 ShopMind V1 已接入 LangSmith evaluation，用于检查 tool calls、response status、敏感操作安全性和回答关键词。
