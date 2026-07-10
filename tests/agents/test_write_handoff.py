@@ -174,6 +174,65 @@ def test_write_handoff_resolves_same_thread_candidate_selection(monkeypatch) -> 
     clear_candidate_context(TEST_USER_ID, thread_id)
 
 
+def test_write_handoff_reports_candidate_selection_out_of_range(monkeypatch) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.add_all(
+        [
+            Product(
+                product_id=TEST_PRODUCT_ID,
+                name="Test Keyboard",
+                category="Keyboards",
+                price=49.00,
+                in_stock=True,
+            ),
+            Product(
+                product_id="TECH-KEY-002",
+                name="Premium Keyboard",
+                category="Keyboards",
+                price=99.00,
+                in_stock=True,
+            ),
+        ]
+    )
+    session.commit()
+
+    @contextmanager
+    def fake_session():
+        yield session
+
+    monkeypatch.setattr(
+        "agents.shopmind_multi_agent.write_handoff._get_product_session",
+        fake_session,
+    )
+    monkeypatch.setattr(cart_tools, "_get_cart_session", fake_session)
+
+    thread_id = "thread-candidate-out-of-range"
+    invoke_write_handoff(
+        "帮我把这个键盘加入购物车",
+        user_id=TEST_USER_ID,
+        thread_id=thread_id,
+    )
+    result = invoke_write_handoff(
+        "选 3",
+        user_id=TEST_USER_ID,
+        thread_id=thread_id,
+    )
+    pending_count = session.scalar(select(func.count()).select_from(PendingAction))
+
+    assert result["status"] == "completed"
+    assert result["tool_calls"] == []
+    assert "当前候选只有 1-2" in result["answer"]
+    assert "你选择的是 3" in result["answer"]
+    assert pending_count == 0
+    assert get_candidate_context(TEST_USER_ID, thread_id) is not None
+
+    session.close()
+    clear_candidate_context(TEST_USER_ID, thread_id)
+
+
 def test_candidate_context_expires(monkeypatch) -> None:
     _CANDIDATE_CONTEXTS.clear()
     times = iter(
