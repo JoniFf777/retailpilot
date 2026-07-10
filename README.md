@@ -197,6 +197,43 @@ set INCLUDE_CORRECTNESS_EVALUATOR=true
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
 ```
 
+### ShopMind V3 Router Offline Eval
+
+V3 multi-agent supervisor router 已提供本地离线评估脚本，用固定中文样本检查路由命中率、fallback rate 和失败明细。默认模式不会调用真实模型：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic
+```
+
+输出示例：
+
+```text
+ShopMind router eval
+router: deterministic
+cases: 6
+exact matches: 6/6 (100.0%)
+fallbacks: 1/6 (16.7%)
+failures: none
+```
+
+也可以检查 LLM router fallback 路径，仍不调用真实模型：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router llm-fallback
+```
+
+需要实际调用结构化 LLM router 时，显式使用 `--router llm` 并传入模型或依赖 `WORKSHOP_MODEL`：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router llm --model openai:gpt-5-nano
+```
+
+机器可读输出：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic --json
+```
+
 ### V3 Roadmap
 
 V2 数据层已经收口。下一条主线是 V3 multi-agent：
