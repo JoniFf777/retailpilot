@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 from agents.shopmind_multi_agent.write_handoff import (
     extract_product_id,
+    extract_quantity,
     invoke_write_handoff,
 )
 from app.db.base import Base
@@ -18,6 +19,17 @@ TEST_PRODUCT_ID = "TECH-KEY-001"
 
 def test_extract_product_id_normalizes_explicit_id() -> None:
     assert extract_product_id("帮我把 tech-key-001 加入购物车") == TEST_PRODUCT_ID
+
+
+def test_extract_quantity_defaults_to_one() -> None:
+    assert extract_quantity(f"帮我把 {TEST_PRODUCT_ID} 加入购物车") == 1
+
+
+def test_extract_quantity_supports_simple_number_patterns() -> None:
+    assert extract_quantity(f"帮我把 {TEST_PRODUCT_ID} 加入购物车 2 个") == 2
+    assert extract_quantity(f"add to cart {TEST_PRODUCT_ID} quantity 3") == 3
+    assert extract_quantity(f"add {TEST_PRODUCT_ID} x4") == 4
+    assert extract_quantity(f"帮我买两个 {TEST_PRODUCT_ID}") == 2
 
 
 def test_write_handoff_requires_user_id() -> None:
@@ -59,7 +71,7 @@ def test_write_handoff_prepares_add_to_cart(monkeypatch) -> None:
     monkeypatch.setattr(cart_tools, "_get_cart_session", fake_cart_session)
 
     result = invoke_write_handoff(
-        f"帮我把 {TEST_PRODUCT_ID} 加入购物车",
+        f"帮我把 {TEST_PRODUCT_ID} 加入购物车 2 个",
         user_id=TEST_USER_ID,
         thread_id="thread-write-native",
     )
@@ -77,6 +89,6 @@ def test_write_handoff_prepares_add_to_cart(monkeypatch) -> None:
     assert pending_action is not None
     assert pending_action.thread_id == "thread-write-native"
     assert pending_action.status == "pending"
-    assert pending_action.payload_json == {"product_id": TEST_PRODUCT_ID, "quantity": 1}
+    assert pending_action.payload_json == {"product_id": TEST_PRODUCT_ID, "quantity": 2}
 
     session.close()
