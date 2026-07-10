@@ -170,7 +170,12 @@ def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
 def is_write_intent(message: str) -> bool:
     """Return True when a request asks the read-only graph to mutate state."""
 
-    return _contains_any(message, WRITE_INTENT_KEYWORDS)
+    from .write_handoff import is_candidate_selection_message
+
+    return (
+        _contains_any(message, WRITE_INTENT_KEYWORDS)
+        or is_candidate_selection_message(message)
+    )
 
 
 def _write_intent_decision(

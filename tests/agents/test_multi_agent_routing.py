@@ -308,6 +308,17 @@ def test_write_intent_bypasses_read_agents_and_requires_handoff() -> None:
     assert "V3" in result["final_response"]
 
 
+def test_candidate_selection_bypasses_read_agents_and_requires_handoff() -> None:
+    result = _invoke("选 1")
+
+    assert result["supervisor_decision"]["intent"] == "write_path_unsupported"
+    assert result["supervisor_decision"]["routes"] == []
+    assert result["routes"] == []
+    assert result["executed_routes"] == []
+    assert result["tool_calls"] == []
+    assert result["decision"]["answer_type"] == "write_path_handoff"
+
+
 def test_graph_can_use_injected_supervisor_router() -> None:
     product_tools = tools_by_name([guard_tool("product_agent", fake_search_products)])
     rag_tools = tools_by_name(

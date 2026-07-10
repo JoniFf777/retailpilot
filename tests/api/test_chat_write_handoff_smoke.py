@@ -191,6 +191,65 @@ async def test_multi_agent_write_handoff_clarifies_missing_product_id(
 
 
 @pytest.mark.anyio
+async def test_multi_agent_write_handoff_selects_candidate_by_number(
+    monkeypatch,
+    cart_session,
+) -> None:
+    monkeypatch.setattr(
+        agent_dependency,
+        "get_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "shopmind_agent_mode": "multi",
+                "shopmind_supervisor_router": "deterministic",
+            },
+        )(),
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        candidate_response = await client.post(
+            "/api/chat",
+            json={
+                "message": "帮我把这个键盘加入购物车 2 个",
+                "user_id": TEST_USER_ID,
+                "thread_id": "thread-write-select-candidate",
+                "include_debug": True,
+            },
+        )
+        selection_response = await client.post(
+            "/api/chat",
+            json={
+                "message": "选 1",
+                "user_id": TEST_USER_ID,
+                "thread_id": "thread-write-select-candidate",
+                "include_debug": True,
+            },
+        )
+
+    candidate_body = candidate_response.json()
+    selection_body = selection_response.json()
+    pending_action = cart_session.get(PendingAction, selection_body["pending_action_id"])
+
+    assert candidate_response.status_code == 200
+    assert candidate_body["status"] == "completed"
+    assert candidate_body["tool_calls"] == []
+    assert candidate_body["pending_action_id"] is None
+    assert TEST_PRODUCT_ID in candidate_body["answer"]
+    assert selection_response.status_code == 200
+    assert selection_body["status"] == "confirmation_required"
+    assert selection_body["tool_calls"] == ["prepare_add_to_cart"]
+    assert selection_body["debug"]["multi_agent_debug"]["supervisor_decision"][
+        "intent"
+    ] == "write_path_unsupported"
+    assert pending_action is not None
+    assert pending_action.thread_id == "thread-write-select-candidate"
+    assert pending_action.payload_json == {"product_id": TEST_PRODUCT_ID, "quantity": 2}
+
+
+@pytest.mark.anyio
 async def test_multi_agent_write_handoff_clarifies_missing_user_id(
     monkeypatch,
     cart_session,
