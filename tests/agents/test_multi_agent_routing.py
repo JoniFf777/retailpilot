@@ -1,6 +1,9 @@
 from langchain_core.tools import tool
 
-from agents.shopmind_multi_agent import create_shopmind_multi_agent_graph
+from agents.shopmind_multi_agent import (
+    build_multi_agent_debug_metadata,
+    create_shopmind_multi_agent_graph,
+)
 from agents.shopmind_multi_agent.decision_agent import decision_agent_node
 from agents.shopmind_multi_agent.permissions import guard_tool, tools_by_name
 from agents.shopmind_multi_agent.supervisor import (
@@ -104,6 +107,30 @@ def _invoke(message: str, user_id: str = "USER-001") -> dict:
             "agent_steps": [],
         }
     )
+
+
+def test_multi_agent_debug_metadata_keeps_stable_trace_fields() -> None:
+    debug = build_multi_agent_debug_metadata(
+        {
+            "supervisor_decision": {"routes": ["product_agent"]},
+            "agent_steps": [{"node": "supervisor"}],
+            "routes": ["product_agent"],
+            "executed_routes": ["product_agent"],
+            "decision": {"answer_type": "single_read_summary"},
+            "safety_flags": [],
+            "product_summary": {"raw_detail": "SHOULD_NOT_LEAK"},
+        }
+    )
+
+    assert debug == {
+        "supervisor_decision": {"routes": ["product_agent"]},
+        "agent_steps": [{"node": "supervisor"}],
+        "routes": ["product_agent"],
+        "executed_routes": ["product_agent"],
+        "decision": {"answer_type": "single_read_summary"},
+        "safety_flags": [],
+    }
+    assert "SHOULD_NOT_LEAK" not in str(debug)
 
 
 def test_product_search_question_routes_to_product_agent() -> None:

@@ -1,7 +1,11 @@
 """ShopMind V3 read-only multi-agent path."""
 
 from .decision_agent import DECISION_AGENT_TOOLS, decision_agent_node
-from .graph import create_shopmind_multi_agent_graph, invoke_shopmind_multi_agent
+from .graph import (
+    build_multi_agent_debug_metadata,
+    create_shopmind_multi_agent_graph,
+    invoke_shopmind_multi_agent,
+)
 from .permissions import (
     AGENT_TOOL_ALLOWLIST,
     ToolPermissionError,
@@ -45,6 +49,7 @@ __all__ = [
     "SupervisorRouter",
     "ToolPermissionError",
     "build_supervisor_decision",
+    "build_multi_agent_debug_metadata",
     "create_langchain_supervisor_decision_provider",
     "create_shopmind_multi_agent_graph",
     "create_supervisor_router",
