@@ -143,6 +143,8 @@ The native V3 write handoff handler only prepares a confirmation action when the
 
 If either is missing, the handler returns a completed clarification response, calls no write tools, and does not create a pending action.
 
+When the request has no explicit product ID but includes a recognizable product category or conservative English product keyword, the handler performs a read-only catalog lookup and includes up to three in-stock candidate product IDs in the clarification. This keeps the write path explicit: the user still has to reply with a concrete `TECH-...` ID before `prepare_add_to_cart` can run.
+
 Local router eval now includes a fixed write-intent guardrail case for a missing-product-ID add-to-cart request. The case expects:
 
 - `routes: []`
@@ -168,6 +170,7 @@ Important tests:
 - `tests/agents/test_write_handoff.py`
   - explicit product ID parsing
   - simple quantity parsing
+  - ambiguous product-category requests return catalog candidates
   - missing `user_id` handling
   - ambiguous write request handling
   - native `prepare_add_to_cart` invocation
@@ -185,7 +188,7 @@ Important tests:
 Latest full local validation:
 
 ```text
-159 passed, 4 skipped
+162 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```

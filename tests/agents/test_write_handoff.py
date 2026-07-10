@@ -5,6 +5,8 @@ from sqlalchemy.orm import sessionmaker
 
 from agents.shopmind_multi_agent.write_handoff import (
     extract_product_id,
+    find_product_candidates,
+    infer_product_category,
     extract_quantity,
     invoke_write_handoff,
 )
@@ -32,6 +34,12 @@ def test_extract_quantity_supports_simple_number_patterns() -> None:
     assert extract_quantity(f"帮我买两个 {TEST_PRODUCT_ID}") == 2
 
 
+def test_infer_product_category_from_common_terms() -> None:
+    assert infer_product_category("帮我把这个键盘加入购物车") == "Keyboards"
+    assert infer_product_category("add this monitor to cart") == "Monitors"
+    assert infer_product_category("这个不明确的东西加入购物车") is None
+
+
 def test_write_handoff_requires_user_id() -> None:
     result = invoke_write_handoff(f"帮我把 {TEST_PRODUCT_ID} 加入购物车")
 
@@ -40,12 +48,93 @@ def test_write_handoff_requires_user_id() -> None:
     assert "user_id" in result["answer"]
 
 
-def test_write_handoff_requires_explicit_product_id() -> None:
-    result = invoke_write_handoff("帮我把这个键盘加入购物车", user_id=TEST_USER_ID)
+def test_write_handoff_requires_explicit_product_id_when_no_candidate() -> None:
+    result = invoke_write_handoff("帮我把这个东西加入购物车", user_id=TEST_USER_ID)
 
     assert result["status"] == "completed"
     assert result["tool_calls"] == []
     assert "商品 ID" in result["answer"]
+
+
+def test_write_handoff_suggests_candidates_without_creating_action(monkeypatch) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.add_all(
+        [
+            Product(
+                product_id=TEST_PRODUCT_ID,
+                name="Test Keyboard",
+                category="Keyboards",
+                price=99.00,
+                in_stock=True,
+            ),
+            Product(
+                product_id="TECH-KEY-002",
+                name="Budget Keyboard",
+                category="Keyboards",
+                price=49.00,
+                in_stock=True,
+            ),
+        ]
+    )
+    session.commit()
+
+    @contextmanager
+    def fake_product_session():
+        yield session
+
+    monkeypatch.setattr(
+        "agents.shopmind_multi_agent.write_handoff._get_product_session",
+        fake_product_session,
+    )
+
+    result = invoke_write_handoff("帮我把这个键盘加入购物车", user_id=TEST_USER_ID)
+    pending_count = session.scalar(
+        select(func.count()).select_from(PendingAction)
+    )
+
+    assert result["status"] == "completed"
+    assert result["tool_calls"] == []
+    assert "请选择" in result["answer"] or "可从这些候选中选择" in result["answer"]
+    assert TEST_PRODUCT_ID in result["answer"]
+    assert "TECH-KEY-002" in result["answer"]
+    assert pending_count == 0
+
+    session.close()
+
+
+def test_find_product_candidates_uses_catalog_category(monkeypatch) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    session.add(
+        Product(
+            product_id=TEST_PRODUCT_ID,
+            name="Test Keyboard",
+            category="Keyboards",
+            price=99.00,
+            in_stock=True,
+        )
+    )
+    session.commit()
+
+    @contextmanager
+    def fake_product_session():
+        yield session
+
+    monkeypatch.setattr(
+        "agents.shopmind_multi_agent.write_handoff._get_product_session",
+        fake_product_session,
+    )
+
+    candidates = find_product_candidates("帮我把这个键盘加入购物车")
+
+    assert [candidate["product_id"] for candidate in candidates] == [TEST_PRODUCT_ID]
+
+    session.close()
 
 
 def test_write_handoff_prepares_add_to_cart(monkeypatch) -> None:
