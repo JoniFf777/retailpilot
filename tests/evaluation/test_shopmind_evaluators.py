@@ -9,6 +9,7 @@ from evaluation.shopmind_router_eval import (
     ROUTER_EVAL_CASES,
     evaluate_supervisor_router,
 )
+from evaluation.run_router_eval import build_router, main
 
 
 def test_expected_routes_evaluator_passes_when_routes_match() -> None:
@@ -75,6 +76,35 @@ def test_evaluate_supervisor_router_reports_failures() -> None:
     assert any(
         "rag_agent" in failure["missing_routes"] for failure in summary["failures"]
     )
+
+
+def test_run_router_eval_cli_prints_deterministic_summary(capsys) -> None:
+    exit_code = main(["--router", "deterministic"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "ShopMind router eval" in output
+    assert "router: deterministic" in output
+    assert "exact matches: 6/6 (100.0%)" in output
+    assert "failures: none" in output
+
+
+def test_run_router_eval_cli_prints_json_summary(capsys) -> None:
+    exit_code = main(["--router", "deterministic", "--json"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert '"total": 6' in output
+    assert '"exact_match_rate": 1.0' in output
+
+
+def test_run_router_eval_llm_fallback_mode_uses_unconfigured_router() -> None:
+    router = build_router("llm-fallback")
+
+    summary = evaluate_supervisor_router(router=router)
+
+    assert summary["exact_match_rate"] == 1.0
+    assert summary["fallback_count"] == len(ROUTER_EVAL_CASES)
 
 
 def test_expected_tools_evaluator_passes_when_all_expected_tools_called() -> None:
