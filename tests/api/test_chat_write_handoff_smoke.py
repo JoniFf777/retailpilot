@@ -174,6 +174,7 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
     )
     assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
     assert pending_action is not None
+    assert pending_action.thread_id == "thread-write-smoke"
     assert pending_action.status == "confirmed"
     assert confirm_response.status_code == 200
     assert confirm_body["status"] == "completed"
