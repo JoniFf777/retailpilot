@@ -154,6 +154,7 @@ python -m pytest tests/config tests/db tests/repositories tests/scripts tests/to
 - [Tools 设计](docs/tools_design.md)
 - [API 设计](docs/api_design.md)
 - [安全设计](docs/safety_design.md)
+- [V3.2 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
 ### LangSmith Evaluation
 
