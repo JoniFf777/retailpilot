@@ -147,6 +147,8 @@ When the request has no explicit product ID but includes a recognizable product 
 
 If the ambiguous request includes a `thread_id`, the handler stores the candidate product IDs and requested quantity in an in-process, same-thread candidate context. A follow-up such as `选 1` or `第一个` in the same `user_id` + `thread_id` can then resolve to the selected product and create the normal confirmation-required pending action. Without matching candidate context, selection-only messages still return a clarification and do not write.
 
+If the user selects a number outside the current candidate range, the handler returns a completed clarification such as `当前候选只有 1-2`, calls no write tools, creates no pending action, and keeps the candidate context so the user can retry.
+
 Candidate contexts are bounded in memory: entries expire after 10 minutes, and the in-process cache keeps at most 100 contexts by pruning the oldest entries.
 
 Local router eval now includes a fixed write-intent guardrail case for a missing-product-ID add-to-cart request. The case expects:
@@ -177,6 +179,7 @@ Important tests:
   - simple quantity parsing
   - ambiguous product-category requests return catalog candidates
   - same-thread numeric candidate selection creates a pending action
+  - out-of-range candidate selections clarify without writing
   - candidate contexts expire and prune oldest entries at the cache limit
   - missing `user_id` handling
   - ambiguous write request handling
@@ -188,6 +191,7 @@ Important tests:
   - pending action stores original `thread_id`
   - missing product ID and missing `user_id` return clarifications without pending actions
   - candidate selection by number creates the normal confirmation-required action
+  - out-of-range candidate selection returns a clarification without pending actions
 - `tests/evaluation/test_shopmind_evaluators.py`
   - router eval includes a write-intent guardrail sample
   - debug metadata accepts expected empty routes for write handoff cases
@@ -196,7 +200,7 @@ Important tests:
 Latest full local validation:
 
 ```text
-168 passed, 4 skipped
+170 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```

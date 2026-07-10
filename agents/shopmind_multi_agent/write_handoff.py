@@ -76,6 +76,14 @@ class CandidateContext(TypedDict):
     created_at: float
 
 
+class CandidateSelectionResult(TypedDict, total=False):
+    status: str
+    product_id: str
+    quantity: int
+    selection: int
+    candidate_count: int
+
+
 _CANDIDATE_CONTEXTS: dict[tuple[str, str], CandidateContext] = {}
 _now = time.monotonic
 
@@ -235,7 +243,7 @@ def resolve_candidate_selection(
     message: str,
     user_id: str | None,
     thread_id: str | None,
-) -> tuple[str, int] | None:
+) -> CandidateSelectionResult | None:
     selection = extract_candidate_selection(message)
     context = get_candidate_context(user_id, thread_id)
     if selection is None or context is None:
@@ -243,12 +251,20 @@ def resolve_candidate_selection(
 
     product_ids = context["product_ids"]
     if selection < 1 or selection > len(product_ids):
-        return None
+        return {
+            "status": "out_of_range",
+            "selection": selection,
+            "candidate_count": len(product_ids),
+        }
 
     quantity = extract_quantity(message)
     if quantity == 1:
         quantity = context["quantity"]
-    return product_ids[selection - 1], quantity
+    return {
+        "status": "selected",
+        "product_id": product_ids[selection - 1],
+        "quantity": quantity,
+    }
 
 
 def infer_product_category(message: str) -> str | None:
@@ -316,6 +332,16 @@ def _format_product_id_clarification(candidates: list[dict[str, Any]]) -> str:
     )
 
 
+def _format_candidate_selection_out_of_range(
+    selection: int,
+    candidate_count: int,
+) -> str:
+    return (
+        f"当前候选只有 1-{candidate_count}，你选择的是 {selection}。"
+        "请重新选择候选编号，或直接回复明确的商品 ID，例如 TECH-KEY-001。"
+    )
+
+
 def extract_pending_action_id(tool_result: str) -> str | None:
     """Extract a pending action ID from the prepare_add_to_cart tool output."""
 
@@ -341,7 +367,17 @@ def invoke_write_handoff(
     product_id = extract_product_id(message)
     quantity = extract_quantity(message)
     if selected_candidate:
-        product_id, quantity = selected_candidate
+        if selected_candidate["status"] == "out_of_range":
+            return {
+                "answer": _format_candidate_selection_out_of_range(
+                    int(selected_candidate["selection"]),
+                    int(selected_candidate["candidate_count"]),
+                ),
+                "status": "completed",
+                "tool_calls": [],
+            }
+        product_id = selected_candidate["product_id"]
+        quantity = int(selected_candidate["quantity"])
 
     if product_id is None:
         candidates = find_product_candidates(message)

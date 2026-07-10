@@ -250,6 +250,59 @@ async def test_multi_agent_write_handoff_selects_candidate_by_number(
 
 
 @pytest.mark.anyio
+async def test_multi_agent_write_handoff_reports_candidate_selection_out_of_range(
+    monkeypatch,
+    cart_session,
+) -> None:
+    monkeypatch.setattr(
+        agent_dependency,
+        "get_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "shopmind_agent_mode": "multi",
+                "shopmind_supervisor_router": "deterministic",
+            },
+        )(),
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        candidate_response = await client.post(
+            "/api/chat",
+            json={
+                "message": "帮我把这个键盘加入购物车",
+                "user_id": TEST_USER_ID,
+                "thread_id": "thread-write-select-out-of-range",
+                "include_debug": True,
+            },
+        )
+        selection_response = await client.post(
+            "/api/chat",
+            json={
+                "message": "选 2",
+                "user_id": TEST_USER_ID,
+                "thread_id": "thread-write-select-out-of-range",
+                "include_debug": True,
+            },
+        )
+
+    candidate_body = candidate_response.json()
+    selection_body = selection_response.json()
+
+    assert candidate_response.status_code == 200
+    assert TEST_PRODUCT_ID in candidate_body["answer"]
+    assert selection_response.status_code == 200
+    assert selection_body["status"] == "completed"
+    assert selection_body["tool_calls"] == []
+    assert selection_body["pending_action_id"] is None
+    assert "当前候选只有 1-1" in selection_body["answer"]
+    assert "你选择的是 2" in selection_body["answer"]
+    assert _pending_action_count(cart_session) == 0
+
+
+@pytest.mark.anyio
 async def test_multi_agent_write_handoff_clarifies_missing_user_id(
     monkeypatch,
     cart_session,
