@@ -11,7 +11,7 @@ from evaluators.evaluators import (
     correctness_evaluator,
     count_total_tool_calls_evaluator,
 )
-from evaluation.shopmind_router_eval import expected_routes_evaluator
+from evaluation.shopmind_router_eval import compare_routes, expected_routes_evaluator
 
 
 def _as_list(value: Any) -> list[str]:
@@ -116,9 +116,66 @@ def expected_keywords_evaluator(
     }
 
 
+def debug_metadata_evaluator(
+    inputs: dict,
+    outputs: dict,
+    reference_outputs: dict,
+) -> dict:
+    """Check whether optional debug metadata has a usable multi-agent trace."""
+    debug = outputs.get("debug")
+    metadata = debug if isinstance(debug, dict) else outputs
+    problems: list[str] = []
+
+    supervisor_decision = metadata.get("supervisor_decision")
+    if not isinstance(supervisor_decision, dict):
+        problems.append("Missing supervisor_decision.")
+    else:
+        routes = _as_list(supervisor_decision.get("routes"))
+        if not routes:
+            problems.append("supervisor_decision.routes is empty.")
+        if not supervisor_decision.get("router_type"):
+            problems.append("supervisor_decision.router_type is missing.")
+
+        expected_routes = _as_list(reference_outputs.get("expected_routes"))
+        if expected_routes:
+            comparison = compare_routes(expected_routes, routes)
+            if not comparison["score"]:
+                problems.append(
+                    "Route mismatch: "
+                    f"missing={comparison['missing_routes']}, "
+                    f"unexpected={comparison['unexpected_routes']}."
+                )
+
+    agent_steps = metadata.get("agent_steps")
+    if not isinstance(agent_steps, list) or not agent_steps:
+        problems.append("agent_steps is missing or empty.")
+    else:
+        first_step = agent_steps[0]
+        if not isinstance(first_step, dict):
+            problems.append("agent_steps[0] is not an object.")
+        else:
+            for required_key in ("index", "node", "event"):
+                if required_key not in first_step:
+                    problems.append(f"agent_steps[0].{required_key} is missing.")
+            if first_step.get("node") != "supervisor":
+                problems.append("agent_steps[0].node is not supervisor.")
+
+    score = not problems
+    return {
+        "key": "debug_metadata",
+        "score": score,
+        "comment": (
+            "Debug metadata includes supervisor decision and agent steps."
+            if score
+            else " ".join(problems)
+        ),
+    }
+
+
 __all__ = [
     "correctness_evaluator",
     "count_total_tool_calls_evaluator",
+    "debug_metadata_evaluator",
     "expected_tools_evaluator",
     "forbidden_tools_evaluator",
     "status_evaluator",
