@@ -253,6 +253,14 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic --json
 ```
 
+需要本地模拟 V3 LangSmith router evaluation 时，可以使用 target 模式。该模式会调用 V3 read-only multi-agent target，并对每个固定样本运行 `status_evaluator`、`expected_routes_evaluator` 和 `debug_metadata_evaluator`：
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode target
+```
+
+如果只想验证 router 规则本身，继续使用默认 `--mode router` 即可。
+
 ### V3 Roadmap
 
 V2 数据层已经收口。下一条主线是 V3 multi-agent：
