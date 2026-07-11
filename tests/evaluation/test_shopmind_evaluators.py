@@ -8,8 +8,10 @@ from evaluation.shopmind_evaluators import (
     status_evaluator,
 )
 from evaluation.shopmind_event_reporting import (
+    build_event_health_report,
     event_summary_metric_rows,
     extract_debug_events,
+    format_event_health_report,
     format_event_metrics,
     format_event_summary,
     summarize_debug_events,
@@ -367,6 +369,57 @@ def test_format_event_metrics_prints_prometheus_style_samples() -> None:
     ) in output
 
 
+def test_event_health_report_checks_required_events_and_groups() -> None:
+    summary = summarize_debug_events(
+        [
+            {
+                "debug": {
+                    "write_handoff_debug": {
+                        "candidate_context": {
+                            "events": [{"event": "candidate_context_stored"}]
+                        }
+                    },
+                    "confirmation": {
+                        "events": [{"event": "pending_action_confirmed"}]
+                    },
+                }
+            },
+            {"debug": {}},
+        ]
+    )
+
+    report = build_event_health_report(
+        summary,
+        title="Test event health",
+        required_groups=("candidate_context", "confirmation"),
+        required_events=("candidate_context_stored", "pending_action_confirmed"),
+        min_output_event_rate=0.5,
+    )
+    output = format_event_health_report(report)
+
+    assert report["status"] == "pass"
+    assert all(check["passed"] for check in report["checks"])
+    assert "Test event health" in output
+    assert "status: pass" in output
+    assert "event:candidate_context_stored: pass" in output
+
+
+def test_event_health_report_warns_when_required_event_missing() -> None:
+    summary = summarize_debug_events([{"debug": {}}])
+
+    report = build_event_health_report(
+        summary,
+        required_events=("pending_action_confirmed",),
+        min_output_event_rate=0.5,
+    )
+    output = format_event_health_report(report)
+
+    assert report["status"] == "warn"
+    assert any(not check["passed"] for check in report["checks"])
+    assert "status: warn" in output
+    assert "event:pending_action_confirmed: warn" in output
+
+
 def test_router_eval_cases_cover_core_read_routes() -> None:
     expected_case_names = {
         "product_recommendation",
@@ -548,6 +601,50 @@ def test_run_router_eval_handoff_mode_prints_event_metrics(
         'shopmind_v3_debug_events_by_name_total{event="pending_action_confirmed",'
         'group="confirmation"} 1'
     ) in output
+
+
+def test_run_router_eval_handoff_mode_prints_event_report(
+    capsys,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "evaluation.run_router_eval.evaluate_v3_handoff_target",
+        lambda: {
+            "total_cases": 1,
+            "passed_cases": 1,
+            "pass_rate": 1.0,
+            "event_summary": summarize_debug_events(
+                [
+                    {
+                        "debug": {
+                            "write_handoff_debug": {
+                                "candidate_context": {
+                                    "events": [
+                                        {"event": "candidate_context_stored"}
+                                    ]
+                                }
+                            },
+                            "confirmation": {
+                                "events": [{"event": "pending_action_confirmed"}]
+                            },
+                        }
+                    },
+                    {"debug": {}},
+                ]
+            ),
+            "case_results": [],
+            "failures": [],
+        },
+    )
+
+    exit_code = main(["--mode", "handoff", "--event-report"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "ShopMind V3 handoff event health" in output
+    assert "status: pass" in output
+    assert "event:candidate_context_stored: pass" in output
+    assert "event:pending_action_confirmed: pass" in output
 
 
 def test_evaluate_v3_router_target_reports_evaluator_failure() -> None:
