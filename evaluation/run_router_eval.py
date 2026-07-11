@@ -7,6 +7,7 @@ Optional:
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --router llm-fallback
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --router llm --model openai:gpt-5-nano
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode target
+    conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff
 """
 
 from __future__ import annotations
@@ -17,6 +18,10 @@ from typing import Any, Callable
 from typing import Sequence
 
 from evaluation.run_langsmith_eval import shopmind_v3_router_target
+from evaluation.shopmind_handoff_eval import (
+    evaluate_v3_handoff_target,
+    format_handoff_summary,
+)
 from evaluation.shopmind_event_reporting import (
     format_event_summary,
     summarize_debug_events,
@@ -202,11 +207,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--mode",
-        choices=["router", "target"],
+        choices=["router", "target", "handoff"],
         default="router",
         help=(
             "router checks supervisor route decisions only; target invokes the "
-            "V3 multi-agent target and runs rule-based evaluators."
+            "V3 multi-agent target and runs rule-based evaluators; handoff "
+            "runs API-boundary chat/confirm handoff cases."
         ),
     )
     parser.add_argument(
@@ -233,6 +239,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.mode == "handoff":
+        summary = evaluate_v3_handoff_target()
+        if args.json:
+            print(json.dumps(summary, ensure_ascii=False, indent=2))
+        else:
+            print(format_handoff_summary(summary))
+        return 0
+
     if args.mode == "target":
         summary = evaluate_v3_router_target()
         if args.json:

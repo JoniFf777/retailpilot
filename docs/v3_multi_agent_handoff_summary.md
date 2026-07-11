@@ -1,10 +1,10 @@
-# V3.7 Multi-Agent Handoff Summary
+# V3.8 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.7 adds event reporting helpers that aggregate candidate-context and confirmation debug events into count/rate summaries.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.8 adds a dedicated API handoff evaluation target on top of event reporting helpers that aggregate candidate-context and confirmation debug events into count/rate summaries.
 
 Runtime switches:
 
@@ -59,6 +59,7 @@ Offline eval:
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router llm-fallback
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode target --router deterministic
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff
 ```
 
 Expected current result for deterministic and llm-fallback fixed samples:
@@ -163,7 +164,7 @@ Current confirmation event names:
 
 ## Event reporting
 
-V3.7 adds `evaluation/shopmind_event_reporting.py` for aggregating debug events from API or evaluation outputs.
+V3.7 added `evaluation/shopmind_event_reporting.py` for aggregating debug events from API or evaluation outputs.
 
 Supported helpers:
 
@@ -171,7 +172,9 @@ Supported helpers:
 - `summarize_debug_events(outputs)`: returns event counts, group counts, per-output event rates, and output event coverage.
 - `format_event_summary(summary)`: formats a readable report for CLI output.
 
-`evaluation/run_router_eval.py --mode target` now includes an `event_summary` object in its raw summary and prints a compact event section in text output. The real target mode still depends on configured data access for read-agent tools; unit tests cover the event-summary integration with fake targets.
+`evaluation/run_router_eval.py --mode target` includes an `event_summary` object in its raw summary and prints a compact event section in text output. The real target mode still depends on configured data access for read-agent tools; unit tests cover the event-summary integration with fake targets.
+
+V3.8 adds `evaluation/shopmind_handoff_eval.py`, which runs fixed API-boundary handoff cases through the same dependency functions used by `/api/chat` and `/api/chat/confirm`. `evaluation/run_router_eval.py --mode handoff` prints case pass rates plus the aggregate candidate-context and confirmation event summary. Unit tests use fake chat/confirm functions so this target is covered without requiring database connectivity.
 
 ## Thread handling
 
@@ -272,25 +275,27 @@ Important tests:
   - pending action presence can be asserted in deterministic eval
   - V3 debug event extraction and event summary aggregation
   - router target summaries include event summaries
+  - API handoff eval cases aggregate chat/confirm event summaries
+  - `run_router_eval.py --mode handoff` has CLI coverage with fake targets
 
 Latest full local validation:
 
 ```text
-182 passed, 4 skipped
+186 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.7 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, and measurable through aggregate event reporting.
+V3.8 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, and measurable through aggregate event reporting plus a dedicated API handoff evaluation target.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
 - Consider adding a small operational dashboard or exported counters for candidate-context and confirmation event groups.
-- Consider adding a dedicated API handoff evaluation target that exercises the full `/api/chat` to `/api/chat/confirm` flow with event reporting.
+- Consider adding a LangSmith-hosted API handoff dataset once the local handoff target is stable in the intended environment.
 - Keep `/api/chat/confirm` unchanged.
 
 This would make V3 own both read orchestration and confirmation preparation while preserving the same public API contract.
