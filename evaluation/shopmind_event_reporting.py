@@ -43,6 +43,12 @@ class EventSummary(TypedDict):
     group_rates: dict[str, float]
 
 
+class EventMetricRow(TypedDict):
+    name: str
+    labels: dict[str, str]
+    value: float
+
+
 def _as_mapping(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
@@ -170,12 +176,102 @@ def format_event_summary(summary: EventSummary) -> str:
     return "\n".join(lines)
 
 
+def event_summary_metric_rows(
+    summary: EventSummary,
+    *,
+    prefix: str = "shopmind_v3_debug",
+) -> list[EventMetricRow]:
+    """Flatten an event summary into operational metric rows."""
+
+    rows: list[EventMetricRow] = []
+
+    def add(
+        name: str,
+        value: int | float,
+        labels: dict[str, str] | None = None,
+    ) -> None:
+        rows.append(
+            {
+                "name": name,
+                "labels": labels or {},
+                "value": float(value),
+            }
+        )
+
+    add(f"{prefix}_outputs_total", summary["total_outputs"])
+    add(f"{prefix}_outputs_with_events_total", summary["outputs_with_events"])
+    add(f"{prefix}_output_event_rate", summary["output_event_rate"])
+    add(f"{prefix}_events_total", summary["total_events"])
+
+    for group, count in summary["group_counts"].items():
+        add(f"{prefix}_group_events_total", count, {"group": group})
+    for event, count in summary["event_counts"].items():
+        add(
+            f"{prefix}_events_by_name_total",
+            count,
+            {
+                "event": event,
+                "group": EVENT_GROUP_BY_NAME.get(event, "unknown"),
+            },
+        )
+    for group, rate in summary["group_rates"].items():
+        add(f"{prefix}_group_events_per_output", rate, {"group": group})
+    for event, rate in summary["event_rates"].items():
+        add(
+            f"{prefix}_events_per_output",
+            rate,
+            {
+                "event": event,
+                "group": EVENT_GROUP_BY_NAME.get(event, "unknown"),
+            },
+        )
+    return rows
+
+
+def _format_metric_labels(labels: dict[str, str]) -> str:
+    if not labels:
+        return ""
+    formatted = []
+    for key, value in sorted(labels.items()):
+        escaped = (
+            value.replace("\\", "\\\\")
+            .replace("\n", "\\n")
+            .replace('"', '\\"')
+        )
+        formatted.append(f'{key}="{escaped}"')
+    return "{" + ",".join(formatted) + "}"
+
+
+def _format_metric_value(value: float) -> str:
+    return str(int(value)) if value.is_integer() else str(value)
+
+
+def format_event_metrics(
+    summary: EventSummary,
+    *,
+    prefix: str = "shopmind_v3_debug",
+) -> str:
+    """Format event summary rows as Prometheus-style text samples."""
+
+    rows = event_summary_metric_rows(summary, prefix=prefix)
+    return "\n".join(
+        (
+            f"{row['name']}{_format_metric_labels(row['labels'])} "
+            f"{_format_metric_value(row['value'])}"
+        )
+        for row in rows
+    )
+
+
 __all__ = [
     "CANDIDATE_CONTEXT_EVENTS",
     "CONFIRMATION_EVENTS",
+    "EventMetricRow",
     "EventRecord",
     "EventSummary",
+    "event_summary_metric_rows",
     "extract_debug_events",
+    "format_event_metrics",
     "format_event_summary",
     "summarize_debug_events",
 ]

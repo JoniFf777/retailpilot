@@ -8,6 +8,7 @@ Optional:
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --router llm --model openai:gpt-5-nano
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode target
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff
+    conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff --event-metrics
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from evaluation.shopmind_handoff_eval import (
     format_handoff_summary,
 )
 from evaluation.shopmind_event_reporting import (
+    format_event_metrics,
     format_event_summary,
     summarize_debug_events,
 )
@@ -234,6 +236,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Print the raw evaluation summary as JSON.",
     )
+    parser.add_argument(
+        "--event-metrics",
+        action="store_true",
+        help=(
+            "Print Prometheus-style V3 debug event metrics for target or "
+            "handoff mode."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -243,6 +253,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         summary = evaluate_v3_handoff_target()
         if args.json:
             print(json.dumps(summary, ensure_ascii=False, indent=2))
+        elif args.event_metrics:
+            print(format_event_metrics(summary["event_summary"]))
         else:
             print(format_handoff_summary(summary))
         return 0
@@ -251,6 +263,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         summary = evaluate_v3_router_target()
         if args.json:
             print(json.dumps(summary, ensure_ascii=False, indent=2))
+        elif args.event_metrics:
+            print(format_event_metrics(summary["event_summary"]))
         else:
             print(format_target_summary(summary))
         return 0
