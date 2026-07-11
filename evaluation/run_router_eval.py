@@ -17,6 +17,10 @@ from typing import Any, Callable
 from typing import Sequence
 
 from evaluation.run_langsmith_eval import shopmind_v3_router_target
+from evaluation.shopmind_event_reporting import (
+    format_event_summary,
+    summarize_debug_events,
+)
 from evaluation.shopmind_evaluators import (
     debug_metadata_evaluator,
     expected_routes_evaluator,
@@ -120,6 +124,7 @@ def evaluate_v3_router_target(
     failures: list[dict[str, Any]] = []
     evaluator_totals = {evaluator.__name__: 0 for evaluator in TARGET_EVALUATORS}
     evaluator_passes = {evaluator.__name__: 0 for evaluator in TARGET_EVALUATORS}
+    outputs_for_event_summary: list[dict[str, Any]] = []
 
     for case in active_cases:
         inputs = {
@@ -129,6 +134,7 @@ def evaluate_v3_router_target(
         }
         reference_outputs = _reference_outputs_for_case(case)
         outputs = active_target(inputs)
+        outputs_for_event_summary.append(outputs)
 
         for evaluator in TARGET_EVALUATORS:
             result = evaluator(inputs, outputs, reference_outputs)
@@ -154,6 +160,7 @@ def evaluate_v3_router_target(
         "pass_rate": passed_checks / total_checks if total_checks else 0.0,
         "evaluator_passes": evaluator_passes,
         "evaluator_totals": evaluator_totals,
+        "event_summary": summarize_debug_events(outputs_for_event_summary),
         "failures": failures,
     }
 
@@ -171,6 +178,10 @@ def format_target_summary(summary: dict[str, Any]) -> str:
     for evaluator_name, passed in summary["evaluator_passes"].items():
         total = summary["evaluator_totals"][evaluator_name]
         lines.append(f"{evaluator_name}: {passed}/{total}")
+
+    event_summary = summary.get("event_summary")
+    if isinstance(event_summary, dict):
+        lines.append(format_event_summary(event_summary))
 
     if not summary["failures"]:
         lines.append("failures: none")

@@ -1,10 +1,10 @@
-# V3.6 Multi-Agent Handoff Summary
+# V3.7 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.6 adds confirmation debug metadata for `/api/chat/confirm`, building on the candidate-context debug metadata and manual cleanup script from V3.5.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.7 adds event reporting helpers that aggregate candidate-context and confirmation debug events into count/rate summaries.
 
 Runtime switches:
 
@@ -161,6 +161,18 @@ Current confirmation event names:
 - `pending_action_cancelled`
 - `pending_action_failed`
 
+## Event reporting
+
+V3.7 adds `evaluation/shopmind_event_reporting.py` for aggregating debug events from API or evaluation outputs.
+
+Supported helpers:
+
+- `extract_debug_events(output)`: extracts candidate-context and confirmation event records.
+- `summarize_debug_events(outputs)`: returns event counts, group counts, per-output event rates, and output event coverage.
+- `format_event_summary(summary)`: formats a readable report for CLI output.
+
+`evaluation/run_router_eval.py --mode target` now includes an `event_summary` object in its raw summary and prints a compact event section in text output. The real target mode still depends on configured data access for read-agent tools; unit tests cover the event-summary integration with fake targets.
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -258,25 +270,27 @@ Important tests:
   - router eval includes a write-intent guardrail sample
   - debug metadata accepts expected empty routes for write handoff cases
   - pending action presence can be asserted in deterministic eval
+  - V3 debug event extraction and event summary aggregation
+  - router target summaries include event summaries
 
 Latest full local validation:
 
 ```text
-178 passed, 4 skipped
+182 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.6 keeps the native V3 write handoff path confirmation-based, database-backed, and observable through stable debug metadata across both preparation and confirmation.
+V3.7 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, and measurable through aggregate event reporting.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
-- Consider adding aggregate LangSmith/eval reporting for candidate-context and confirmation event rates.
-- Consider adding a small operational dashboard or exported counters for these event groups.
+- Consider adding a small operational dashboard or exported counters for candidate-context and confirmation event groups.
+- Consider adding a dedicated API handoff evaluation target that exercises the full `/api/chat` to `/api/chat/confirm` flow with event reporting.
 - Keep `/api/chat/confirm` unchanged.
 
 This would make V3 own both read orchestration and confirmation preparation while preserving the same public API contract.

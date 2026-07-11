@@ -7,6 +7,11 @@ from evaluation.shopmind_evaluators import (
     pending_action_evaluator,
     status_evaluator,
 )
+from evaluation.shopmind_event_reporting import (
+    extract_debug_events,
+    format_event_summary,
+    summarize_debug_events,
+)
 from evaluation.create_shopmind_dataset import (
     SHOPMIND_V3_ROUTER_EXAMPLES,
     V3_ROUTER_DATASET_NAME,
@@ -189,6 +194,99 @@ def test_debug_metadata_evaluator_reports_write_guardrail_mismatch() -> None:
     assert "Missing safety flags" in result["comment"]
 
 
+def test_extract_debug_events_reads_write_handoff_and_confirmation_events() -> None:
+    events = extract_debug_events(
+        {
+            "debug": {
+                "write_handoff_debug": {
+                    "candidate_context": {
+                        "events": [
+                            {
+                                "index": 1,
+                                "event": "candidate_context_stored",
+                                "candidate_count": 2,
+                            }
+                        ]
+                    }
+                },
+                "confirmation": {
+                    "events": [
+                        {
+                            "index": 1,
+                            "event": "pending_action_confirmed",
+                            "status": "completed",
+                        }
+                    ]
+                },
+            }
+        }
+    )
+
+    assert events == [
+        {
+            "event": "candidate_context_stored",
+            "group": "candidate_context",
+            "source": "debug.write_handoff_debug.candidate_context",
+            "metadata": {"candidate_count": 2},
+        },
+        {
+            "event": "pending_action_confirmed",
+            "group": "confirmation",
+            "source": "debug.confirmation",
+            "metadata": {"status": "completed"},
+        },
+    ]
+
+
+def test_summarize_debug_events_reports_counts_and_rates() -> None:
+    summary = summarize_debug_events(
+        [
+            {
+                "debug": {
+                    "candidate_context": {
+                        "events": [
+                            {"event": "candidate_context_missed"},
+                            {"event": "candidate_context_stored"},
+                        ]
+                    }
+                }
+            },
+            {
+                "debug": {
+                    "confirmation": {
+                        "events": [{"event": "pending_action_cancelled"}]
+                    }
+                }
+            },
+            {"debug": {}},
+        ]
+    )
+
+    assert summary["total_outputs"] == 3
+    assert summary["outputs_with_events"] == 2
+    assert summary["output_event_rate"] == 2 / 3
+    assert summary["total_events"] == 3
+    assert summary["group_counts"] == {"candidate_context": 2, "confirmation": 1}
+    assert summary["event_counts"] == {
+        "candidate_context_missed": 1,
+        "candidate_context_stored": 1,
+        "pending_action_cancelled": 1,
+    }
+    assert summary["group_rates"] == {
+        "candidate_context": 2 / 3,
+        "confirmation": 1 / 3,
+    }
+
+
+def test_format_event_summary_handles_empty_event_set() -> None:
+    summary = summarize_debug_events([{"debug": {}}, {"answer": "no debug"}])
+
+    output = format_event_summary(summary)
+
+    assert "outputs: 2" in output
+    assert "event counts: none" in output
+
+
 def test_router_eval_cases_cover_core_read_routes() -> None:
     expected_case_names = {
         "product_recommendation",
@@ -337,6 +435,47 @@ def test_evaluate_v3_router_target_reports_evaluator_failure() -> None:
     assert summary["failures"][0]["case"] == "needs_rag"
     assert summary["failures"][0]["evaluator"] == "expected_routes"
     assert summary["failures"][1]["evaluator"] == "debug_metadata"
+
+
+def test_evaluate_v3_router_target_includes_event_summary() -> None:
+    def fake_target(inputs: dict) -> dict:
+        return {
+            "status": "completed",
+            "debug": {
+                "supervisor_decision": {
+                    "routes": ["product_agent"],
+                    "router_type": "deterministic",
+                },
+                "agent_steps": [
+                    {
+                        "index": 1,
+                        "node": "supervisor",
+                        "event": "routed",
+                    }
+                ],
+                "write_handoff_debug": {
+                    "candidate_context": {
+                        "events": [{"event": "candidate_context_stored"}]
+                    }
+                },
+            },
+        }
+
+    summary = evaluate_v3_router_target(
+        target_fn=fake_target,
+        cases=(
+            {
+                "name": "product_with_event",
+                "message": "鎺ㄨ崘閿洏",
+                "expected_routes": ["product_agent"],
+            },
+        ),
+    )
+
+    assert summary["event_summary"]["total_outputs"] == 1
+    assert summary["event_summary"]["event_counts"] == {
+        "candidate_context_stored": 1
+    }
 
 
 def test_v3_router_dataset_examples_include_expected_routes() -> None:

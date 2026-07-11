@@ -1,0 +1,181 @@
+"""Aggregate V3 debug events from ShopMind API/evaluation outputs."""
+
+from __future__ import annotations
+
+from collections import Counter
+from typing import Any, Iterable, TypedDict
+
+
+CANDIDATE_CONTEXT_EVENTS = {
+    "candidate_context_stored",
+    "candidate_context_skipped",
+    "candidate_context_missed",
+    "candidate_context_selected",
+    "candidate_context_out_of_range",
+    "candidate_context_cleared",
+}
+CONFIRMATION_EVENTS = {
+    "pending_action_confirmed",
+    "pending_action_cancelled",
+    "pending_action_failed",
+}
+EVENT_GROUP_BY_NAME = {
+    **{event: "candidate_context" for event in CANDIDATE_CONTEXT_EVENTS},
+    **{event: "confirmation" for event in CONFIRMATION_EVENTS},
+}
+
+
+class EventRecord(TypedDict):
+    event: str
+    group: str
+    source: str
+    metadata: dict[str, Any]
+
+
+class EventSummary(TypedDict):
+    total_outputs: int
+    outputs_with_events: int
+    output_event_rate: float
+    total_events: int
+    event_counts: dict[str, int]
+    group_counts: dict[str, int]
+    event_rates: dict[str, float]
+    group_rates: dict[str, float]
+
+
+def _as_mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _events_from_container(
+    container: dict[str, Any],
+    *,
+    group: str,
+    source: str,
+) -> list[EventRecord]:
+    group_payload = _as_mapping(container.get(group))
+    raw_events = group_payload.get("events")
+    if not isinstance(raw_events, list):
+        return []
+
+    records: list[EventRecord] = []
+    for raw_event in raw_events:
+        event_payload = _as_mapping(raw_event)
+        event_name = event_payload.get("event")
+        if not isinstance(event_name, str):
+            continue
+        records.append(
+            {
+                "event": event_name,
+                "group": EVENT_GROUP_BY_NAME.get(event_name, group),
+                "source": source,
+                "metadata": {
+                    key: value
+                    for key, value in event_payload.items()
+                    if key not in {"event", "index"}
+                },
+            }
+        )
+    return records
+
+
+def extract_debug_events(output: dict[str, Any]) -> list[EventRecord]:
+    """Extract known V3 debug events from an API or evaluator output."""
+
+    debug = _as_mapping(output.get("debug"))
+    records: list[EventRecord] = []
+    records.extend(
+        _events_from_container(
+            debug,
+            group="candidate_context",
+            source="debug.candidate_context",
+        )
+    )
+    records.extend(
+        _events_from_container(
+            _as_mapping(debug.get("write_handoff_debug")),
+            group="candidate_context",
+            source="debug.write_handoff_debug.candidate_context",
+        )
+    )
+    records.extend(
+        _events_from_container(
+            debug,
+            group="confirmation",
+            source="debug.confirmation",
+        )
+    )
+    return records
+
+
+def summarize_debug_events(outputs: Iterable[dict[str, Any]]) -> EventSummary:
+    """Return count and per-output rate metrics for known V3 debug events."""
+
+    output_list = list(outputs)
+    event_counter: Counter[str] = Counter()
+    group_counter: Counter[str] = Counter()
+    outputs_with_events = 0
+
+    for output in output_list:
+        events = extract_debug_events(output)
+        if events:
+            outputs_with_events += 1
+        for event in events:
+            event_counter[event["event"]] += 1
+            group_counter[event["group"]] += 1
+
+    total_outputs = len(output_list)
+    total_events = sum(event_counter.values())
+    return {
+        "total_outputs": total_outputs,
+        "outputs_with_events": outputs_with_events,
+        "output_event_rate": (
+            outputs_with_events / total_outputs if total_outputs else 0.0
+        ),
+        "total_events": total_events,
+        "event_counts": dict(sorted(event_counter.items())),
+        "group_counts": dict(sorted(group_counter.items())),
+        "event_rates": {
+            event: count / total_outputs if total_outputs else 0.0
+            for event, count in sorted(event_counter.items())
+        },
+        "group_rates": {
+            group: count / total_outputs if total_outputs else 0.0
+            for group, count in sorted(group_counter.items())
+        },
+    }
+
+
+def format_event_summary(summary: EventSummary) -> str:
+    lines = [
+        "V3 debug event summary",
+        f"outputs: {summary['total_outputs']}",
+        (
+            "outputs with events: "
+            f"{summary['outputs_with_events']}/{summary['total_outputs']} "
+            f"({summary['output_event_rate'] * 100:.1f}%)"
+        ),
+        f"events: {summary['total_events']}",
+    ]
+    if not summary["event_counts"]:
+        lines.append("event counts: none")
+        return "\n".join(lines)
+
+    lines.append("group counts:")
+    for group, count in summary["group_counts"].items():
+        lines.append(f"- {group}: {count}")
+    lines.append("event counts:")
+    for event, count in summary["event_counts"].items():
+        lines.append(f"- {event}: {count}")
+    return "\n".join(lines)
+
+
+__all__ = [
+    "CANDIDATE_CONTEXT_EVENTS",
+    "CONFIRMATION_EVENTS",
+    "EventRecord",
+    "EventSummary",
+    "extract_debug_events",
+    "format_event_summary",
+    "summarize_debug_events",
+]
