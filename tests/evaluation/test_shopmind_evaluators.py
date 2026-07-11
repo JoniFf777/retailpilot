@@ -12,6 +12,11 @@ from evaluation.shopmind_event_reporting import (
     format_event_summary,
     summarize_debug_events,
 )
+from evaluation.shopmind_handoff_eval import (
+    evaluate_v3_handoff_target,
+    format_handoff_summary,
+    run_handoff_case,
+)
 from evaluation.create_shopmind_dataset import (
     SHOPMIND_V3_ROUTER_EXAMPLES,
     V3_ROUTER_DATASET_NAME,
@@ -400,6 +405,38 @@ def test_run_router_eval_target_mode_scores_fake_target(capsys, monkeypatch) -> 
     assert "failures: none" in output
 
 
+def test_run_router_eval_handoff_mode_scores_fake_summary(capsys, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "evaluation.run_router_eval.evaluate_v3_handoff_target",
+        lambda: {
+            "total_cases": 1,
+            "passed_cases": 1,
+            "pass_rate": 1.0,
+            "event_summary": summarize_debug_events(
+                [
+                    {
+                        "debug": {
+                            "confirmation": {
+                                "events": [{"event": "pending_action_confirmed"}]
+                            }
+                        }
+                    }
+                ]
+            ),
+            "case_results": [],
+            "failures": [],
+        },
+    )
+
+    exit_code = main(["--mode", "handoff"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "ShopMind V3 API handoff eval" in output
+    assert "pending_action_confirmed" in output
+    assert "failures: none" in output
+
+
 def test_evaluate_v3_router_target_reports_evaluator_failure() -> None:
     def fake_target(inputs: dict) -> dict:
         return {
@@ -476,6 +513,123 @@ def test_evaluate_v3_router_target_includes_event_summary() -> None:
     assert summary["event_summary"]["event_counts"] == {
         "candidate_context_stored": 1
     }
+
+
+def test_run_handoff_case_confirms_pending_action_with_events() -> None:
+    def fake_chat_fn(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ):
+        return {
+            "status": "confirmation_required",
+            "pending_action_id": "pending-001",
+            "debug": {
+                "write_handoff_debug": {
+                    "candidate_context": {
+                        "events": [{"event": "candidate_context_selected"}]
+                    }
+                }
+            },
+        }
+
+    def fake_confirm_fn(pending_action_id: str, user_id: str, confirmed: bool):
+        return {
+            "status": "completed",
+            "pending_action_id": pending_action_id,
+            "debug": {
+                "confirmation": {
+                    "events": [{"event": "pending_action_confirmed"}]
+                }
+            },
+        }
+
+    result = run_handoff_case(
+        {
+            "name": "confirm",
+            "message": "add TECH-KEY-001",
+            "user_id": "user-001",
+            "thread_id": "thread-001",
+            "confirm": True,
+            "expected_chat_status": "confirmation_required",
+            "expected_confirm_status": "completed",
+            "expected_chat_events": ["candidate_context_selected"],
+            "expected_confirm_events": ["pending_action_confirmed"],
+        },
+        chat_fn=fake_chat_fn,
+        confirm_fn=fake_confirm_fn,
+    )
+
+    assert result["passed"] is True
+    assert result["event_summary"]["event_counts"] == {
+        "candidate_context_selected": 1,
+        "pending_action_confirmed": 1,
+    }
+
+
+def test_evaluate_v3_handoff_target_aggregates_cases_and_events() -> None:
+    def fake_chat_fn(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ):
+        if "TECH-KEY-001" in message:
+            return {
+                "status": "confirmation_required",
+                "pending_action_id": "pending-001",
+                "debug": {},
+            }
+        return {
+            "status": "completed",
+            "pending_action_id": None,
+            "debug": {
+                "write_handoff_debug": {
+                    "candidate_context": {
+                        "events": [{"event": "candidate_context_stored"}]
+                    }
+                }
+            },
+        }
+
+    def fake_confirm_fn(pending_action_id: str, user_id: str, confirmed: bool):
+        return {
+            "status": "completed",
+            "pending_action_id": pending_action_id,
+            "debug": {
+                "confirmation": {
+                    "events": [{"event": "pending_action_confirmed"}]
+                }
+            },
+        }
+
+    summary = evaluate_v3_handoff_target(
+        chat_fn=fake_chat_fn,
+        confirm_fn=fake_confirm_fn,
+    )
+
+    assert summary["passed_cases"] == 2
+    assert summary["total_cases"] == 2
+    assert summary["failures"] == []
+    assert summary["event_summary"]["event_counts"] == {
+        "candidate_context_stored": 1,
+        "pending_action_confirmed": 1,
+    }
+
+
+def test_format_handoff_summary_reports_failures() -> None:
+    output = format_handoff_summary(
+        {
+            "passed_cases": 0,
+            "total_cases": 1,
+            "pass_rate": 0.0,
+            "event_summary": summarize_debug_events([]),
+            "failures": [{"case": "broken", "failures": ["missing event"]}],
+        }
+    )
+
+    assert "ShopMind V3 API handoff eval" in output
+    assert "broken" in output
+    assert "missing event" in output
 
 
 def test_v3_router_dataset_examples_include_expected_routes() -> None:
