@@ -1,5 +1,7 @@
 import json
+from pathlib import Path
 
+from evaluation.generate_event_artifacts import generate_sample_event_artifacts
 from evaluation.shopmind_evaluators import (
     debug_metadata_evaluator,
     expected_keywords_evaluator,
@@ -494,6 +496,36 @@ def test_write_event_artifacts_creates_ci_friendly_files(tmp_path) -> None:
     assert "# ShopMind V3 event health" in (
         tmp_path / "event_dashboard.md"
     ).read_text()
+
+
+def test_generate_sample_event_artifacts_writes_stable_bundle(tmp_path) -> None:
+    paths = generate_sample_event_artifacts(tmp_path)
+
+    assert set(paths) == {
+        "summary_json",
+        "metrics_prom",
+        "health_txt",
+        "dashboard_md",
+    }
+    summary = json.loads((tmp_path / "event_summary.json").read_text())
+    assert summary["event_counts"] == {
+        "candidate_context_stored": 1,
+        "pending_action_confirmed": 1,
+    }
+    assert "status: pass" in (tmp_path / "event_health.txt").read_text()
+    assert "# ShopMind V3 sample event health" in (
+        tmp_path / "event_dashboard.md"
+    ).read_text()
+
+
+def test_ci_workflow_uploads_v3_event_artifacts() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text()
+
+    assert "Generate V3 event artifacts" in workflow
+    assert "evaluation/generate_event_artifacts.py" in workflow
+    assert "actions/upload-artifact@v4" in workflow
+    assert "name: v3-event-artifacts" in workflow
+    assert "path: artifacts/v3-events" in workflow
 
 
 def test_router_eval_cases_cover_core_read_routes() -> None:
