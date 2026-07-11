@@ -1,3 +1,5 @@
+import json
+
 from evaluation.shopmind_evaluators import (
     debug_metadata_evaluator,
     expected_keywords_evaluator,
@@ -11,10 +13,12 @@ from evaluation.shopmind_event_reporting import (
     build_event_health_report,
     event_summary_metric_rows,
     extract_debug_events,
+    format_event_dashboard_markdown,
     format_event_health_report,
     format_event_metrics,
     format_event_summary,
     summarize_debug_events,
+    write_event_artifacts,
 )
 from evaluation.shopmind_handoff_eval import (
     evaluate_v3_handoff_target,
@@ -420,6 +424,78 @@ def test_event_health_report_warns_when_required_event_missing() -> None:
     assert "event:pending_action_confirmed: warn" in output
 
 
+def test_format_event_dashboard_markdown_includes_counts_and_metrics() -> None:
+    summary = summarize_debug_events(
+        [
+            {
+                "debug": {
+                    "confirmation": {
+                        "events": [{"event": "pending_action_confirmed"}]
+                    }
+                }
+            }
+        ]
+    )
+    report = build_event_health_report(
+        summary,
+        title="Dashboard test",
+        required_events=("pending_action_confirmed",),
+    )
+
+    output = format_event_dashboard_markdown(
+        report,
+        metrics_text=format_event_metrics(summary, prefix="shopmind_test"),
+    )
+
+    assert "# Dashboard test" in output
+    assert "Status: **pass**" in output
+    assert "| pending_action_confirmed | 1 |" in output
+    assert "shopmind_test_events_total 1" in output
+
+
+def test_write_event_artifacts_creates_ci_friendly_files(tmp_path) -> None:
+    summary = summarize_debug_events(
+        [
+            {
+                "debug": {
+                    "write_handoff_debug": {
+                        "candidate_context": {
+                            "events": [{"event": "candidate_context_stored"}]
+                        }
+                    }
+                }
+            }
+        ]
+    )
+    report = build_event_health_report(
+        summary,
+        required_events=("candidate_context_stored",),
+    )
+
+    paths = write_event_artifacts(
+        summary,
+        tmp_path,
+        report=report,
+        metrics_text=format_event_metrics(summary, prefix="shopmind_test"),
+    )
+
+    assert set(paths) == {
+        "summary_json",
+        "metrics_prom",
+        "health_txt",
+        "dashboard_md",
+    }
+    summary_json = json.loads((tmp_path / "event_summary.json").read_text())
+    assert summary_json["event_counts"] == {"candidate_context_stored": 1}
+    assert "shopmind_test_events_total 1" in (
+        tmp_path / "event_metrics.prom"
+    ).read_text()
+    assert "status: pass" in (tmp_path / "event_health.txt").read_text()
+    assert "# ShopMind V3 event health" in (
+        tmp_path / "event_dashboard.md"
+    ).read_text()
+
+
 def test_router_eval_cases_cover_core_read_routes() -> None:
     expected_case_names = {
         "product_recommendation",
@@ -645,6 +721,63 @@ def test_run_router_eval_handoff_mode_prints_event_report(
     assert "status: pass" in output
     assert "event:candidate_context_stored: pass" in output
     assert "event:pending_action_confirmed: pass" in output
+
+
+def test_run_router_eval_handoff_mode_writes_event_artifacts(
+    capsys,
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr(
+        "evaluation.run_router_eval.evaluate_v3_handoff_target",
+        lambda: {
+            "total_cases": 1,
+            "passed_cases": 1,
+            "pass_rate": 1.0,
+            "event_summary": summarize_debug_events(
+                [
+                    {
+                        "debug": {
+                            "write_handoff_debug": {
+                                "candidate_context": {
+                                    "events": [
+                                        {"event": "candidate_context_stored"}
+                                    ]
+                                }
+                            },
+                            "confirmation": {
+                                "events": [{"event": "pending_action_confirmed"}]
+                            },
+                        }
+                    },
+                    {"debug": {}},
+                ]
+            ),
+            "case_results": [],
+            "failures": [],
+        },
+    )
+
+    exit_code = main(
+        [
+            "--mode",
+            "handoff",
+            "--event-artifacts-dir",
+            str(tmp_path),
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "ShopMind V3 API handoff eval" in output
+    assert "event artifacts:" in output
+    assert (tmp_path / "event_summary.json").exists()
+    assert (tmp_path / "event_metrics.prom").exists()
+    assert (tmp_path / "event_health.txt").exists()
+    assert (tmp_path / "event_dashboard.md").exists()
+    assert "pending_action_confirmed" in (
+        tmp_path / "event_dashboard.md"
+    ).read_text()
 
 
 def test_evaluate_v3_router_target_reports_evaluator_failure() -> None:
