@@ -41,6 +41,9 @@ jobs:
       - name: Generate V3 event artifacts
         run: python evaluation/generate_event_artifacts.py --output-dir artifacts/v3-events
 
+      - name: Publish V3 event summary
+        run: cat artifacts/v3-events/event_dashboard.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload V3 event artifacts
         uses: actions/upload-artifact@v4
         with:
