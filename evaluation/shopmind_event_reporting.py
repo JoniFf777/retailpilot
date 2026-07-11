@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections import Counter
+import json
+from pathlib import Path
 from typing import Any, Iterable, TypedDict
 
 
@@ -61,6 +63,13 @@ class EventHealthReport(TypedDict):
     status: str
     checks: list[EventHealthCheck]
     summary: EventSummary
+
+
+class EventArtifactPaths(TypedDict):
+    summary_json: str
+    metrics_prom: str
+    health_txt: str
+    dashboard_md: str
 
 
 def _as_mapping(value: Any) -> dict[str, Any]:
@@ -368,9 +377,104 @@ def format_event_health_report(report: EventHealthReport) -> str:
     return "\n".join(lines)
 
 
+def format_event_dashboard_markdown(
+    report: EventHealthReport,
+    *,
+    metrics_text: str | None = None,
+) -> str:
+    """Format an event health report as a small Markdown dashboard."""
+
+    summary = report["summary"]
+    lines = [
+        f"# {report['title']}",
+        "",
+        f"Status: **{report['status']}**",
+        "",
+        "## Summary",
+        "",
+        f"- Outputs: {summary['total_outputs']}",
+        f"- Outputs with events: {summary['outputs_with_events']}",
+        f"- Output event rate: {summary['output_event_rate']:.3f}",
+        f"- Events: {summary['total_events']}",
+        "",
+        "## Checks",
+        "",
+        "| Check | Result | Actual | Expected |",
+        "| --- | --- | --- | --- |",
+    ]
+    for check in report["checks"]:
+        result = "pass" if check["passed"] else "warn"
+        lines.append(
+            "| "
+            f"{check['name']} | {result} | {check['actual']} | "
+            f"{check['expected']} |"
+        )
+
+    lines.extend(["", "## Event Counts", ""])
+    if summary["event_counts"]:
+        lines.extend(["| Event | Count |", "| --- | ---: |"])
+        for event, count in summary["event_counts"].items():
+            lines.append(f"| {event} | {count} |")
+    else:
+        lines.append("No events recorded.")
+
+    lines.extend(["", "## Group Counts", ""])
+    if summary["group_counts"]:
+        lines.extend(["| Group | Count |", "| --- | ---: |"])
+        for group, count in summary["group_counts"].items():
+            lines.append(f"| {group} | {count} |")
+    else:
+        lines.append("No event groups recorded.")
+
+    if metrics_text is not None:
+        lines.extend(["", "## Metrics", "", "```text", metrics_text, "```"])
+    return "\n".join(lines)
+
+
+def write_event_artifacts(
+    summary: EventSummary,
+    output_dir: str | Path,
+    *,
+    report: EventHealthReport | None = None,
+    metrics_text: str | None = None,
+) -> EventArtifactPaths:
+    """Write event summary, metrics, health, and dashboard artifacts."""
+
+    artifact_dir = Path(output_dir)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    active_report = report or build_event_health_report(summary)
+    active_metrics = metrics_text or format_event_metrics(summary)
+    files = {
+        "summary_json": artifact_dir / "event_summary.json",
+        "metrics_prom": artifact_dir / "event_metrics.prom",
+        "health_txt": artifact_dir / "event_health.txt",
+        "dashboard_md": artifact_dir / "event_dashboard.md",
+    }
+    files["summary_json"].write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    files["metrics_prom"].write_text(active_metrics + "\n", encoding="utf-8")
+    files["health_txt"].write_text(
+        format_event_health_report(active_report) + "\n",
+        encoding="utf-8",
+    )
+    files["dashboard_md"].write_text(
+        format_event_dashboard_markdown(
+            active_report,
+            metrics_text=active_metrics,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return {name: str(path) for name, path in files.items()}
+
+
 __all__ = [
     "CANDIDATE_CONTEXT_EVENTS",
     "CONFIRMATION_EVENTS",
+    "EventArtifactPaths",
     "EventHealthCheck",
     "EventHealthReport",
     "EventMetricRow",
@@ -382,5 +486,7 @@ __all__ = [
     "format_event_health_report",
     "format_event_metrics",
     "format_event_summary",
+    "format_event_dashboard_markdown",
     "summarize_debug_events",
+    "write_event_artifacts",
 ]

@@ -10,6 +10,7 @@ Optional:
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff --event-metrics
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff --event-report
+    conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff --event-artifacts-dir artifacts/v3-handoff
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ from evaluation.shopmind_event_reporting import (
     format_event_metrics,
     format_event_summary,
     summarize_debug_events,
+    write_event_artifacts,
 )
 from evaluation.shopmind_evaluators import (
     debug_metadata_evaluator,
@@ -206,7 +208,10 @@ def format_target_summary(summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def format_mode_event_report(mode: str, event_summary: dict[str, Any]) -> str:
+def build_mode_event_health_report(
+    mode: str,
+    event_summary: dict[str, Any],
+) -> dict[str, Any]:
     required_groups: tuple[str, ...] = ()
     required_events: tuple[str, ...] = ()
     min_output_event_rate = 0.0
@@ -216,14 +221,38 @@ def format_mode_event_report(mode: str, event_summary: dict[str, Any]) -> str:
         required_events = ("candidate_context_stored", "pending_action_confirmed")
         min_output_event_rate = 0.5
 
-    report = build_event_health_report(
+    return build_event_health_report(
         event_summary,
         title=f"ShopMind V3 {mode} event health",
         required_groups=required_groups,
         required_events=required_events,
         min_output_event_rate=min_output_event_rate,
     )
+
+
+def format_mode_event_report(mode: str, event_summary: dict[str, Any]) -> str:
+    report = build_mode_event_health_report(mode, event_summary)
     return format_event_health_report(report)
+
+
+def write_mode_event_artifacts(
+    mode: str,
+    event_summary: dict[str, Any],
+    output_dir: str,
+) -> dict[str, str]:
+    return write_event_artifacts(
+        event_summary,
+        output_dir,
+        report=build_mode_event_health_report(mode, event_summary),
+        metrics_text=format_event_metrics(event_summary),
+    )
+
+
+def format_event_artifact_paths(paths: dict[str, str]) -> str:
+    lines = ["event artifacts:"]
+    for name, path in paths.items():
+        lines.append(f"- {name}: {path}")
+    return "\n".join(lines)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -272,6 +301,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Print a V3 debug event health report for target or handoff mode.",
     )
+    parser.add_argument(
+        "--event-artifacts-dir",
+        default=None,
+        help=(
+            "Directory for V3 event artifacts from target or handoff mode: "
+            "summary JSON, metrics, health report, and Markdown dashboard."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -279,6 +316,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     if args.mode == "handoff":
         summary = evaluate_v3_handoff_target()
+        artifact_paths = (
+            write_mode_event_artifacts(
+                args.mode,
+                summary["event_summary"],
+                args.event_artifacts_dir,
+            )
+            if args.event_artifacts_dir
+            else None
+        )
         if args.json:
             print(json.dumps(summary, ensure_ascii=False, indent=2))
         elif args.event_metrics:
@@ -287,10 +333,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(format_mode_event_report(args.mode, summary["event_summary"]))
         else:
             print(format_handoff_summary(summary))
+        if artifact_paths and not args.json:
+            print(format_event_artifact_paths(artifact_paths))
         return 0
 
     if args.mode == "target":
         summary = evaluate_v3_router_target()
+        artifact_paths = (
+            write_mode_event_artifacts(
+                args.mode,
+                summary["event_summary"],
+                args.event_artifacts_dir,
+            )
+            if args.event_artifacts_dir
+            else None
+        )
         if args.json:
             print(json.dumps(summary, ensure_ascii=False, indent=2))
         elif args.event_metrics:
@@ -299,6 +356,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(format_mode_event_report(args.mode, summary["event_summary"]))
         else:
             print(format_target_summary(summary))
+        if artifact_paths and not args.json:
+            print(format_event_artifact_paths(artifact_paths))
         return 0
 
     router = build_router(args.router, model=args.model)

@@ -1,10 +1,10 @@
-# V3.10 Multi-Agent Handoff Summary
+# V3.11 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.10 adds local event health reports on top of Prometheus-style metric export, the dedicated API handoff evaluation target, and event reporting helpers.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.11 adds CI-friendly event artifact bundles on top of local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, and event reporting helpers.
 
 Runtime switches:
 
@@ -62,6 +62,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff --event-metrics
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff --event-report
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff --event-artifacts-dir artifacts/v3-handoff
 ```
 
 Expected current result for deterministic and llm-fallback fixed samples:
@@ -177,6 +178,8 @@ Supported helpers:
 - `format_event_metrics(summary)`: prints Prometheus-style text samples.
 - `build_event_health_report(summary)`: checks event coverage and required event/group presence.
 - `format_event_health_report(report)`: renders the health report for local review or CI artifacts.
+- `format_event_dashboard_markdown(report)`: renders a compact Markdown dashboard.
+- `write_event_artifacts(summary, output_dir)`: writes summary JSON, metrics, health, and dashboard files.
 
 `evaluation/run_router_eval.py --mode target` includes an `event_summary` object in its raw summary and prints a compact event section in text output. The real target mode still depends on configured data access for read-agent tools; unit tests cover the event-summary integration with fake targets.
 
@@ -185,6 +188,13 @@ V3.8 adds `evaluation/shopmind_handoff_eval.py`, which runs fixed API-boundary h
 V3.9 adds `evaluation/run_router_eval.py --mode target --event-metrics` and `--mode handoff --event-metrics` for operational export. The text output includes stable samples such as `shopmind_v3_debug_events_total`, `shopmind_v3_debug_group_events_total{group="confirmation"}`, and `shopmind_v3_debug_events_by_name_total{event="pending_action_confirmed",group="confirmation"}`.
 
 V3.10 adds `evaluation/run_router_eval.py --mode target --event-report` and `--mode handoff --event-report`. Handoff reports require candidate-context and confirmation groups, require `candidate_context_stored` and `pending_action_confirmed`, and require at least 50% output event coverage. The report status is `pass` or `warn` so it can be stored as a CI artifact without changing existing eval exit codes.
+
+V3.11 adds `evaluation/run_router_eval.py --mode target --event-artifacts-dir <dir>` and `--mode handoff --event-artifacts-dir <dir>`. The directory contains:
+
+- `event_summary.json`
+- `event_metrics.prom`
+- `event_health.txt`
+- `event_dashboard.md`
 
 ## Thread handling
 
@@ -291,24 +301,26 @@ Important tests:
   - `run_router_eval.py --mode handoff --event-metrics` has CLI coverage
   - event health reports cover pass and warning states
   - `run_router_eval.py --mode handoff --event-report` has CLI coverage
+  - event dashboard Markdown and artifact file generation are covered
+  - `run_router_eval.py --mode handoff --event-artifacts-dir` has CLI coverage
 
 Latest full local validation:
 
 ```text
-192 passed, 4 skipped
+195 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.10 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, and reviewable through local health reports.
+V3.11 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, and packageable as CI-friendly artifacts.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
-- Consider adding a small operational dashboard that consumes the exported metrics or health report output.
+- Consider adding a GitHub Actions artifact-upload step or a small dashboard that consumes the generated artifact bundle.
 - Consider adding a LangSmith-hosted API handoff dataset once the local handoff target is stable in the intended environment.
 - Keep `/api/chat/confirm` unchanged.
 
