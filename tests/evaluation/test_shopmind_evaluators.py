@@ -525,6 +525,13 @@ def test_ci_workflow_uploads_v3_event_artifacts() -> None:
     assert "evaluation/generate_event_artifacts.py" in workflow
     assert "Publish V3 event summary" in workflow
     assert 'cat artifacts/v3-events/event_dashboard.md >> "$GITHUB_STEP_SUMMARY"' in workflow
+    assert "pull-requests: write" in workflow
+    assert "Comment V3 event summary on PR" in workflow
+    assert "github.event.pull_request.head.repo.full_name == github.repository" in workflow
+    assert "actions/github-script@v7" in workflow
+    assert "<!-- v3-event-summary -->" in workflow
+    assert "github.rest.issues.updateComment" in workflow
+    assert "github.rest.issues.createComment" in workflow
     assert "actions/upload-artifact@v4" in workflow
     assert "name: v3-event-artifacts" in workflow
     assert "path: artifacts/v3-events" in workflow
