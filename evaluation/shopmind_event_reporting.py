@@ -49,6 +49,20 @@ class EventMetricRow(TypedDict):
     value: float
 
 
+class EventHealthCheck(TypedDict):
+    name: str
+    passed: bool
+    actual: str
+    expected: str
+
+
+class EventHealthReport(TypedDict):
+    title: str
+    status: str
+    checks: list[EventHealthCheck]
+    summary: EventSummary
+
+
 def _as_mapping(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
@@ -263,14 +277,109 @@ def format_event_metrics(
     )
 
 
+def build_event_health_report(
+    summary: EventSummary,
+    *,
+    title: str = "ShopMind V3 event health",
+    required_events: tuple[str, ...] = (),
+    required_groups: tuple[str, ...] = (),
+    min_output_event_rate: float = 0.0,
+) -> EventHealthReport:
+    """Build a compact health report from event counters and rates."""
+
+    checks: list[EventHealthCheck] = [
+        {
+            "name": "outputs_present",
+            "passed": summary["total_outputs"] > 0,
+            "actual": str(summary["total_outputs"]),
+            "expected": "> 0",
+        },
+        {
+            "name": "output_event_rate",
+            "passed": summary["output_event_rate"] >= min_output_event_rate,
+            "actual": f"{summary['output_event_rate']:.3f}",
+            "expected": f">= {min_output_event_rate:.3f}",
+        },
+    ]
+
+    for group in required_groups:
+        count = summary["group_counts"].get(group, 0)
+        checks.append(
+            {
+                "name": f"group:{group}",
+                "passed": count > 0,
+                "actual": str(count),
+                "expected": "> 0",
+            }
+        )
+    for event in required_events:
+        count = summary["event_counts"].get(event, 0)
+        checks.append(
+            {
+                "name": f"event:{event}",
+                "passed": count > 0,
+                "actual": str(count),
+                "expected": "> 0",
+            }
+        )
+
+    return {
+        "title": title,
+        "status": "pass" if all(check["passed"] for check in checks) else "warn",
+        "checks": checks,
+        "summary": summary,
+    }
+
+
+def format_event_health_report(report: EventHealthReport) -> str:
+    """Format a health report for local review or CI artifacts."""
+
+    lines = [
+        report["title"],
+        f"status: {report['status']}",
+        "checks:",
+    ]
+    for check in report["checks"]:
+        result = "pass" if check["passed"] else "warn"
+        lines.append(
+            "- "
+            f"{check['name']}: {result} "
+            f"(actual={check['actual']} expected={check['expected']})"
+        )
+
+    summary = report["summary"]
+    lines.extend(
+        [
+            "summary:",
+            f"- outputs: {summary['total_outputs']}",
+            f"- outputs_with_events: {summary['outputs_with_events']}",
+            f"- output_event_rate: {summary['output_event_rate']:.3f}",
+            f"- events: {summary['total_events']}",
+        ]
+    )
+    if summary["group_counts"]:
+        lines.append("- groups:")
+        for group, count in summary["group_counts"].items():
+            lines.append(f"  {group}: {count}")
+    if summary["event_counts"]:
+        lines.append("- events_by_name:")
+        for event, count in summary["event_counts"].items():
+            lines.append(f"  {event}: {count}")
+    return "\n".join(lines)
+
+
 __all__ = [
     "CANDIDATE_CONTEXT_EVENTS",
     "CONFIRMATION_EVENTS",
+    "EventHealthCheck",
+    "EventHealthReport",
     "EventMetricRow",
     "EventRecord",
     "EventSummary",
+    "build_event_health_report",
     "event_summary_metric_rows",
     "extract_debug_events",
+    "format_event_health_report",
     "format_event_metrics",
     "format_event_summary",
     "summarize_debug_events",

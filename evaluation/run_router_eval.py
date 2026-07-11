@@ -9,6 +9,7 @@ Optional:
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode target
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff --event-metrics
+    conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_router_eval.py --mode handoff --event-report
 """
 
 from __future__ import annotations
@@ -24,6 +25,8 @@ from evaluation.shopmind_handoff_eval import (
     format_handoff_summary,
 )
 from evaluation.shopmind_event_reporting import (
+    build_event_health_report,
+    format_event_health_report,
     format_event_metrics,
     format_event_summary,
     summarize_debug_events,
@@ -203,6 +206,26 @@ def format_target_summary(summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def format_mode_event_report(mode: str, event_summary: dict[str, Any]) -> str:
+    required_groups: tuple[str, ...] = ()
+    required_events: tuple[str, ...] = ()
+    min_output_event_rate = 0.0
+
+    if mode == "handoff":
+        required_groups = ("candidate_context", "confirmation")
+        required_events = ("candidate_context_stored", "pending_action_confirmed")
+        min_output_event_rate = 0.5
+
+    report = build_event_health_report(
+        event_summary,
+        title=f"ShopMind V3 {mode} event health",
+        required_groups=required_groups,
+        required_events=required_events,
+        min_output_event_rate=min_output_event_rate,
+    )
+    return format_event_health_report(report)
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run fixed offline route checks for the ShopMind supervisor."
@@ -244,6 +267,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "handoff mode."
         ),
     )
+    parser.add_argument(
+        "--event-report",
+        action="store_true",
+        help="Print a V3 debug event health report for target or handoff mode.",
+    )
     return parser.parse_args(argv)
 
 
@@ -255,6 +283,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps(summary, ensure_ascii=False, indent=2))
         elif args.event_metrics:
             print(format_event_metrics(summary["event_summary"]))
+        elif args.event_report:
+            print(format_mode_event_report(args.mode, summary["event_summary"]))
         else:
             print(format_handoff_summary(summary))
         return 0
@@ -265,6 +295,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps(summary, ensure_ascii=False, indent=2))
         elif args.event_metrics:
             print(format_event_metrics(summary["event_summary"]))
+        elif args.event_report:
+            print(format_mode_event_report(args.mode, summary["event_summary"]))
         else:
             print(format_target_summary(summary))
         return 0
