@@ -1,10 +1,10 @@
-# V3.11 Multi-Agent Handoff Summary
+# V3.12 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.11 adds CI-friendly event artifact bundles on top of local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, and event reporting helpers.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.12 uploads CI-friendly event artifact bundles from the default GitHub Actions workflow on top of local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, and event reporting helpers.
 
 Runtime switches:
 
@@ -196,6 +196,8 @@ V3.11 adds `evaluation/run_router_eval.py --mode target --event-artifacts-dir <d
 - `event_health.txt`
 - `event_dashboard.md`
 
+V3.12 adds `evaluation/generate_event_artifacts.py`, a deterministic sample artifact generator that requires no database or LLM access. The default `.github/workflows/ci.yml` runs it after the default test suite and uploads the `v3-event-artifacts` artifact with `actions/upload-artifact@v4`.
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -303,24 +305,26 @@ Important tests:
   - `run_router_eval.py --mode handoff --event-report` has CLI coverage
   - event dashboard Markdown and artifact file generation are covered
   - `run_router_eval.py --mode handoff --event-artifacts-dir` has CLI coverage
+  - deterministic sample event artifact generation is covered
+  - default CI workflow artifact upload wiring is covered
 
 Latest full local validation:
 
 ```text
-195 passed, 4 skipped
+197 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.11 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, and packageable as CI-friendly artifacts.
+V3.12 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, packageable as CI-friendly artifacts, and uploaded from the default CI workflow.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
-- Consider adding a GitHub Actions artifact-upload step or a small dashboard that consumes the generated artifact bundle.
+- Consider adding a small dashboard or PR summary that consumes the generated artifact bundle.
 - Consider adding a LangSmith-hosted API handoff dataset once the local handoff target is stable in the intended environment.
 - Keep `/api/chat/confirm` unchanged.
 

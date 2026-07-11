@@ -37,3 +37,13 @@ jobs:
       - name: Run default tests
         run: |
           python -m pytest tests/config tests/db tests/repositories tests/scripts tests/tools tests/api tests/agents tests/evaluation tests/integration
+
+      - name: Generate V3 event artifacts
+        run: python evaluation/generate_event_artifacts.py --output-dir artifacts/v3-events
+
+      - name: Upload V3 event artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: v3-event-artifacts
+          path: artifacts/v3-events
+          if-no-files-found: error

@@ -146,6 +146,11 @@ python -m pytest tests/config tests/db tests/repositories tests/scripts tests/to
 
 该 CI 不启动真实 PostgreSQL。`tests/integration` 默认只运行 guard，真实 PostgreSQL integration 仍需本地显式设置 `RUN_POSTGRES_INTEGRATION=1` 后执行。
 
+CI also generates and uploads a deterministic `v3-event-artifacts` bundle with
+`event_summary.json`, `event_metrics.prom`, `event_health.txt`, and
+`event_dashboard.md`, so V3 observability output is available from each default
+workflow run without requiring database or LLM access.
+
 真实 PostgreSQL + pgvector integration 已配置为手动 workflow：`.github/workflows/postgres_integration.yml`。该 workflow 会启动 `pgvector/pgvector:pg16` 服务，执行 Alembic migration、seed、documents pgvector index、smoke check 和 `RUN_POSTGRES_INTEGRATION=1` 的 integration 测试。它会下载或复用 HuggingFace embedding model cache，因此不放进默认 PR/push 门禁。
 
 ### ShopMind V1 设计文档
@@ -154,7 +159,7 @@ python -m pytest tests/config tests/db tests/repositories tests/scripts tests/to
 - [Tools 设计](docs/tools_design.md)
 - [API 设计](docs/api_design.md)
 - [安全设计](docs/safety_design.md)
-- [V3.11 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
+- [V3.12 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
 ### ShopMind V3 write handoff
 
@@ -166,7 +171,7 @@ V3 multi-agent mode keeps read agents read-only, then bridges write intents into
 - out-of-range selections such as `选 3`, returning a clarification without writing
 - database-backed candidate context: 10-minute TTL and at most 100 active contexts
 
-V3.11 exposes candidate-context debug metadata for store, miss, selection,
+V3.12 exposes candidate-context debug metadata for store, miss, selection,
 out-of-range, and clear events from `/api/chat`, plus confirmation debug events
 from `/api/chat/confirm` when `include_debug=true`. Evaluation helpers can now
 aggregate those debug events into count/rate summaries and run a dedicated
@@ -308,6 +313,12 @@ To write event artifacts for CI upload or local review:
 
 ```bash
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff --event-artifacts-dir artifacts/v3-handoff
+```
+
+The default GitHub Actions CI also runs:
+
+```bash
+python evaluation/generate_event_artifacts.py --output-dir artifacts/v3-events
 ```
 
 如果只想验证 router 规则本身，继续使用默认 `--mode router` 即可。
