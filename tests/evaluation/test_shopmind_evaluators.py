@@ -523,6 +523,8 @@ def test_ci_workflow_uploads_v3_event_artifacts() -> None:
 
     assert "Generate V3 event artifacts" in workflow
     assert "evaluation/generate_event_artifacts.py" in workflow
+    assert "Publish V3 event summary" in workflow
+    assert 'cat artifacts/v3-events/event_dashboard.md >> "$GITHUB_STEP_SUMMARY"' in workflow
     assert "actions/upload-artifact@v4" in workflow
     assert "name: v3-event-artifacts" in workflow
     assert "path: artifacts/v3-events" in workflow
