@@ -8,7 +8,9 @@ from evaluation.shopmind_evaluators import (
     status_evaluator,
 )
 from evaluation.shopmind_event_reporting import (
+    event_summary_metric_rows,
     extract_debug_events,
+    format_event_metrics,
     format_event_summary,
     summarize_debug_events,
 )
@@ -292,6 +294,79 @@ def test_format_event_summary_handles_empty_event_set() -> None:
     assert "event counts: none" in output
 
 
+def test_event_summary_metric_rows_flatten_operational_counters() -> None:
+    summary = summarize_debug_events(
+        [
+            {
+                "debug": {
+                    "write_handoff_debug": {
+                        "candidate_context": {
+                            "events": [{"event": "candidate_context_stored"}]
+                        }
+                    }
+                }
+            },
+            {
+                "debug": {
+                    "confirmation": {
+                        "events": [{"event": "pending_action_failed"}]
+                    }
+                }
+            },
+        ]
+    )
+
+    rows = event_summary_metric_rows(summary, prefix="shopmind_test")
+
+    assert {
+        "name": "shopmind_test_outputs_total",
+        "labels": {},
+        "value": 2.0,
+    } in rows
+    assert {
+        "name": "shopmind_test_group_events_total",
+        "labels": {"group": "candidate_context"},
+        "value": 1.0,
+    } in rows
+    assert {
+        "name": "shopmind_test_events_by_name_total",
+        "labels": {
+            "event": "pending_action_failed",
+            "group": "confirmation",
+        },
+        "value": 1.0,
+    } in rows
+
+
+def test_format_event_metrics_prints_prometheus_style_samples() -> None:
+    summary = summarize_debug_events(
+        [
+            {
+                "debug": {
+                    "write_handoff_debug": {
+                        "candidate_context": {
+                            "events": [{"event": "candidate_context_stored"}]
+                        }
+                    }
+                }
+            }
+        ]
+    )
+
+    output = format_event_metrics(summary, prefix="shopmind_test")
+
+    assert "shopmind_test_outputs_total 1" in output
+    assert "shopmind_test_events_total 1" in output
+    assert (
+        'shopmind_test_events_by_name_total{event="candidate_context_stored",'
+        'group="candidate_context"} 1'
+    ) in output
+    assert (
+        'shopmind_test_events_per_output{event="candidate_context_stored",'
+        'group="candidate_context"} 1'
+    ) in output
+
+
 def test_router_eval_cases_cover_core_read_routes() -> None:
     expected_case_names = {
         "product_recommendation",
@@ -435,6 +510,44 @@ def test_run_router_eval_handoff_mode_scores_fake_summary(capsys, monkeypatch) -
     assert "ShopMind V3 API handoff eval" in output
     assert "pending_action_confirmed" in output
     assert "failures: none" in output
+
+
+def test_run_router_eval_handoff_mode_prints_event_metrics(
+    capsys,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "evaluation.run_router_eval.evaluate_v3_handoff_target",
+        lambda: {
+            "total_cases": 1,
+            "passed_cases": 1,
+            "pass_rate": 1.0,
+            "event_summary": summarize_debug_events(
+                [
+                    {
+                        "debug": {
+                            "confirmation": {
+                                "events": [{"event": "pending_action_confirmed"}]
+                            }
+                        }
+                    }
+                ]
+            ),
+            "case_results": [],
+            "failures": [],
+        },
+    )
+
+    exit_code = main(["--mode", "handoff", "--event-metrics"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "ShopMind V3 API handoff eval" not in output
+    assert "shopmind_v3_debug_events_total 1" in output
+    assert (
+        'shopmind_v3_debug_events_by_name_total{event="pending_action_confirmed",'
+        'group="confirmation"} 1'
+    ) in output
 
 
 def test_evaluate_v3_router_target_reports_evaluator_failure() -> None:
