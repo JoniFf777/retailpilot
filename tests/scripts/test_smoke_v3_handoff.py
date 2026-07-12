@@ -81,7 +81,7 @@ def test_run_v3_handoff_smoke_suite_skips_api_when_postgres_fails() -> None:
     def failing_postgres_smoke_fn(**kwargs):
         raise RuntimeError("database unavailable")
 
-    def api_smoke_fn():
+    def api_smoke_fn(**kwargs):
         raise AssertionError("API smoke should not run")
 
     summary = run_v3_handoff_smoke_suite(
@@ -99,7 +99,8 @@ def test_run_v3_handoff_smoke_suite_runs_async_api_smoke() -> None:
         assert kwargs["include_tools"] is False
         return make_postgres_report()
 
-    async def api_smoke_fn():
+    async def api_smoke_fn(**kwargs):
+        assert kwargs["cleanup_runtime_state"] is True
         return make_api_summary()
 
     summary = run_v3_handoff_smoke_suite(
@@ -115,7 +116,7 @@ def test_run_v3_handoff_smoke_suite_reports_api_exception() -> None:
     def postgres_smoke_fn(**kwargs):
         return make_postgres_report()
 
-    def api_smoke_fn():
+    def api_smoke_fn(**kwargs):
         raise RuntimeError("api failed")
 
     summary = run_v3_handoff_smoke_suite(
@@ -135,12 +136,30 @@ def test_run_v3_handoff_smoke_suite_forces_v3_agent_mode(monkeypatch) -> None:
     def postgres_smoke_fn(**kwargs):
         return make_postgres_report()
 
-    def api_smoke_fn():
+    def api_smoke_fn(**kwargs):
         assert os.environ["SHOPMIND_AGENT_MODE"] == "multi"
         assert os.environ["SHOPMIND_SUPERVISOR_ROUTER"] == "deterministic"
+        assert kwargs["cleanup_runtime_state"] is True
         return make_api_summary()
 
     summary = run_v3_handoff_smoke_suite(
+        postgres_smoke_fn=postgres_smoke_fn,
+        api_smoke_fn=api_smoke_fn,
+    )
+
+    assert summary["status"] == "pass"
+
+
+def test_run_v3_handoff_smoke_suite_can_preserve_runtime_state() -> None:
+    def postgres_smoke_fn(**kwargs):
+        return make_postgres_report()
+
+    def api_smoke_fn(**kwargs):
+        assert kwargs["cleanup_runtime_state"] is False
+        return make_api_summary()
+
+    summary = run_v3_handoff_smoke_suite(
+        preserve_runtime_state=True,
         postgres_smoke_fn=postgres_smoke_fn,
         api_smoke_fn=api_smoke_fn,
     )

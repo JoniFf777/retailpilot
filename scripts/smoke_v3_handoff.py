@@ -26,7 +26,7 @@ from scripts.smoke_postgres import SmokeReport, run_smoke
 
 
 PostgresSmokeFn = Callable[..., SmokeReport]
-ApiSmokeFn = Callable[[], Any]
+ApiSmokeFn = Callable[..., Any]
 
 
 def _status_from_failures(failures: list[dict[str, Any]]) -> str:
@@ -121,6 +121,7 @@ def run_v3_handoff_smoke_suite(
     *,
     include_tool_smoke: bool = False,
     preserve_agent_mode: bool = False,
+    preserve_runtime_state: bool = False,
     quiet: bool = False,
     postgres_smoke_fn: PostgresSmokeFn = run_smoke,
     api_smoke_fn: ApiSmokeFn = run_with_asgi_app,
@@ -142,7 +143,9 @@ def run_v3_handoff_smoke_suite(
             from app.core.settings import get_settings
 
             get_settings.cache_clear()
-        api_result = api_smoke_fn()
+        api_result = api_smoke_fn(
+            cleanup_runtime_state=not preserve_runtime_state,
+        )
         api_summary = (
             asyncio.run(api_result)
             if hasattr(api_result, "__await__")
@@ -187,6 +190,14 @@ def build_parser() -> argparse.ArgumentParser:
             "SHOPMIND_SUPERVISOR_ROUTER=deterministic before API smoke."
         ),
     )
+    parser.add_argument(
+        "--preserve-runtime-state",
+        action="store_true",
+        help=(
+            "Do not clean smoke-owned cart, pending action, and candidate "
+            "context rows before and after API smoke."
+        ),
+    )
     return parser
 
 
@@ -195,6 +206,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     summary = run_v3_handoff_smoke_suite(
         include_tool_smoke=args.include_tool_smoke,
         preserve_agent_mode=args.preserve_agent_mode,
+        preserve_runtime_state=args.preserve_runtime_state,
         quiet=args.json,
     )
     if args.json:

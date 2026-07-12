@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
 
+from app.db.base import Base
+from app.db.models import CandidateContext, CartItem, PendingAction
 from evaluation.shopmind_api_handoff_smoke import (
     API_HANDOFF_SMOKE_CASES,
+    cleanup_api_handoff_smoke_state,
     format_api_handoff_smoke_summary,
     run_api_handoff_smoke,
     run_api_handoff_smoke_case,
@@ -241,3 +247,81 @@ def test_api_handoff_smoke_cases_cover_confirm_cancel_and_candidate_paths() -> N
     ]
     assert all("TECH-KEY-010" in message for message in explicit_messages)
     assert all("add to cart" in message for message in explicit_messages)
+
+
+def test_cleanup_api_handoff_smoke_state_deletes_only_smoke_owned_rows() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    expires_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    session.add_all(
+        [
+            CartItem(
+                user_id="API-HANDOFF-SMOKE-CONFIRM",
+                product_id="TECH-KEY-010",
+                quantity=2,
+            ),
+            CartItem(
+                user_id="REAL-USER",
+                product_id="TECH-KEY-010",
+                quantity=1,
+            ),
+            PendingAction(
+                id="pending-smoke",
+                user_id="API-HANDOFF-SMOKE-CONFIRM",
+                thread_id="api-handoff-smoke-confirm",
+                action_type="add_to_cart",
+                payload_json={"product_id": "TECH-KEY-010", "quantity": 2},
+                status="confirmed",
+            ),
+            PendingAction(
+                id="pending-real",
+                user_id="REAL-USER",
+                thread_id="real-thread",
+                action_type="add_to_cart",
+                payload_json={"product_id": "TECH-KEY-010", "quantity": 1},
+                status="pending",
+            ),
+            CandidateContext(
+                user_id="API-HANDOFF-SMOKE-CANDIDATE",
+                thread_id="api-handoff-smoke-candidate",
+                product_ids=["TECH-KEY-010"],
+                quantity=1,
+                expires_at=expires_at,
+            ),
+            CandidateContext(
+                user_id="REAL-USER",
+                thread_id="real-thread",
+                product_ids=["TECH-KEY-010"],
+                quantity=1,
+                expires_at=expires_at,
+            ),
+        ]
+    )
+    session.commit()
+    session.close()
+
+    result = cleanup_api_handoff_smoke_state(session_factory=Session)
+
+    verify_session = Session()
+    try:
+        assert result == {
+            "cart_items": 1,
+            "pending_actions": 1,
+            "candidate_contexts": 1,
+        }
+        assert [
+            item.user_id
+            for item in verify_session.scalars(select(CartItem)).all()
+        ] == ["REAL-USER"]
+        assert [
+            action.user_id
+            for action in verify_session.scalars(select(PendingAction)).all()
+        ] == ["REAL-USER"]
+        assert [
+            context.user_id
+            for context in verify_session.scalars(select(CandidateContext)).all()
+        ] == ["REAL-USER"]
+    finally:
+        verify_session.close()

@@ -234,3 +234,8 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smo
 The suite first checks PostgreSQL readiness, Alembic version, seed data,
 documents, and repository searches. It then runs the public API handoff flow
 through the in-process FastAPI app.
+
+Smoke runs use fixed `API-HANDOFF-SMOKE-*` user IDs. By default, the runner
+deletes runtime rows for those users from `cart_items`, `pending_actions`, and
+`candidate_contexts` before and after running. Use `--preserve-runtime-state`
+only when you intentionally want to inspect those rows after a smoke run.

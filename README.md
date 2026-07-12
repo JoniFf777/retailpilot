@@ -161,7 +161,7 @@ from each default workflow run without requiring database or LLM access.
 - [API 设计](docs/api_design.md)
 - [安全设计](docs/safety_design.md)
 - [V3 API Handoff Contract](docs/v3_api_handoff_contract.md)
-- [V3.21 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
+- [V3.22 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
 ### ShopMind V3 write handoff
 
@@ -345,6 +345,9 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 The smoke runner covers explicit product confirmation, explicit cancellation,
 and same-thread candidate selection before confirmation. Use `--json` for a
 machine-readable summary or `--case explicit_product_confirmed` for one case.
+By default it cleans smoke-owned cart, pending action, and candidate context
+rows before and after running; use `--preserve-runtime-state` when debugging
+database rows after a smoke run.
 
 To run the complete local V3 handoff smoke suite in one command, use:
 
@@ -354,7 +357,8 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smo
 
 This first checks the configured PostgreSQL database, Alembic version, seed
 data, documents, and repository searches, then runs the public API handoff
-smoke flow. Use `--json` for an aggregate machine-readable summary.
+smoke flow. Use `--json` for an aggregate machine-readable summary. It also
+cleans the fixed smoke users' runtime state by default.
 
 The generated FastAPI OpenAPI schema also includes V3 handoff request and
 response examples. Start the backend and inspect `/docs` or `/redoc` for the
