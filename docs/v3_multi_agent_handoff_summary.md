@@ -1,10 +1,10 @@
-# V3.16 Multi-Agent Handoff Summary
+# V3.17 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.16 adds a LangSmith evaluation runner for the seeded API handoff dataset on top of same-repository PR dashboard comments, GitHub Actions job-summary publishing, uploaded CI-friendly event artifact bundles, local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, event reporting helpers, and the V3.15 LangSmith-seedable API handoff dataset.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.17 adds a production-like API handoff smoke runner on top of the V3.16 LangSmith evaluation runner for the seeded API handoff dataset, same-repository PR dashboard comments, GitHub Actions job-summary publishing, uploaded CI-friendly event artifact bundles, local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, event reporting helpers, and the V3.15 LangSmith-seedable API handoff dataset.
 
 Runtime switches:
 
@@ -206,6 +206,8 @@ V3.15 adds `evaluation/create_shopmind_dataset.py --target v3-handoff`, which se
 
 V3.16 adds `SHOPMIND_EVAL_TARGET=v3-handoff` support to `evaluation/run_langsmith_eval.py`. The runner executes the seeded chat/confirm examples, returns nested `chat_output` and `confirm_output`, aggregates debug events, and evaluates them with deterministic handoff status/event evaluators.
 
+V3.17 adds `evaluation/shopmind_api_handoff_smoke.py`, an in-process FastAPI smoke runner that exercises `/api/chat` and `/api/chat/confirm` without LangSmith. It defaults to `SHOPMIND_AGENT_MODE=multi` and deterministic supervisor routing, covers explicit confirmation, explicit cancellation, and same-thread candidate selection before confirmation, and returns a non-zero exit code when smoke failures are detected.
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -320,23 +322,25 @@ Important tests:
   - V3 handoff LangSmith dataset example generation is covered
   - V3 handoff LangSmith dataset refresh uses seed metadata
   - V3 handoff LangSmith runner config and deterministic handoff evaluators are covered
+  - V3 API handoff smoke runner case flow, event checks, formatting, and case coverage are covered
 
 Latest full local validation:
 
 ```text
-204 passed, 4 skipped
+209 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.16 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, packageable as CI-friendly artifacts, uploaded from the default CI workflow, visible in the GitHub Actions job summary, surfaced as a same-repository PR comment, seedable as a LangSmith API handoff dataset, and runnable through the shared LangSmith evaluation entrypoint.
+V3.17 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, packageable as CI-friendly artifacts, uploaded from the default CI workflow, visible in the GitHub Actions job summary, surfaced as a same-repository PR comment, seedable as a LangSmith API handoff dataset, runnable through the shared LangSmith evaluation entrypoint, and smoke-testable through the public FastAPI endpoints without LangSmith.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
+- Run `evaluation/shopmind_api_handoff_smoke.py` in any environment with a configured application database before treating the API handoff flow as deployment-ready.
 - Consider adding a richer dashboard that consumes the generated artifact bundle.
 - In an environment with database and LangSmith credentials, run `SHOPMIND_EVAL_TARGET=v3-handoff` to record the handoff experiment.
 - Keep `/api/chat/confirm` unchanged.

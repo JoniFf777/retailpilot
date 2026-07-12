@@ -333,6 +333,18 @@ To write event artifacts for CI upload or local review:
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff --event-artifacts-dir artifacts/v3-handoff
 ```
 
+For a production-like API smoke check, run the in-process FastAPI app through
+the public `/api/chat` and `/api/chat/confirm` endpoints. This skips LangSmith
+and expects the configured application database to be available:
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/shopmind_api_handoff_smoke.py
+```
+
+The smoke runner covers explicit product confirmation, explicit cancellation,
+and same-thread candidate selection before confirmation. Use `--json` for a
+machine-readable summary or `--case explicit_product_confirmed` for one case.
+
 The default GitHub Actions CI also runs:
 
 ```bash
