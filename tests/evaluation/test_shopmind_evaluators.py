@@ -9,6 +9,9 @@ from evaluation.shopmind_evaluators import (
     expected_routes_evaluator,
     expected_tools_evaluator,
     forbidden_tools_evaluator,
+    handoff_chat_status_evaluator,
+    handoff_confirm_status_evaluator,
+    handoff_debug_events_evaluator,
     pending_action_evaluator,
     status_evaluator,
 )
@@ -38,9 +41,11 @@ from evaluation.create_shopmind_dataset import (
 )
 from evaluation.run_langsmith_eval import (
     V1_EVAL_TARGET,
+    V3_HANDOFF_EVAL_TARGET,
     V3_ROUTER_EVAL_TARGET,
     build_evaluators as build_langsmith_evaluators,
     resolve_eval_config,
+    shopmind_v3_handoff_target,
 )
 from evaluation.shopmind_router_eval import (
     ROUTER_EVAL_CASES,
@@ -1122,6 +1127,133 @@ def test_run_langsmith_eval_builds_v3_router_evaluators() -> None:
     ]
     assert config["dataset"] == V3_ROUTER_DATASET_NAME
     assert config["experiment_prefix"] == "shopmind-v3-router"
+
+
+def test_handoff_chat_status_evaluator_checks_nested_chat_output() -> None:
+    result = handoff_chat_status_evaluator(
+        inputs={},
+        outputs={"chat_output": {"status": "confirmation_required"}},
+        reference_outputs={"expected_chat_status": "confirmation_required"},
+    )
+
+    assert result["score"] is True
+
+
+def test_handoff_confirm_status_evaluator_reports_missing_confirm_output() -> None:
+    result = handoff_confirm_status_evaluator(
+        inputs={},
+        outputs={"confirm_output": None},
+        reference_outputs={"expected_confirm_status": "completed"},
+    )
+
+    assert result["score"] is False
+    assert "completed" in result["comment"]
+
+
+def test_handoff_debug_events_evaluator_checks_chat_and_confirm_events() -> None:
+    result = handoff_debug_events_evaluator(
+        inputs={},
+        outputs={
+            "chat_output": {
+                "debug": {
+                    "write_handoff_debug": {
+                        "candidate_context": {
+                            "events": [{"event": "candidate_context_stored"}]
+                        }
+                    }
+                }
+            },
+            "confirm_output": {
+                "debug": {
+                    "confirmation": {
+                        "events": [{"event": "pending_action_confirmed"}]
+                    }
+                }
+            },
+        },
+        reference_outputs={
+            "expected_chat_events": ["candidate_context_stored"],
+            "expected_confirm_events": ["pending_action_confirmed"],
+        },
+    )
+
+    assert result["score"] is True
+
+
+def test_run_langsmith_eval_builds_v3_handoff_evaluators() -> None:
+    evaluators = build_langsmith_evaluators(target=V3_HANDOFF_EVAL_TARGET)
+    config = resolve_eval_config(V3_HANDOFF_EVAL_TARGET)
+
+    assert evaluators == [
+        handoff_chat_status_evaluator,
+        handoff_confirm_status_evaluator,
+        handoff_debug_events_evaluator,
+    ]
+    assert config["target_fn"] is shopmind_v3_handoff_target
+    assert config["dataset"] == V3_HANDOFF_DATASET_NAME
+    assert config["experiment_prefix"] == "shopmind-v3-handoff"
+
+
+def test_v3_handoff_langsmith_target_runs_chat_and_confirm(
+    monkeypatch,
+) -> None:
+    def fake_chat(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+    ):
+        assert message == "add TECH-KEY-001"
+        assert user_id == "user-001"
+        assert thread_id == "thread-001"
+        return {
+            "status": "confirmation_required",
+            "pending_action_id": "pending-001",
+            "debug": {
+                "write_handoff_debug": {
+                    "candidate_context": {
+                        "events": [{"event": "candidate_context_selected"}]
+                    }
+                }
+            },
+        }
+
+    def fake_confirm(pending_action_id: str, user_id: str, confirmed: bool):
+        assert pending_action_id == "pending-001"
+        assert user_id == "user-001"
+        assert confirmed is True
+        return {
+            "status": "completed",
+            "pending_action_id": pending_action_id,
+            "debug": {
+                "confirmation": {
+                    "events": [{"event": "pending_action_confirmed"}]
+                }
+            },
+        }
+
+    monkeypatch.setattr("evaluation.run_langsmith_eval.call_shopmind_agent", fake_chat)
+    monkeypatch.setattr(
+        "evaluation.run_langsmith_eval.confirm_pending_action",
+        fake_confirm,
+    )
+
+    output = shopmind_v3_handoff_target(
+        {
+            "message": "add TECH-KEY-001",
+            "user_id": "user-001",
+            "thread_id": "thread-001",
+            "confirm": True,
+        }
+    )
+
+    assert output["status"] == "completed"
+    assert output["chat_output"]["status"] == "confirmation_required"
+    assert output["confirm_output"]["status"] == "completed"
+    assert output["confirmation_error"] is None
+    assert output["event_summary"]["event_counts"] == {
+        "candidate_context_selected": 1,
+        "pending_action_confirmed": 1,
+    }
 
 
 def test_expected_tools_evaluator_passes_when_all_expected_tools_called() -> None:

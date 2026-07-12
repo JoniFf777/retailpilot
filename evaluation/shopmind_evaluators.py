@@ -11,6 +11,7 @@ from evaluators.evaluators import (
     correctness_evaluator,
     count_total_tool_calls_evaluator,
 )
+from evaluation.shopmind_event_reporting import summarize_debug_events
 from evaluation.shopmind_router_eval import compare_routes, expected_routes_evaluator
 
 
@@ -236,12 +237,112 @@ def debug_metadata_evaluator(
     }
 
 
+def handoff_chat_status_evaluator(
+    inputs: dict,
+    outputs: dict,
+    reference_outputs: dict,
+) -> dict:
+    """Check the initial /api/chat status for V3 handoff examples."""
+    expected_status = reference_outputs.get("expected_chat_status")
+    chat_output = outputs.get("chat_output")
+    actual_status = (
+        chat_output.get("status") if isinstance(chat_output, dict) else None
+    )
+    score = expected_status == actual_status
+
+    return {
+        "key": "handoff_chat_status",
+        "score": score,
+        "comment": (
+            f"Chat status matched: {actual_status}."
+            if score
+            else f"Expected chat status {expected_status!r}, got {actual_status!r}."
+        ),
+    }
+
+
+def handoff_confirm_status_evaluator(
+    inputs: dict,
+    outputs: dict,
+    reference_outputs: dict,
+) -> dict:
+    """Check the optional /api/chat/confirm status for V3 handoff examples."""
+    expected_status = reference_outputs.get("expected_confirm_status")
+    if expected_status is None:
+        return {
+            "key": "handoff_confirm_status",
+            "score": True,
+            "comment": "No confirmation status expectation configured.",
+        }
+
+    confirm_output = outputs.get("confirm_output")
+    actual_status = (
+        confirm_output.get("status") if isinstance(confirm_output, dict) else None
+    )
+    score = expected_status == actual_status
+
+    return {
+        "key": "handoff_confirm_status",
+        "score": score,
+        "comment": (
+            f"Confirmation status matched: {actual_status}."
+            if score
+            else (
+                f"Expected confirmation status {expected_status!r}, "
+                f"got {actual_status!r}."
+            )
+        ),
+    }
+
+
+def _event_names(output: Any) -> set[str]:
+    if not isinstance(output, dict):
+        return set()
+    return set(summarize_debug_events([output])["event_counts"].keys())
+
+
+def handoff_debug_events_evaluator(
+    inputs: dict,
+    outputs: dict,
+    reference_outputs: dict,
+) -> dict:
+    """Check expected V3 handoff debug events across chat and confirm steps."""
+    chat_events = _as_list(reference_outputs.get("expected_chat_events"))
+    confirm_events = _as_list(reference_outputs.get("expected_confirm_events"))
+
+    missing_chat_events = [
+        event
+        for event in chat_events
+        if event not in _event_names(outputs.get("chat_output"))
+    ]
+    missing_confirm_events = [
+        event
+        for event in confirm_events
+        if event not in _event_names(outputs.get("confirm_output"))
+    ]
+    missing_events = missing_chat_events + missing_confirm_events
+    score = not missing_events
+
+    return {
+        "key": "handoff_debug_events",
+        "score": score,
+        "comment": (
+            "All expected handoff debug events were observed."
+            if score
+            else f"Missing expected handoff debug events: {missing_events}."
+        ),
+    }
+
+
 __all__ = [
     "correctness_evaluator",
     "count_total_tool_calls_evaluator",
     "debug_metadata_evaluator",
     "expected_tools_evaluator",
     "forbidden_tools_evaluator",
+    "handoff_chat_status_evaluator",
+    "handoff_confirm_status_evaluator",
+    "handoff_debug_events_evaluator",
     "pending_action_evaluator",
     "status_evaluator",
     "expected_keywords_evaluator",
