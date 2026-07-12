@@ -1,10 +1,10 @@
-# V3.14 Multi-Agent Handoff Summary
+# V3.15 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.14 updates same-repository PR comments with the event dashboard on top of GitHub Actions job-summary publishing, uploaded CI-friendly event artifact bundles, local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, and event reporting helpers.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.15 adds a LangSmith-seedable API handoff dataset on top of same-repository PR dashboard comments, GitHub Actions job-summary publishing, uploaded CI-friendly event artifact bundles, local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, and event reporting helpers.
 
 Runtime switches:
 
@@ -202,6 +202,8 @@ V3.13 also appends `artifacts/v3-events/event_dashboard.md` to `$GITHUB_STEP_SUM
 
 V3.14 uses `actions/github-script@v7` to create or update a PR comment marked with `<!-- v3-event-summary -->`. The comment step only runs for pull requests whose head repository is the same as the base repository, avoiding write-token use for external forks.
 
+V3.15 adds `evaluation/create_shopmind_dataset.py --target v3-handoff`, which seeds `shopmind-v3-handoff-eval` from `HANDOFF_EVAL_CASES`. Examples include `/api/chat` inputs, optional confirm intent, expected chat/confirm statuses, and expected debug events.
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -313,25 +315,27 @@ Important tests:
   - default CI workflow artifact upload wiring is covered
   - default CI workflow job-summary publishing is covered
   - default CI workflow same-repository PR comment wiring is covered
+  - V3 handoff LangSmith dataset example generation is covered
+  - V3 handoff LangSmith dataset refresh uses seed metadata
 
 Latest full local validation:
 
 ```text
-197 passed, 4 skipped
+199 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 ```
 
 ## Recommended next step
 
-V3.14 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, packageable as CI-friendly artifacts, uploaded from the default CI workflow, visible in the GitHub Actions job summary, and surfaced as a same-repository PR comment.
+V3.15 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, packageable as CI-friendly artifacts, uploaded from the default CI workflow, visible in the GitHub Actions job summary, surfaced as a same-repository PR comment, and seedable as a LangSmith API handoff dataset.
 
 Suggested shape:
 
 - Keep V3 read agents read-only.
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
 - Consider adding a richer dashboard that consumes the generated artifact bundle.
-- Consider adding a LangSmith-hosted API handoff dataset once the local handoff target is stable in the intended environment.
+- Consider adding a LangSmith handoff evaluation runner that executes the seeded dataset in an environment with database access.
 - Keep `/api/chat/confirm` unchanged.
 
 This would make V3 own both read orchestration and confirmation preparation while preserving the same public API contract.

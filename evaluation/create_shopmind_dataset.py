@@ -3,6 +3,7 @@
 Usage:
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/create_shopmind_dataset.py
     conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/create_shopmind_dataset.py --target v3-router
+    conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/create_shopmind_dataset.py --target v3-handoff
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from typing import Sequence
 
 from langsmith import Client
 
+from evaluation.shopmind_handoff_eval import HANDOFF_EVAL_CASES
 from evaluation.shopmind_router_eval import ROUTER_EVAL_CASES
 
 
@@ -27,6 +29,12 @@ V3_ROUTER_DATASET_DESCRIPTION = (
     "routes and debug metadata."
 )
 V3_ROUTER_SEED_METADATA = {"source": "shopmind-v3-router-seed"}
+V3_HANDOFF_DATASET_NAME = "shopmind-v3-handoff-eval"
+V3_HANDOFF_DATASET_DESCRIPTION = (
+    "ShopMind V3 API handoff dataset covering chat/confirm status and "
+    "debug event expectations."
+)
+V3_HANDOFF_SEED_METADATA = {"source": "shopmind-v3-handoff-seed"}
 
 
 SHOPMIND_EXAMPLES = [
@@ -245,6 +253,39 @@ SHOPMIND_V3_ROUTER_EXAMPLES = [
 ]
 
 
+SHOPMIND_V3_HANDOFF_EXAMPLES = [
+    {
+        "inputs": {
+            "message": case["message"],
+            **({"user_id": case.get("user_id")} if case.get("user_id") else {}),
+            **({"thread_id": case.get("thread_id")} if case.get("thread_id") else {}),
+            **({"confirm": case.get("confirm")} if "confirm" in case else {}),
+            "include_debug": True,
+        },
+        "outputs": {
+            "expected_chat_status": case["expected_chat_status"],
+            **(
+                {"expected_confirm_status": case["expected_confirm_status"]}
+                if case.get("expected_confirm_status")
+                else {}
+            ),
+            **(
+                {"expected_chat_events": case["expected_chat_events"]}
+                if case.get("expected_chat_events")
+                else {}
+            ),
+            **(
+                {"expected_confirm_events": case["expected_confirm_events"]}
+                if case.get("expected_confirm_events")
+                else {}
+            ),
+        },
+        "metadata": {"case": case["name"], "target": "v3-handoff"},
+    }
+    for case in HANDOFF_EVAL_CASES
+]
+
+
 def _create_or_refresh_seeded_dataset(
     *,
     client: Client,
@@ -306,11 +347,23 @@ def create_or_refresh_v3_router_dataset(client: Client | None = None):
     )
 
 
+def create_or_refresh_v3_handoff_dataset(client: Client | None = None):
+    """Create the ShopMind V3 handoff dataset and refresh seeded examples."""
+    client = client or Client()
+    return _create_or_refresh_seeded_dataset(
+        client=client,
+        dataset_name=V3_HANDOFF_DATASET_NAME,
+        dataset_description=V3_HANDOFF_DATASET_DESCRIPTION,
+        seed_metadata=V3_HANDOFF_SEED_METADATA,
+        examples_to_seed=SHOPMIND_V3_HANDOFF_EXAMPLES,
+    )
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create ShopMind eval datasets.")
     parser.add_argument(
         "--target",
-        choices=["v1", "v3-router", "all"],
+        choices=["v1", "v3-router", "v3-handoff", "all"],
         default="v1",
         help="Dataset target to create or refresh.",
     )
@@ -327,6 +380,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         dataset = create_or_refresh_v3_router_dataset()
         print(f"Dataset ready: {dataset.name}")
         print(f"Examples seeded: {len(SHOPMIND_V3_ROUTER_EXAMPLES)}")
+    if args.target in {"v3-handoff", "all"}:
+        dataset = create_or_refresh_v3_handoff_dataset()
+        print(f"Dataset ready: {dataset.name}")
+        print(f"Examples seeded: {len(SHOPMIND_V3_HANDOFF_EXAMPLES)}")
 
 
 if __name__ == "__main__":
