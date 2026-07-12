@@ -160,7 +160,7 @@ from each default workflow run without requiring database or LLM access.
 - [Tools 设计](docs/tools_design.md)
 - [API 设计](docs/api_design.md)
 - [安全设计](docs/safety_design.md)
-- [V3.14 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
+- [V3.15 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
 ### ShopMind V3 write handoff
 
@@ -172,7 +172,7 @@ V3 multi-agent mode keeps read agents read-only, then bridges write intents into
 - out-of-range selections such as `选 3`, returning a clarification without writing
 - database-backed candidate context: 10-minute TTL and at most 100 active contexts
 
-V3.14 exposes candidate-context debug metadata for store, miss, selection,
+V3.15 exposes candidate-context debug metadata for store, miss, selection,
 out-of-range, and clear events from `/api/chat`, plus confirmation debug events
 from `/api/chat/confirm` when `include_debug=true`. Evaluation helpers can now
 aggregate those debug events into count/rate summaries and run a dedicated
@@ -233,6 +233,13 @@ V3 read-only multi-agent router 也可以接入 LangSmith evaluation。先创建
 
 ```bash
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/create_shopmind_dataset.py --target v3-router
+```
+
+V3 API handoff cases can also be seeded as a LangSmith dataset. This creates
+chat/confirm examples with expected statuses and debug-event expectations:
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/create_shopmind_dataset.py --target v3-handoff
 ```
 
 再运行 V3 router evaluation。默认使用 deterministic router，不会调用真实模型：

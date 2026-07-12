@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from evaluation.generate_event_artifacts import generate_sample_event_artifacts
 from evaluation.shopmind_evaluators import (
@@ -23,13 +24,17 @@ from evaluation.shopmind_event_reporting import (
     write_event_artifacts,
 )
 from evaluation.shopmind_handoff_eval import (
+    HANDOFF_EVAL_CASES,
     evaluate_v3_handoff_target,
     format_handoff_summary,
     run_handoff_case,
 )
 from evaluation.create_shopmind_dataset import (
+    SHOPMIND_V3_HANDOFF_EXAMPLES,
     SHOPMIND_V3_ROUTER_EXAMPLES,
+    V3_HANDOFF_DATASET_NAME,
     V3_ROUTER_DATASET_NAME,
+    create_or_refresh_v3_handoff_dataset,
 )
 from evaluation.run_langsmith_eval import (
     V1_EVAL_TARGET,
@@ -1032,6 +1037,67 @@ def test_v3_router_dataset_examples_include_expected_routes() -> None:
     assert write_case["outputs"]["expected_routes"] == []
     assert write_case["outputs"]["expected_intent"] == "write_path_unsupported"
     assert write_case["outputs"]["expected_pending_action_present"] is False
+
+
+def test_v3_handoff_dataset_examples_include_chat_confirm_expectations() -> None:
+    assert len(SHOPMIND_V3_HANDOFF_EXAMPLES) == len(HANDOFF_EVAL_CASES)
+    assert all(
+        example["inputs"]["include_debug"] is True
+        and "expected_chat_status" in example["outputs"]
+        and example["metadata"]["target"] == "v3-handoff"
+        for example in SHOPMIND_V3_HANDOFF_EXAMPLES
+    )
+    confirm_case = next(
+        example
+        for example in SHOPMIND_V3_HANDOFF_EXAMPLES
+        if example["metadata"]["case"] == "explicit_product_confirmed"
+    )
+
+    assert confirm_case["inputs"]["confirm"] is True
+    assert confirm_case["outputs"]["expected_chat_status"] == "confirmation_required"
+    assert confirm_case["outputs"]["expected_confirm_status"] == "completed"
+    assert confirm_case["outputs"]["expected_confirm_events"] == [
+        "pending_action_confirmed"
+    ]
+
+
+def test_create_or_refresh_v3_handoff_dataset_uses_seed_metadata() -> None:
+    class FakeClient:
+        def __init__(self) -> None:
+            self.created_examples = []
+            self.deleted_example_ids = []
+            self.list_metadata = None
+
+        def has_dataset(self, dataset_name: str) -> bool:
+            assert dataset_name == V3_HANDOFF_DATASET_NAME
+            return True
+
+        def read_dataset(self, dataset_name: str):
+            assert dataset_name == V3_HANDOFF_DATASET_NAME
+            return SimpleNamespace(id="dataset-001", name=dataset_name)
+
+        def list_examples(self, dataset_id: str, metadata: dict):
+            assert dataset_id == "dataset-001"
+            self.list_metadata = metadata
+            return [SimpleNamespace(id="old-example")]
+
+        def delete_examples(self, example_ids: list[str]) -> None:
+            self.deleted_example_ids = example_ids
+
+        def create_examples(self, dataset_id: str, examples: list[dict]) -> None:
+            assert dataset_id == "dataset-001"
+            self.created_examples = examples
+
+    client = FakeClient()
+
+    dataset = create_or_refresh_v3_handoff_dataset(client=client)
+
+    assert dataset.name == V3_HANDOFF_DATASET_NAME
+    assert client.list_metadata == {"source": "shopmind-v3-handoff-seed"}
+    assert client.deleted_example_ids == ["old-example"]
+    assert len(client.created_examples) == len(SHOPMIND_V3_HANDOFF_EXAMPLES)
+    assert client.created_examples[0]["metadata"]["target"] == "v3-handoff"
+    assert client.created_examples[0]["metadata"]["index"] == 1
 
 
 def test_run_langsmith_eval_keeps_v1_evaluators_by_default() -> None:
