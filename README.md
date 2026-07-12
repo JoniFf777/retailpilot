@@ -160,7 +160,8 @@ from each default workflow run without requiring database or LLM access.
 - [Tools 设计](docs/tools_design.md)
 - [API 设计](docs/api_design.md)
 - [安全设计](docs/safety_design.md)
-- [V3.15 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
+- [V3 API Handoff Contract](docs/v3_api_handoff_contract.md)
+- [V3.20 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
 ### ShopMind V3 write handoff
 
