@@ -234,3 +234,10 @@ def test_api_handoff_smoke_cases_cover_confirm_cancel_and_candidate_paths() -> N
         "explicit_product_cancelled",
         "candidate_selection_confirmed",
     }
+    explicit_messages = [
+        case["messages"][0]
+        for case in API_HANDOFF_SMOKE_CASES
+        if case["name"].startswith("explicit_product_")
+    ]
+    assert all("TECH-KEY-010" in message for message in explicit_messages)
+    assert all("add to cart" in message for message in explicit_messages)
