@@ -255,6 +255,16 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 - `expected_routes_evaluator`
 - `debug_metadata_evaluator`
 
+Run the seeded V3 API handoff dataset through LangSmith with:
+
+```bash
+set SHOPMIND_EVAL_TARGET=v3-handoff
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
+```
+
+This mode uses deterministic evaluators for the initial chat status, optional
+confirmation status, and expected debug events across the chat/confirm flow.
+
 ### ShopMind V3 Router Offline Eval
 
 V3 multi-agent supervisor router 已提供本地离线评估脚本，用固定中文样本检查路由命中率、fallback rate 和失败明细。默认模式不会调用真实模型：

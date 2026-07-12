@@ -6,6 +6,7 @@ Usage:
 Optional:
     INCLUDE_CORRECTNESS_EVALUATOR=true conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_langsmith_eval.py
     SHOPMIND_EVAL_TARGET=v3-router conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_langsmith_eval.py
+    SHOPMIND_EVAL_TARGET=v3-handoff conda run -n pythonLearn D:\\DL\\Anaconda3\\envs\\pythonLearn\\python.exe evaluation/run_langsmith_eval.py
 """
 
 from __future__ import annotations
@@ -20,7 +21,13 @@ from agents.shopmind_multi_agent import (
     invoke_shopmind_multi_agent,
 )
 from agents.shopmind_agent import invoke_shopmind_agent
-from evaluation.create_shopmind_dataset import DATASET_NAME, V3_ROUTER_DATASET_NAME
+from app.dependencies.agent import call_shopmind_agent, confirm_pending_action
+from evaluation.create_shopmind_dataset import (
+    DATASET_NAME,
+    V3_HANDOFF_DATASET_NAME,
+    V3_ROUTER_DATASET_NAME,
+)
+from evaluation.shopmind_event_reporting import summarize_debug_events
 from evaluation.shopmind_evaluators import (
     correctness_evaluator,
     count_total_tool_calls_evaluator,
@@ -29,6 +36,9 @@ from evaluation.shopmind_evaluators import (
     expected_routes_evaluator,
     expected_tools_evaluator,
     forbidden_tools_evaluator,
+    handoff_chat_status_evaluator,
+    handoff_confirm_status_evaluator,
+    handoff_debug_events_evaluator,
     pending_action_evaluator,
     status_evaluator,
 )
@@ -36,6 +46,7 @@ from evaluation.shopmind_evaluators import (
 
 V1_EVAL_TARGET = "v1"
 V3_ROUTER_EVAL_TARGET = "v3-router"
+V3_HANDOFF_EVAL_TARGET = "v3-handoff"
 
 
 def shopmind_target(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -57,11 +68,57 @@ def shopmind_v3_router_target(inputs: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def shopmind_v3_handoff_target(inputs: dict[str, Any]) -> dict[str, Any]:
+    """LangSmith target function for ShopMind V3 API handoff evaluation."""
+    user_id = inputs.get("user_id")
+    thread_id = inputs.get("thread_id")
+    chat_output = call_shopmind_agent(
+        message=inputs["message"],
+        user_id=user_id,
+        thread_id=thread_id,
+    )
+
+    outputs = [chat_output]
+    confirm_output: dict[str, Any] | None = None
+    confirmation_error: str | None = None
+    confirm = inputs.get("confirm")
+    if confirm is not None:
+        pending_action_id = chat_output.get("pending_action_id")
+        if pending_action_id:
+            confirm_output = confirm_pending_action(
+                pending_action_id=str(pending_action_id),
+                user_id=str(user_id or ""),
+                confirmed=bool(confirm),
+            )
+            outputs.append(confirm_output)
+        else:
+            confirmation_error = "missing_pending_action_id"
+
+    return {
+        "status": (
+            confirm_output.get("status")
+            if isinstance(confirm_output, dict)
+            else chat_output.get("status")
+        ),
+        "chat_output": chat_output,
+        "confirm_output": confirm_output,
+        "confirmation_error": confirmation_error,
+        "event_summary": summarize_debug_events(outputs),
+    }
+
+
 def build_evaluators(
     include_correctness: bool = False,
     target: str = V1_EVAL_TARGET,
 ) -> list:
     """Build evaluator list for a ShopMind evaluation target."""
+    if target == V3_HANDOFF_EVAL_TARGET:
+        return [
+            handoff_chat_status_evaluator,
+            handoff_confirm_status_evaluator,
+            handoff_debug_events_evaluator,
+        ]
+
     if target == V3_ROUTER_EVAL_TARGET:
         return [
             status_evaluator,
@@ -88,6 +145,17 @@ def build_evaluators(
 
 def resolve_eval_config(target: str) -> dict[str, Any]:
     """Resolve LangSmith evaluate configuration for a ShopMind target."""
+    if target == V3_HANDOFF_EVAL_TARGET:
+        return {
+            "target_fn": shopmind_v3_handoff_target,
+            "dataset": V3_HANDOFF_DATASET_NAME,
+            "experiment_prefix": "shopmind-v3-handoff",
+            "description": (
+                "ShopMind V3 API handoff evaluation for chat/confirm status "
+                "and debug-event expectations."
+            ),
+        }
+
     if target == V3_ROUTER_EVAL_TARGET:
         return {
             "target_fn": shopmind_v3_router_target,
@@ -116,7 +184,7 @@ def main() -> None:
         "yes",
     }
     target = os.getenv("SHOPMIND_EVAL_TARGET", V1_EVAL_TARGET).strip().lower()
-    if target not in {V1_EVAL_TARGET, V3_ROUTER_EVAL_TARGET}:
+    if target not in {V1_EVAL_TARGET, V3_ROUTER_EVAL_TARGET, V3_HANDOFF_EVAL_TARGET}:
         target = V1_EVAL_TARGET
     eval_config = resolve_eval_config(target)
 
