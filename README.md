@@ -345,6 +345,16 @@ The smoke runner covers explicit product confirmation, explicit cancellation,
 and same-thread candidate selection before confirmation. Use `--json` for a
 machine-readable summary or `--case explicit_product_confirmed` for one case.
 
+To run the complete local V3 handoff smoke suite in one command, use:
+
+```bash
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smoke_v3_handoff.py
+```
+
+This first checks the configured PostgreSQL database, Alembic version, seed
+data, documents, and repository searches, then runs the public API handoff
+smoke flow. Use `--json` for an aggregate machine-readable summary.
+
 The default GitHub Actions CI also runs:
 
 ```bash
