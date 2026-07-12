@@ -1,10 +1,10 @@
-# V3.20 Multi-Agent Handoff Summary
+# V3.21 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.20 adds a caller-facing API handoff contract document on top of the V3.19 combined local handoff smoke suite, the V3.18 seeded PostgreSQL product fixtures, the V3.17 smoke runner, the V3.16 LangSmith evaluation runner for the seeded API handoff dataset, same-repository PR dashboard comments, GitHub Actions job-summary publishing, uploaded CI-friendly event artifact bundles, local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, event reporting helpers, and the V3.15 LangSmith-seedable API handoff dataset.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.21 adds FastAPI/OpenAPI schema examples for the V3 handoff request and response models on top of the V3.20 caller-facing API handoff contract document, the V3.19 combined local handoff smoke suite, the V3.18 seeded PostgreSQL product fixtures, the V3.17 smoke runner, the V3.16 LangSmith evaluation runner for the seeded API handoff dataset, same-repository PR dashboard comments, GitHub Actions job-summary publishing, uploaded CI-friendly event artifact bundles, local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, event reporting helpers, and the V3.15 LangSmith-seedable API handoff dataset.
 
 Runtime switches:
 
@@ -214,6 +214,8 @@ V3.19 adds `scripts/smoke_v3_handoff.py`, which runs `scripts.smoke_postgres.run
 
 V3.20 adds `docs/v3_api_handoff_contract.md`, a caller-facing contract for `/api/chat` and `/api/chat/confirm`. It documents request/response fields, status values, expected client flow, confirmation/cancellation behavior, debug event names, and the combined local smoke command.
 
+V3.21 adds Pydantic `json_schema_extra` examples and field-level OpenAPI descriptions to `ChatRequest`, `ChatResponse`, and `ConfirmChatRequest`. FastAPI `/docs` and `/redoc` now show V3 handoff examples for explicit add-to-cart, same-thread candidate selection, confirmation, cancellation, `pending_action_id`, and the public status values.
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -332,11 +334,12 @@ Important tests:
   - V3 API handoff smoke explicit product fixtures are pinned to seeded product IDs and deterministic write-intent phrasing
   - V3 combined handoff smoke suite success, failure, async API, and default agent-mode behavior are covered
   - V3 API handoff contract documentation is covered for endpoints, status values, debug events, and smoke command references
+  - FastAPI OpenAPI schema examples and path references are covered for chat and confirm request models
 
 Latest full local validation:
 
 ```text
-217 passed, 4 skipped
+219 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 postgres smoke: passed on local configured database
@@ -346,7 +349,7 @@ combined v3 handoff smoke suite: pass on local configured database
 
 ## Recommended next step
 
-V3.20 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, packageable as CI-friendly artifacts, uploaded from the default CI workflow, visible in the GitHub Actions job summary, surfaced as a same-repository PR comment, seedable as a LangSmith API handoff dataset, runnable through the shared LangSmith evaluation entrypoint, smoke-testable through the public FastAPI endpoints without LangSmith, locally checkable as one combined Postgres plus API handoff suite, and documented as a caller-facing API contract.
+V3.21 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, packageable as CI-friendly artifacts, uploaded from the default CI workflow, visible in the GitHub Actions job summary, surfaced as a same-repository PR comment, seedable as a LangSmith API handoff dataset, runnable through the shared LangSmith evaluation entrypoint, smoke-testable through the public FastAPI endpoints without LangSmith, locally checkable as one combined Postgres plus API handoff suite, documented as a caller-facing API contract, and discoverable through generated OpenAPI examples.
 
 Suggested shape:
 
@@ -354,6 +357,7 @@ Suggested shape:
 - Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
 - Run `scripts/smoke_v3_handoff.py` in any environment with a configured application database before treating the API handoff flow as deployment-ready.
 - Keep `docs/v3_api_handoff_contract.md` in sync whenever `/api/chat` or `/api/chat/confirm` response fields change.
+- Keep OpenAPI examples in `app/schemas/chat.py` aligned with the caller-facing contract.
 - Consider adding a richer dashboard that consumes the generated artifact bundle.
 - In an environment with database and LangSmith credentials, run `SHOPMIND_EVAL_TARGET=v3-handoff` to record the handoff experiment.
 - Keep `/api/chat/confirm` unchanged.

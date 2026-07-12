@@ -161,7 +161,7 @@ from each default workflow run without requiring database or LLM access.
 - [API 设计](docs/api_design.md)
 - [安全设计](docs/safety_design.md)
 - [V3 API Handoff Contract](docs/v3_api_handoff_contract.md)
-- [V3.20 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
+- [V3.21 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
 
 ### ShopMind V3 write handoff
 
@@ -355,6 +355,10 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smo
 This first checks the configured PostgreSQL database, Alembic version, seed
 data, documents, and repository searches, then runs the public API handoff
 smoke flow. Use `--json` for an aggregate machine-readable summary.
+
+The generated FastAPI OpenAPI schema also includes V3 handoff request and
+response examples. Start the backend and inspect `/docs` or `/redoc` for the
+interactive API contract.
 
 The default GitHub Actions CI also runs:
 
