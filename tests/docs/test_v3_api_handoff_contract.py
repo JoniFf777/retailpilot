@@ -20,6 +20,7 @@ def test_v3_api_handoff_contract_covers_public_api_flow() -> None:
         "pending_action_confirmed",
         "pending_action_cancelled",
         "scripts/smoke_v3_handoff.py",
+        "--preserve-runtime-state",
     ):
         assert required_text in contract
 

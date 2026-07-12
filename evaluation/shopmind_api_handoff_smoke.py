@@ -83,6 +83,57 @@ API_HANDOFF_SMOKE_CASES: tuple[ApiHandoffSmokeCase, ...] = (
 )
 
 
+def _smoke_user_ids(cases: Sequence[ApiHandoffSmokeCase]) -> list[str]:
+    return sorted({case["user_id"] for case in cases})
+
+
+def cleanup_api_handoff_smoke_state(
+    cases: Sequence[ApiHandoffSmokeCase] = API_HANDOFF_SMOKE_CASES,
+    *,
+    session_factory: Any | None = None,
+) -> dict[str, int]:
+    """Delete runtime state owned by the fixed API handoff smoke users."""
+    from sqlalchemy import delete
+
+    from app.db.models import CandidateContext, CartItem, PendingAction
+
+    if session_factory is None:
+        from app.db.session import SessionLocal
+
+        session_factory = SessionLocal
+
+    user_ids = _smoke_user_ids(cases)
+    if not user_ids:
+        return {
+            "cart_items": 0,
+            "pending_actions": 0,
+            "candidate_contexts": 0,
+        }
+
+    session = session_factory()
+    try:
+        deleted_cart_items = session.execute(
+            delete(CartItem).where(CartItem.user_id.in_(user_ids))
+        ).rowcount
+        deleted_pending_actions = session.execute(
+            delete(PendingAction).where(PendingAction.user_id.in_(user_ids))
+        ).rowcount
+        deleted_candidate_contexts = session.execute(
+            delete(CandidateContext).where(CandidateContext.user_id.in_(user_ids))
+        ).rowcount
+        session.commit()
+        return {
+            "cart_items": int(deleted_cart_items or 0),
+            "pending_actions": int(deleted_pending_actions or 0),
+            "candidate_contexts": int(deleted_candidate_contexts or 0),
+        }
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
 def _json_body(response: ResponseLike) -> dict[str, Any]:
     try:
         return response.json()
@@ -232,15 +283,24 @@ def format_api_handoff_smoke_summary(summary: dict[str, Any]) -> str:
 
 async def run_with_asgi_app(
     cases: Sequence[ApiHandoffSmokeCase] = API_HANDOFF_SMOKE_CASES,
+    *,
+    cleanup_runtime_state: bool = True,
 ) -> dict[str, Any]:
     """Run smoke checks against the in-process FastAPI app."""
     from httpx import ASGITransport, AsyncClient
 
     from app.main import app
 
-    transport = ASGITransport(app=app, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        return await run_api_handoff_smoke(client, cases=cases)
+    if cleanup_runtime_state:
+        cleanup_api_handoff_smoke_state(cases)
+
+    try:
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            return await run_api_handoff_smoke(client, cases=cases)
+    finally:
+        if cleanup_runtime_state:
+            cleanup_api_handoff_smoke_state(cases)
 
 
 def _select_cases(case_name: str | None) -> tuple[ApiHandoffSmokeCase, ...]:
@@ -272,6 +332,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "SHOPMIND_SUPERVISOR_ROUTER=deterministic before running."
         ),
     )
+    parser.add_argument(
+        "--preserve-runtime-state",
+        action="store_true",
+        help=(
+            "Do not clean smoke-owned cart, pending action, and candidate "
+            "context rows before and after running."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -284,7 +352,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         get_settings.cache_clear()
 
-    summary = asyncio.run(run_with_asgi_app(_select_cases(args.case)))
+    summary = asyncio.run(
+        run_with_asgi_app(
+            _select_cases(args.case),
+            cleanup_runtime_state=not args.preserve_runtime_state,
+        )
+    )
     if args.json:
         print(json.dumps(summary, ensure_ascii=False, indent=2))
     else:
