@@ -31,7 +31,7 @@ class HandoffEvalCase(TypedDict):
 HANDOFF_EVAL_CASES: tuple[HandoffEvalCase, ...] = (
     {
         "name": "explicit_product_confirmed",
-        "message": "add TECH-KEY-001 to cart quantity 2",
+        "message": "add to cart TECH-KEY-010 quantity 2",
         "user_id": "HANDOFF-EVAL-USER",
         "thread_id": "handoff-eval-confirm",
         "confirm": True,
@@ -41,7 +41,7 @@ HANDOFF_EVAL_CASES: tuple[HandoffEvalCase, ...] = (
     },
     {
         "name": "missing_product_clarification",
-        "message": "add this keyboard to cart",
+        "message": "add to cart keyboard quantity 1",
         "user_id": "HANDOFF-EVAL-USER",
         "thread_id": "handoff-eval-clarify",
         "confirm": None,

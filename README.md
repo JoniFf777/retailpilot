@@ -265,6 +265,9 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 
 This mode uses deterministic evaluators for the initial chat status, optional
 confirmation status, and expected debug events across the chat/confirm flow.
+The fixed `HANDOFF-EVAL-*` users are cleaned before and after each LangSmith
+target invocation so repeated experiments do not retain cart, pending-action,
+or candidate-context rows.
 
 ### ShopMind V3 Router Offline Eval
 

@@ -93,6 +93,18 @@ def cleanup_api_handoff_smoke_state(
     session_factory: Any | None = None,
 ) -> dict[str, int]:
     """Delete runtime state owned by the fixed API handoff smoke users."""
+    return cleanup_handoff_runtime_state(
+        _smoke_user_ids(cases),
+        session_factory=session_factory,
+    )
+
+
+def cleanup_handoff_runtime_state(
+    user_ids: Sequence[str],
+    *,
+    session_factory: Any | None = None,
+) -> dict[str, int]:
+    """Delete cart, pending-action, and candidate state for dedicated users."""
     from sqlalchemy import delete
 
     from app.db.models import CandidateContext, CartItem, PendingAction
@@ -102,8 +114,8 @@ def cleanup_api_handoff_smoke_state(
 
         session_factory = SessionLocal
 
-    user_ids = _smoke_user_ids(cases)
-    if not user_ids:
+    normalized_user_ids = sorted({user_id for user_id in user_ids if user_id})
+    if not normalized_user_ids:
         return {
             "cart_items": 0,
             "pending_actions": 0,
@@ -113,13 +125,15 @@ def cleanup_api_handoff_smoke_state(
     session = session_factory()
     try:
         deleted_cart_items = session.execute(
-            delete(CartItem).where(CartItem.user_id.in_(user_ids))
+            delete(CartItem).where(CartItem.user_id.in_(normalized_user_ids))
         ).rowcount
         deleted_pending_actions = session.execute(
-            delete(PendingAction).where(PendingAction.user_id.in_(user_ids))
+            delete(PendingAction).where(PendingAction.user_id.in_(normalized_user_ids))
         ).rowcount
         deleted_candidate_contexts = session.execute(
-            delete(CandidateContext).where(CandidateContext.user_id.in_(user_ids))
+            delete(CandidateContext).where(
+                CandidateContext.user_id.in_(normalized_user_ids)
+            )
         ).rowcount
         session.commit()
         return {

@@ -28,6 +28,7 @@ from evaluation.create_shopmind_dataset import (
     V3_ROUTER_DATASET_NAME,
 )
 from evaluation.shopmind_event_reporting import summarize_debug_events
+from evaluation.shopmind_api_handoff_smoke import cleanup_handoff_runtime_state
 from evaluation.shopmind_evaluators import (
     correctness_evaluator,
     count_total_tool_calls_evaluator,
@@ -47,6 +48,7 @@ from evaluation.shopmind_evaluators import (
 V1_EVAL_TARGET = "v1"
 V3_ROUTER_EVAL_TARGET = "v3-router"
 V3_HANDOFF_EVAL_TARGET = "v3-handoff"
+V3_HANDOFF_EVAL_USER_PREFIX = "HANDOFF-EVAL-"
 
 
 def shopmind_target(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -72,39 +74,51 @@ def shopmind_v3_handoff_target(inputs: dict[str, Any]) -> dict[str, Any]:
     """LangSmith target function for ShopMind V3 API handoff evaluation."""
     user_id = inputs.get("user_id")
     thread_id = inputs.get("thread_id")
-    chat_output = call_shopmind_agent(
-        message=inputs["message"],
-        user_id=user_id,
-        thread_id=thread_id,
+    cleanup_user_id = (
+        str(user_id)
+        if user_id and str(user_id).startswith(V3_HANDOFF_EVAL_USER_PREFIX)
+        else None
     )
+    if cleanup_user_id:
+        cleanup_handoff_runtime_state([cleanup_user_id])
 
-    outputs = [chat_output]
-    confirm_output: dict[str, Any] | None = None
-    confirmation_error: str | None = None
-    confirm = inputs.get("confirm")
-    if confirm is not None:
-        pending_action_id = chat_output.get("pending_action_id")
-        if pending_action_id:
-            confirm_output = confirm_pending_action(
-                pending_action_id=str(pending_action_id),
-                user_id=str(user_id or ""),
-                confirmed=bool(confirm),
-            )
-            outputs.append(confirm_output)
-        else:
-            confirmation_error = "missing_pending_action_id"
+    try:
+        chat_output = call_shopmind_agent(
+            message=inputs["message"],
+            user_id=user_id,
+            thread_id=thread_id,
+        )
 
-    return {
-        "status": (
-            confirm_output.get("status")
-            if isinstance(confirm_output, dict)
-            else chat_output.get("status")
-        ),
-        "chat_output": chat_output,
-        "confirm_output": confirm_output,
-        "confirmation_error": confirmation_error,
-        "event_summary": summarize_debug_events(outputs),
-    }
+        outputs = [chat_output]
+        confirm_output: dict[str, Any] | None = None
+        confirmation_error: str | None = None
+        confirm = inputs.get("confirm")
+        if confirm is not None:
+            pending_action_id = chat_output.get("pending_action_id")
+            if pending_action_id:
+                confirm_output = confirm_pending_action(
+                    pending_action_id=str(pending_action_id),
+                    user_id=str(user_id or ""),
+                    confirmed=bool(confirm),
+                )
+                outputs.append(confirm_output)
+            else:
+                confirmation_error = "missing_pending_action_id"
+
+        return {
+            "status": (
+                confirm_output.get("status")
+                if isinstance(confirm_output, dict)
+                else chat_output.get("status")
+            ),
+            "chat_output": chat_output,
+            "confirm_output": confirm_output,
+            "confirmation_error": confirmation_error,
+            "event_summary": summarize_debug_events(outputs),
+        }
+    finally:
+        if cleanup_user_id:
+            cleanup_handoff_runtime_state([cleanup_user_id])
 
 
 def build_evaluators(

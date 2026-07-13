@@ -1,10 +1,10 @@
-# V3.25 Multi-Agent Handoff Summary
+# V3.26 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.25 upgrades the repository's official GitHub Actions to Node.js 24-based major versions. This builds on V3.24 migration-head-aligned PostgreSQL integration tests, V3.23 combined PostgreSQL and public API handoff smoke coverage in the manually triggered integration workflow, V3.22 smoke runtime cleanup, the V3.21 FastAPI/OpenAPI schema examples, the V3.20 caller-facing API handoff contract document, and the preceding V3 handoff evaluation and observability work.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.26 aligns the LangSmith handoff fixtures with the seeded PostgreSQL catalog and deterministic write-intent grammar, and cleans dedicated evaluation-user runtime state around each target invocation. This builds on V3.25 Node.js 24 GitHub Actions, V3.24 migration-head-aligned PostgreSQL integration tests, V3.23 combined PostgreSQL and public API handoff smoke coverage, and the preceding V3 handoff evaluation and observability work.
 
 Runtime switches:
 
@@ -224,6 +224,8 @@ V3.24 updates the PostgreSQL health and smoke integration tests to compare again
 
 V3.25 upgrades all repository workflows from Node.js 20-based official action majors to Node.js 24-based versions: `actions/checkout@v6`, `actions/setup-python@v6`, `actions/cache@v5`, `actions/github-script@v8`, and `actions/upload-artifact@v7`. A workflow contract test rejects the previous major versions.
 
+V3.26 updates `HANDOFF_EVAL_CASES` to use the seeded `TECH-KEY-010` product and the validated `add to cart ...` deterministic write-intent phrasing. The shared runtime cleanup helper now accepts explicit dedicated user IDs, and the LangSmith V3 handoff target cleans `HANDOFF-EVAL-*` cart items, pending actions, and candidate contexts before and after each invocation.
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -359,6 +361,8 @@ smoke runtime cleanup: fixed smoke users have 0 cart_items, pending_actions, and
 postgres workflow handoff smoke command: contract test passed
 postgres integration tests: 10/10 passed against migration 0003_candidate_contexts
 GitHub Actions Node.js 24 version contract: passed
+local LangSmith handoff preflight: 2/2 passed against PostgreSQL
+handoff eval runtime cleanup: 1 cart item, 1 pending action, and 1 candidate context removed
 ```
 
 ## Recommended next step
