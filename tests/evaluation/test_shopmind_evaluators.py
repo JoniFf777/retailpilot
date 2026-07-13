@@ -1002,7 +1002,7 @@ def test_evaluate_v3_handoff_target_aggregates_cases_and_events() -> None:
         user_id: str | None = None,
         thread_id: str | None = None,
     ):
-        if "TECH-KEY-001" in message:
+        if "TECH-KEY-010" in message:
             return {
                 "status": "confirmation_required",
                 "pending_action_id": "pending-001",
@@ -1094,6 +1094,7 @@ def test_v3_handoff_dataset_examples_include_chat_confirm_expectations() -> None
     )
 
     assert confirm_case["inputs"]["confirm"] is True
+    assert "add to cart TECH-KEY-010" in confirm_case["inputs"]["message"]
     assert confirm_case["outputs"]["expected_chat_status"] == "confirmation_required"
     assert confirm_case["outputs"]["expected_confirm_status"] == "completed"
     assert confirm_case["outputs"]["expected_confirm_events"] == [
@@ -1232,13 +1233,15 @@ def test_run_langsmith_eval_builds_v3_handoff_evaluators() -> None:
 def test_v3_handoff_langsmith_target_runs_chat_and_confirm(
     monkeypatch,
 ) -> None:
+    cleanup_calls = []
+
     def fake_chat(
         message: str,
         user_id: str | None = None,
         thread_id: str | None = None,
     ):
-        assert message == "add TECH-KEY-001"
-        assert user_id == "user-001"
+        assert message == "add to cart TECH-KEY-010 quantity 2"
+        assert user_id == "HANDOFF-EVAL-USER"
         assert thread_id == "thread-001"
         return {
             "status": "confirmation_required",
@@ -1254,7 +1257,7 @@ def test_v3_handoff_langsmith_target_runs_chat_and_confirm(
 
     def fake_confirm(pending_action_id: str, user_id: str, confirmed: bool):
         assert pending_action_id == "pending-001"
-        assert user_id == "user-001"
+        assert user_id == "HANDOFF-EVAL-USER"
         assert confirmed is True
         return {
             "status": "completed",
@@ -1271,11 +1274,15 @@ def test_v3_handoff_langsmith_target_runs_chat_and_confirm(
         "evaluation.run_langsmith_eval.confirm_pending_action",
         fake_confirm,
     )
+    monkeypatch.setattr(
+        "evaluation.run_langsmith_eval.cleanup_handoff_runtime_state",
+        lambda user_ids: cleanup_calls.append(user_ids),
+    )
 
     output = shopmind_v3_handoff_target(
         {
-            "message": "add TECH-KEY-001",
-            "user_id": "user-001",
+            "message": "add to cart TECH-KEY-010 quantity 2",
+            "user_id": "HANDOFF-EVAL-USER",
             "thread_id": "thread-001",
             "confirm": True,
         }
@@ -1289,6 +1296,7 @@ def test_v3_handoff_langsmith_target_runs_chat_and_confirm(
         "candidate_context_selected": 1,
         "pending_action_confirmed": 1,
     }
+    assert cleanup_calls == [["HANDOFF-EVAL-USER"], ["HANDOFF-EVAL-USER"]]
 
 
 def test_expected_tools_evaluator_passes_when_all_expected_tools_called() -> None:
