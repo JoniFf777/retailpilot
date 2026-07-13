@@ -1,10 +1,10 @@
-# V3.24 Multi-Agent Handoff Summary
+# V3.25 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.24 aligns the PostgreSQL integration tests with the shared expected Alembic head constant, preventing stale migration literals after schema upgrades. This builds on V3.23 combined PostgreSQL and public API handoff smoke coverage in the manually triggered integration workflow, V3.22 smoke runtime cleanup, the V3.21 FastAPI/OpenAPI schema examples, the V3.20 caller-facing API handoff contract document, and the preceding V3 handoff evaluation and observability work.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.25 upgrades the repository's official GitHub Actions to Node.js 24-based major versions. This builds on V3.24 migration-head-aligned PostgreSQL integration tests, V3.23 combined PostgreSQL and public API handoff smoke coverage in the manually triggered integration workflow, V3.22 smoke runtime cleanup, the V3.21 FastAPI/OpenAPI schema examples, the V3.20 caller-facing API handoff contract document, and the preceding V3 handoff evaluation and observability work.
 
 Runtime switches:
 
@@ -222,6 +222,8 @@ V3.23 replaces the standalone PostgreSQL smoke command in `.github/workflows/pos
 
 V3.24 updates the PostgreSQL health and smoke integration tests to compare against `scripts.smoke_postgres.EXPECTED_ALEMBIC_VERSION` instead of the stale `0002_documents_pgvector` literal. The shared constant currently points to `0003_candidate_contexts`, which is the migration head applied by `alembic upgrade head`.
 
+V3.25 upgrades all repository workflows from Node.js 20-based official action majors to Node.js 24-based versions: `actions/checkout@v6`, `actions/setup-python@v6`, `actions/cache@v5`, `actions/github-script@v8`, and `actions/upload-artifact@v7`. A workflow contract test rejects the previous major versions.
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -347,7 +349,7 @@ Important tests:
 Latest full local validation:
 
 ```text
-222 passed, 4 skipped
+223 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 postgres smoke: passed on local configured database
@@ -356,6 +358,7 @@ combined v3 handoff smoke suite: pass on local configured database
 smoke runtime cleanup: fixed smoke users have 0 cart_items, pending_actions, and candidate_contexts after suite
 postgres workflow handoff smoke command: contract test passed
 postgres integration tests: 10/10 passed against migration 0003_candidate_contexts
+GitHub Actions Node.js 24 version contract: passed
 ```
 
 ## Recommended next step
