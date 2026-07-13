@@ -15,6 +15,7 @@ from app.db.session import SessionLocal
 from app.main import app
 from app.repositories import cart as cart_repository
 from app.repositories import products as product_repository
+from scripts.smoke_postgres import EXPECTED_ALEMBIC_VERSION
 
 
 pytestmark = pytest.mark.anyio
@@ -104,7 +105,7 @@ async def test_postgres_health_endpoint_against_configured_database():
     assert response.json()["status"] == "ok"
     assert response.json()["database"] == "retailpilot_v2_smoke"
     assert response.json()["user"] == "postgres"
-    assert response.json()["alembic_version"] == "0002_documents_pgvector"
+    assert response.json()["alembic_version"] == EXPECTED_ALEMBIC_VERSION
 
 
 async def test_chat_confirm_endpoint_confirms_pending_action(smoke_user_id):

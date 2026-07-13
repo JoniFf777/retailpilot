@@ -1,10 +1,10 @@
-# V3.23 Multi-Agent Handoff Summary
+# V3.24 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.23 runs the combined PostgreSQL and public API handoff smoke suite from the manually triggered PostgreSQL integration workflow. This builds on V3.22 smoke runtime cleanup, the V3.21 FastAPI/OpenAPI schema examples, the V3.20 caller-facing API handoff contract document, the V3.19 combined local handoff smoke suite, the V3.18 seeded PostgreSQL product fixtures, the V3.17 smoke runner, the V3.16 LangSmith evaluation runner for the seeded API handoff dataset, same-repository PR dashboard comments, GitHub Actions job-summary publishing, uploaded CI-friendly event artifact bundles, local event health reports, Prometheus-style metric export, the dedicated API handoff evaluation target, event reporting helpers, and the V3.15 LangSmith-seedable API handoff dataset.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.24 aligns the PostgreSQL integration tests with the shared expected Alembic head constant, preventing stale migration literals after schema upgrades. This builds on V3.23 combined PostgreSQL and public API handoff smoke coverage in the manually triggered integration workflow, V3.22 smoke runtime cleanup, the V3.21 FastAPI/OpenAPI schema examples, the V3.20 caller-facing API handoff contract document, and the preceding V3 handoff evaluation and observability work.
 
 Runtime switches:
 
@@ -220,6 +220,8 @@ V3.22 adds `cleanup_api_handoff_smoke_state()` and wires it into `evaluation/sho
 
 V3.23 replaces the standalone PostgreSQL smoke command in `.github/workflows/postgres_integration.yml` with `scripts/smoke_v3_handoff.py --json`. The workflow now verifies migrations, seed data, pgvector documents, repository searches, and the public `/api/chat` to `/api/chat/confirm` handoff flow in one run. Its existing `include_tools` input maps to `--include-tool-smoke`.
 
+V3.24 updates the PostgreSQL health and smoke integration tests to compare against `scripts.smoke_postgres.EXPECTED_ALEMBIC_VERSION` instead of the stale `0002_documents_pgvector` literal. The shared constant currently points to `0003_candidate_contexts`, which is the migration head applied by `alembic upgrade head`.
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -353,6 +355,7 @@ api handoff smoke: 3/3 on local configured database
 combined v3 handoff smoke suite: pass on local configured database
 smoke runtime cleanup: fixed smoke users have 0 cart_items, pending_actions, and candidate_contexts after suite
 postgres workflow handoff smoke command: contract test passed
+postgres integration tests: 10/10 passed against migration 0003_candidate_contexts
 ```
 
 ## Recommended next step
