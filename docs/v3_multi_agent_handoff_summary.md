@@ -1,10 +1,10 @@
-# V3.27 Multi-Agent Handoff Summary
+# V3.0.0 Multi-Agent Handoff Release Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.27 makes the LangSmith dataset and experiment CLIs load the project `.env` before creating SDK clients, and records the first successful real cloud experiment. This builds on V3.26 seeded handoff fixture alignment and evaluation-user cleanup, V3.25 Node.js 24 GitHub Actions, V3.24 migration-head-aligned PostgreSQL integration tests, and the preceding V3 handoff evaluation and observability work.
+ShopMind V3 is released as `v3.0.0`. It has a working read-only multi-agent path with a guarded bridge into a native confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. The release includes PostgreSQL/pgvector integration, deterministic and LLM router support, stable observability metadata, public API smoke coverage, Node.js 24 GitHub Actions, and a successful real LangSmith cloud experiment.
 
 Runtime switches:
 
@@ -353,7 +353,7 @@ Important tests:
 Latest full local validation:
 
 ```text
-225 passed, 4 skipped
+227 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 postgres smoke: passed on local configured database
@@ -372,20 +372,8 @@ post-experiment runtime rows: 0 cart items, 0 pending actions, 0 candidate conte
 standard CLI verification experiment: shopmind-v3-handoff-ef66ba2f, 6/6 scores equal 1.0
 ```
 
-## Recommended next step
+## Release state
 
-V3.23 keeps the native V3 write handoff path confirmation-based, database-backed, observable through stable debug metadata, measurable through aggregate event reporting, exportable as operational event metrics, reviewable through local health reports, packageable as CI-friendly artifacts, uploaded from the default CI workflow, visible in the GitHub Actions job summary, surfaced as a same-repository PR comment, seedable as a LangSmith API handoff dataset, runnable through the shared LangSmith evaluation entrypoint, smoke-testable through the public FastAPI endpoints without LangSmith, locally and CI-checkable as one combined Postgres plus API handoff suite, documented as a caller-facing API contract, discoverable through generated OpenAPI examples, and non-polluting for fixed smoke runtime data by default.
+V3 is feature-frozen. Maintenance changes should preserve the current `/api/chat` and `/api/chat/confirm` contract, confirmation boundary, deterministic evaluation cases, and smoke cleanup behavior. The release notes are maintained in `docs/v3_release_notes.md`.
 
-Suggested shape:
-
-- Keep V3 read agents read-only.
-- Keep deterministic write handoff parsing conservative: only explicit product IDs or same-thread candidate selections may create pending actions.
-- Run `scripts/smoke_v3_handoff.py` in any environment with a configured application database before treating the API handoff flow as deployment-ready.
-- Keep `docs/v3_api_handoff_contract.md` in sync whenever `/api/chat` or `/api/chat/confirm` response fields change.
-- Keep OpenAPI examples in `app/schemas/chat.py` aligned with the caller-facing contract.
-- Preserve smoke runtime rows only when debugging; the default smoke path should leave fixed smoke users clean.
-- Consider adding a richer dashboard that consumes the generated artifact bundle.
-- In an environment with database and LangSmith credentials, run `SHOPMIND_EVAL_TARGET=v3-handoff` to record the handoff experiment.
-- Keep `/api/chat/confirm` unchanged.
-
-This would make V3 own both read orchestration and confirmation preparation while preserving the same public API contract.
+The next feature line is V4, starting with the remaining cart lifecycle operations: quantity updates, single-item removal, and clear-cart confirmation. Checkout and preference writes should follow only after those operations have the same pending-action, idempotency, PostgreSQL, API contract, smoke, and LangSmith coverage established by V3.

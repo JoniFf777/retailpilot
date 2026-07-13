@@ -2,6 +2,8 @@
 
 这是一个基于 LangChain、LangGraph 和 LangSmith 的 AI engineering lifecycle workshop 项目，原始场景是为虚构电商 TechHub 构建 customer support Agent。当前仓库已在此基础上扩展出 ShopMind V1：一个面向中文用户的购物决策 Agent 后端项目。
 
+当前正式版本为 **ShopMind V3.0.0**。V3 引入 PostgreSQL/pgvector 数据层、多 Agent 只读编排、基于确认的原生写入 handoff、完整 API smoke/CI，以及真实 LangSmith 云端评估。详见 [V3.0.0 release notes](docs/v3_release_notes.md)。
+
 <div align="center">
     <img src="images/main_graphic.png">
 </div>
