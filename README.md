@@ -360,6 +360,11 @@ data, documents, and repository searches, then runs the public API handoff
 smoke flow. Use `--json` for an aggregate machine-readable summary. It also
 cleans the fixed smoke users' runtime state by default.
 
+The manually triggered `PostgreSQL Integration` GitHub Actions workflow runs
+the same combined suite after migrations, seed loading, and document indexing.
+Set its `include_tools` input to `true` to include the optional LangChain tool
+smoke checks.
+
 The generated FastAPI OpenAPI schema also includes V3 handoff request and
 response examples. Start the backend and inspect `/docs` or `/redoc` for the
 interactive API contract.

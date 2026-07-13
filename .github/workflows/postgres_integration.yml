@@ -72,12 +72,12 @@ jobs:
       - name: Index documents into pgvector
         run: python scripts/index_documents_pgvector.py --clear
 
-      - name: Run PostgreSQL smoke check
+      - name: Run V3 PostgreSQL handoff smoke suite
         run: |
           if [ "${{ inputs.include_tools }}" = "true" ]; then
-            python scripts/smoke_postgres.py --include-tools
+            python scripts/smoke_v3_handoff.py --json --include-tool-smoke
           else
-            python scripts/smoke_postgres.py
+            python scripts/smoke_v3_handoff.py --json
           fi
 
       - name: Run PostgreSQL integration tests

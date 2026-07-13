@@ -547,6 +547,17 @@ def test_ci_workflow_uploads_v3_event_artifacts() -> None:
     assert "path: artifacts/v3-events" in workflow
 
 
+def test_postgres_workflow_runs_v3_handoff_smoke_suite() -> None:
+    workflow = Path(".github/workflows/postgres_integration.yml").read_text()
+
+    assert "Run V3 PostgreSQL handoff smoke suite" in workflow
+    assert "python scripts/smoke_v3_handoff.py --json" in workflow
+    assert (
+        "python scripts/smoke_v3_handoff.py --json --include-tool-smoke" in workflow
+    )
+    assert "python scripts/smoke_postgres.py" not in workflow
+
+
 def test_router_eval_cases_cover_core_read_routes() -> None:
     expected_case_names = {
         "product_recommendation",
