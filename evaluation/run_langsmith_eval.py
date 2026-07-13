@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from dotenv import load_dotenv
 from langsmith.evaluation import evaluate
 
 from agents.shopmind_multi_agent import (
@@ -192,6 +193,7 @@ def resolve_eval_config(target: str) -> dict[str, Any]:
 
 
 def main() -> None:
+    load_dotenv(override=False)
     include_correctness = os.getenv("INCLUDE_CORRECTNESS_EVALUATOR", "").lower() in {
         "1",
         "true",

@@ -265,6 +265,8 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 
 This mode uses deterministic evaluators for the initial chat status, optional
 confirmation status, and expected debug events across the chat/confirm flow.
+Both LangSmith evaluation CLIs load the project `.env` without overriding
+environment variables explicitly supplied by the current process.
 The fixed `HANDOFF-EVAL-*` users are cleaned before and after each LangSmith
 target invocation so repeated experiments do not retain cart, pending-action,
 or candidate-context rows.
