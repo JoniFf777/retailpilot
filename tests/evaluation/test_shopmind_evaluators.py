@@ -1141,6 +1141,29 @@ def test_create_or_refresh_v3_handoff_dataset_uses_seed_metadata() -> None:
     assert client.created_examples[0]["metadata"]["index"] == 1
 
 
+def test_dataset_cli_loads_dotenv_before_creating_handoff_dataset(
+    monkeypatch,
+) -> None:
+    from evaluation import create_shopmind_dataset as dataset_module
+
+    calls = []
+    monkeypatch.setattr(
+        dataset_module,
+        "load_dotenv",
+        lambda **kwargs: calls.append(("dotenv", kwargs)),
+    )
+    monkeypatch.setattr(
+        dataset_module,
+        "create_or_refresh_v3_handoff_dataset",
+        lambda: calls.append(("dataset", {}))
+        or SimpleNamespace(name=V3_HANDOFF_DATASET_NAME),
+    )
+
+    dataset_module.main(["--target", "v3-handoff"])
+
+    assert calls == [("dotenv", {"override": False}), ("dataset", {})]
+
+
 def test_run_langsmith_eval_keeps_v1_evaluators_by_default() -> None:
     evaluators = build_langsmith_evaluators(target=V1_EVAL_TARGET)
 
@@ -1228,6 +1251,29 @@ def test_run_langsmith_eval_builds_v3_handoff_evaluators() -> None:
     assert config["target_fn"] is shopmind_v3_handoff_target
     assert config["dataset"] == V3_HANDOFF_DATASET_NAME
     assert config["experiment_prefix"] == "shopmind-v3-handoff"
+
+
+def test_langsmith_eval_cli_loads_dotenv_before_evaluate(monkeypatch) -> None:
+    from evaluation import run_langsmith_eval as eval_module
+
+    calls = []
+    monkeypatch.setenv("SHOPMIND_EVAL_TARGET", "v3-handoff")
+    monkeypatch.setattr(
+        eval_module,
+        "load_dotenv",
+        lambda **kwargs: calls.append(("dotenv", kwargs)),
+    )
+    monkeypatch.setattr(
+        eval_module,
+        "evaluate",
+        lambda *args, **kwargs: calls.append(("evaluate", kwargs)) or "results",
+    )
+
+    eval_module.main()
+
+    assert calls[0] == ("dotenv", {"override": False})
+    assert calls[1][0] == "evaluate"
+    assert calls[1][1]["data"] == V3_HANDOFF_DATASET_NAME
 
 
 def test_v3_handoff_langsmith_target_runs_chat_and_confirm(

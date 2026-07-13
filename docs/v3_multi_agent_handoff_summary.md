@@ -1,10 +1,10 @@
-# V3.26 Multi-Agent Handoff Summary
+# V3.27 Multi-Agent Handoff Summary
 
 This document summarizes the current V3 first-stage state so a future Codex thread can continue without reconstructing the whole history.
 
 ## Current status
 
-V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.26 aligns the LangSmith handoff fixtures with the seeded PostgreSQL catalog and deterministic write-intent grammar, and cleans dedicated evaluation-user runtime state around each target invocation. This builds on V3.25 Node.js 24 GitHub Actions, V3.24 migration-head-aligned PostgreSQL integration tests, V3.23 combined PostgreSQL and public API handoff smoke coverage, and the preceding V3 handoff evaluation and observability work.
+V3 now has a working read-only multi-agent path with a guarded bridge into a native V3 confirmation-based write handoff handler. Candidate selection context is database-backed through `candidate_contexts`, so same-thread selection can survive process restarts and multi-worker routing as long as the shared database is available. V3.27 makes the LangSmith dataset and experiment CLIs load the project `.env` before creating SDK clients, and records the first successful real cloud experiment. This builds on V3.26 seeded handoff fixture alignment and evaluation-user cleanup, V3.25 Node.js 24 GitHub Actions, V3.24 migration-head-aligned PostgreSQL integration tests, and the preceding V3 handoff evaluation and observability work.
 
 Runtime switches:
 
@@ -226,6 +226,8 @@ V3.25 upgrades all repository workflows from Node.js 20-based official action ma
 
 V3.26 updates `HANDOFF_EVAL_CASES` to use the seeded `TECH-KEY-010` product and the validated `add to cart ...` deterministic write-intent phrasing. The shared runtime cleanup helper now accepts explicit dedicated user IDs, and the LangSmith V3 handoff target cleans `HANDOFF-EVAL-*` cart items, pending actions, and candidate contexts before and after each invocation.
 
+V3.27 calls `load_dotenv(override=False)` at the start of both LangSmith evaluation CLIs, so repository `.env` credentials work while explicit process environment variables retain precedence. The first cloud experiment, `shopmind-v3-handoff-d34088c7`, completed with 2 root runs, 0 run errors, and all 6 deterministic evaluator feedback records scoring `1.0`.
+
 ## Thread handling
 
 `thread_id` is now propagated through the bridge:
@@ -351,7 +353,7 @@ Important tests:
 Latest full local validation:
 
 ```text
-223 passed, 4 skipped
+225 passed, 4 skipped
 router eval deterministic: 7/7
 router eval llm-fallback: 7/7
 postgres smoke: passed on local configured database
@@ -363,6 +365,11 @@ postgres integration tests: 10/10 passed against migration 0003_candidate_contex
 GitHub Actions Node.js 24 version contract: passed
 local LangSmith handoff preflight: 2/2 passed against PostgreSQL
 handoff eval runtime cleanup: 1 cart item, 1 pending action, and 1 candidate context removed
+LangSmith dataset: shopmind-v3-handoff-eval, 2 examples
+LangSmith experiment: shopmind-v3-handoff-d34088c7, 2 runs, 0 errors
+LangSmith feedback: 6/6 scores equal 1.0
+post-experiment runtime rows: 0 cart items, 0 pending actions, 0 candidate contexts
+standard CLI verification experiment: shopmind-v3-handoff-ef66ba2f, 6/6 scores equal 1.0
 ```
 
 ## Recommended next step

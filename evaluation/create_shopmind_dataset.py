@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 from typing import Sequence
 
+from dotenv import load_dotenv
 from langsmith import Client
 
 from evaluation.shopmind_handoff_eval import HANDOFF_EVAL_CASES
@@ -371,6 +372,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: Sequence[str] | None = None) -> None:
+    load_dotenv(override=False)
     args = parse_args(argv)
     if args.target in {"v1", "all"}:
         dataset = create_or_refresh_dataset()
