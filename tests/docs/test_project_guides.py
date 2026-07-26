@@ -52,7 +52,7 @@ def test_slices_37_40_catalog_replay_and_v6_handoff_are_consistent() -> None:
     assert "V6 Slice 3" in roadmap
     assert "IdentityBoundary" in roadmap
     assert "shopmind.governance-audit.v1" in roadmap
-    assert "V4/V5 Complete, V6 Slice 4 Complete, And Slice 5 In Progress" in status
+    assert "V4-V6 Implementation Complete" in status
     assert "shopmind.evaluation-catalog.v1" in status
     assert "shopmind.evaluation-catalog.v1" in design
     assert "shopmind.evaluation-baseline.v1" in design
@@ -90,10 +90,10 @@ def test_slices_37_40_catalog_replay_and_v6_handoff_are_consistent() -> None:
     assert Path("evaluation/run_release_operations_eval.py").is_file()
     assert Path("docs/operations_runbook.md").is_file()
     assert "compact public-API reference client" in status
-    assert "clean committed-checkout validation" in roadmap
-    assert "isolated source-export rehearsal" in roadmap
-    assert "clean-checkout proof" in status
-    assert "immutable Git reference" in roadmap
+    assert "| V6 | Complete |" in roadmap
+    assert "908b91888795f4d3d35096d6daf0592c840acdc3" in roadmap
+    assert "All V6 implementation exit criteria are satisfied" in status
+    assert Path("docs/v6_release_candidate_notes.md").is_file()
     assert "examples\\shopmind_reference_client.py" in development
     assert "/api/owner-data/runs/inspect" in development
     assert "shopmind.owner-run-inspection.v1" in design

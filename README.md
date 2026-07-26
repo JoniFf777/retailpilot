@@ -21,11 +21,10 @@ per-replica service metrics/SLO contracts, and offline versioned
 rollout/rollback/incident checks are implemented. A compact policy-preserving
 reference client now demonstrates JSON chat, ordered SSE, generic HITL resume,
 memory inspection and exact-owner payload-free run/trace inspection through
-public APIs only. An isolated source-export rehearsal passes the complete
-validation matrix without Git metadata, `.env`, caches or a virtual
-environment. This is not yet a clean Git checkout: HEAD remains the V3 release
-while V4-V6 are intentionally unstaged. The next V6 work is immutable source
-provenance followed by clean committed-checkout validation.
+public APIs only. Immutable implementation commit `908b918` passes the complete
+validation matrix from a fresh detached worktree without `.env`, with clean Git
+status before and after. V4-V6 implementation is complete; publishing remains a
+separate release workflow.
 Alembic head is `0007_governance_audit`; the released public baseline remains
 `v3.0.0`.
 
@@ -45,13 +44,13 @@ Agent Runtime。
 | V3 | 已发布 | 多 Agent 读路径、受保护写 handoff、API/CI/LangSmith |
 | V4 | 完成 | Harness、运行持久化、Memory/Context、SSE、Tool Gateway |
 | V5 | 完成 | Slice 36：remote RAG、通用多 action HITL、受控编辑与持久化恢复 |
-| V6 | 进行中 | Slices 1-4 与 Slice 5 功能范围已完成；隔离源码导出演练通过，等待 clean committed-checkout validation |
+| V6 | 完成 | Slices 1-5、完整 clean committed-checkout validation 与 release-candidate 文档均完成 |
 
 当前正式 release 仍是 **ShopMind V3.0.0**（tag `v3.0.0`）。V4-V6 实现在
 `codex/v4-1-runtime-contracts-persistence` 的 intentionally dirty worktree 中，
 尚未整理成新 release。
 
-项目完成标准是：V5 正式退出条件与 V6 exit criteria 全部满足。当前验证基线：
+V5 正式退出条件与 V6 exit criteria 已全部满足。当前验证基线：
 
 ```text
 668 passed, 6 skipped
@@ -171,6 +170,7 @@ LangSmith 仅用于显式云端 trace/experiment。
 - [V4-V6 Runtime design](docs/agent_runtime_design.md)
 - [开发与数据库指南](docs/development.md)
 - [PR checklist](docs/pr_checklist.md)
+- [V6 release-candidate notes](docs/v6_release_candidate_notes.md)
 
 `docs/v2_*`、`docs/v3_multi_agent_handoff_summary.md` 和
 `docs/v3_release_notes.md` 是历史记录，不作为当前 roadmap。
@@ -181,6 +181,6 @@ V5 退出条件已在 Slice 36 收口，V6 Slices 1-4 已完成。V6 Slice 5 已
 preflight、live readiness、cleanup success evidence、版本化 PII-free service
 metrics/SLO、离线 deployment/rollback/incident checks、compact reference
 client 与 exact-owner run/trace inspection，隔离源码导出演练也已通过。
-下一步需要先形成经授权审核的 immutable Git reference，再从其 fresh
-checkout 完成 clean committed-checkout validation；默认测试仍不调用真实
-模型或外部服务。
+immutable commit `908b918` 也已从 fresh detached worktree 通过完整 clean
+validation。V6 实现没有剩余 slice；下一步仅是需要单独授权的 push、PR、
+版本/tag 与部署流程。

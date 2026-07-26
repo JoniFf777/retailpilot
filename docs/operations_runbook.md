@@ -160,6 +160,12 @@ only as unstaged or untracked files, stop after the rehearsal and obtain
 explicit authorization for a reviewed immutable reference before claiming the
 V6 exit criterion.
 
+The first completed V6 proof used immutable implementation commit
+`908b91888795f4d3d35096d6daf0592c840acdc3`. Its fresh detached worktree passed
+the full matrix listed above and remained clean afterward. See
+`docs/v6_release_candidate_notes.md`. This validation does not authorize a
+push, pull request, tag, release, or deployment.
+
 ## Deterministic CI Gate
 
 The standalone model-, network-, credential-, PostgreSQL-, Redis-, and

@@ -22,19 +22,20 @@ and how the complete trajectory is evaluated and operated.
 | V3 | Released | Multi-agent read path, guarded write handoff, API/CI/LangSmith evaluation |
 | V4 | Complete | V4.1-V4.5 in-process runtime foundation complete |
 | V5 | Complete | Slices 1-36 complete through editable, restart-safe generic HITL |
-| V6 | In Progress | Slices 1-4 and Slice 5 functional scope complete; isolated source-export rehearsal passed, clean committed-checkout validation remains |
+| V6 | Complete | All five slices complete; immutable commit `908b918` passed the clean committed-checkout validation matrix |
 
 There is no planned V3.3 line. V3 is closed at `v3.0.0`; runtime work starts on
 V4.
 
 ## Completion Rule
 
-The project is complete only when the satisfied V5 adapter/HITL exit conditions
-and all V6 exit criteria below pass on a clean release candidate. The current
-V4-V6 worktree is a validated implementation baseline, not the final project
-endpoint. Deferred infrastructure must either be implemented or removed from
-the completion contract with an explicit architectural decision; it must not
-disappear from status reporting.
+The project is complete when the satisfied V5 adapter/HITL exit conditions and
+all V6 exit criteria below pass on a clean release candidate. That rule is now
+satisfied: immutable implementation commit
+`908b91888795f4d3d35096d6daf0592c840acdc3` passed the full clean detached
+worktree matrix with empty Git status before and after validation. The current
+published release remains V3 until an explicitly authorized release workflow
+pushes, reviews, versions, and tags the candidate.
 
 ## V4: Agent Runtime Foundation
 
@@ -886,10 +887,11 @@ revision history were verified, production preflight passed `6/6`, the catalog
 passed `8/8` suites and `488/488` checks with `48/48` baseline comparisons, and
 release operations passed `7/7` cases and `42/42` checks. This proves the source
 does not depend on the original worktree's ignored caches or copied secrets.
-It does **not** satisfy the clean-checkout exit criterion: Git HEAD is still the
-V3 release `c995896`, while V4-V6 exist only as intentionally unstaged tracked
-changes and untracked files. A reviewed immutable Git reference is required
-before a fresh checkout can reproduce this candidate.
+At the time, that rehearsal did **not** satisfy the clean-checkout exit
+criterion because Git HEAD was still the V3 release and V4-V6 existed only in
+the worktree. The source was subsequently materialized by explicit
+authorization as immutable commit `908b918`; its fresh detached checkout passed
+the same matrix and supplied the required provenance.
 
 ### V6 Exit Criteria
 
@@ -917,22 +919,20 @@ before a fresh checkout can reproduce this candidate.
 - LLM routing cannot override deterministic capability or write policy.
 - Infrastructure is added only when runtime behavior requires it.
 
-## Immediate Next Implementation
+## Immediate Next Release Work
 
-Continue **V6 Evaluation And Production Reference** with V6 Slice 5 (global
-Slice 41):
+There is no remaining V6 implementation slice. Optional next work requires
+separate authorization and belongs to release operations:
 
-1. With explicit user authorization, materialize the reviewed V4-V6 source as
-   an immutable Git commit/reference without changing its content. The current
-   no-stage/no-commit instruction remains authoritative until then.
-2. From a fresh checkout of that exact reference, require clean Git status
-   before and after the source validation, then rerun default CI,
-   PostgreSQL/Redis integration, migration/rollback review, V3 smoke,
-   evaluation gates and release documentation checks.
+1. review the V4-V6 candidate commits and
+   `docs/v6_release_candidate_notes.md`;
+2. push the branch and open/merge a pull request;
+3. choose the next semantic version and create the release/tag;
+4. deploy through the trusted platform using `docs/operations_runbook.md`.
 
 ## Rough Schedule
 
-V1-V5 and V6 Slices 1-4 (global Slices 37-40) are complete. Slice 4 closed with
+V1-V5 and all V6 slices (global Slices 37-41) are complete. Slice 4 closed with
 its authenticated-principal, closed PII-safe
 audit contract, owner-scoped persistence/retention, default-off emission, and
 authenticated owner-data lifecycle, signed-ingress identity, and sanitized
@@ -940,10 +940,7 @@ audit-monitoring substages plus an explicitly accepted offline governance
 lifecycle baseline. Slice 5's static production-configuration preflight, live
 deployment-readiness, versioned service metrics/SLOs and executable
 deployment/rollback/incident checks plus the compact reference client are
-implemented. The isolated source-export rehearsal passes; immutable source
-provenance and clean committed-checkout validation remain.
-Remaining work is
-tracked by the V6 exit criteria rather than a stale calendar estimate. Each new
-slice must land with model-independent tests, evaluation coverage where
-applicable, active documentation updates, and preservation of the released V3
-API/safety contract.
+implemented. Immutable commit `908b918` then passed the clean committed-checkout
+matrix, satisfying the final exit criterion. Any future version starts from a
+new explicitly approved roadmap; release publishing is not an implementation
+slice.

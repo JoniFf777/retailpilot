@@ -658,13 +658,12 @@ replay enforcement. Sanitized audit metrics/alerts, versioned service
 metrics/SLOs and executable deployment/rollback/incident checks are
 implemented. The compact public-API reference client and exact-owner run/trace
 inspection are also implemented, completing Slice 5 functional scope. Continue
-with clean release-candidate validation. The isolated source-export rehearsal
-passes `668/668` default tests, `25/25` combined integration, PostgreSQL/V3
-smoke, a single linear migration head, `6/6` production preflight, the complete
-catalog and release-operations gate without copied Git metadata, `.env`, caches
-or a virtual environment. This is not a clean-checkout proof: HEAD remains V3
-`c995896`, and V4-V6 have no immutable Git reference under the current
-no-stage/no-commit instruction. The static production configuration
+with release packaging only when separately authorized. Immutable
+implementation commit `908b918` passes `668/668` default tests, `23/23`
+PostgreSQL integration, `25/25` combined integration, PostgreSQL/V3 smoke, a
+single linear migration head, `6/6` production preflight, the complete catalog
+and release-operations gate from a fresh detached worktree with clean status
+before and after. The static production configuration
 preflight and live deployment readiness contracts are implemented. The
 accepted governance gate is `5/5` cases
 and `42/42` checks; the complete catalog is `8/8` suites, `61/61` cases,

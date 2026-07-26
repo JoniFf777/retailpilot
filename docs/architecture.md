@@ -495,7 +495,8 @@ unsafe; development defaults do not change. The CLI, CI artifact and internal
 health response share the same report. Service metrics/SLOs, executable
 deployment/rollback/incident checks, and the compact policy-preserving
 reference client with exact-owner payload-free run/trace inspection are now
-implemented. Clean release-candidate validation remains.
+implemented. Immutable implementation commit `908b918` also passed the full
+clean detached-worktree validation matrix, completing V6.
 
 Live deployment readiness is now a separate
 `shopmind.deployment-readiness.v1` boundary. It combines the stored static

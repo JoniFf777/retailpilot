@@ -40,13 +40,19 @@ an exact-owner, payload-free run/trace inspection projection. Slice 5
 functional implementation is complete. An isolated source-export rehearsal
 passes the full, integration, smoke, migration, production-preflight and
 evaluation matrix without copied Git metadata, secrets, caches or virtual
-environments. Clean validation from an immutable committed checkout remains.
+environments. Immutable implementation commit
+`908b91888795f4d3d35096d6daf0592c840acdc3` subsequently passed the same
+matrix from a fresh detached worktree with clean Git status before and after.
+All V6 implementation exit criteria are satisfied.
 
 ## Release Baseline
 
 - Version/tag: `v3.0.0`.
 - Main release commit: `c995896`.
 - Release: <https://github.com/JoniFf777/retailpilot/releases/tag/v3.0.0>
+- V4-V6 implementation candidate:
+  `908b91888795f4d3d35096d6daf0592c840acdc3`, clean-checkout validated but not
+  yet published or tagged.
 - Endpoints: `GET /api/health`, `POST /api/chat`,
   `POST /api/chat/confirm`.
 - Release path: multi-agent mode with deterministic Supervisor routing.
@@ -121,7 +127,7 @@ environments. Clean validation from an immutable committed checkout remains.
   arbitrary runtime payloads. The internal repository persists that exact
   contract, bounds owner-scoped inspection and hides expired records.
 
-### V4/V5 Complete, V6 Slice 4 Complete, And Slice 5 In Progress
+### V4-V6 Implementation Complete
 
 - The runtime Harness records the current V3 `/api/chat` and
   `/api/chat/confirm` invocations without changing user-visible responses.
@@ -149,6 +155,11 @@ environments. Clean validation from an immutable committed checkout remains.
   repository isolation and Harness governance emission assertions; combined
   PostgreSQL/Redis integration passes `25/25`. PostgreSQL smoke passed at
   migration `0007_governance_audit`, and V3 API handoff smoke passed `3/3`.
+- The exact immutable implementation commit `908b918` passed that matrix from a
+  fresh detached worktree. Production preflight passed `6/6`, the V6 catalog
+  passed `8/8` suites with `488/488` checks and `48/48` comparisons, release
+  operations passed `7/7` cases with `42/42` checks, and Git status remained
+  clean after validation.
 - V4.2 intentionally does not include async graph execution, Redis, or remote
   A2A; V4.3 memory loading is limited to the explicit local records and
   conversation sources described above.
@@ -564,9 +575,9 @@ environments. Clean validation from an immutable committed checkout remains.
 
 See `docs/v3_release_notes.md` for the immutable release record.
 
-## Remaining Scope To Project Completion
+## Post-V6 Optional Scope
 
-| Capability | Current state | Completion target |
+| Capability | V6 completed state | Optional follow-up |
 | --- | --- | --- |
 | Remote specialist | Default-off server-owned HTTP RAG transport, policy-required Registry selection and 5/5 equivalence gate | Add deployment/operational checks only where V6 production requirements need them; do not distribute every Agent |
 | Generic HITL | Add-to-cart/save-preference prepare, edit, approve, reject, resume, expire and replay through exact registered schemas and persisted IDs | V5 target met; V6 adds catalog-level regression and governance coverage |
@@ -575,7 +586,7 @@ See `docs/v3_release_notes.md` for the immutable release record.
 | Memory lifecycle | Explicit records, summaries, bounded context/cleanup, authenticated inspection, correction and hard deletion | Automatic extraction/compaction only after the new lifecycle is accepted into regression baselines |
 | Streaming control | SSE lifecycle events, bounded buffers and cooperative cancellation | Provider token streaming and documented hard/soft cancellation boundaries where supported |
 | Distributed operations | Local default plus explicit atomic Redis admission, rate limits, deduplication and bounded cache; static topology validation, live database/migration/coordination readiness and executable rollout/rollback/incident checks | Aggregate per-replica telemetry in the deployment platform; do not add distributed coordination without a concrete runtime need |
-| Production governance | Server-owned development/trusted/signed identity boundary, authenticated owner binding, closed PII-safe audit/persistence/retention/default-off emission, audit alerts, owner-data lifecycle, accepted offline regression, production preflight/readiness, service SLOs, release-operation checks and a policy-preserving reference client | Complete clean release validation and release documentation |
+| Production governance | Server-owned development/trusted/signed identity boundary, authenticated owner binding, closed PII-safe audit/persistence/retention/default-off emission, audit alerts, owner-data lifecycle, accepted offline regression, production preflight/readiness, service SLOs, release-operation checks, policy-preserving reference client, and clean release validation | Publish and deploy only through an explicitly authorized release workflow |
 | Evaluation platform | Closed ten-dimension catalog, eight deterministic suites, normalized restart/coordination/governance replay, accepted Slice 4 baseline CI comparison and standalone release-operations gate | Add the operations gate to the accepted catalog only after explicit baseline review |
 
 Full commerce, checkout, payment, fulfillment and storefront UI remain explicit
@@ -584,7 +595,8 @@ non-goals; they are not required for V6 completion.
 ## Current Risks
 
 - Remote adapter endpoint trust, response-size and server credential policy are
-  enforced; deployment identity/mTLS and operational monitoring remain V6 work.
+  enforced; deployment-specific identity/mTLS and external monitoring remain
+  operator responsibilities rather than incomplete V6 implementation.
 - Synchronous providers and tools cannot be force-terminated once running;
   cancellation and timeouts are cooperative at current boundaries.
 - Automatic memory extraction/compaction is intentionally absent, so persisted
@@ -614,21 +626,19 @@ non-goals; they are not required for V6 completion.
 - The reference client intentionally cannot inject trusted/signed identity
   headers. Production use must pass through the configured trusted ingress;
   the client is not an authentication credential generator.
-- V4-V6 remain in a large dirty worktree and have not been proven from a clean
-  committed release candidate or published after `v3.0.0`. The isolated
-  source-export rehearsal passed, but HEAD remains V3 `c995896`; that rehearsal
-  is deliberately not treated as Git provenance or a clean-checkout proof.
+- V4-V6 implementation commit `908b918` is clean-checkout validated but not yet
+  pushed, reviewed through a PR, versioned, tagged, or published after
+  `v3.0.0`. Those are explicit release actions, not remaining implementation.
 
 ## Next-Window Handoff
 
 1. Read `AGENTS.md` and `.local/retailpilot-runbook.md`.
 2. Check the worktree before touching files.
 3. Run read-only PostgreSQL smoke; do not reseed by default.
-4. The isolated source-export rehearsal has passed. Do not clean or reuse the
-   current intentionally dirty implementation worktree as the final proof.
-5. Only after explicit authorization materializes a reviewed immutable V4-V6
-   reference, validate a fresh checkout of that exact reference and require
-   clean status before and after the release matrix.
+4. No V6 implementation slice remains. See
+   `docs/v6_release_candidate_notes.md` for the clean validation record.
+5. Push, PR, semantic version selection, tagging, and deployment require
+   separate explicit authorization; do not perform them as routine startup.
 
 ## Historical Documents
 
@@ -636,5 +646,6 @@ non-goals; they are not required for V6 completion.
 - `docs/v3_multi_agent_handoff_summary.md` - chronological V3 implementation.
 - `docs/v3_release_notes.md` - formal V3.0.0 release.
 - `docs/v3_api_handoff_contract.md` - current V3 caller contract.
+- `docs/v6_release_candidate_notes.md` - validated V4-V6 implementation record.
 
 Historical files explain how V3 was built; the active roadmap is `PLAN.md`.

@@ -38,9 +38,10 @@ ignored by Git. Never copy API keys or private passwords into tracked files.
   executable generic add-to-cart/save-preference HITL lifecycle, exact action
   edit schemas, and PostgreSQL-backed restart/resume/replay trajectories.
 - Current branch: `codex/v4-1-runtime-contracts-persistence`. The intentionally
-  dirty, unstaged worktree contains the complete V4/V5 implementation. Treat all
-  existing changes as user-owned; do not restore, overwrite, stage, or commit
-  them unless the user explicitly requests it.
+  accumulated V4-V6 worktree was materialized by explicit user authorization as
+  immutable implementation commit `908b918`; that commit passed the clean
+  detached-worktree matrix. Preserve unrelated future changes and do not push,
+  tag, or deploy without explicit instruction.
 - V6 Slices 1-2 (global Slices 37-38) are complete: a closed, versioned
   evaluation catalog composes deterministic suites across ten required
   dimensions, and normalized persisted trajectories verify local fault and
@@ -76,12 +77,12 @@ ignored by Git. Never copy API keys or private passwords into tracked files.
   gate over the existing health/readiness/coordination/audit/SLO boundaries.
   The fifth substage adds a bounded public-API reference client and exact-owner,
   payload-free run/trace inspection. Slice 5 functional scope is complete;
-  an isolated no-Git/no-secret source-export rehearsal passes the full,
-  integration, smoke, migration, production-preflight and evaluation matrix.
-  It is not the clean-checkout proof because HEAD remains V3 `c995896` and all
-  V4-V6 source is unstaged. Immediate next work requires explicit authorization
-  for an immutable reviewed Git reference, followed by validation from its
-  fresh checkout. The production/default specialist path remains in-process.
+  immutable implementation commit `908b918` passes the full, integration,
+  smoke, migration, production-preflight and evaluation matrix from a fresh
+  detached worktree with clean Git status before and after. All V6
+  implementation exit criteria are satisfied. Push, PR, version/tag and
+  deployment remain separate explicitly authorized release actions. The
+  production/default specialist path remains in-process.
 
 Current validation: `668 passed, 6 skipped`; PostgreSQL integration `23/23`;
 reference-client/API/docs focused `58/58`; runtime coordination focused `12/12`;
