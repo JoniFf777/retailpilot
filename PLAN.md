@@ -37,6 +37,15 @@ worktree matrix with empty Git status before and after validation. The current
 published release remains V3 until an explicitly authorized release workflow
 pushes, reviews, versions, and tags the candidate.
 
+## Post-V6 Productization
+
+The repository currently contains the completed backend and a compact
+public-API command-line reference client, but no Web frontend. A proposed
+React/TypeScript implementation, covering POST SSE, guarded action confirmation,
+owner-data privacy flows, production identity boundaries and phased delivery,
+is documented in `docs/frontend_implementation_plan.md`. This optional frontend
+work does not reopen V6 or change its completed exit criteria.
+
 ## V4: Agent Runtime Foundation
 
 Goal: move from a working multi-agent graph to a reusable runtime that can

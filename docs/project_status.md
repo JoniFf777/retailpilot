@@ -5,44 +5,21 @@ Snapshot date: 2026-07-26
 ## Summary
 
 ShopMind is a FastAPI and LangGraph shopping-decision backend with a released V3
-public baseline, a complete V4 in-process Agent Runtime foundation, and a
-complete V5 collaboration layer with canonical planning, bounded specialist
-execution/replay, local/HTTP adapter equivalence and editable/resumable HITL.
-V6 evaluation and production-reference work is active; Slices 1-2's versioned
-catalog, accepted-baseline regression, and deterministic resilience/restart
-replay implementation are complete and PostgreSQL-verified. V6 Slice 3 now has
-typed local/Redis coordination implementations, renewable SSE admission and an
-accepted offline equivalence gate. Real two-client Redis verification now
-passes, completing Slice 3. Slice 4 now has a server-owned
-authenticated-principal/owner-binding boundary and a closed PII-safe governance
-audit contract plus fingerprint-only PostgreSQL persistence, exact-owner
-inspection, retention pruning and default-off production emission while
-preserving the V3 development default. Authenticated owner-data inventory,
-memory correction/deletion and explicitly confirmed full deletion are now
-implemented with independent deletion audit retention. The production-facing
-`signed_header` identity adapter now verifies bounded HMAC assertions and uses
-local/Redis fingerprint-only replay claims while keeping the V3 development
-default. Audit emission now has a thread-safe PII-free process monitor,
-configurable consecutive-failure alert/recovery logging and an additive
-operational health snapshot.
-The model-independent governance lifecycle gate is now explicitly accepted as
-the eighth closed V6 catalog suite, completing Slice 4. V6 Slice 5 production
-configuration preflight is now implemented with a closed sanitized report,
-fail-closed production application creation, internal health output and a CI
-artifact. The second Slice 5 substage adds closed live deployment readiness for
-PostgreSQL, migration head, selected coordination backend and recent committed
-retention cleanup evidence. The third substage now instruments the common
-Harness with bounded PII-free service counters/latencies and a versioned
-per-replica availability/p95 SLO snapshot. The fourth substage adds executable,
-versioned rollout/rollback/incident decisions over those existing health
-boundaries. The fifth substage adds the compact public-API reference client and
-an exact-owner, payload-free run/trace inspection projection. Slice 5
-functional implementation is complete. An isolated source-export rehearsal
-passes the full, integration, smoke, migration, production-preflight and
-evaluation matrix without copied Git metadata, secrets, caches or virtual
-environments. Immutable implementation commit
-`908b91888795f4d3d35096d6daf0592c840acdc3` subsequently passed the same
-matrix from a fresh detached worktree with clean Git status before and after.
+public baseline and complete V4-V6 Agent Runtime, collaboration, evaluation,
+governance and production-reference layers. V4 provides the Harness,
+persistence, Memory/Context, SSE/runtime control and Tool Gateway. V5 provides
+canonical planning, bounded specialist execution/replay, local/HTTP adapter
+equivalence, deterministic retry trajectories and editable, restart-safe
+generic HITL actions. V6 provides the closed evaluation catalog, deterministic
+fault/restart replay, local/Redis coordination, authenticated-principal owner
+binding, PII-safe audit/retention/deletion, production preflight/readiness/SLO
+checks, release-operation gates and a public-API reference client.
+
+Immutable implementation commit
+`908b91888795f4d3d35096d6daf0592c840acdc3` passed the full, integration,
+smoke, migration, production-preflight and evaluation matrix from a fresh
+detached worktree without copied secrets, caches or virtual environments. Git
+status remained clean before and after. All V5 exit conditions are satisfied.
 All V6 implementation exit criteria are satisfied.
 
 ## Release Baseline
@@ -58,6 +35,16 @@ All V6 implementation exit criteria are satisfied.
 - Release path: multi-agent mode with deterministic Supervisor routing.
 
 ## What Exists Today
+
+### User Interfaces
+
+- The repository currently has no Web frontend, `package.json`, HTML entrypoint,
+  or React/Vue/Svelte application.
+- `examples/shopmind_reference_client.py` is the current compact public-API reference client
+  and command-line demonstration.
+- A security- and contract-aligned Web implementation is specified in
+  `docs/frontend_implementation_plan.md`; it is post-V6 productization scope,
+  not an incomplete V6 backend slice.
 
 ### Agents
 

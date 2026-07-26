@@ -15,6 +15,48 @@ def test_agent_handoff_links_current_sources_of_truth() -> None:
         assert path in agents
 
 
+def test_complete_project_introduction_matches_release_candidate() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+    introduction_path = Path("docs/project_introduction.md")
+    introduction = introduction_path.read_text(encoding="utf-8")
+
+    assert introduction_path.is_file()
+    assert "docs/project_introduction.md" in readme
+    assert "ShopMind 完整项目介绍" in introduction
+    assert "V1–V6 已完成" in introduction
+    assert "908b918" in introduction
+    assert "690b0cb" in introduction
+    assert "POST /api/chat/stream" in introduction
+    assert "POST /api/owner-data/delete" in introduction
+    assert "SHOPMIND_AGENT_TASK_MAX_ATTEMPTS=1" in introduction
+    assert "668 passed, 6 skipped" in introduction
+    assert "8/8 suites" in introduction
+    assert "当前项目有意不实现" in introduction
+
+
+def test_frontend_plan_matches_public_api_and_security_boundaries() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+    introduction = Path("docs/project_introduction.md").read_text(encoding="utf-8")
+    roadmap = Path("PLAN.md").read_text(encoding="utf-8")
+    status = Path("docs/project_status.md").read_text(encoding="utf-8")
+    plan_path = Path("docs/frontend_implementation_plan.md")
+    plan = plan_path.read_text(encoding="utf-8")
+
+    assert plan_path.is_file()
+    assert "docs/frontend_implementation_plan.md" in readme
+    assert "frontend_implementation_plan.md" in introduction
+    assert "docs/frontend_implementation_plan.md" in roadmap
+    assert "docs/frontend_implementation_plan.md" in status
+    assert "当前状态：仓库尚无 Web 前端实现" in plan
+    assert "POST /api/chat/stream" in plan
+    assert "fetch" in plan and "ReadableStream" in plan
+    assert "POST /api/chat/confirm" in plan
+    assert "POST /api/owner-data/delete" in plan
+    assert "SHOPMIND_IDENTITY_SIGNING_SECRET" in plan
+    assert "永远不进入 JavaScript bundle" in plan
+    assert "不使用真实 LLM" in plan
+
+
 def test_roadmap_covers_agent_runtime_capabilities() -> None:
     roadmap = Path("PLAN.md").read_text(encoding="utf-8")
 
