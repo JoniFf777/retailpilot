@@ -4,7 +4,10 @@ from agents.shopmind_multi_agent import (
     build_multi_agent_debug_metadata,
     create_shopmind_multi_agent_graph,
 )
-from agents.shopmind_multi_agent.decision_agent import decision_agent_node
+from agents.shopmind_multi_agent.decision_agent import (
+    PRODUCT_EVIDENCE_SCOPE_MISMATCH_RESPONSE,
+    decision_agent_node,
+)
 from agents.shopmind_multi_agent.permissions import guard_tool, tools_by_name
 from agents.shopmind_multi_agent.supervisor import (
     build_supervisor_decision,
@@ -192,6 +195,16 @@ def test_mixed_question_runs_read_agents_in_order() -> None:
         "search_policy_docs",
         "get_user_preferences",
     ]
+    assert result["execution_plan"]["execution_mode"] == "sequential"
+    assert result["execution_plan"]["max_parallelism"] == 1
+    assert [
+        step["recipient"] for step in result["execution_plan"]["steps"]
+    ] == result["routes"]
+    assert all(
+        step["parallel_eligible"] and step["depends_on"] == []
+        for step in result["execution_plan"]["steps"]
+    )
+    assert result["execution_plan"]["metadata"]["parallel_execution_enabled"] is False
     assert [step["node"] for step in result["agent_steps"]] == [
         "supervisor",
         "route_dispatcher",
@@ -249,6 +262,85 @@ def test_decision_agent_requires_followup_without_read_summaries() -> None:
     assert result["decision"]["requires_followup"] is True
     assert result["decision"]["followup_reason"] == "no_read_summary_available"
     assert result["final_response"] == "我目前没有检索到足够的信息，请补充商品、政策或偏好相关问题。"
+
+
+def test_decision_agent_marks_product_document_scope_mismatch() -> None:
+    result = decision_agent_node(
+        {
+            "product_summary": {"summary": "product", "product_ids": ["TECH-KEY-001"]},
+            "rag_summary": {"summary": "document", "doc_type": "product"},
+            "evidence_references": [
+                {
+                    "ref_id": "42",
+                    "ref_type": "document",
+                    "scope": "operational",
+                    "metadata": {"product_id": "TECH-MON-001"},
+                }
+            ],
+            "executed_routes": ["product_agent", "rag_agent"],
+            "tool_calls": [],
+            "safety_flags": [],
+        }
+    )
+
+    assert result["decision"]["evidence_reference_count"] == 1
+    assert result["decision"]["evidence_conflicts"] == [
+        {
+            "conflict_type": "product_evidence_scope_mismatch",
+            "product_ids": ["TECH-KEY-001"],
+            "evidence_product_ids": ["TECH-MON-001"],
+            "evidence_reference_ids": ["42"],
+        }
+    ]
+    assert result["decision"]["evidence_resolution"] == {
+        "action": "exclude_evidence_and_request_clarification",
+        "excluded_summaries": ["rag_summary"],
+        "requires_followup": True,
+        "followup_reason": "product_evidence_scope_mismatch",
+    }
+    assert result["decision"]["answer_type"] == "evidence_conflict_followup"
+    assert result["decision"]["used_summaries"] == ["product_summary"]
+    assert result["decision"]["requires_followup"] is True
+    assert (
+        result["decision"]["followup_reason"]
+        == "product_evidence_scope_mismatch"
+    )
+    assert "document" not in result["final_response"]
+    assert PRODUCT_EVIDENCE_SCOPE_MISMATCH_RESPONSE in result["final_response"]
+    assert result["agent_steps"][-1]["evidence_conflict_count"] == 1
+    assert (
+        result["agent_steps"][-1]["evidence_resolution_action"]
+        == "exclude_evidence_and_request_clarification"
+    )
+
+
+def test_decision_agent_keeps_matching_product_document_evidence() -> None:
+    result = decision_agent_node(
+        {
+            "product_summary": {"summary": "product", "product_ids": ["TECH-KEY-001"]},
+            "rag_summary": {"summary": "document", "doc_type": "product"},
+            "evidence_references": [
+                {
+                    "ref_id": "42",
+                    "ref_type": "document",
+                    "scope": "operational",
+                    "metadata": {"product_id": "TECH-KEY-001"},
+                }
+            ],
+            "executed_routes": ["product_agent", "rag_agent"],
+            "tool_calls": [],
+            "safety_flags": [],
+        }
+    )
+
+    assert result["decision"]["evidence_conflicts"] == []
+    assert result["decision"]["evidence_resolution"] is None
+    assert result["decision"]["used_summaries"] == [
+        "product_summary",
+        "rag_summary",
+    ]
+    assert result["decision"]["requires_followup"] is False
+    assert "document" in result["final_response"]
 
 
 def test_routes_do_not_include_decision_agent() -> None:

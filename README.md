@@ -1,718 +1,186 @@
-# AI Engineering Lifecycle on LangSmith Platform
+# ShopMind
 
-这是一个基于 LangChain、LangGraph 和 LangSmith 的 AI engineering lifecycle workshop 项目，原始场景是为虚构电商 TechHub 构建 customer support Agent。当前仓库已在此基础上扩展出 ShopMind V1：一个面向中文用户的购物决策 Agent 后端项目。
+## Current V6 Worktree Addendum
 
-当前正式版本为 **ShopMind V3.0.0**。V3 引入 PostgreSQL/pgvector 数据层、多 Agent 只读编排、基于确认的原生写入 handoff、完整 API smoke/CI，以及真实 LangSmith 云端评估。详见 [V3.0.0 release notes](docs/v3_release_notes.md)。
+The active dirty worktree has completed V4, V5 through Slice 36, V6 Slices
+1-4, and the functional scope of V6 Slice 5. The
+additive `/api/owner-data/*` API provides bounded inventory/memory inspection,
+exact-owner memory correction and hard deletion, plus explicitly confirmed
+transactional deletion of ShopMind-owned personal data. Fingerprint-only audit
+facts retain independent expiry; product/document catalogs and inherited
+customer/order seed data are not deletion targets.
 
-<div align="center">
-    <img src="images/main_graphic.png">
-</div>
+The server-selected `signed_header` adapter now provides short-lived,
+one-time HMAC-authenticated ingress identity behind `IdentityBoundary`; the
+V3-compatible development default is unchanged. Audit emission now exposes a
+PII-free process health snapshot with configurable consecutive-failure
+alert/recovery logging. The offline governance lifecycle is explicitly accepted
+as the eighth closed V6 catalog suite. The six-check static production
+configuration preflight, five-check live deployment readiness, bounded
+per-replica service metrics/SLO contracts, and offline versioned
+rollout/rollback/incident checks are implemented. A compact policy-preserving
+reference client now demonstrates JSON chat, ordered SSE, generic HITL resume,
+memory inspection and exact-owner payload-free run/trace inspection through
+public APIs only. An isolated source-export rehearsal passes the complete
+validation matrix without Git metadata, `.env`, caches or a virtual
+environment. This is not yet a clean Git checkout: HEAD remains the V3 release
+while V4-V6 are intentionally unstaged. The next V6 work is immutable source
+provenance followed by clean committed-checkout validation.
+Alembic head is `0007_governance_audit`; the released public baseline remains
+`v3.0.0`.
 
-## ShopMind V1：Shopping Decision Agent Backend
+ShopMind 是一个以中文购物决策为场景的 Multi-Agent Engineering 参考后端。
+项目基于 FastAPI、LangGraph、PostgreSQL/pgvector 和 LangSmith，重点不是构建
+完整电商平台，而是展示可执行、可约束、可持久化、可流式消费和可评估的
+Agent Runtime。
 
-本仓库已扩展为 **ShopMind V1**，即一个基于 FastAPI + LangChain Agent 的中文购物决策后端。它复用原 TechHub workshop 的 dataset 和 RAG documents，并新增 Agent API、商品工具、用户偏好记忆和基于确认机制的加购流程。
+仓库保留原 TechHub workshop 作为历史教学材料；当前产品路径是 ShopMind。
 
-### ShopMind V1 功能
+## 当前状态
 
-- **FastAPI backend**
-  - `GET /api/health`
-  - `POST /api/chat`
-  - `POST /api/chat/confirm`
-- **Single ShopMind Agent**
-  - 使用 LangChain `create_agent` 构建
-  - 中文 system prompt
-  - 基于 Tool-calling 的购物决策流程
-- **Product tools**
-  - 商品搜索
-  - 商品详情查询
-  - 商品对比
-- **RAG document tools**
-  - 商品规格检索
-  - 政策文档检索
-- **User preference memory**
-  - 读取用户偏好
-  - 保存 budget、brand、usage、style、avoid 等长期偏好
-- **Confirmation-based cart flow**
-  - Agent 创建 `pending_actions`
-  - API confirmation endpoint 执行或取消加购
-  - 敏感购物车写入工具不直接暴露给 Agent
-- **Automated tests**
-  - API tests
-  - 使用 mock model 的 Agent tests
-  - 覆盖 product、preference、cart 行为的 Tool tests
+| 版本 | 状态 | 主要成果 |
+| --- | --- | --- |
+| V1 | 完成 | 单 Agent、工具、偏好和确认式加购 |
+| V2 | 完成 | PostgreSQL/pgvector、Repository、迁移和 smoke |
+| V3 | 已发布 | 多 Agent 读路径、受保护写 handoff、API/CI/LangSmith |
+| V4 | 完成 | Harness、运行持久化、Memory/Context、SSE、Tool Gateway |
+| V5 | 完成 | Slice 36：remote RAG、通用多 action HITL、受控编辑与持久化恢复 |
+| V6 | 进行中 | Slices 1-4 与 Slice 5 功能范围已完成；隔离源码导出演练通过，等待 clean committed-checkout validation |
 
-### 技术栈
+当前正式 release 仍是 **ShopMind V3.0.0**（tag `v3.0.0`）。V4-V6 实现在
+`codex/v4-1-runtime-contracts-persistence` 的 intentionally dirty worktree 中，
+尚未整理成新 release。
 
-- **Backend:** FastAPI
-- **Agent:** LangChain `create_agent`
-- **Agent orchestration foundation:** LangGraph-compatible agent graphs
-- **LLM providers:** 通过 LangChain model initialization 接入 OpenAI / Anthropic
-- **Data:** SQLite (`data/structured/techhub.db`)
-- **RAG:** Markdown documents + InMemoryVectorStore
-- **Testing:** pytest + httpx
-- **Observability / evaluation foundation:** 保留 LangSmith workshop 组件
+项目完成标准是：V5 正式退出条件与 V6 exit criteria 全部满足。当前验证基线：
 
-### 本地命令约定
+```text
+668 passed, 6 skipped
+PostgreSQL integration: 23 passed
+PostgreSQL + Redis integration: 25 passed
+V3 API handoff smoke: 3/3
+Planner policy: 10/10 cases, 70/70 checks
+Plan trajectory replay: 13/13 cases, 195/195 checks
+Adapter equivalence: 5/5 cases, 24/24 checks
+Action lifecycle: 10/10 cases, 60/60 checks
+Resilience replay: 6/6 cases, 72/72 checks
+Coordination equivalence: 5/5 cases, 18/18 checks
+Governance lifecycle: 5/5 cases, 42/42 checks
+Release operations: 7/7 cases, 42/42 checks
+V6 catalog regression: 8/8 suites, 61/61 cases, 488/488 suite checks, 48/48 baseline checks
+Migration head: 0007_governance_audit
+```
 
-本仓库本地开发使用已有 conda 环境 `pythonLearn`。不要创建新的 Python 环境，也不要直接运行 `python`、`pytest` 或 `uv run`。
+## 核心能力
 
-所有本地 Python 命令使用：
+- Supervisor、Product、RAG、Preference 和 Decision Agents。
+- 确定性路由以及受 canonical plan 约束的可选 LLM planner。
+- 有界并行 fan-out/fan-in、typed Agent task/result envelopes 和 Adapter Registry。
+- step、tool、token、cost、deadline、duration 和 delegation budgets。
+- server-owned specialist retry、attempt usage 对账和结构化生命周期事件。
+- PostgreSQL conversation/run/event/memory/idempotency persistence。
+- SSE 生命周期流、合作式取消、本地并发和 bounded event buffers。
+- Tool Gateway capability/ownership/resource/confirmation policy。
+- add-to-cart/save-preference pending actions、精确字段编辑、持久化恢复和 `/api/chat/confirm` 通用确认边界。
+- 模型无关的 planner policy、graph trajectory 与 adapter equivalence CI gates。
+- 版本化、离线的 deployment/rollback/incident release-operation checks。
+- 有界 public-API reference client，以及不泄露内容/事件 payload 的 exact-owner run/trace inspection。
 
-```bash
+## API
+
+- `GET /api/health`
+- `GET /api/health/governance-audit`（PII-safe process metrics）
+- `GET /api/health/preflight`
+- `GET /api/health/readiness`
+- `GET /api/health/service-metrics`
+- `POST /api/chat`
+- `POST /api/chat/stream`（SSE）
+- `POST /api/chat/confirm`
+- `POST /api/owner-data/inspect`
+- `POST /api/owner-data/runs/inspect`
+- `POST /api/owner-data/memory/correct`
+- `POST /api/owner-data/memory/delete`
+- `POST /api/owner-data/delete`
+
+V3 JSON contract 保持向后兼容。详细请求和响应见
+[API design](docs/api_design.md) 与
+[V3 handoff contract](docs/v3_api_handoff_contract.md)。
+
+## 本地环境
+
+Windows 开发统一使用现有 Conda 环境和解释器：
+
+```powershell
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe ...
 ```
 
-### 运行 FastAPI
+不要直接运行 `python`、`pytest` 或 `uv run`，不要替换环境。
 
-```bash
+启动 API：
+
+```powershell
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m uvicorn app.main:app --reload
 ```
 
-API 文档：
+运行全量测试：
 
-- http://127.0.0.1:8000/docs
-- http://127.0.0.1:8000/redoc
-
-### ShopMind V2：PostgreSQL / pgvector 数据层
-
-ShopMind V2 基础设施升级已完成。结构化数据、运行时状态和 RAG documents 都已经具备 PostgreSQL / pgvector 路径；`tools/products.py`、`tools/preferences.py`、`tools/cart.py` 和 `tools/documents.py` 已切换到 Repository-backed 数据访问，同时保持现有 FastAPI `/api/chat` 与 `/api/chat/confirm` 合约不变。
-
-启动数据库：
-
-```bash
-docker compose up -d postgres
+```powershell
+$env:LANGSMITH_TRACING = "false"
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest
 ```
 
-检查容器状态：
+只读 PostgreSQL smoke：
 
-```bash
-docker compose ps postgres
-docker compose logs postgres
+```powershell
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_postgres.py
 ```
 
-默认连接配置见 `.env.example`：
+不要在日常启动中运行 seed、document index 或
+`bootstrap_postgres.py --execute --confirm-clear`；这些操作会清理数据。
 
-```text
-DATABASE_URL=postgresql+psycopg://retailpilot:retailpilot@127.0.0.1:5432/retailpilot?connect_timeout=5
-TEST_DATABASE_URL=postgresql+psycopg://retailpilot:retailpilot@127.0.0.1:5432/retailpilot_test?connect_timeout=5
-VECTOR_DIMENSION=768
+## Reference Client
+
+客户端只调用公开 API，默认连接 loopback HTTP；远程地址必须使用 HTTPS。
+它不接受任意认证头或签名密钥，生产流量仍必须经过负责身份注入的可信入口。
+
+```powershell
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe examples\shopmind_reference_client.py chat --message "推荐一款办公键盘" --user-id demo-user --thread-id demo-thread
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe examples\shopmind_reference_client.py stream --message "比较两款键盘" --user-id demo-user --thread-id demo-thread
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe examples\shopmind_reference_client.py run --user-id demo-user --run-id RUN_ID
 ```
 
-创建或升级 V2 schema：
+## 离线评估
 
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
+```powershell
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_planner_eval.py --output-json artifacts\v5-planner-policy\summary.json
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_plan_trajectory_eval.py --output-json artifacts\v5-plan-trajectories\summary.json
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_adapter_equivalence_eval.py --output-json artifacts\v5-adapter-equivalence\summary.json
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_action_lifecycle_eval.py --output-json artifacts\v5-action-lifecycle\summary.json
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_catalog_eval.py --output-json artifacts\v6-evaluation-catalog\summary.json
 ```
 
-这会创建结构化业务表、运行时状态表和 `documents` pgvector 表。
-
-导入原始结构化数据：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/seed_postgres.py --clear
-```
-
-seed 脚本会从 `data/structured/customers.json`、`products.json`、`orders.json` 和 `order_items.json` 导入 PostgreSQL。`user_preferences`、`cart_items` 和 `pending_actions` 是运行时状态表，不会由 seed 脚本导入。
-
-索引 markdown documents 到 pgvector：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --clear
-```
-
-完整初始化和验证也可以使用 bootstrap 脚本：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py --execute --confirm-clear
-```
-
-### 运行测试
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/agents/test_shopmind_agent.py tests/tools/test_cart.py tests/tools/test_preferences.py tests/tools/test_products.py tests/api
-```
-
-当前验证结果：
-
-```text
-38 passed
-```
-
-### GitHub Actions CI
-
-主分支已配置默认 CI：`.github/workflows/ci.yml`。CI 使用 GitHub runner 的 Python 3.13，安装项目依赖后运行默认回归：
-
-```bash
-python -m pytest tests/config tests/db tests/repositories tests/scripts tests/tools tests/api tests/agents tests/evaluation tests/integration
-```
-
-该 CI 不启动真实 PostgreSQL。`tests/integration` 默认只运行 guard，真实 PostgreSQL integration 仍需本地显式设置 `RUN_POSTGRES_INTEGRATION=1` 后执行。
-
-CI also generates and uploads a deterministic `v3-event-artifacts` bundle with
-`event_summary.json`, `event_metrics.prom`, `event_health.txt`, and
-`event_dashboard.md`, publishes the dashboard to the GitHub Actions job summary,
-and updates a same-repository PR comment. V3 observability output is available
-from each default workflow run without requiring database or LLM access.
-
-真实 PostgreSQL + pgvector integration 已配置为手动 workflow：`.github/workflows/postgres_integration.yml`。该 workflow 会启动 `pgvector/pgvector:pg16` 服务，执行 Alembic migration、seed、documents pgvector index、smoke check 和 `RUN_POSTGRES_INTEGRATION=1` 的 integration 测试。它会下载或复用 HuggingFace embedding model cache，因此不放进默认 PR/push 门禁。
-
-### ShopMind V1 设计文档
-
-- [架构设计](docs/architecture.md)
-- [Tools 设计](docs/tools_design.md)
-- [API 设计](docs/api_design.md)
-- [安全设计](docs/safety_design.md)
-- [V3 API Handoff Contract](docs/v3_api_handoff_contract.md)
-- [V3.22 Multi-Agent Handoff Summary](docs/v3_multi_agent_handoff_summary.md)
-
-### ShopMind V3 write handoff
-
-V3 multi-agent mode keeps read agents read-only, then bridges write intents into the native confirmation-based handoff path. Add-to-cart now supports:
-
-- explicit product IDs such as `TECH-KEY-001`, returning `confirmation_required`
-- missing product IDs, returning catalog candidates without creating pending actions
-- same-thread candidate selection such as `选 1`, creating the normal pending action
-- out-of-range selections such as `选 3`, returning a clarification without writing
-- database-backed candidate context: 10-minute TTL and at most 100 active contexts
-
-V3.15 exposes candidate-context debug metadata for store, miss, selection,
-out-of-range, and clear events from `/api/chat`, plus confirmation debug events
-from `/api/chat/confirm` when `include_debug=true`. Evaluation helpers can now
-aggregate those debug events into count/rate summaries and run a dedicated
-API handoff target that exercises the `/api/chat` to `/api/chat/confirm` flow.
-The same summaries can be exported as Prometheus-style event metrics for
-dashboarding or CI artifacts, rendered as local event health reports, or
-written as a small CI-friendly artifact bundle.
-
-Expired or overflow candidate contexts can also be cleaned explicitly:
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/cleanup_candidate_contexts.py
-```
-
-### LangSmith Evaluation
-
-ShopMind V1 已接入 LangSmith evaluation，用于检查 tool calls、response status、敏感操作安全性和回答关键词。
-
-设置 LangSmith 环境变量：
-
-```bash
-# Required for LangSmith dataset/evaluation
-set LANGSMITH_API_KEY=your_langsmith_api_key
-
-# Optional but recommended for trace collection
-set LANGSMITH_TRACING=true
-set LANGSMITH_PROJECT=shopmind-v1
-```
-
-创建或刷新 evaluation dataset：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/create_shopmind_dataset.py
-```
-
-运行 evaluation：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
-```
-
-默认 evaluation 使用确定性的规则型 evaluators：
-
-- `expected_tools_evaluator`
-- `forbidden_tools_evaluator`
-- `status_evaluator`
-- `expected_keywords_evaluator`
-- `count_total_tool_calls_evaluator`
-
-现有 `correctness_evaluator` 也可以复用，但它是 LLM-as-Judge evaluator，会产生额外模型调用成本。需要时请显式开启：
-
-```bash
-set INCLUDE_CORRECTNESS_EVALUATOR=true
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
-```
-
-V3 read-only multi-agent router 也可以接入 LangSmith evaluation。先创建或刷新 V3 router dataset：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/create_shopmind_dataset.py --target v3-router
-```
-
-V3 API handoff cases can also be seeded as a LangSmith dataset. This creates
-chat/confirm examples with expected statuses and debug-event expectations:
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/create_shopmind_dataset.py --target v3-handoff
-```
-
-再运行 V3 router evaluation。默认使用 deterministic router，不会调用真实模型：
-
-```bash
-set SHOPMIND_EVAL_TARGET=v3-router
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
-```
-
-该模式使用：
-
-- `status_evaluator`
-- `expected_routes_evaluator`
-- `debug_metadata_evaluator`
-
-Run the seeded V3 API handoff dataset through LangSmith with:
-
-```bash
-set SHOPMIND_EVAL_TARGET=v3-handoff
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_langsmith_eval.py
-```
-
-This mode uses deterministic evaluators for the initial chat status, optional
-confirmation status, and expected debug events across the chat/confirm flow.
-Both LangSmith evaluation CLIs load the project `.env` without overriding
-environment variables explicitly supplied by the current process.
-The fixed `HANDOFF-EVAL-*` users are cleaned before and after each LangSmith
-target invocation so repeated experiments do not retain cart, pending-action,
-or candidate-context rows.
-
-### ShopMind V3 Router Offline Eval
-
-V3 multi-agent supervisor router 已提供本地离线评估脚本，用固定中文样本检查路由命中率、fallback rate 和失败明细。默认模式不会调用真实模型：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic
-```
-
-输出示例：
-
-```text
-ShopMind router eval
-router: deterministic
-cases: 7
-exact matches: 7/7 (100.0%)
-fallbacks: 1/7 (14.3%)
-failures: none
-```
-
-也可以检查 LLM router fallback 路径，仍不调用真实模型：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router llm-fallback
-```
-
-需要实际调用结构化 LLM router 时，显式使用 `--router llm` 并传入模型或依赖 `WORKSHOP_MODEL`：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router llm --model openai:gpt-5-nano
-```
-
-机器可读输出：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic --json
-```
-
-需要本地模拟 V3 LangSmith router evaluation 时，可以使用 target 模式。该模式会调用 V3 read-only multi-agent target，并对每个固定样本运行 `status_evaluator`、`expected_routes_evaluator` 和 `debug_metadata_evaluator`：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode target
-```
-
-For the API handoff flow, use handoff mode. It runs fixed chat/confirm cases
-and prints the same aggregate debug event summary:
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff
-```
-
-Target and handoff modes can also print Prometheus-style event metrics:
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff --event-metrics
-```
-
-For CI artifacts or a quick local health view, print an event report:
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff --event-report
-```
-
-To write event artifacts for CI upload or local review:
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --mode handoff --event-artifacts-dir artifacts/v3-handoff
-```
-
-For a production-like API smoke check, run the in-process FastAPI app through
-the public `/api/chat` and `/api/chat/confirm` endpoints. This skips LangSmith
-and expects the configured application database to be available:
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/shopmind_api_handoff_smoke.py
-```
-
-The smoke runner covers explicit product confirmation, explicit cancellation,
-and same-thread candidate selection before confirmation. Use `--json` for a
-machine-readable summary or `--case explicit_product_confirmed` for one case.
-By default it cleans smoke-owned cart, pending action, and candidate context
-rows before and after running; use `--preserve-runtime-state` when debugging
-database rows after a smoke run.
-
-To run the complete local V3 handoff smoke suite in one command, use:
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smoke_v3_handoff.py
-```
-
-This first checks the configured PostgreSQL database, Alembic version, seed
-data, documents, and repository searches, then runs the public API handoff
-smoke flow. Use `--json` for an aggregate machine-readable summary. It also
-cleans the fixed smoke users' runtime state by default.
-
-The manually triggered `PostgreSQL Integration` GitHub Actions workflow runs
-the same combined suite after migrations, seed loading, and document indexing.
-Set its `include_tools` input to `true` to include the optional LangChain tool
-smoke checks.
-
-The generated FastAPI OpenAPI schema also includes V3 handoff request and
-response examples. Start the backend and inspect `/docs` or `/redoc` for the
-interactive API contract.
-
-The default GitHub Actions CI also runs:
-
-```bash
-python evaluation/generate_event_artifacts.py --output-dir artifacts/v3-events
-```
-
-如果只想验证 router 规则本身，继续使用默认 `--mode router` 即可。
-
-### V3 Roadmap
-
-V2 数据层已经收口。下一条主线是 V3 multi-agent：
-
-- LangGraph Supervisor + in-process subgraphs；
-- 按 Agent 隔离 tool 权限；
-- read path 先拆 Product / RAG / Preference / Decision；
-- pending action / HITL 写路径后续再升级；
-- A2A 仅在 Agent 拆成独立远程服务时再评估。
-
-## 原 Workshop 会构建什么
-
-原 workshop 会构建一个 customer support Agent 系统，包含：
-
-- **Multi-agent architecture**：由 Supervisor 协调 Database Agent 和 Documents Agent；
-- **Human-in-the-loop (HITL)**：使用 LangGraph primitives 完成客户验证；
-- **Evaluation-driven development**：通过 offline evaluation 发现并修复瓶颈；
-- **Production deployment**：部署到 LangSmith，并结合 online evaluation 和 data flywheel 持续改进。
-
-## 快速设置
-
-本地开发使用已有 conda 环境 `pythonLearn`。不要创建新的 Python 环境，也不要直接运行 `python`、`pytest` 或 `uv run`。
-
-设置 workshop 环境：
-
-```bash
-# Clone repository
-git clone https://github.com/langchain-ai/langsmith-agent-lifecycle-workshop.git
-cd langsmith-agent-lifecycle-workshop
-
-# Configure API keys
-cp .env.example .env
-# Edit .env and add your API keys:
-#   ANTHROPIC_API_KEY=sk-ant-...
-#   LANGSMITH_API_KEY=lsv2_pt_...
-
-# Build vectorstore (one-time setup, ~60 seconds)
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe data/data_generation/build_vectorstore.py
-
-# Launch Jupyter
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m jupyter lab
-```
-
-### Backend API（可选）
-
-当前仓库已包含 ShopMind / RetailPilot API 层的 FastAPI backend。`/api/chat` 会调用独立的 ShopMind Agent。
-
-```bash
-# Start the FastAPI backend
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m uvicorn app.main:app --reload
-
-# Health check
-curl http://127.0.0.1:8000/api/health
-
-# Chat endpoint
-curl -X POST http://127.0.0.1:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d "{\"message\":\"Add TECH-KEY-010 to my cart\",\"user_id\":\"demo-user\",\"thread_id\":\"demo-thread\"}"
-
-# Confirm a pending add-to-cart action returned by /api/chat
-curl -X POST http://127.0.0.1:8000/api/chat/confirm \
-  -H "Content-Type: application/json" \
-  -d "{\"user_id\":\"demo-user\",\"pending_action_id\":\"<pending_action_id>\",\"confirmed\":true,\"thread_id\":\"demo-thread\"}"
-```
-
-启动后可以访问交互式 API 文档：
-
-- http://127.0.0.1:8000/docs
-- http://127.0.0.1:8000/redoc
-
-运行 API 测试：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/api
-```
-
-### V2 PostgreSQL / pgvector（可选）
-
-ShopMind V2 的 PostgreSQL + pgvector 数据路径已经完成：
-
-- Docker Compose 提供本地 `pgvector/pgvector:pg16`；
-- `app/core/settings.py` 统一读取 `DATABASE_URL`、`TEST_DATABASE_URL`、`EMBEDDING_PROVIDER` 和 `VECTOR_DIMENSION`；
-- Alembic 创建结构化业务表、运行时状态表和 `documents` pgvector 表；
-- `app/repositories/` 提供 products、preferences、cart、documents Repository；
-- `tools/products.py`、`tools/preferences.py`、`tools/cart.py` 和 `tools/documents.py` 已使用 Repository-backed PostgreSQL 路径；
-- FastAPI `/api/chat`、`/api/chat/confirm` 和 Tool 名称/返回格式保持兼容。
-
-本地启动数据库：
-
-```bash
-docker compose up -d postgres
-docker compose ps postgres
-```
-
-初始化 schema、结构化 seed 和 pgvector documents：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/seed_postgres.py --clear
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --clear
-```
-
-只读取和切分文档、不连接数据库、不生成 embeddings：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --dry-run
-```
-
-只读 PostgreSQL smoke check：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smoke_postgres.py
-```
-
-该脚本只读取 `DATABASE_URL` 指向的数据库，不清空、不写入数据。检查内容包括：
-
-- 当前数据库和用户；
-- Alembic version 是否为 `0002_documents_pgvector`；
-- V2 结构化表和 `documents` 表是否存在；
-- customers、products、orders、order_items 是否已有 seed 数据；
-- documents 是否已有 product / policy chunks；
-- Repository 商品搜索和 pgvector documents 搜索是否能返回结果。
-
-如果本机 5432 已经有 PostgreSQL，不要直接启动默认 `docker-compose.yml`，因为它也会绑定 `5432:5432`。建议在现有 PostgreSQL 中新建独立数据库，例如：
-
-```text
-DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5432/retailpilot_v2_smoke?connect_timeout=5
-TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5432/retailpilot_v2_smoke_test?connect_timeout=5
-```
-
-然后只对该独立库执行 migration、seed、documents index 和 smoke check：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/seed_postgres.py --clear
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --clear
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smoke_postgres.py
-```
-
-如需额外验证 LangChain Tool 层，可运行：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/smoke_postgres.py --include-tools
-```
-
-`--include-tools` 会加载 embedding model，耗时更长。普通测试仍不依赖真实 PostgreSQL；真实库 integration 测试默认跳过，仅在显式设置环境变量后运行：
-
-```bash
-$env:RUN_POSTGRES_INTEGRATION="1"
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/integration
-```
-
-如果希望按标准顺序初始化并验证本地 V2 PostgreSQL，可以使用 bootstrap 脚本。默认只打印计划，不执行任何操作：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py
-```
-
-执行 Alembic、seed、documents index 和 smoke。因为该命令会清空并重导 V2 seed/documents 数据，必须显式添加 `--confirm-clear`：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py --execute --confirm-clear
-```
-
-如果 documents 已经索引过，只想快速重建结构化 seed 并验证：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py --execute --confirm-clear --skip-documents
-```
-
-可选参数：
-
-- `--confirm-clear`：确认允许执行会清空或写入 V2 数据的步骤；
-- `--skip-seed`：跳过结构化 seed 数据重导入；
-- `--skip-documents`：跳过 pgvector documents 重新索引；
-- `--skip-smoke`：跳过 smoke check；
-- `--include-tool-smoke`：在 smoke 中额外调用 LangChain Tools，会加载 embedding model；
-- `--run-integration`：执行真实 PostgreSQL integration 测试，等价于先设置 `RUN_POSTGRES_INTEGRATION=1`，再运行 `conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/integration`。
-
-Integration 测试包含两类：
-
-- `tests/integration/test_postgres_smoke.py`：只读检查 schema、seed 数据、documents 和 Repository 查询；
-- `tests/integration/test_postgres_write_paths.py`：验证 PostgreSQL 上的 preference 写入/清理、cart pending action 确认、跨用户保护和重复确认保护。
-- `tests/integration/test_postgres_tools.py`：验证结构化 LangChain Tools 能直接通过 `SessionLocal` 使用 PostgreSQL，包括 product search、preference tools 和 cart confirmation tools。
-- `tests/integration/test_postgres_api.py`：验证 FastAPI `/api/health/postgres` 和 `/api/chat/confirm` 能端到端使用 PostgreSQL。
-
-写路径测试会生成唯一 `integration-smoke-*` user_id，并在测试前后清理该用户的 `user_preferences`、`cart_items` 和 `pending_actions`。
-未设置 `RUN_POSTGRES_INTEGRATION=1` 时，integration 模块会在加载重依赖前快速跳过；`tests/integration/test_integration_guard.py` 确保默认 integration 测试目录也能稳定返回成功。
-
-PostgreSQL health endpoint：
-
-- `GET /api/health`：保持原有轻量健康检查，只返回 `{"status": "ok"}`；
-- `GET /api/health/postgres`：只读检查 `DATABASE_URL` 指向的 PostgreSQL，返回当前 database、user 和 Alembic version；
-- 如果 PostgreSQL 不可用，`/api/health/postgres` 返回 HTTP 503，不影响原有 `/api/health`。
-
-V2 最终交接记录：
-
-- `docs/v2_infra_upgrade_handoff.md`
-
-### Embedding Configuration（可选）
-
-默认情况下，vectorstore 使用 **HuggingFace embeddings**，本地模型无需 API key。如果当前环境无法下载 HuggingFace 模型，也可以改用 **OpenAI embeddings**：
-
-```bash
-# Add to your .env file:
-EMBEDDING_PROVIDER=openai
-
-# Rebuild the vectorstore with OpenAI embeddings
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe data/data_generation/build_vectorstore.py
-```
-
-## Workshop 大纲
-
-原 workshop 包含三个 module，从手动 tool calling 逐步推进到生产部署：
-
-1. **Module 1: Agent Development**：从基础 Agent 到带 HITL 的 multi-agent system；
-2. **Module 2: Evaluation & Improvement**：使用 eval-driven development 系统化改进 Agent；
-3. **Module 3: Deployment & Continuous Improvement**：部署到生产环境并构建 data flywheel。
-
-📚 To get started, see [workshop_modules/README.md](workshop_modules/README.md)
-
-
-## 仓库结构
-
-```
-langsmith-agent-lifecycle-workshop/
-├── workshop_modules/        # Interactive Jupyter notebooks
-│   ├── module_1/            # Agent Development (4 sections)
-│   ├── module_2/            # Evaluation & Improvement (3 sections)
-│   └── module_3/            # Deployment & Continuous Improvement (2 sections)
-│
-├── agents/                  # Reusable agent factory functions
-│   ├── db_agent.py          # Database queries (rigid tools)
-│   ├── sql_agent.py         # Flexible SQL generation (improved)
-│   ├── docs_agent.py        # RAG for product docs & policies
-│   ├── supervisor_agent.py  # Multi-agent coordinator
-│   └── supervisor_hitl_agent.py  # Full verification + routing system
-│
-├── tools/                   # Database & document search tools
-│   ├── database.py          # 6 DB tools (orders, products, SQL)
-│   └── documents.py         # 2 RAG tools (products, policies)
-│
-├── evaluators/              # Evaluation metrics
-│   └── evaluators.py        # Correctness & tool call counters
-│
-├── deployments/             # Production-ready graph configurations
-│   ├── db_agent_graph.py                   # Baseline database agent
-│   ├── docs_agent_graph.py                 # RAG documents agent
-│   ├── sql_agent_graph.py                  # Improved SQL agent
-│   ├── supervisor_agent_graph.py           # Basic supervisor
-│   ├── supervisor_hitl_agent_graph.py      # Supervisor with verification
-│   └── supervisor_hitl_sql_agent_graph.py  # Complete system (best)
-│
-├── data/                    # Complete dataset & generation scripts
-│   ├── structured/          # SQLite DB + JSON files
-│   ├── documents/           # Markdown docs for RAG
-│   ├── vector_stores/       # Pre-built vectorstore
-│   └── data_generation/     # Scripts to regenerate data
-│
-├── config.py                # Workshop-wide configuration
-├── langgraph.json           # LangGraph deployment config
-└── pyproject.toml           # Dependencies
-```
-
-## 涵盖的关键概念
-
-- **Agent Development：**Tool calling、multi-agent systems、Supervisor Pattern、HITL with interrupts；
-- **Evaluation & Testing：**Offline evaluation、LLM-as-Judge、trace metrics、eval-driven development；
-- **Deployment & Production：**LangSmith deployments、online evaluation、annotation queues、SDK integration；
-- **Best Practices：**Factory functions、state management、dynamic prompts、structured outputs、streaming。
-
-各 module 的详细说明见 [workshop_modules/README.md](workshop_modules/README.md)。
-
-## 数据集概览
-
-**TechHub dataset** 是一个高质量合成电商数据集：
-
-- **50 customers**，覆盖 consumer、corporate、home office segments；
-- **25 products**，包括 laptops、monitors、keyboards、audio、accessories；
-- **250 orders**，覆盖约 2 年时间范围；
-- **439 order items**，包含商品搭配购买模式；
-- **SQLite database**，约 156 KB，包含完整 schema 和 indexes；
-- **30 documents**，包含 25 个 product specs 和 5 个 policies，用于 RAG。
-
-所有数据都可以直接使用。详情见 `data/data_generation/README.md`。
-
-## 其他资源
-
-### 文档
-
-- **Data Generation Guide:** `data/data_generation/README.md` - 数据集生成说明
-- **Database Schema:** `data/structured/SCHEMA.md` - 完整 schema 参考
-- **RAG Documents:** `data/documents/DOCUMENTS_OVERVIEW.md` - 文档语料说明
-- **Agent Architecture:** `agents/README.md` - Agent factory pattern 说明
-
-### 外部链接
-- [LangChain Python Docs](https://python.langchain.com)
-- [LangGraph Python Docs](https://langchain-ai.github.io/langgraph)
-- [LangSmith Platform](https://smith.langchain.com)
-- [LangChain Academy](https://academy.langchain.com)
-
-## 前置学习
-
-### 必修（建议在 workshop 前完成）
-
-来自 [LangChain Academy](https://academy.langchain.com) 的免费课程：
-- [LangChain Essentials - Python](https://academy.langchain.com/courses/langchain-essentials-python) (30 min)
-- [LangGraph Essentials - Python](https://academy.langchain.com/courses/langgraph-essentials-python) (1 hour)
-- [LangSmith Essentials](https://academy.langchain.com/courses/quickstart-langsmith-essentials) (30 min)
-
-### 推荐（用于更深入理解）
-
-- [Foundation: Introduction to LangGraph](https://academy.langchain.com/courses/intro-to-langgraph) (6 hours)
-- [Foundation: Introduction to Agent Observability & Evaluations](https://academy.langchain.com/courses/intro-to-langsmith) (3.5 hours)
-
-### 技术要求
-
-- **Python 3.10+**
-- **API Keys:**
-  - LangSmith (free tier: [smith.langchain.com](https://smith.langchain.com))
-  - Anthropic or OpenAI (workshop uses Claude Haiku 4.5 by default)
-- **Tools:** Git, Jupyter, uv (or pip)
-
-## License
-
-本项目使用 Apache License 2.0，详情见 [LICENSE](LICENSE)。
-
-这是教学 workshop 材料，合成数据集可自由使用和分发。
-
----
-
-**准备开始？**打开 `workshop_modules/module_1/section_1_foundation.ipynb` 开始学习。🚀
+五个 gate 都不需要模型、数据库、凭据或 LangSmith 网络访问。V6 catalog 使用
+受控 runner 集合组合已有结果，并且只读取、不会自动改写 accepted baseline。
+LangSmith 仅用于显式云端 trace/experiment。
+
+## 文档
+
+- [Agent handoff](AGENTS.md)
+- [项目状态](docs/project_status.md)
+- [完整路线图](PLAN.md)
+- [当前架构](docs/architecture.md)
+- [V4-V6 Runtime design](docs/agent_runtime_design.md)
+- [开发与数据库指南](docs/development.md)
+- [PR checklist](docs/pr_checklist.md)
+
+`docs/v2_*`、`docs/v3_multi_agent_handoff_summary.md` 和
+`docs/v3_release_notes.md` 是历史记录，不作为当前 roadmap。
+
+## 下一阶段
+
+V5 退出条件已在 Slice 36 收口，V6 Slices 1-4 已完成。V6 Slice 5 已建立静态
+preflight、live readiness、cleanup success evidence、版本化 PII-free service
+metrics/SLO、离线 deployment/rollback/incident checks、compact reference
+client 与 exact-owner run/trace inspection，隔离源码导出演练也已通过。
+下一步需要先形成经授权审核的 immutable Git reference，再从其 fresh
+checkout 完成 clean committed-checkout validation；默认测试仍不调用真实
+模型或外部服务。

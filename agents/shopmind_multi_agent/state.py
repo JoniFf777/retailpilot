@@ -10,13 +10,19 @@ class ShopMindMultiAgentState(TypedDict, total=False):
 
     intent: Optional[str]
     supervisor_decision: Optional[dict[str, Any]]
+    execution_plan: Optional[dict[str, Any]]
+    parallel_execution: Optional[dict[str, Any]]
     routes: list[str]
     executed_routes: list[str]
     current_route: Optional[str]
+    plan_step_id: Optional[str]
+    plan_step_retry_policy: Optional[dict[str, Any]]
 
     product_summary: Optional[dict[str, Any]]
     rag_summary: Optional[dict[str, Any]]
     preference_summary: Optional[dict[str, Any]]
+    evidence_references: list[dict[str, Any]]
+    delegated_usage: list[dict[str, Any]]
 
     decision: Optional[dict[str, Any]]
     final_response: Optional[str]

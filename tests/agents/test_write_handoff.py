@@ -13,7 +13,9 @@ from agents.shopmind_multi_agent.write_handoff import (
     invoke_write_handoff,
 )
 from app.db.base import Base
-from app.db.models import PendingAction, Product
+from app.db.models import PendingAction, Product, UserPreference
+from app.runtime import RunContext, RunRequest
+from app.runtime.actions import ActionRegistryError
 import tools.cart as cart_tools
 
 
@@ -60,6 +62,25 @@ def test_write_handoff_requires_explicit_product_id_when_no_candidate() -> None:
     assert result["status"] == "completed"
     assert result["tool_calls"] == []
     assert "商品 ID" in result["answer"]
+
+
+def test_write_handoff_rejects_action_when_registry_validation_fails(monkeypatch) -> None:
+    def reject_action(request):
+        raise ActionRegistryError("blocked")
+
+    monkeypatch.setattr(
+        "agents.shopmind_multi_agent.write_handoff.ACTION_REGISTRY.validate_request",
+        reject_action,
+    )
+
+    result = invoke_write_handoff(
+        f"add {TEST_PRODUCT_ID} to cart",
+        user_id=TEST_USER_ID,
+        thread_id="thread-1",
+    )
+
+    assert result["status"] == "failed"
+    assert result["tool_calls"] == []
 
 
 def test_write_handoff_suggests_candidates_without_creating_action(monkeypatch) -> None:
@@ -334,6 +355,53 @@ def test_write_handoff_prepares_add_to_cart(monkeypatch) -> None:
     assert pending_action.status == "pending"
     assert pending_action.payload_json == {"product_id": TEST_PRODUCT_ID, "quantity": 2}
 
+    session.close()
+
+
+def test_write_handoff_prepares_preference_without_writing_it(monkeypatch) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    @contextmanager
+    def fake_session():
+        yield session
+
+    monkeypatch.setattr(cart_tools, "_get_cart_session", fake_session)
+
+    events = []
+    context = RunContext(
+        request=RunRequest(
+            operation="chat",
+            user_id=TEST_USER_ID,
+            thread_id="thread-preference",
+            input_text="记住我喜欢安静键盘",
+        )
+    )
+    context.bind_event_emitter(
+        lambda event_type, **kwargs: events.append((event_type, kwargs))
+    )
+
+    result = invoke_write_handoff(
+        "记住我喜欢安静键盘",
+        user_id=TEST_USER_ID,
+        thread_id="thread-preference",
+        runtime_context=context,
+    )
+    action = session.get(PendingAction, result["pending_action_id"])
+
+    assert result["status"] == "confirmation_required"
+    assert result["tool_calls"] == ["prepare_save_preference"]
+    assert action.action_type == "save_preference"
+    assert action.risk_class == "medium"
+    assert action.payload_json == {
+        "preference_type": "style",
+        "preference_value": "记住我喜欢安静键盘",
+    }
+    assert session.query(UserPreference).count() == 0
+    assert events[0][0] == "action.prepared"
+    assert events[0][1]["payload"]["action_type"] == "save_preference"
     session.close()
 
 

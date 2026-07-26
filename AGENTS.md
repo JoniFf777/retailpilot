@@ -1,288 +1,287 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+This is the primary handoff guide for coding agents in this repository. The
+original TechHub workshop remains in the tree, but the active product is
+**ShopMind**, an Agent Engineering reference backend for Chinese shopping
+decisions.
 
-## Project Overview
+## New-Window Read Order
 
-This is an enterprise workshop series teaching the complete AI engineering lifecycle using LangChain, LangGraph, and LangSmith. It centers around building a customer support agent for TechHub, a fictional e-commerce store.
+Read these before changing code:
 
-The workshop progresses through three modules:
-1. **Agent Development** - Building multi-agent systems with human-in-the-loop
-2. **Evaluation & Improvement** - Using offline evaluation to systematically improve agents
-3. **Production Deployment** - Deploying to LangSmith with online evaluation and data flywheels
+1. `AGENTS.md` - operating rules and commands.
+2. `.local/retailpilot-runbook.md` - machine-specific, non-secret state.
+3. `docs/project_status.md` - implemented features and known gaps.
+4. `PLAN.md` - active roadmap and immediate next slice.
+5. `docs/architecture.md` - current architecture.
+6. `docs/agent_runtime_design.md` - V4-V6 runtime design and contracts.
+7. `docs/development.md` - non-secret environment and database guide.
+8. `docs/v3_api_handoff_contract.md` - backward-compatible public boundary.
 
-## Essential Commands
+Machine-specific facts belong in `.local/retailpilot-runbook.md`. `.local/` is
+ignored by Git. Never copy API keys or private passwords into tracked files.
 
-### Environment Setup
-```bash
-# Configure environment
-cp .env.example .env
-# Edit .env with your API keys
-# Optional: Set EMBEDDING_PROVIDER=openai if HuggingFace downloads are blocked
+## Current Baseline
 
-# Build vectorstore (required one-time setup, ~60 seconds)
-# Uses HuggingFace embeddings by default (local, no API key)
-# Set EMBEDDING_PROVIDER=openai in .env to use OpenAI embeddings instead
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe data/data_generation/build_vectorstore.py
+- Release: `v3.0.0`, commit `c995896` on `main`.
+- V1 complete: single shopping Agent and confirmed add-to-cart.
+- V2 complete: PostgreSQL/pgvector, repositories, migrations, seed/index/smoke.
+- V3 complete: multi-agent read graph, guarded write handoff, candidate context,
+  API/CI events, and LangSmith evaluation.
+- V4 complete in the current worktree: runtime contracts/persistence, unified
+  Harness, memory/context, SSE/runtime control, and Tool Gateway/policy slices.
+- V5 is complete in the current worktree through Slice 36: typed local/HTTP
+  Agent adapters, canonical planning, bounded parallel fan-out/fan-in, shared budgets, typed transport
+  failures, failed-attempt accounting, disabled-by-default bounded specialist
+  replay, deterministic retry attempt lifecycle evaluation, model-independent
+  adapter equivalence, default-off remote RAG Registry selection, and an
+  executable generic add-to-cart/save-preference HITL lifecycle, exact action
+  edit schemas, and PostgreSQL-backed restart/resume/replay trajectories.
+- Current branch: `codex/v4-1-runtime-contracts-persistence`. The intentionally
+  dirty, unstaged worktree contains the complete V4/V5 implementation. Treat all
+  existing changes as user-owned; do not restore, overwrite, stage, or commit
+  them unless the user explicitly requests it.
+- V6 Slices 1-2 (global Slices 37-38) are complete: a closed, versioned
+  evaluation catalog composes deterministic suites across ten required
+  dimensions, and normalized persisted trajectories verify local fault and
+  fresh-store recovery behavior.
+- V6 Slice 3 (global Slice 39) is complete. Typed fingerprint-only
+  coordination contracts and a bounded thread-safe local backend now define
+  admission leases, fixed-window rate limits, duplicate claims and TTL/LRU
+  cache behavior. A server-owned factory selects local by default; explicit
+  Redis mode uses versioned same-slot keys and atomic Lua operations with
+  sanitized fail-closed connection behavior. SSE admission uses renewable,
+  token-specific leases. Real Redis verification covers two clients, concurrent
+  atomic admission, server TTL expiry, rate limits, deduplication and cache.
+- Project completion still requires the remaining V6 exit criteria. V6 Slice 4
+  is complete with authenticated owner-data inventory/memory inspection, exact-owner
+  correction and hard deletion, explicitly confirmed full deletion, and
+  PII-safe deletion request/result facts. The identity, closed audit,
+  fingerprint-only PostgreSQL persistence, retention and default-off emission
+  substages are also implemented. The production-facing, server-selected
+  `signed_header` adapter now adds short-lived HMAC assertions and local/Redis
+  one-time replay claims behind `IdentityBoundary` without changing the
+  development default. Audit emission now has a thread-safe PII-free process
+  monitor, configurable consecutive-failure alert/recovery logging, and an
+  additive operational health snapshot. Its deterministic governance lifecycle
+  gate is explicitly accepted as the eighth closed catalog suite. Immediate
+  Slice 5 static production preflight is now implemented with six sanitized
+  checks, fail-closed explicit production startup, health output and a CI
+  artifact. The second substage adds five closed live readiness checks for
+  PostgreSQL, migration head, selected coordination and recent committed
+  cleanup evidence, with health/CLI/CI output. The third substage adds bounded
+  PII-free per-replica service metrics and rolling success-rate/p95 SLO
+  contracts at an always-200 internal health endpoint. The fourth substage adds
+  offline, versioned deployment/rollback/incident checks and a seven-case CI
+  gate over the existing health/readiness/coordination/audit/SLO boundaries.
+  The fifth substage adds a bounded public-API reference client and exact-owner,
+  payload-free run/trace inspection. Slice 5 functional scope is complete;
+  an isolated no-Git/no-secret source-export rehearsal passes the full,
+  integration, smoke, migration, production-preflight and evaluation matrix.
+  It is not the clean-checkout proof because HEAD remains V3 `c995896` and all
+  V4-V6 source is unstaged. Immediate next work requires explicit authorization
+  for an immutable reviewed Git reference, followed by validation from its
+  fresh checkout. The production/default specialist path remains in-process.
 
-# Note: Changing EMBEDDING_PROVIDER requires rebuilding the vectorstore
+Current validation: `668 passed, 6 skipped`; PostgreSQL integration `23/23`;
+reference-client/API/docs focused `58/58`; runtime coordination focused `12/12`;
+combined PostgreSQL/Redis integration `25/25`;
+PostgreSQL smoke passed at migration `0007_governance_audit`; V3 API
+handoff passed `3/3`; the latest offline resilience gate passed `6/6` cases and
+`72/72` checks; coordination equivalence passed `5/5` cases and `18/18` checks;
+governance lifecycle passed `5/5` cases and `42/42` checks; V6 catalog
+regression passed `8/8` suites, `61/61` cases, `488/488` suite checks, and
+`48/48` baseline checks; release operations passed `7/7` cases and `42/42`
+checks. Historical V3 validation
+remains `227 passed, 4 skipped` with LangSmith evaluator scores `6/6` at `1.0`.
+
+## First Five Minutes
+
+From `D:\python\retailpilot`:
+
+```powershell
+git status --short --branch
+Get-Content .local\retailpilot-runbook.md
+docker compose ps postgres
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_postgres.py
 ```
 
-### Development
-```bash
-# Launch Jupyter for workshop notebooks
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m jupyter lab
+- Treat pre-existing worktree changes as user-owned. Never restore, overwrite,
+  or stage them without explicit instruction.
+- Never print `.env`, keys, passwords, or unmasked connection URLs.
+- A passing read-only smoke is sufficient. Do not seed or index every session.
+- Check port `5432` before starting Compose; another service/container may
+  already provide the configured database.
 
-# Test LangGraph deployments locally
-langgraph dev
+## Python Environment
 
-# Test specific deployment graph
-langgraph dev --graph supervisor_hitl_sql_agent
+All Python commands use the existing environment and interpreter:
+
+```powershell
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe <script-or--m-module>
 ```
 
-### Running Python Scripts
-```bash
-# All local Python commands must use the existing pythonLearn conda environment
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe <script.py>
+Do not run raw `python`, `pytest`, or `uv run`. Do not replace the environment.
+
+```powershell
+# Full tests
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest
+
+# Focused tests
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests\agents tests\api
+
+# API
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m uvicorn app.main:app --reload
+
+# Read-only smoke
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_postgres.py
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_v3_handoff.py --json
+
+# Model-independent planner policy gate
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_planner_eval.py --output-json artifacts\v5-planner-policy\summary.json
+
+# Model-independent graph trajectory replay
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_plan_trajectory_eval.py --output-json artifacts\v5-plan-trajectories\summary.json
+
+# Model-independent local/HTTP adapter equivalence
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_adapter_equivalence_eval.py --output-json artifacts\v5-adapter-equivalence\summary.json
+
+# Generic action lifecycle, edit, resume, and replay gate
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_action_lifecycle_eval.py --output-json artifacts\v5-action-lifecycle\summary.json
+
+# V6 deterministic fault and restart replay gate
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_resilience_replay_eval.py --output-json artifacts\v6-resilience-replay\summary.json
+
+# V6 governance lifecycle gate
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_governance_lifecycle_eval.py --output-json artifacts\v6-governance-lifecycle\summary.json
+
+# V6 static production configuration preflight
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\check_production_config.py --output-json artifacts\v6-production-preflight\summary.json
+
+# V6 live deployment readiness
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\check_deployment_readiness.py --output-json artifacts\v6-deployment-readiness\summary.json
+
+# V6 closed catalog and accepted-baseline regression gate
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_catalog_eval.py --output-json artifacts\v6-evaluation-catalog\summary.json
+
+# V6 deterministic deployment/rollback/incident gate
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_release_operations_eval.py --output-json artifacts\v6-release-operations\summary.json
+
+# Compact public-API reference client
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe examples\shopmind_reference_client.py --help
 ```
 
-## Architecture Overview
+## Database Safety
 
-### Agent Factory Pattern
+`DATABASE_URL` selects the runtime database; real integration tests use
+`TEST_DATABASE_URL`. Settings load `.env` with `override=False`, so explicit
+process variables win.
 
-All agents use factory functions that return compiled LangGraph graphs:
+Safe commands:
 
-```python
-from agents import create_db_agent, create_docs_agent, create_supervisor_agent
-
-# Development mode (with checkpointer for memory)
-agent = create_db_agent(use_checkpointer=True)
-
-# Production mode (LangSmith manages state)
-agent = create_db_agent(use_checkpointer=False)
+```powershell
+docker compose ps postgres
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\bootstrap_postgres.py --skip-seed --skip-documents
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_postgres.py
 ```
 
-**Available Agents** (in `agents/`):
-- `db_agent.py` - Rigid database tools for order/product queries
-- `sql_agent.py` - Flexible SQL generation (improved version from Module 2)
-- `docs_agent.py` - RAG search over product specs and policies
-- `supervisor_agent.py` - Coordinates DB + Docs agents
-- `supervisor_hitl_agent.py` - Full system with customer verification using LangGraph interrupts
+Bootstrap is plan-only unless `--execute` is given. Seed/index clear data and
+require `--execute --confirm-clear`; use them only against an isolated database.
+Current migration head: `0007_governance_audit`.
 
-### Multi-Agent System Architecture
+## Runtime Modes
 
-The complete system (`supervisor_hitl_agent`) uses a three-stage flow:
+The active V3 baseline is:
 
-1. **Classification** - Determines if query requires customer identity verification
-2. **Verification (HITL)** - Uses `interrupt()` to collect and validate customer email
-3. **Supervisor Routing** - Routes to specialized sub-agents (DB/SQL and Docs agents)
-
-Key implementation details:
-- Uses custom `IntermediateState(MessagesState)` to share `customer_id` between parent and subgraphs
-- Subgraphs are added as nodes using `.add_node("supervisor", supervisor_graph)`
-- Shared state keys (like `messages`) automatically flow between parent and subgraphs
-- Dynamic prompts inject state (e.g., `customer_id`) at runtime
-
-### State Management
-
-**Development vs. Deployment:**
-- **Local/Notebooks**: `use_checkpointer=True` with `MemorySaver()` for conversation memory
-- **Production**: `use_checkpointer=False` because LangGraph Cloud provides managed persistence
-
-**Custom State Schemas:**
-```python
-from langgraph.graph import MessagesState
-
-class IntermediateState(MessagesState):
-    customer_id: str  # Shared between parent and subgraphs
+```env
+SHOPMIND_AGENT_MODE="multi"
+SHOPMIND_SUPERVISOR_ROUTER="deterministic"
+SHOPMIND_AGENT_PLANNER="deterministic"
+SHOPMIND_AGENT_TASK_MAX_ATTEMPTS="1"
+SHOPMIND_GOVERNANCE_AUDIT_ENABLED="false"
+SHOPMIND_GOVERNANCE_AUDIT_ALERT_FAILURE_THRESHOLD="3"
+SHOPMIND_DEPLOYMENT_PROFILE="development"
 ```
 
-### Configuration System
+- `single`: legacy V1 LangChain Agent.
+- `multi`: V3 LangGraph Supervisor and specialized read agents.
+- `deterministic`: reproducible release baseline.
+- `llm`: structured router with deterministic fallback.
+- Planner `llm` mode is separately opt-in, lazy, and validated against the
+  canonical deterministic plan; empty/write plans do not call its model.
+- V4.1 adds internal runtime contracts, conversation/run persistence tables,
+  and a thin Harness around current V3 invocations without changing the public
+  chat/confirm behavior.
+- Specialist retries are server-owned, capped at three, and disabled by default
+  with one attempt. Opt-in retries cover typed unavailable/timeout failures only
+  and preserve task identity, idempotency, cancellation, and usage accounting.
+- `rag_agent` transport defaults to `in_process`. HTTP selection is server-only,
+  requires a fixed HTTPS endpoint/allowlist, and never comes from API payloads.
 
-Centralized in `config.py`:
-- `DEFAULT_MODEL` - Workshop-wide model setting (override with `WORKSHOP_MODEL` env var)
-- `DEFAULT_EMBEDDING_PROVIDER` - Embedding provider setting (override with `EMBEDDING_PROVIDER` env var, defaults to `huggingface`)
-- `DEFAULT_DB_PATH` - Path to SQLite database
-- `DEFAULT_VECTORSTORE_PATH` - Path to pre-built vectorstore (includes provider in filename)
-- Path resolution handles both local dev and LangSmith deployment environments
+LangSmith is optional for local tests and required only for cloud traces or
+experiments. Do not block unrelated work on LangSmith configuration.
 
-All agents inherit settings from `config.py` but can override:
-```python
-agent = create_db_agent(model="anthropic:Codex-sonnet-4")
-```
+## V3 Safety Contract
 
-## Key Files and Directories
+- Supervisor: route selection, no tools.
+- Product Agent: product search/detail/compare reads only.
+- RAG Agent: product/policy retrieval only.
+- Preference Agent: preference reads only.
+- Decision Agent: structured synthesis, no tools.
+- Write handoff: prepares add-to-cart outside read agents.
+- `/api/chat/confirm`: confirms or cancels the pending action.
+- The same boundary also dispatches registered `save_preference` actions; read
+  Agents still cannot write preferences directly.
 
-### Core Modules
-- `agents/` - Reusable agent factory functions
-- `tools/` - Database tools (`database.py`) and RAG tools (`documents.py`)
-- `evaluators/` - LLM-as-judge (`correctness_evaluator`) and trace-based metrics (`count_total_tool_calls_evaluator`)
-- `deployments/` - Production-ready graph configurations referenced by `langgraph.json`
+Read agents cannot call write tools. A product must be explicit or resolved
+from a valid same-user, same-thread candidate context. Cart mutation happens
+only after confirmation. Preserve ownership, expiry, idempotency, and test-data
+cleanup behavior.
 
-### Workshop Content
-- `workshop_modules/` - 3 modules, 8 sections (Jupyter notebooks)
-  - Work through sequentially: each builds on previous concepts
-  - Start with `module_1/section_1_foundation.ipynb`
+## V4+ Vocabulary
 
-### Data
-- `data/structured/techhub.db` - SQLite database (50 customers, 25 products, 250 orders)
-- `data/documents/` - 30 markdown docs (product specs + policies) for RAG
-- `data/vector_stores/techhub_vectorstore_{provider}.pkl` - Pre-built vectorstore (must run `build_vectorstore.py` first, provider is `huggingface` or `openai`)
-- `data/structured/SCHEMA.md` - Complete database schema reference
+- **Harness**: common execution lifecycle around every Agent run.
+- **Memory**: persisted information available across runs.
+- **Context**: bounded information selected for one model invocation.
+- **Sandbox/policy**: capability, argument, resource, budget, and side-effect
+  controls around tools. V3 has allowlists and HITL, not an OS sandbox.
+- **A2A**: typed Agent-to-Agent task exchange. V3 is in-process LangGraph, not
+  remote A2A; use adapters before adding network boundaries.
 
-### Deployment
-- `langgraph.json` - Defines 6 deployable graphs for LangSmith
-- Each deployment imports from `deployments/` and sets `use_checkpointer=False`
+See `docs/agent_runtime_design.md` for target contracts.
 
-## Database Schema
+## Code Map
 
-TechHub SQLite database (`techhub.db`):
-- **customers** (50 records) - customer_id, email, name, segment (Consumer/Corporate/Home Office)
-- **products** (25 records) - product_id, name, category, price, stock_quantity
-- **orders** (250 records) - order_id, customer_id, status, order_date, ship_date
-- **order_items** (439 records) - order_item_id, order_id, product_id, quantity, price
+- `agents/shopmind_agent.py` - legacy V1 path.
+- `agents/shopmind_multi_agent/` - V3 graph, agents, permissions, events, handoff.
+- `app/api/` - FastAPI routes/schemas.
+- `app/dependencies/agent.py` - API bridge and confirmation boundary.
+- `app/core/settings.py` - runtime settings.
+- `app/db/`, `app/repositories/` - SQLAlchemy persistence.
+- `tools/` - tools; preserve Agent ownership boundaries.
+- `alembic/` - PostgreSQL migrations.
+- `evaluation/`, `evaluators/` - local and LangSmith evaluation.
+- `scripts/` - setup and smoke commands.
+- `workshop_modules/` - inherited material, not the active product path.
 
-Customer IDs: `CUST-###`
-Order IDs: `ORD-YYYY-####`
-Product IDs: `TECH-XXX-###` (XXX = LAP/MON/KEY/AUD/ACC)
+## Engineering Rules
 
-See `data/structured/SCHEMA.md` for complete schema details.
+- Prefer existing factories, repositories, Pydantic models, and LangGraph state.
+- Keep changes scoped; do not refactor workshop code unless it blocks ShopMind.
+- Use structured models for Agent and tool contracts.
+- Keep default tests model-independent; use PostgreSQL integration and API smoke
+  for persistence/user-flow changes.
+- Use `rg` first when available, otherwise PowerShell `Select-String`.
+- Use `apply_patch` for manual edits.
+- Use branch prefix `codex/`.
+- Never revert changes you did not make.
 
-## Tools Architecture
+## Documentation Ownership
 
-**Database Tools** (`tools/database.py`):
-- Lazy-loaded SQLDatabase connection at module level
-- 6 tools: `get_order_status`, `get_customer_orders`, `get_product_info`, `get_order_item_price`, `get_product_price`, `execute_sql`
-- Tools are designed for customer support queries (not admin functions)
+- Current/released behavior: `docs/project_status.md` and API/architecture docs.
+- Future scope/order: `PLAN.md`.
+- Runtime design: `docs/agent_runtime_design.md`.
+- Shared commands: `docs/development.md`.
+- Machine-only facts: `.local/retailpilot-runbook.md`.
 
-**Document Tools** (`tools/documents.py`):
-- Lazy-loaded InMemoryVectorStore with configurable embeddings (HuggingFace or OpenAI)
-- Embedding provider controlled by `EMBEDDING_PROVIDER` env var (defaults to HuggingFace)
-- Vectorstore filename includes provider: `techhub_vectorstore_{provider}.pkl`
-- 2 tools: `search_product_documents`, `search_policy_documents`
-- Vectorstore must be built first using `build_vectorstore.py`
-
-## Evaluation Patterns
-
-**Reference-based evaluators** (compare output to ground truth):
-```python
-def evaluator(inputs: dict, outputs: dict, reference_outputs: dict) -> dict:
-    return {"key": "metric_name", "score": value}
-```
-
-**Trace-based evaluators** (analyze execution metadata):
-```python
-from langsmith.schemas import Run
-
-def evaluator(run: Run) -> dict:
-    return {"key": "metric_name", "score": value}
-```
-
-LangSmith automatically routes based on function signature. Can mix both types in experiments.
-
-## Important Patterns
-
-### Factory Function Signature
-```python
-def create_agent(
-    state_schema=MessagesState,
-    model: str = DEFAULT_MODEL,
-    additional_tools: list = None,
-    use_checkpointer: bool = True,
-) -> CompiledGraph:
-    # Returns compiled graph ready for .invoke() or .stream()
-```
-
-### Deployment Pattern
-```python
-# deployments/example_graph.py
-from agents import create_example_agent
-
-# Module-level graph instance for LangSmith
-graph = create_example_agent(use_checkpointer=False)
-```
-
-### HITL with Interrupts
-```python
-from langgraph.types import interrupt
-
-# Pause execution and wait for user input
-user_input = interrupt({"question": "What is your email?"})
-```
-
-### Dynamic Prompts
-```python
-# System prompt can access state at runtime
-system_prompt = f"""You are helping customer {state['customer_id']}..."""
-```
-
-### Structured Outputs
-```python
-from typing_extensions import TypedDict
-
-class OutputSchema(TypedDict):
-    reasoning: str
-    decision: bool
-
-# Use with_structured_output for type safety
-model.with_structured_output(OutputSchema)
-```
-
-## Module-Specific Notes
-
-### Module 1: Agent Development
-- Progression: Manual loop → `create_agent()` → Multi-agent → HITL
-- Section 4 introduces the complete supervisor HITL system with interrupts
-- Uses `Command` for explicit routing control in state graphs
-
-### Module 2: Evaluation & Improvement
-- Section 1: Build baseline with curated dataset in `baseline_dataset.json`
-- Section 2: Introduces SQL agent to fix inefficiency identified in eval
-- Demonstrates eval-driven development: measure → identify issue → improve → re-measure
-- Shows how to compose improved SQL agent with existing supervisor system
-
-### Module 3: Deployment & Production
-- Section 1: Online evaluation, annotation queues, automation rules
-- Section 2: LangGraph SDK for streaming and programmatic HITL handling
-- Focus on production data flywheel for continuous improvement
-
-## Environment Variables
-
-Required API keys in `.env`:
-- `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` (depending on model choice)
-- `LANGSMITH_API_KEY` (for tracing and experiments)
-
-Optional configuration:
-- `WORKSHOP_MODEL` - Override default model for all agents (default: `anthropic:Codex-haiku-4-5`)
-- `EMBEDDING_PROVIDER` - Embedding provider for vectorstore: `huggingface` (default, local) or `openai` (requires `OPENAI_API_KEY`)
-- `LANGSMITH_PROJECT` - Project name for traces (default: `langsmith-agent-lifecycle-workshop`)
-- `LANGSMITH_TRACING` - Enable/disable tracing (default: `true`)
-
-## Development Workflow
-
-1. **Starting a new module**: Open corresponding notebook in `workshop_modules/`
-2. **Testing agents locally**: Use notebooks or `langgraph dev`
-3. **Making changes to agents**: Edit factory functions in `agents/`
-4. **Adding tools**: Extend `tools/database.py` or `tools/documents.py`
-5. **Deploying**: Update deployment file in `deployments/`, ensure `use_checkpointer=False`
-6. **Evaluation**: Create dataset → run experiment → analyze results → iterate
-
-## Common Gotchas
-
-- **Vectorstore not found**: Must run `conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe data/data_generation/build_vectorstore.py` before using RAG tools. If changing `EMBEDDING_PROVIDER`, must rebuild vectorstore
-- **Checkpointer conflicts**: Use `use_checkpointer=False` for production deployments (LangSmith manages state)
-- **State schema mismatches**: Shared keys in custom state must match parent/subgraph schemas
-- **Path resolution**: `config.py` handles both local (`Path(__file__).parent`) and LangSmith deployment (`/deps/...`) paths
-- **Database connection**: Uses lazy loading at module level - connection is created on first tool use
-
-# Development environment
-
-Use the conda environment `pythonLearn` for all Python commands.
-
-Do not run `python`, `pytest`, or `uv run` directly.
-
-Use:
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests/api
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pip install fastapi pytest httpx
+V2/V3 handoff and release files are historical records, not the live roadmap.

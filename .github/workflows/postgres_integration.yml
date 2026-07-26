@@ -82,3 +82,43 @@ jobs:
 
       - name: Run PostgreSQL integration tests
         run: python -m pytest tests/integration
+
+      - name: Record V6 runtime cleanup success evidence
+        env:
+          SHOPMIND_RUNTIME_CLEANUP_EVIDENCE_PATH: artifacts/v6-deployment-readiness/runtime-cleanup-evidence.json
+        run: |
+          mkdir -p artifacts/v6-deployment-readiness
+          python scripts/cleanup_runtime_persistence.py
+
+      - name: Gate V6 deployment readiness
+        env:
+          SHOPMIND_DEPLOYMENT_PROFILE: production
+          SHOPMIND_DEPLOYMENT_REPLICAS: "1"
+          SHOPMIND_IDENTITY_PROVIDER: trusted_header
+          SHOPMIND_TRUSTED_PROXY_AUTHENTICATION: "true"
+          SHOPMIND_COORDINATION_BACKEND: local
+          SHOPMIND_GOVERNANCE_AUDIT_ENABLED: "true"
+          SHOPMIND_RUNTIME_CLEANUP_SCHEDULED: "true"
+          SHOPMIND_RUNTIME_CLEANUP_EVIDENCE_PATH: artifacts/v6-deployment-readiness/runtime-cleanup-evidence.json
+          SHOPMIND_RUNTIME_MAX_DURATION_MS: "30000"
+          SHOPMIND_RUNTIME_MAX_STEPS: "20"
+          SHOPMIND_RUNTIME_MAX_TOOL_CALLS: "10"
+          SHOPMIND_RUNTIME_MAX_TOTAL_TOKENS: "20000"
+          SHOPMIND_RUNTIME_MAX_COST_USD: "1.0"
+        run: |
+          python scripts/check_deployment_readiness.py --output-json artifacts/v6-deployment-readiness/summary.json | tee artifacts/v6-deployment-readiness/summary.md
+
+      - name: Publish V6 deployment readiness
+        if: always()
+        run: |
+          if [ -f artifacts/v6-deployment-readiness/summary.md ]; then
+            cat artifacts/v6-deployment-readiness/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V6 deployment readiness
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v6-deployment-readiness
+          path: artifacts/v6-deployment-readiness
+          if-no-files-found: error

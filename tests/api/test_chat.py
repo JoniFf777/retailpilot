@@ -52,6 +52,33 @@ async def test_chat_returns_agent_answer(monkeypatch) -> None:
 
 
 @pytest.mark.anyio
+async def test_chat_forwards_optional_idempotency_header(monkeypatch) -> None:
+    def fake_call_shopmind_agent(
+        message: str,
+        user_id: str | None = None,
+        thread_id: str | None = None,
+        *,
+        idempotency_key: str | None = None,
+    ) -> dict:
+        assert message == "recommend a keyboard"
+        assert idempotency_key == "chat-idem-1"
+        return {"answer": "ok", "status": "completed", "tool_calls": []}
+
+    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/chat",
+            headers={"Idempotency-Key": "chat-idem-1"},
+            json={"message": "recommend a keyboard"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["answer"] == "ok"
+
+
+@pytest.mark.anyio
 async def test_chat_accepts_chinese_message(monkeypatch) -> None:
     captured = {}
 
@@ -299,6 +326,8 @@ async def test_chat_can_include_multi_agent_debug_metadata(monkeypatch) -> None:
     assert response.status_code == 200
     assert body["debug"]["supervisor_decision"]["routes"] == ["product_agent"]
     assert body["debug"]["agent_steps"][0]["node"] == "supervisor"
+    assert body["run_id"]
+    assert body["trace_id"]
     assert "raw_result" not in body
     assert "SHOULD_NOT_LEAK" not in str(body)
 
@@ -471,7 +500,7 @@ async def test_chat_multi_mode_uses_real_v3_guardrail_for_write_handoff(
 
 
 @pytest.mark.anyio
-async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> None:
+async def test_chat_multi_mode_can_select_llm_router_and_planner(monkeypatch) -> None:
     calls = []
 
     monkeypatch.setattr(
@@ -480,6 +509,7 @@ async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> 
         lambda: SimpleNamespace(
             shopmind_agent_mode="multi",
             shopmind_supervisor_router="llm",
+            shopmind_agent_planner="llm",
             workshop_model="openai:gpt-5-nano",
         ),
     )
@@ -492,10 +522,21 @@ async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> 
         calls.append(("router_factory", router_mode, model))
         return FakeLLMRouter()
 
+    fake_planner = object()
+
+    def fake_create_agent_planner(planner_mode: str, model=None):
+        calls.append(("planner_factory", planner_mode, model))
+        return fake_planner
+
     monkeypatch.setattr(
         agent_dependency,
         "create_supervisor_router",
         fake_create_supervisor_router,
+    )
+    monkeypatch.setattr(
+        agent_dependency,
+        "create_agent_planner",
+        fake_create_agent_planner,
     )
 
     def fake_multi_agent(
@@ -503,7 +544,9 @@ async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> 
         user_id: str | None = None,
         thread_id: str | None = None,
         supervisor_router=None,
+        agent_planner=None,
     ) -> dict:
+        assert agent_planner is fake_planner
         decision = supervisor_router.route(message, user_id=user_id)
         calls.append((message, user_id, thread_id, decision["router_type"]))
         return {
@@ -528,6 +571,7 @@ async def test_chat_multi_mode_can_select_llm_supervisor_router(monkeypatch) -> 
     assert response.status_code == 200
     assert calls == [
         ("router_factory", "llm", "openai:gpt-5-nano"),
+        ("planner_factory", "llm", "openai:gpt-5-nano"),
         ("推荐键盘", "user-001", "thread-001", "llm"),
     ]
     assert response.json()["answer"] == "multi agent answer"

@@ -1,514 +1,569 @@
-# ShopMind V1 架构设计
+# ShopMind Architecture
 
-## 项目背景
+Updated: 2026-07-26
 
-ShopMind V1 是在原 TechHub 电商 Agent Workshop 基础上改造出来的购物决策 Agent 后端项目。原项目主要用于教学 LangChain、LangGraph、LangSmith 的 Agent 生命周期，核心场景偏“电商客服”；ShopMind V1 则把它收敛成一个更适合展示和写进简历的后端项目：
+## Purpose
 
-- 用 FastAPI 提供 HTTP API；
-- 用单个 LangChain Agent 承载购物决策逻辑；
-- 用多个 LangChain Tools 访问商品、文档、用户偏好、购物车和待确认动作；
-- 继续复用原项目 TechHub SQLite 数据和 Markdown 文档 RAG。
+ShopMind uses shopping decisions to demonstrate reliable Agent engineering.
+Inherited TechHub workshop material remains, but the active worktree contains
+the released V3 boundary, the complete V4 runtime foundation and V5, and V6
+through Slice 3 plus Slice 4's identity and PII-safe audit-contract substages.
+Slice 4 also includes authenticated owner-data inspection, correction and
+deletion with independently retained governance facts. Remaining V6 design is in
+`docs/agent_runtime_design.md`; milestone order and completion criteria are in
+`PLAN.md`.
 
-V1 的重点不是做完整电商系统，而是完成一个可运行、可测试、可解释的 Agent 后端闭环。
-
-## V1 架构图
+## V3 System
 
 ```mermaid
-flowchart TD
-    U["用户 / Postman / Swagger UI"] --> API["FastAPI Backend"]
-    API --> Health["GET /api/health"]
-    API --> Chat["POST /api/chat"]
-    API --> Confirm["POST /api/chat/confirm"]
-
-    Chat --> AgentDep["app.dependencies.agent.call_shopmind_agent"]
-    AgentDep --> Agent["ShopMind Agent<br/>LangChain create_agent"]
-
-    Agent --> ProductTools["Product Tools<br/>search_products<br/>get_product_detail<br/>compare_products"]
-    Agent --> DocTools["Document Tools<br/>search_product_docs<br/>search_policy_docs"]
-    Agent --> PrefTools["Preference Tools<br/>get_user_preferences<br/>add_user_preference"]
-    Agent --> CartPrepare["Cart Tools exposed to Agent<br/>prepare_add_to_cart<br/>get_cart_items"]
-
-    ProductTools --> SQLite["SQLite<br/>data/structured/techhub.db"]
-    PrefTools --> SQLite
-    CartPrepare --> SQLite
-    DocTools --> VectorStore["InMemoryVectorStore<br/>TechHub Markdown Docs"]
-
-    Confirm --> ConfirmDep["app.dependencies.agent.confirm_pending_action"]
-    ConfirmDep --> SensitiveCart["Sensitive Cart Tools<br/>confirm_add_to_cart<br/>cancel_pending_action"]
-    SensitiveCart --> SQLite
+flowchart LR
+    Client["API client"] --> API["FastAPI /api/chat"]
+    API --> Bridge["Agent bridge"]
+    Bridge --> Mode{"Agent mode"}
+    Mode -->|single| Single["V1 single Agent"]
+    Mode -->|multi| Supervisor["V3 Supervisor"]
+    Supervisor --> Gate{"Parallel reads enabled?"}
+    Gate -->|default / single route| Dispatcher["Route dispatcher"]
+    Gate -->|opt-in multi-route| Parallel["Bounded parallel executor"]
+    Dispatcher --> Product["Product Agent"]
+    Dispatcher --> RAG["RAG Agent"]
+    Dispatcher --> Preference["Preference Agent"]
+    Parallel --> Product
+    Parallel --> RAG
+    Parallel --> Preference
+    Parallel --> Decision["Decision Agent"]
+    Product --> Dispatcher
+    RAG --> Dispatcher
+    Preference --> Dispatcher
+    Dispatcher --> Decision["Decision Agent"]
+    Decision --> Bridge
+    Bridge -->|write intent| Handoff["Guarded write handoff"]
+    Handoff --> Pending["pending_actions"]
+    Client --> Confirm["/api/chat/confirm"]
+    Confirm --> Pending
+    Confirm --> Cart["cart_items"]
 ```
 
-## 请求链路
+Selected read routes execute sequentially by default, then the Decision Agent
+synthesizes their structured output. A server-owned, default-off V5 feature gate
+can run multiple independent read routes with bounded parallelism; single-route
+and write flows retain the V3 path.
 
-### 普通购物咨询
+## Responsibilities
 
-```text
-POST /api/chat
-  → app/api/routes/chat.py
-  → app/dependencies/agent.py
-  → agents/shopmind_agent.invoke_shopmind_agent
-  → ShopMind Agent
-  → Tools
-  → SQLite / InMemoryVectorStore
-  → ChatResponse(status="completed")
+| Component | Responsibility | Tool capability |
+| --- | --- | --- |
+| Supervisor | Classify intent and choose ordered routes | None |
+| Product Agent | Search, inspect, compare products | Product reads only |
+| RAG Agent | Retrieve specifications and policies | Document reads only |
+| Preference Agent | Read long-term preferences | Preference read only |
+| Decision Agent | Combine evidence; answer or request handoff | None |
+| Write handoff | Resolve product/quantity; prepare action | Guarded prepare action |
+| Confirmation boundary | Confirm/cancel pending action | Internal cart mutation |
+
+Deterministic routing is the V3 baseline. The optional LLM router uses structured
+output and falls back to deterministic routing on provider/model failure.
+
+## Read Flow
+
+1. FastAPI validates `ChatRequest`.
+2. `app.dependencies.agent.call_shopmind_agent` selects single or multi mode.
+3. Supervisor emits a structured route decision.
+4. Dispatcher runs Product, RAG, and/or Preference Agents in order.
+5. Specialists write bounded summaries to shared graph state.
+6. Decision Agent creates the final response.
+7. FastAPI returns complete JSON and optional debug metadata.
+
+The route is declared `async`, but V3 Agent execution is synchronous. SSE,
+disconnect cancellation, and centralized deadlines are V4 work.
+
+## Write Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Chat API
+    participant M as Multi-Agent Graph
+    participant W as Write Handoff
+    participant P as PostgreSQL
+    participant H as Confirm API
+
+    U->>C: Add selected product
+    C->>M: Read and classify
+    M-->>C: write_path_handoff
+    C->>W: user, thread, message
+    W->>P: Resolve candidate if needed
+    W->>P: Create pending action
+    C-->>U: confirmation_required
+    U->>H: confirm or cancel
+    H->>P: Validate user and action
+    H->>P: Mutate cart or cancel
+    H-->>U: final status
 ```
 
-### 加购确认
+Invariants:
 
-```text
-POST /api/chat
-  → ShopMind Agent 调用 prepare_add_to_cart
-  → 写入 pending_actions
-  → 返回 confirmation_required + pending_action_id
+- Read Agents never receive cart mutation tools.
+- Product selection is explicit or comes from an unexpired candidate context
+  owned by the same user/thread.
+- Preparing an action never mutates the cart.
+- Confirmation checks user ownership and action state.
+- Smoke/evaluation users are cleaned before and after execution.
 
-POST /api/chat/confirm
-  → confirm_pending_action
-  → confirmed=true 调用 confirm_add_to_cart
-  → confirmed=false 调用 cancel_pending_action
-  → 更新 pending_actions / cart_items
-  → 返回 completed 或 cancelled
+## State And Persistence
+
+### Working State
+
+`ShopMindMultiAgentState` carries request identity, routing fields, specialist
+summaries, final decision, safety flags, tool names, and Agent-step events. It is
+working memory for one invocation, not durable conversation memory.
+
+### PostgreSQL And pgvector
+
+PostgreSQL is the ShopMind persistence path:
+
+- customers, products, orders, and order items;
+- preferences, cart items, pending actions, and candidate contexts;
+- V4.1 runtime persistence tables for `conversation_threads`,
+  `conversation_messages`, `agent_runs`, `agent_run_events`,
+  `conversation_summaries`, and `idempotency_records`;
+- V6 governance audit records containing only domain-separated actor, owner,
+  thread, run and resource fingerprints plus closed allowlisted metadata;
+- product and policy document chunks with pgvector embeddings;
+- Alembic migrations, currently `0007_governance_audit`.
+
+Inherited SQLite/vectorstore paths remain for workshop/legacy compatibility.
+New ShopMind runtime persistence should use PostgreSQL.
+
+## API Boundary
+
+- `GET /api/health`
+- `GET /api/health/governance-audit`
+- `GET /api/health/preflight`
+- `GET /api/health/readiness`
+- `GET /api/health/service-metrics`
+- `POST /api/chat`
+- `POST /api/chat/confirm`
+- `POST /api/chat/stream`
+- `POST /api/owner-data/inspect`
+- `POST /api/owner-data/memory/correct`
+- `POST /api/owner-data/memory/delete`
+- `POST /api/owner-data/delete`
+
+The owner-data endpoints are additive and authentication-required. They do not
+change the V3 chat/confirm response models. See
+`docs/v3_api_handoff_contract.md`.
+
+## Observability And Evaluation
+
+V3 emits stable metadata rather than raw LangChain objects: Supervisor decisions,
+routes, Agent steps, tool names, Decision output, safety flags, candidate-context
+events, and pending-action events. These feed metrics, CI artifacts, PR summaries,
+API smoke, and LangSmith experiments.
+
+V6 adds a closed evaluation composition layer rather than dynamically importing
+manifest callables. `shopmind.evaluation-catalog.v1` maps seven
+server-registered deterministic runners to ten required quality, safety,
+trajectory, memory and resource dimensions. The accepted baseline is a tracked,
+versioned policy artifact; candidate execution cannot rewrite it. CI reuses the
+separate V5 JSON artifacts when present, runs missing deterministic suites, and
+publishes a catalog-run JSON plus a readable 43-check regression summary.
+
+## V4 Runtime Compatibility Layer
+
+V4.1 keeps the public V3 API contract intact while inserting a thin internal
+runtime layer:
+
+- `app.runtime.contracts` defines structured request, context, result, event,
+  tool-call, usage, and error models.
+- `app.runtime.harness` wraps legacy single-agent, multi-agent, and confirmation
+  paths so the same request can emit runtime IDs, ordered events, and durable
+  run/message records.
+- The first V4.2 slice also applies request policy and budgets, retryable
+  failures, synchronous deadline/cancellation checks, and unified finalization
+  while preserving the V3 response adapter.
+- Server-owned runtime settings now resolve retry, duration, step, tool,
+  prompt/completion/total-token, cost, and context budgets into each
+  `RunRequest`; sensitive-tool permission remains deny-first and is granted only
+  to the confirmation operation.
+- `/api/chat/stream` now exposes ordered Harness events through SSE while the
+  worker-thread compatibility bridge is used for synchronous V3 execution.
+- SSE uses bounded in-process event queues and a local concurrency admission
+  limit. Queue pressure requests Harness cancellation; it does not attempt to
+  interrupt a synchronous provider or claim distributed rate limiting. Accepted
+  worker event deliveries are flushed before the final result/error and stream
+  terminator, preserving lifecycle order across the thread/event-loop boundary.
+- The first V4.5 Tool Gateway slice centralizes capability lookup, structured
+  argument validation, ownership checks, sensitive-tool policy, output limits,
+  per-run budgets, and tool-call audit records.
+- The confirmation boundary is now a separate registered capability; only the
+  explicit confirm operation enables sensitive tools, while ordinary chat keeps
+  the default deny policy.
+- V3 read Agents also delegate actual tool execution through the same gateway,
+  keeping capability validation and result-limit enforcement on one path.
+- Each runtime invocation binds its own `RunContext` to read-tool wrappers, so
+  user/thread and budget policy is scoped to one run rather than a process-wide
+  singleton.
+- Gateway records from those wrappers are normalized by the Harness into
+  persisted tool-call records and ordered audit events.
+- Failed tool attempts receive the same durable record treatment, with safe
+  error metadata and a `tool.call.failed` audit event before `run.failed`.
+- Gateway execution controls now skip tool invocation when the run has already
+  been cancelled or timed out, and capability duration overruns are captured as
+  audit metadata after a provider returns.
+- Gateway capabilities now declare typed database read/write resource policy;
+  the policy is retained in tool audit records. Network access remains disabled
+  unless a future capability explicitly supplies an HTTPS host allowlist.
+- Production V3 Gateway construction validates the allowlist against an
+  explicit capability policy manifest, so an unclassified tool fails closed at
+  startup rather than inheriting a name-based default.
+- The same manifest declares each tool's permitted Agent ownership; strict
+  startup validation rejects an allowlist assignment that drifts from it.
+- Capability policy entries are exposed through a read-only manifest whose
+  coverage test uses the production V3 allowlist directly.
+- Nested resource policies are immutable, preventing in-place changes to a
+  manifest entry's database or network declaration.
+- Gateway registration rejects inconsistent confirmation declarations, including
+  sensitive writes without confirmation and read tools that claim it.
+- Tool-call audit records and events include each capability's confirmation
+  requirement, keeping persisted and streamed execution data self-describing.
+- Pending-action transitions use a typed action contract and registry; generic
+  action types, token-level provider streaming, context compaction, resource
+  isolation, and remote A2A remain later V4 milestones.
+- The V3 write handoff validates action creation through that same registry
+  before invoking the prepare tool, so creation and confirmation share the
+  same action-type boundary.
+- Prepare action execution uses a `WRITE` gateway capability and is audited in
+  the Harness; confirm and cancel remain `SENSITIVE_WRITE` operations requiring
+  the explicit confirmation policy.
+
+## Current Limits
+
+- No hard async execution interruption or token-level provider streaming.
+- No context compaction or automatic memory extraction.
+- SSE concurrency control is local by default. Explicit Redis mode provides
+  cross-process admission and the closed coordination operations; real
+  two-client concurrency and TTL behavior are integration-tested.
+- The generic Action Registry currently implements add-to-cart and
+  save-preference. New sensitive action types still require an exact definition,
+  edit schema, handler, persistence path, and lifecycle/evaluation coverage.
+- No OS sandbox or network/database resource isolation; gateway policy is
+  application-level only.
+- Production/default Agent communication is in-process. A server-owned,
+  default-off HTTP transport exists only for RAG; there is no caller-selected
+  endpoint or general remote A2A mesh.
+- The runtime now exposes typed task/result envelopes and a synchronous local
+  adapter. All V3 read specialists now use it: product, RAG, and preference.
+  RAG maps retrieved document IDs to typed evidence references, and preference
+  preserves the typed task's user scope for its existing read tool.
+- Local adapters share a delegation budget guard for each compiled graph. It
+  rejects tasks over trusted depth, per-parent child-task, or run step limits
+  before a handler runs. Reservations are run/task scoped and atomic across
+  parallel adapters; V3 continues to submit root specialist tasks.
+- Supervisor now emits a typed deterministic execution plan alongside its
+  routes. Default and single-route plans remain sequential with
+  `max_parallelism=1`; explicitly enabled multi-route read plans can select
+  bounded parallel execution while the dispatcher remains the default path.
+- Supervisor accepts an injectable planner boundary. The default planner is
+  deterministic. An optional provider proposal must exactly match the
+  server-compiled route, intent, step, dependency, identity, and parallelism
+  policy; accepted proposals are recompiled and invalid proposals fall back
+  without exposing provider errors.
+- A lazy LangChain structured-output planner can be explicitly selected by
+  server configuration. It uses the configured workshop model only after a
+  non-empty read plan exists. Router selection is independent, write handoff
+  never invokes the planner model, and every proposal retains the same
+  validator/fallback boundary.
+- Planner policy has a deterministic offline evaluation boundary. Fixed
+  trajectories exercise accepted sequential/parallel plans and adversarial
+  route, dependency, identity, mode, parallelism, malformed-provider, and
+  write-guard cases without invoking a model or database. Default CI pins the
+  deterministic planner, gates on this suite, and publishes its JSON artifact.
+- A separate compiled-graph replay boundary exercises complete and partial
+  fan-out/fan-in, shared tool budgets, and cancellation with fake tools. Its
+  versioned output normalizes concurrency into stable counts and plan-order
+  invariants instead of treating thread completion order as a contract. Default
+  CI gates on this replay and uploads it separately from planner-policy results.
+- A local bounded executor can run explicitly enabled, independent plan steps
+  and deterministically fan in typed results, evidence, usage, and sanitized
+  errors. The server-owned feature gate is connected to the graph, each step
+  receives isolated state, and shared runtime/tool accounting is
+  concurrency-safe. Fan-in preserves plan order, and partial failures retain
+  successful summaries for Decision Agent synthesis. Each worker also receives
+  its own copy of the parent execution context so request-local context variables
+  survive thread fan-out without sharing one mutable context.
+- Typed token/cost measurements flow from specialist `AgentResult` values
+  through sequential state or plan-ordered parallel fan-in into persisted
+  `RunResult.usage`. A shared run guard atomically reconciles cumulative usage
+  against the stricter server/task ceiling. Configured but unavailable metrics
+  fail closed; provider output cannot supply or increase policy limits. This is
+  post-execution reconciliation, not a claim that a synchronous provider call
+  can be interrupted after crossing a token or cost boundary.
+- Delegation deadlines and maximum run duration are also enforced at adapter
+  admission and reconciliation. The earliest deadline and stricter duration
+  win, using the trusted Harness run start. Expired work maps to sanitized
+  timeout-sourced plan errors before tools where possible; a synchronous call
+  already in progress may finish and is classified only when control returns.
+- Specialist graph bridges depend on the transport-neutral `AgentAdapter`
+  protocol and call a shared validation wrapper around typed task/result
+  envelopes. Product and preference remain in-process; RAG may select the
+  bounded server-owned HTTP adapter only through trusted Registry construction.
+- `PolicyEnforcedAgentAdapter` decorates those transports with the shared
+  delegation admission, timeout, usage, and result-reconciliation lifecycle.
+  Transport implementations do not own or redefine these server controls.
+- The production graph resolves those adapters through an immutable,
+  exact-recipient `AgentAdapterRegistry` built by server code. Its default
+  factory registers product, RAG, and preference policy-wrapped in-process
+  adapters with one shared delegation guard and enables the registry's
+  policy-required mode, so a bare transport fails during construction.
+  Duplicate, malformed, or unknown recipients also fail closed. The generic
+  registry remains transport-neutral for conformance tests; clients cannot
+  select adapters or inject endpoint configuration.
+- Adapter failures are normalized at execution boundaries. Parallel plan
+  failures expose stable error codes while retaining successful specialist
+  summaries, and the Harness persists sanitized messages for unknown executor,
+  adapter-contract, and delegation-budget failures rather than raw exception
+  text. Tool Gateway failures keep their capability-specific audit mapping.
+- Transports share a typed `AgentTransportError` boundary with a closed
+  failure-code set and explicit retriability. Executor-owned retries consume
+  the signal; plan steps preserve it for orchestration and can replay only
+  under an explicit server-owned policy.
+- Task retry policy is now a frozen contract owned only by the Plan Executor.
+  Runtime-derived task idempotency keys bind run/task identity, attempts are
+  capped, and identity/accounting requirements cannot be relaxed.
+- Typed transport failures now include measured attempt usage. The shared guard
+  reconciles failed usage before propagation, plan fan-in retains it, and the
+  Harness combines failed and successful attempts before checking budgets or
+  persisting a run. Unknown configured metrics and cumulative overruns fail
+  closed.
+- Specialist replay is disabled at one attempt by default. Server configuration
+  may opt into at most three attempts for typed unavailable/timeout failures;
+  protocol errors are excluded. The canonical plan policy flows into each task,
+  provider planners cannot widen it, and the Plan Executor preserves identity,
+  checks cancellation between attempts, and aggregates all attempt usage.
+  Retry-enabled sequential reads use the same executor while the default V3
+  dispatcher remains unchanged.
+- Every executor-owned specialist attempt emits a frozen structured lifecycle
+  payload. Attempt start/completion/failure and retry scheduling, start,
+  success, exhaustion, non-retriable, budget-blocked, and cancellation
+  decisions use the Harness-owned monotonic `AgentEvent` sequence. Those same
+  events are retained in `agent_run_events` and mirrored to SSE without a
+  second observability path.
+- `RuntimeTrajectoryRecorder` projects a terminal persisted run into an
+  owner/thread-scoped `shopmind.runtime-trajectory.v1` snapshot. It requires a
+  contiguous Harness event sequence, matching run/thread/user/trace identity,
+  and a status-compatible terminal event. Raw request, result, output, debug,
+  tool-record and event payloads are represented only by canonical SHA-256
+  fingerprints; only a closed safe scalar classification is replay-visible.
+- `RuntimeTrajectoryReplayer` reloads that snapshot through a fresh session
+  factory and compares every normalized identity, status, usage, event and
+  fingerprint field. The offline resilience suite uses separate SQLite engines
+  to cover provider, tool, transport, cancellation, idempotency and action
+  restart paths without models or network calls. PostgreSQL tests apply the
+  same boundary through a newly constructed engine.
+- `RuntimeCoordinationBackend` is the V6 boundary for admission leases, fixed
+  rate windows, duplicate claims and bounded cache entries. Every subject/key
+  crossing it is a SHA-256 fingerprint rather than a user identifier or raw
+  idempotency key. Decisions are frozen structured models with explicit
+  backend/reason fields.
+- `LocalRuntimeCoordinationBackend` is a single-process fallback with injectable
+  monotonic time, renewable expiring leases, TTL cleanup, atomic locking, LRU
+  eviction and bounded state/value sizes. It establishes semantics for later
+  backend equivalence but is not a distributed coordination claim.
+- A server-owned factory selects the backend. Local is the default and unknown
+  legacy values normalize to it. Explicit Redis requires a secret URL, an
+  installed client and a reachable service; failure raises a sanitized startup
+  error rather than silently degrading. Versioned keys share one Redis cluster
+  hash slot and atomic Lua scripts own every multi-key transition.
+- `/api/chat/stream` now acquires an opaque admission lease, renews it before
+  TTL expiry while the generator is active, and releases that exact lease token
+  on every generator exit. Capacity exhaustion retains the existing HTTP 429
+  response, and SSE payload/order behavior is unchanged.
+- `IdentityBoundary` is the V6 HTTP owner-binding seam. Server configuration
+  selects `development_payload` (the compatibility default) or
+  `trusted_header`, or the production-facing `signed_header`; request JSON
+  cannot select a provider, role or scope.
+  Trusted-header mode uses the fixed `X-ShopMind-Authenticated-User` ingress
+  header, rejects missing identity with 401 and rejects a mismatched body
+  `user_id` with 403 before Agent execution or stream admission. Raw subjects
+  are excluded from structured repr and have a namespaced SHA-256 fingerprint
+  for later audit use.
+- `signed_header` keeps the same owner binding and adds
+  `X-ShopMind-Identity-Timestamp`, `X-ShopMind-Identity-Nonce`, and
+  `X-ShopMind-Identity-Signature`. A server-owned HMAC-SHA256 secret verifies a
+  versioned, short-lived assertion; a fingerprint-only duplicate claim makes
+  each assertion one-time. The local coordination backend is process-scoped,
+  while explicit Redis mode provides atomic replay rejection across instances.
+  Credential, expiry, replay and coordination failures all use the same public
+  401 response and never reach Agent, action or stream execution.
+- `GovernanceAuditRecord` is a separate frozen
+  `shopmind.governance-audit.v1` fact, not a copy of an arbitrary
+  `AgentEvent.payload`. A closed factory converts authentication,
+  `ToolCallRecord`, action, memory and deletion decisions into category-specific
+  allowlisted metadata. Actor/owner/thread/run/resource references are
+  domain-separated fingerprints; raw messages, tool arguments, action previews,
+  credentials, headers, URLs and provider result metadata have no schema field.
+  `governance_audit_records` persists that exact contract without raw identity
+  columns or foreign keys. Append is immutable; inspection requires an exact
+  owner fingerprint, excludes expired rows and has a fixed result bound.
+  Explicit `expires_at` retention is enforced by the existing runtime cleanup
+  command, independently from ordinary run deletion.
+- `GovernanceAuditEmitter` is a separate post-runtime transaction. A
+  server-owned default-off switch enables authentication allow/deny emission
+  and Harness projection of typed tool records, closed action lifecycle events,
+  and selected persisted memory items. Deterministic audit IDs make replay
+  idempotent. Storage failure is sanitized and best-effort: it cannot rewrite
+  an HTTP identity decision, Agent result or completed action transition.
+- `GovernanceAuditEmissionMonitor` is the process-local operations seam for
+  every default emitter. A lock protects monotonic closed counters and
+  consecutive-failure alert state; no audit record or source identifier enters
+  the snapshot. Three consecutive failures activate a structured alert by
+  default, while a persisted or duplicate commit emits recovery. The additive
+  health endpoint stays HTTP 200 and reports `disabled`, `ok`, `warning`, or
+  `degraded` plus the versioned metrics snapshot. It is not an audit-record
+  query and must be scraped per replica.
+- `OwnerDataService` owns the authenticated privacy lifecycle. Inspection
+  returns fixed category counts and at most 100 memory records. Correction
+  replaces only an active, unexpired exact-owner memory and clears stale
+  derived JSON/provenance. Single-memory and full-owner deletion are hard
+  deletes; full deletion uses one transaction across preferences, cart,
+  pending/candidate state and owner runtime persistence.
+- Full deletion deliberately excludes product/document catalogs, inherited
+  customer/order seed data, and `governance_audit_records`. When emission is
+  enabled, memory inspect/correct/delete and deletion request/execute facts are
+  fingerprint-only and use the audit table's independent retention. A storage
+  failure becomes a stable 503 without backend details; audit failure cannot
+  change a committed owner-data result.
+- Cancellation is cooperative across the Harness and plan executor. Queued
+  steps check the bound `RunContext` probe before execution and emit ordered
+  plan/step events. A synchronous call already in progress is not interrupted;
+  its actual tool audit record remains attached even when the run finalizes as
+  cancelled.
+- RAG evidence references also flow into the Decision Agent, which records a
+  product-document scope mismatch for non-overlapping product IDs. Typed
+  conflict resolution excludes the mismatched RAG summary and requests product
+  clarification while retaining non-conflicting summaries; matching evidence
+  follows the existing answer path.
+
+## Target Direction
+
+```mermaid
+flowchart TB
+    API["API + SSE"] --> Harness["Agent Harness"]
+    Harness --> Memory["Memory Manager"]
+    Harness --> Context["Context Manager"]
+    Harness --> Policy["Policy and budgets"]
+    Harness --> Orchestrator["Supervisor / Planner"]
+    Orchestrator --> Agents["Specialized Agents"]
+    Agents --> Gateway["Tool Gateway"]
+    Gateway --> Policy
+    Gateway --> Data["PostgreSQL / pgvector / tools"]
+    Orchestrator --> Adapter["Agent Adapter"]
+    Adapter --> Local["In-process Agent"]
+    Adapter -.-> Remote["Remote A2A Agent"]
+    Harness --> Events["Events, tracing, evaluation"]
+    Events --> API
 ```
 
-## 为什么 V1 采用单 Agent + 多 Tool
-
-原 workshop 中已经有 Supervisor Multi-Agent 示例，但 ShopMind V1 暂时采用单 Agent + 多 Tool，原因是：
-
-1. V1 的目标是做出可展示的购物决策闭环，而不是证明多 Agent 编排复杂度。
-2. 当前业务边界还比较清晰：商品检索、文档检索、偏好记忆、购物车确认都可以通过 Tool 表达。
-3. 单 Agent 更容易调试、测试和接入 FastAPI。
-4. 对简历项目来说，“Agent 能根据用户意图动态选择工具，并完成安全加购确认”已经足够体现 Agentic 后端能力。
-
-后续如果业务扩展到更复杂的角色分工，例如导购 Agent、售后 Agent、订单 Agent、风控 Agent，再拆 Multi-Agent 更合理。
-
-## 为什么 V1 不使用 A2A
-
-V1 没有采用标准 A2A 协议或分布式 Agent-to-Agent 通信。当前项目中的 Agent 和 Tools 都运行在同一个 Python 后端进程中，不涉及 Agent Card、Agent Discovery、跨服务任务生命周期或独立 Agent Server。
-
-不使用 A2A 的原因：
-
-- V1 没有多个独立部署的 Agent 服务；
-- 业务流程主要是单用户请求内的工具调用；
-- 引入 A2A 会增加部署、协议、鉴权、任务状态同步等复杂度；
-- 对第一版简历项目来说，A2A 的收益低于成本。
-
-如果后续将商品 Agent、订单 Agent、客服 Agent 独立部署为多个服务，再考虑 A2A 会更自然。
-
-## 为什么 V1 使用 SQLite 和 InMemoryVectorStore
-
-V1 继续使用原项目的 SQLite 和 InMemoryVectorStore：
-
-- SQLite 已包含 TechHub 商品、订单、客户等结构化数据，足够支撑 V1 演示；
-- InMemoryVectorStore 已能完成商品文档和政策文档检索；
-- 避免第一阶段陷入数据库迁移、pgvector 安装、数据导入和 Docker 编排；
-- 降低学习成本，让重点放在 Agent、Tool、FastAPI 和安全确认链路上。
-
-这不是说 SQLite 适合生产大规模电商，而是它很适合作为 V1 的可运行 MVP 数据层。
-
-## V2 完成状态
-
-V2 数据基础设施升级已经收口：
-
-- PostgreSQL + pgvector 已用于结构化数据、运行时状态和 RAG documents 持久化；
-- Docker Compose 提供本地 PostgreSQL + pgvector；
-- SQLAlchemy models、Alembic migrations、Repository 层和 seed/index/smoke/bootstrap 脚本已经建立；
-- `tools/products.py`、`tools/preferences.py`、`tools/cart.py` 和 `tools/documents.py` 已切换到 Repository-backed PostgreSQL 路径；
-- FastAPI `/api/chat` 和 `/api/chat/confirm` 的请求/响应契约保持兼容；
-- 默认 CI 和手动 PostgreSQL integration CI 已加入主分支。
-
-以下 V2.0/V2.1/V2.2 章节保留为阶段演进记录；最终运行状态以上述完成状态为准。下一条主线是 V3 multi-agent，而不是继续扩展 V2。
-
-## V3 当前状态：Read-only Multi-Agent Router
-
-V3 已进入 read-only multi-agent 路径。当前实现仍保持 `/api/chat` 响应合约兼容，并通过配置开关渐进启用：
-
-```text
-SHOPMIND_AGENT_MODE=multi
-SHOPMIND_SUPERVISOR_ROUTER=deterministic | llm
-```
-
-当前 V3 read path 包含：
-
-- `supervisor`：生成结构化路由决策；
-- `product_agent`：只读商品检索与商品摘要；
-- `rag_agent`：只读商品文档 / 政策文档检索与摘要；
-- `preference_agent`：只读用户偏好摘要；
-- `decision_agent`：合并各 read agent 的结构化摘要，生成最终回答；
-- tool allowlist guard：按 agent 隔离工具权限，避免 read path 调用写工具；
-- write-intent guard：识别加购、下单、清空购物车和保存偏好等写意图，返回 `write_path_unsupported` / `write_intent_blocked`，不执行 read agents；
-- handoff bridge：当 V3 返回 `write_path_handoff` 时，API dependency 会桥接到原生 V3 write handoff handler，返回 `confirmation_required` 和 `pending_action_id`；
-- thread handoff：`thread_id` 会贯通到 `prepare_add_to_cart`，并持久化到 pending action；
-- `agent_steps`：记录 supervisor、route dispatcher、各 read agent 和 decision agent 的执行轨迹；
-- `include_debug`：可返回 `supervisor_decision`、`agent_steps`、`decision`、`safety_flags`，以及写意图场景下的 `multi_agent_handoff` / `multi_agent_debug`。
-
-Supervisor router 支持两种模式：
-
-- `deterministic`：默认关键字路由，不调用模型；
-- `llm`：LangChain structured-output router，失败时回退到 deterministic router，并在 `supervisor_decision` / `agent_steps` 中记录 `router_provider`、`router_model`、`fallback_reason` 和 `fallback_router_type`。
-
-Router 离线评估脚本用于在改路由逻辑前后快速比较固定中文样本的命中率和 fallback 分布：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router llm-fallback
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/run_router_eval.py --router deterministic --json
-```
-
-默认 `deterministic` 与 `llm-fallback` 模式不调用真实 LLM。只有显式使用 `--router llm` 时才会通过 `WORKSHOP_MODEL` 或 `--model` 调用结构化模型。
-
-V3.3 已开始将写入准备逻辑从 V1 single-agent 桥接中拆出。当前原生 V3 write handoff handler 支持明确商品 ID 和简单数量的加购请求；缺少 `user_id` 或商品 ID 不明确时，会返回澄清说明，不直接调用写工具。
-
-## V2.0 第一阶段：本地 PostgreSQL + pgvector
-
-V2.0 第一阶段加入本地 PostgreSQL + pgvector 容器和统一配置读取。这个阶段曾保持 V1 Tools、Agent 和 API 行为不变；最终 V2 已完成 Tool 数据层迁移。
-
-启动本地数据库：
-
-```bash
-docker compose up -d postgres
-```
-
-检查容器状态：
-
-```bash
-docker compose ps postgres
-docker compose logs postgres
-```
-
-默认数据库配置：
-
-```text
-POSTGRES_DB=retailpilot
-POSTGRES_USER=retailpilot
-POSTGRES_PASSWORD=retailpilot
-DATABASE_URL=postgresql+psycopg://retailpilot:retailpilot@127.0.0.1:5432/retailpilot?connect_timeout=5
-TEST_DATABASE_URL=postgresql+psycopg://retailpilot:retailpilot@127.0.0.1:5432/retailpilot_test?connect_timeout=5
-VECTOR_DIMENSION=768
-```
-
-这一阶段数据库启动后还没有 schema 和业务数据。schema migration、数据导入、pgvector documents 表和 Tool 改造已在后续 V2 阶段完成。
-
-## V2.0 第二阶段：SQLAlchemy + Alembic Schema
-
-第二阶段加入 SQLAlchemy ORM models 和 Alembic migration，用于在 PostgreSQL 中创建结构化业务表：
-
-- `customers`
-- `products`
-- `orders`
-- `order_items`
-- `user_preferences`
-- `cart_items`
-- `pending_actions`
-
-本地运行 migration：
-
-```bash
-docker compose up -d postgres
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
-```
-
-这一阶段只建立 PostgreSQL schema，不迁移 SQLite 数据，不创建 pgvector documents 表，也不切换现有 Tools、Agent 或 API。Repository 与 Tool 数据层迁移已在后续 V2 阶段完成。
-
-## V2.0 第三阶段：PostgreSQL Seed
-
-第三阶段加入结构化业务数据 seed 脚本，从 `data/structured` 下的原始 JSON 文件导入 PostgreSQL：
-
-- `customers.json` → `customers`
-- `products.json` → `products`
-- `orders.json` → `orders`
-- `order_items.json` → `order_items`
-
-本地执行顺序：
-
-```bash
-docker compose up -d postgres
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/seed_postgres.py --clear
-```
-
-`--clear` 会先按外键反向顺序清空 `order_items`、`orders`、`products`、`customers`，再按 `customers`、`products`、`orders`、`order_items` 导入。`--dry-run` 只打印各 JSON 文件的数据条数，不连接 PostgreSQL。
-
-这一阶段不导入 `user_preferences`、`cart_items`、`pending_actions`，这些表属于运行时状态。ShopMind Tools 已在后续 V2 阶段切换到 PostgreSQL Repository-backed 路径。
-
-## V2.0 第四阶段：PostgreSQL Repository
-
-第四阶段新增 Repository 层，为后续 Tool 数据访问迁移做准备：
-
-- `app/repositories/products.py`：商品搜索、商品详情、按 ID/名称获取商品；
-- `app/repositories/preferences.py`：用户偏好增删查，非法 preference type 归为 `other`；
-- `app/repositories/cart.py`：pending action 加购确认流、购物车读取与清理。
-
-Repository 函数接收 SQLAlchemy `Session`，返回结构化 dict/list，不使用 LangChain `@tool`，也不返回面向用户的中文回答文本。测试使用 SQLAlchemy SQLite 内存数据库和 `Base.metadata.create_all(test_engine)` 验证逻辑，不依赖 Docker 或真实 PostgreSQL。
-
-这一阶段只新增 Repository 层，不切换 ShopMind Tools。`tools/products.py`、`tools/preferences.py` 和 `tools/cart.py` 已在后续结构化 Tools 迁移阶段接入 Repository。
-
-## V2.0 第五阶段：结构化 Tools 迁移
-
-第五阶段先迁移结构化数据 Tools：
-
-- `search_products`
-- `get_product_detail`
-- `compare_products`
-- `get_user_preferences`
-- `add_user_preference`
-- `clear_user_preferences`
-- `prepare_add_to_cart`
-- `confirm_add_to_cart`
-- `cancel_pending_action`
-- `get_cart_items`
-- `clear_cart_items`
-
-这些 Tool 的 LangChain 名称、输入 schema 和中文返回格式保持不变，内部结构化数据访问改为通过 `app.repositories.*` 和 SQLAlchemy `Session` 访问 PostgreSQL Repository。为了避免导入阶段依赖真实数据库连接，Tool 模块会懒加载 `SessionLocal`。
-
-这一阶段不迁移 `tools/documents.py`；RAG pgvector documents 已在 V2.1 后续阶段引入并接入。
-
-## V2.1 第一阶段：pgvector Documents Schema
-
-V2.1 开始迁移 RAG 数据层。第一阶段只建立 pgvector documents schema，不改变现有 RAG Tool 行为。
-
-新增 PostgreSQL extension 和表：
-
-- `CREATE EXTENSION IF NOT EXISTS vector`
-- `documents`
-
-`documents` 表用于后续保存 markdown chunk 与 embedding：
-
-- `doc_type`：`product` 或 `policy`
-- `source_path`、`source_name`
-- `product_id`、`product_name`
-- `policy_name`
-- `chunk_index`
-- `content`
-- `metadata_json`
-- `embedding vector(768)`
-- `embedding_provider`
-- `embedding_model`
-- `created_at`
-
-索引包括：
-
-- `doc_type`
-- `product_id`
-- `source_path`
-- `metadata_json` GIN index
-- `embedding` HNSW vector cosine index
-
-本地运行：
-
-```bash
-docker compose up -d postgres
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
-```
-
-这一阶段不读取 `data/documents`，不生成 embeddings，不导入 pgvector 数据，也不修改 `tools/documents.py`。documents index、Repository 和 Tool 迁移已在后续 V2.1 阶段完成。
-
-## V2.1 第二阶段：Documents pgvector Index Script
-
-第二阶段新增 `scripts/index_documents_pgvector.py`，负责把 markdown RAG 语料导入 PostgreSQL `documents` 表。
-
-脚本能力：
-
-- 读取 `data/documents/products/*.md`
-- 读取 `data/documents/policies/*.md`
-- 复用 V1 chunk 参数：`chunk_size=1000`、`chunk_overlap=200`
-- 保留 product / policy metadata
-- 支持 `--dry-run`
-- 支持 `--clear`
-- 支持 `--doc-type all|product|policy`
-
-本地 dry-run：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --dry-run
-```
-
-真实写入：
-
-```bash
-docker compose up -d postgres
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m alembic upgrade head
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/index_documents_pgvector.py --clear
-```
-
-`--dry-run` 只读取和切分 markdown，不连接 PostgreSQL，也不创建 embedding model。非 dry-run 模式会根据 `EMBEDDING_PROVIDER` 创建 embedding model，并写入 `documents` 表。
-
-这一阶段仍不修改 `tools/documents.py`；RAG Tool 已在 V2.1 第四阶段接入 Documents Repository。
-
-## V2.1 第三阶段：Documents Repository
-
-第三阶段新增 `app/repositories/documents.py`，为后续 RAG Tool 迁移做准备。
-
-Repository 函数：
-
-- `search_product_documents(session, query_embedding, k=3)`
-- `search_policy_documents(session, query_embedding, k=2)`
-
-生产路径使用 PostgreSQL pgvector cosine distance：
-
-```sql
-ORDER BY embedding <=> CAST(:embedding AS vector)
-```
-
-返回结构化 dict/list，包含 source、metadata、content、embedding provider/model 和可选 score。SQLite 单测环境不支持 pgvector operator，因此 Repository 提供 deterministic fallback，只按 `doc_type` 和 `id` 返回限定数量结果，用于验证过滤和返回结构。
-
-这一阶段仍不切换 `tools/documents.py`；下一阶段已把 Tool 层接到 Documents Repository。
-
-## V2.1 第四阶段：RAG Tools 迁移
-
-第四阶段将 `tools/documents.py` 从 V1 InMemoryVectorStore 切换到 Documents Repository。
-
-保持不变：
-
-- `search_product_docs`
-- `search_policy_docs`
-- LangChain `@tool(response_format="content_and_artifact")`
-- Tool 输入参数 `query`
-- 返回给 Agent 的格式化文本和 LangChain `Document` artifacts
-
-内部变化：
-
-- Tool 层懒加载 `EMBEDDING_PROVIDER` 对应的 embedding model；
-- 每次查询生成 query embedding；
-- 通过 `app.repositories.documents.search_product_documents()` 或 `search_policy_documents()` 查询 PostgreSQL `documents` 表；
-- Repository 在 PostgreSQL 下使用 pgvector cosine distance 排序；
-- 单测中用 SQLite in-memory fallback 和 monkeypatch，避免依赖 Docker、真实 PostgreSQL 或真实 embedding model。
-
-这一阶段只迁移 RAG Tool 的数据访问路径，不修改 Agent/API 的调用契约，也不引入 LangGraph interrupt/resume。
-
-## V2.2 第一阶段：PostgreSQL Smoke Check
-
-V2.2 第一阶段新增只读 smoke check，用于验证 V2 PostgreSQL 链路是否完整可用。
-
-新增脚本：
-
-- `scripts/smoke_postgres.py`
-
-默认检查内容：
-
-- 读取 `DATABASE_URL`，连接目标 PostgreSQL；
-- 输出当前 database 和 user；
-- 校验 Alembic version 为 `0002_documents_pgvector`；
-- 校验 V2 结构化表、运行时状态表和 `documents` 表均存在；
-- 校验 customers、products、orders、order_items 已有 seed 数据；
-- 校验 documents 表已有 product / policy chunks；
-- 通过 Repository 层执行商品搜索和 pgvector documents 搜索。
-
-脚本默认只读，不执行 clear、seed、index 或任何写入操作。`--include-tools` 会额外调用 LangChain Tool 层，用于确认 `tools/products.py` 和 `tools/documents.py` 的运行路径，但会加载 embedding model，适合人工 smoke，不适合默认单测。
-
-测试分层：
-
-- `tests/scripts/test_smoke_postgres.py` 使用 SQLite in-memory，验证 smoke 逻辑，不依赖 Docker 或真实 PostgreSQL；
-- `tests/integration/test_postgres_smoke.py` 默认跳过；
-- 设置 `RUN_POSTGRES_INTEGRATION=1` 后才会连接真实 `DATABASE_URL`。
-
-如果本机 5432 已有 PostgreSQL，应优先在现有实例中新建独立数据库，例如 `retailpilot_v2_smoke`，避免默认 Docker Compose 的 `5432:5432` 端口映射与现有数据库冲突。
-
-## V2.2 第二阶段：PostgreSQL Health Endpoint
-
-第二阶段在 FastAPI 中新增 PostgreSQL health endpoint，同时保持原有健康检查不变。
-
-API：
-
-- `GET /api/health`：原有轻量检查，只返回 `{"status": "ok"}`；
-- `GET /api/health/postgres`：连接 `DATABASE_URL` 指向的 PostgreSQL，读取当前 database、user 和 `alembic_version`；
-- PostgreSQL 不可用时返回 HTTP 503，并在响应 detail 中包含错误信息。
-
-该 endpoint 只读，不执行 migration、seed、index 或 Tool 调用，适合部署后快速确认 V2 数据库连接和 schema version。
-
-## V2.2 第三阶段：PostgreSQL Write Path Integration
-
-第三阶段补充默认跳过的 PostgreSQL 写路径 integration tests，用于验证 Repository 在真实 PostgreSQL 上的运行时状态表行为。
-
-新增测试：
-
-- `tests/integration/test_postgres_write_paths.py`
-
-覆盖内容：
-
-- `user_preferences` 写入、读取和清理；
-- `pending_actions` 创建；
-- `confirm_add_to_cart` 写入 `cart_items`；
-- 跨用户确认保护；
-- 重复确认保护；
-- 测试前后按唯一 `integration-smoke-*` user_id 清理 `user_preferences`、`cart_items` 和 `pending_actions`。
-
-这些测试默认跳过，只有设置 `RUN_POSTGRES_INTEGRATION=1` 时才连接真实 `DATABASE_URL`。普通单测仍然使用 SQLite in-memory，不依赖 Docker 或 PostgreSQL。
-
-## V2.2 第四阶段：PostgreSQL Tool Integration
-
-第四阶段补充结构化 LangChain Tool 层的真实 PostgreSQL integration tests，验证 Agent 实际调用的 Tool wrapper 能通过 `SessionLocal` 访问 V2 数据库。
-
-新增测试：
-
-- `tests/integration/test_postgres_tools.py`
-
-覆盖内容：
-
-- `search_products` Tool 读取 PostgreSQL 商品数据；
-- `add_user_preference`、`get_user_preferences`、`clear_user_preferences` 通过 Tool 层写入、读取和清理 PostgreSQL；
-- `prepare_add_to_cart` 通过 Tool 层创建 pending action；
-- `confirm_add_to_cart` 通过 Tool 层写入 cart item；
-- Tool 层跨用户确认保护和重复确认保护；
-- 测试使用唯一 `integration-tool-*` user_id，并在测试前后清理运行时状态表。
-
-该阶段仍不引入 LangGraph interrupt/resume，也不改变 Agent/API 调用契约。RAG Tool 的真实 embedding 查询仍通过 `scripts/smoke_postgres.py --include-tools` 进行人工 smoke，避免默认 integration 测试每次加载 embedding model。
-
-## V2.2 第五阶段：PostgreSQL API Integration
-
-第五阶段补充 FastAPI 层的真实 PostgreSQL integration tests，验证 HTTP API 边界能通过 dependency 和 Tool 层访问 V2 数据库。
-
-新增测试：
-
-- `tests/integration/test_postgres_api.py`
-- `tests/integration/test_integration_guard.py`
-
-覆盖内容：
-
-- `GET /api/health/postgres` 端到端读取真实 PostgreSQL 的 database、user 和 Alembic version；
-- `POST /api/chat/confirm` confirmed=true 时通过 `confirm_add_to_cart` Tool 确认 pending action 并写入 `cart_items`；
-- `POST /api/chat/confirm` confirmed=false 时通过 `cancel_pending_action` Tool 取消 pending action；
-- 测试使用唯一 `integration-api-*` user_id，并在测试前后清理对应运行时状态。
-
-Integration 测试默认在模块加载早期跳过，避免未设置 `RUN_POSTGRES_INTEGRATION=1` 时导入 FastAPI、Agent 或 Tool 重依赖。`test_integration_guard.py` 保证默认运行 `pytest tests/integration` 时仍有一个轻量测试被收集，避免 “no tests collected” 造成非零退出码。
-
-## V2.2 第六阶段：PostgreSQL Bootstrap Script
-
-第六阶段新增本地 PostgreSQL bootstrap 脚本，用于把 V2 数据库初始化、导入和验证流程收敛成一个入口。
-
-新增脚本：
-
-- `scripts/bootstrap_postgres.py`
-
-默认行为：
-
-- 只打印计划；
-- 不连接数据库；
-- 不执行 migration；
-- 不清空或写入任何表。
-
-只有添加 `--execute` 后才会实际执行。若执行计划包含 seed、documents index 或 integration tests 等写入/清空步骤，还必须添加 `--confirm-clear`，以确认 `DATABASE_URL` 指向的是独立开发库。
-
-1. Alembic `upgrade head`；
-2. 清空并重新导入 customers/products/orders/order_items；
-3. 清空并重新索引 markdown documents 到 pgvector；
-4. 运行只读 smoke check；
-5. 可选运行真实 PostgreSQL integration tests。
-
-常用命令：
-
-```bash
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py --execute --confirm-clear
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py --execute --confirm-clear --skip-documents
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts/bootstrap_postgres.py --execute --skip-seed --skip-documents --skip-smoke
-```
-
-选项：
-
-- `--confirm-clear`：确认允许执行会清空或写入 V2 数据的步骤；
-- `--skip-seed`：跳过结构化 seed 数据重导入；
-- `--skip-documents`：跳过 pgvector documents 重新索引；
-- `--skip-smoke`：跳过 smoke check；
-- `--include-tool-smoke`：smoke 中额外调用 LangChain Tools；
-- `--run-integration`：执行真实 PostgreSQL integration tests。
-
-该脚本是本地开发和验证工具，不改变 FastAPI、Agent 或 Tool 的对外契约。
+Adapters preserve current in-process simplicity and allow a remote specialist
+later. The Harness owns lifecycle concerns; Agents retain domain reasoning.
+
+The server-owned HTTP specialist boundary is now implemented for optional remote
+RAG ownership. It remains disabled by default, uses HTTPS endpoint policy and
+bounded responses/timeouts, propagates task/run/trace/idempotency identity, maps
+network failures into the closed transport contract, and enters the production
+Registry only through `PolicyEnforcedAgentAdapter`. API payloads never select
+its endpoint or token. The Action Registry dispatches add-to-cart and
+save-preference through one persisted HITL boundary without changing the
+released confirmation endpoint. Definition-owned extra-forbidden schemas allow
+only quantity or preference-field edits. The persisted action ID is the resume
+token; edit plus confirmation remains one row-locked transaction, and Harness
+events record resumed, edited and terminal transitions. This closes V5. V6
+Slices 1-3 provide closed evaluation/replay and local/Redis coordination.
+Slice 4 adds server-owned identity binding and the PII-safe governance audit
+contract, owner-scoped storage/inspection, audit-retention enforcement and a
+default-off production emission path. Authenticated owner-data inventory,
+memory correction/deletion and confirmed full deletion are also implemented.
+Production signed-ingress identity is implemented without remote IdP/JWKS
+calls. Sanitized audit metrics/alerts are implemented. The deterministic
+governance lifecycle is now the eighth closed catalog runner under the explicit
+Slice 4 accepted baseline, completing Slice 4. Production configuration
+preflight is now implemented as a six-check static, sanitized contract.
+Explicit production mode fails application creation when identity,
+coordination, audit, transport, cleanup or runtime-limit relationships are
+unsafe; development defaults do not change. The CLI, CI artifact and internal
+health response share the same report. Service metrics/SLOs, executable
+deployment/rollback/incident checks, and the compact policy-preserving
+reference client with exact-owner payload-free run/trace inspection are now
+implemented. Clean release-candidate validation remains.
+
+Live deployment readiness is now a separate
+`shopmind.deployment-readiness.v1` boundary. It combines the stored static
+preflight result with read-only PostgreSQL connectivity and migration-head
+queries, selected local/Redis coordination construction, and a recent
+`shopmind.runtime-cleanup-evidence.v1` marker. The cleanup command atomically
+replaces that timestamp-only marker after its pruning transaction commits.
+Development omits production-only configuration/retention checks but still
+requires database, migration and coordination readiness. The endpoint returns
+200/503 from aggregate readiness; its schema cannot carry URLs, database
+identity, migration values, filesystem paths or exception text.
+
+The common Harness also feeds one process-local `RuntimeServiceMonitor`.
+`shopmind.service-metrics.v1` exposes cumulative closed operation/status,
+replay, measured usage, tool/step and latency counts; only the latest 1000
+status/duration pairs are retained for rolling SLO calculation. The monitor
+never holds high-cardinality IDs, content, tool names, error codes or request
+metadata. `shopmind.service-slo.v1` evaluates minimum sample, successful
+terminal rate and p95 latency with server-owned thresholds.
+`shopmind.service-health.v1` combines both at
+`/api/health/service-metrics` and always returns 200, leaving traffic admission
+to readiness and release-controller automation.
+
+The release controller boundary is deliberately offline.
+`shopmind.release-operation-input.v1` composes captured liveness,
+`shopmind.deployment-readiness.v1`, `shopmind.service-health.v1`, and
+`shopmind.governance-audit-health.v1` snapshots plus closed rollback
+attestations. `shopmind.release-operation-check.v1` reduces those inputs to
+seven ordered checks and a closed rollout, rollback, or incident action. It
+does not call endpoints, open a database/Redis connection, invoke an Agent, or
+run Alembic. Coordination must be explicitly passed in the nested readiness
+report; rollback additionally fails closed without a verified target and
+compatible-migration attestation.
+
+The command-line evaluator and standalone deterministic CI gate share this
+pure function. Output carries no nested snapshot, deployment artifact, URL,
+path, identifier, raw error, or configuration value. The external deployment
+platform remains responsible for scraping every replica, verifying artifacts,
+deciding schema compatibility, and performing the selected action.
+
+The compact reference client is a consumer, not a privileged control plane.
+`examples/shopmind_reference_client.py` uses only `/api/chat`,
+`/api/chat/stream`, `/api/chat/confirm`, `/api/owner-data/inspect`, and
+`/api/owner-data/runs/inspect`. A bounded injectable `httpx` transport validates
+typed JSON, ordered SSE, response/event size, timeout, redirects and endpoint
+scheme. Plain HTTP is loopback-only, remote URLs require credential-free HTTPS,
+and the CLI has no arbitrary-header or signing-secret option. Trusted ingress
+continues to own production identity.
+
+Run correlation is additive and explicit: when `include_debug=true`, JSON
+chat/confirm and the SSE `run.result` payload include opaque `run_id` and
+`trace_id`. `shopmind.owner-run-inspection.v1` then resolves exactly one of
+those selectors under the authenticated owner. The repository query includes
+the owner predicate before selecting the run and returns only operation, mode,
+status, usage, timestamps, pending-action correlation and bounded
+client-visible event metadata. Raw request/result/input/output/debug/error/
+metadata/tool-call/idempotency fields, event payloads and internal/audit events
+never cross this API boundary.
+
+## Decisions
+
+- PostgreSQL is ShopMind's system of record; SQLite is legacy/workshop support.
+- Deterministic policy surrounds model decisions and cannot be overridden by an
+  LLM route or plan.
+- Memory is stored information; context is the bounded selection shown to one
+  model step.
+- Use in-process Agents first and typed A2A-ready adapters second.
+- Do not claim an arbitrary-code sandbox until filesystem, network, process,
+  resource, and time isolation exist.
+- Stable events and replayable trajectories are designed before advanced
+  orchestration.

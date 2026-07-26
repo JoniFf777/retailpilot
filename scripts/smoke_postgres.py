@@ -1,4 +1,4 @@
-"""Read-only smoke checks for the ShopMind V2 PostgreSQL database."""
+"""Read-only smoke checks for the ShopMind PostgreSQL database."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from sqlalchemy import func, inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.core.settings import get_settings
+from app.db.version import MIGRATION_HEAD
 from app.db.models import (
     Customer,
     Document,
@@ -21,7 +22,7 @@ from app.repositories import documents as document_repository
 from app.repositories import products as product_repository
 
 
-EXPECTED_ALEMBIC_VERSION = "0003_candidate_contexts"
+EXPECTED_ALEMBIC_VERSION = MIGRATION_HEAD
 STRUCTURED_TABLES = {
     "customers": Customer,
     "products": Product,
@@ -33,6 +34,14 @@ RUNTIME_TABLES = {
     "cart_items",
     "pending_actions",
     "candidate_contexts",
+    "conversation_threads",
+    "conversation_messages",
+    "agent_runs",
+    "agent_run_events",
+    "conversation_summaries",
+    "idempotency_records",
+    "runtime_memory_records",
+    "governance_audit_records",
 }
 DOCUMENT_TABLE = "documents"
 REQUIRED_TABLES = set(STRUCTURED_TABLES) | RUNTIME_TABLES | {DOCUMENT_TABLE}
@@ -219,7 +228,7 @@ def print_report(report: SmokeReport) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run read-only smoke checks against the configured V2 PostgreSQL database."
+        description="Run read-only smoke checks against the configured ShopMind PostgreSQL database."
     )
     parser.add_argument(
         "--include-tools",

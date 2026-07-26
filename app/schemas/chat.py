@@ -92,6 +92,21 @@ class ChatResponse(BaseModel):
         description="Pending action identifier when user confirmation is required.",
         examples=["pending-action-id"],
     )
+    run_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Opaque persisted run identifier returned only when "
+            "include_debug=true."
+        ),
+        examples=["runtime-run-id"],
+    )
+    trace_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Opaque trace identifier returned only when include_debug=true."
+        ),
+        examples=["runtime-trace-id"],
+    )
     debug: Optional[dict[str, Any]] = Field(
         default=None,
         description=(
@@ -111,6 +126,8 @@ class ChatResponse(BaseModel):
                     "user_id": "demo-user",
                     "thread_id": "demo-thread",
                     "pending_action_id": "pending-action-id",
+                    "run_id": "runtime-run-id",
+                    "trace_id": "runtime-trace-id",
                     "debug": {
                         "multi_agent_handoff": {
                             "from": "multi_agent_read_path",
@@ -148,6 +165,14 @@ class ConfirmChatRequest(BaseModel):
         description="Optional conversation/thread identifier echoed back to the caller.",
         examples=["demo-thread"],
     )
+    updated_arguments: Optional[dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "Optional server-validated edits applied atomically before confirmation. "
+            "Editable fields depend on the persisted action type."
+        ),
+        examples=[{"quantity": 2}],
+    )
     include_debug: bool = Field(
         default=False,
         description="Return optional debug metadata for evaluation and troubleshooting.",
@@ -161,6 +186,7 @@ class ConfirmChatRequest(BaseModel):
                     "pending_action_id": "pending-action-id",
                     "confirmed": True,
                     "thread_id": "demo-thread",
+                    "updated_arguments": {"quantity": 2},
                     "include_debug": True,
                 },
                 {

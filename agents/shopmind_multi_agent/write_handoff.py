@@ -8,7 +8,16 @@ from typing import Any, TypedDict
 
 from app.repositories import candidate_contexts as candidate_context_repository
 from app.repositories import products as product_repository
-from tools.cart import prepare_add_to_cart
+from app.runtime import (
+    ACTION_REGISTRY,
+    ActionRequest,
+    ActionRegistryError,
+    ActionRiskClass,
+    EventVisibility,
+    ToolGateway,
+)
+from agents.shopmind_multi_agent.permissions import AGENT_TOOL_ALLOWLIST
+from tools.cart import prepare_add_to_cart, prepare_save_preference
 
 from .observability import (
     append_candidate_context_event,
@@ -17,6 +26,11 @@ from .observability import (
 
 
 WRITE_HANDOFF_TOOL_CALL = "prepare_add_to_cart"
+PREFERENCE_WRITE_HANDOFF_TOOL_CALL = "prepare_save_preference"
+WRITE_HANDOFF_GATEWAY = ToolGateway.from_allowlist(
+    {"write_handoff": AGENT_TOOL_ALLOWLIST["write_handoff"]},
+    require_explicit_capabilities=True,
+)
 DEFAULT_CANDIDATE_CONTEXT_TTL_SECONDS = 600
 MAX_CANDIDATE_CONTEXTS = 100
 PRODUCT_ID_PATTERN = re.compile(r"\bTECH-[A-Z]{3}-\d{3}\b", re.IGNORECASE)
@@ -360,12 +374,126 @@ def extract_pending_action_id(tool_result: str) -> str | None:
     return match.group(1) if match else None
 
 
+def is_preference_write_intent(message: str) -> bool:
+    lowered = message.lower()
+    return any(
+        keyword in lowered
+        for keyword in (
+            "记住",
+            "不要推荐",
+            "以后别",
+            "保存偏好",
+            "save preference",
+            "remember that",
+            "do not recommend",
+            "don't recommend",
+            "never recommend",
+        )
+    )
+
+
+def extract_preference_type(message: str) -> str:
+    lowered = message.lower()
+    for preference_type, keywords in (
+        ("budget", ("预算", "budget")),
+        ("brand", ("品牌", "brand")),
+        ("avoid", ("不要推荐", "以后别", "避免", "do not", "don't", "never")),
+        ("usage", ("用途", "usage", "use case")),
+        ("style", ("风格", "喜欢", "style", "prefer")),
+    ):
+        if any(keyword in lowered for keyword in keywords):
+            return preference_type
+    return "other"
+
+
+def _invoke_preference_write_handoff(
+    message: str,
+    user_id: str | None,
+    thread_id: str | None,
+    runtime_context: Any | None,
+    tool_gateway: ToolGateway | None,
+) -> dict[str, Any]:
+    if not user_id:
+        return {
+            "answer": "需要先提供 user_id，才能为你创建待确认的偏好保存动作。",
+            "status": "completed",
+            "tool_calls": [],
+        }
+    preference_type = extract_preference_type(message)
+    preference_value = message.strip()
+    try:
+        ACTION_REGISTRY.validate_request(
+            ActionRequest(
+                action_type="save_preference",
+                user_id=user_id,
+                thread_id=thread_id,
+                arguments={
+                    "preference_type": preference_type,
+                    "preference_value": preference_value,
+                },
+                preview=f"保存偏好：{preference_value}",
+                risk_class=ActionRiskClass.MEDIUM,
+            )
+        )
+    except ActionRegistryError:
+        return {
+            "answer": "当前无法创建偏好保存动作，请稍后重试。",
+            "status": "failed",
+            "tool_calls": [],
+        }
+    gateway = tool_gateway or WRITE_HANDOFF_GATEWAY
+    tool_result, tool_record = gateway.invoke(
+        agent_name="write_handoff",
+        tool=prepare_save_preference,
+        arguments={
+            "user_id": user_id,
+            "preference_type": preference_type,
+            "preference_value": preference_value,
+            "thread_id": thread_id,
+        },
+        context=runtime_context,
+    )
+    pending_action_id = extract_pending_action_id(tool_result)
+    if pending_action_id and runtime_context is not None:
+        runtime_context.emit_event(
+            "action.prepared",
+            visibility=EventVisibility.CLIENT,
+            agent_name="write_handoff",
+            payload={
+                "action_id": pending_action_id,
+                "action_type": "save_preference",
+                "status": "pending",
+                "risk_class": "medium",
+            },
+        )
+    return {
+        "answer": tool_result,
+        "status": (
+            "confirmation_required" if pending_action_id else "failed"
+        ),
+        "tool_calls": [PREFERENCE_WRITE_HANDOFF_TOOL_CALL],
+        "tool_call_records": [tool_record.model_dump(mode="json")],
+        "pending_action_id": pending_action_id,
+    }
+
+
 def invoke_write_handoff(
     message: str,
     user_id: str | None = None,
     thread_id: str | None = None,
+    runtime_context: Any | None = None,
+    tool_gateway: ToolGateway | None = None,
 ) -> dict[str, Any]:
     """Prepare a confirmation-required write action for explicit V3 requests."""
+
+    if is_preference_write_intent(message):
+        return _invoke_preference_write_handoff(
+            message,
+            user_id,
+            thread_id,
+            runtime_context,
+            tool_gateway,
+        )
 
     candidate_context_events: list[dict[str, Any]] = []
 
@@ -436,13 +564,36 @@ def invoke_write_handoff(
             "debug": build_candidate_context_debug(candidate_context_events),
         }
 
-    tool_result = prepare_add_to_cart.invoke(
-        {
+    try:
+        ACTION_REGISTRY.validate_request(
+            ActionRequest(
+                action_type="add_to_cart",
+                user_id=user_id,
+                thread_id=thread_id,
+                arguments={"product_id": product_id, "quantity": quantity},
+            )
+        )
+    except ActionRegistryError:
+        result = {
+            "answer": "当前无法创建该待确认动作，请稍后重试。",
+            "status": "failed",
+            "tool_calls": [],
+        }
+        if candidate_context_events:
+            result["debug"] = build_candidate_context_debug(candidate_context_events)
+        return result
+
+    gateway = tool_gateway or WRITE_HANDOFF_GATEWAY
+    tool_result, tool_record = gateway.invoke(
+        agent_name="write_handoff",
+        tool=prepare_add_to_cart,
+        arguments={
             "user_id": user_id,
             "product_id": product_id,
             "quantity": quantity,
             "thread_id": thread_id,
-        }
+        },
+        context=runtime_context,
     )
     pending_action_id = extract_pending_action_id(tool_result)
     if not pending_action_id:
@@ -450,10 +601,24 @@ def invoke_write_handoff(
             "answer": tool_result,
             "status": "failed",
             "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
+            "tool_call_records": [tool_record.model_dump(mode="json")],
         }
         if candidate_context_events:
             result["debug"] = build_candidate_context_debug(candidate_context_events)
         return result
+
+    if runtime_context is not None:
+        runtime_context.emit_event(
+            "action.prepared",
+            visibility=EventVisibility.CLIENT,
+            agent_name="write_handoff",
+            payload={
+                "action_id": pending_action_id,
+                "action_type": "add_to_cart",
+                "status": "pending",
+                "risk_class": "high",
+            },
+        )
 
     if resolved_from_candidate:
         cleared = clear_candidate_context(user_id, thread_id)
@@ -469,6 +634,7 @@ def invoke_write_handoff(
         ),
         "status": "confirmation_required",
         "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
+        "tool_call_records": [tool_record.model_dump(mode="json")],
         "pending_action_id": pending_action_id,
     }
     if candidate_context_events:

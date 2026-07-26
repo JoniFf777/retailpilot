@@ -13,6 +13,7 @@ from agents.shopmind_multi_agent import (
 from agents.shopmind_multi_agent.permissions import tools_by_name
 from agents.shopmind_multi_agent.decision_agent import decision_agent_node
 from agents.shopmind_multi_agent.rag_agent import rag_agent_node
+from app.runtime import RunContext, RunRequest
 
 
 @tool("add_to_cart")
@@ -43,6 +44,27 @@ def test_product_agent_can_call_product_tool() -> None:
     guarded = guard_tool("product_agent", fake_search_products)
 
     assert guarded.invoke({"query": "keyboard"}) == "product result for keyboard"
+
+
+def test_permissioned_tool_propagates_runtime_context_to_gateway() -> None:
+    context = RunContext(
+        request=RunRequest(
+            operation="chat",
+            user_id="USER-001",
+            thread_id="THREAD-001",
+        )
+    )
+    guarded = guard_tool(
+        "preference_agent",
+        fake_get_user_preferences,
+        runtime_context=context,
+    )
+
+    assert guarded.invoke({"user_id": "USER-001"}) == "preferences for USER-001"
+    assert context.metadata["tool_gateway_call_count"] == 1
+    assert context.metadata["tool_call_records"][0]["tool_name"] == (
+        "get_user_preferences"
+    )
 
 
 @pytest.mark.parametrize("agent_name", ["product_agent", "rag_agent", "preference_agent"])

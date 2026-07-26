@@ -53,6 +53,7 @@ def _embed_query(query: str) -> Sequence[float]:
 def _document_dict_to_langchain_document(document: dict[str, Any]) -> Document:
     metadata = dict(document.get("metadata") or {})
     for key in (
+        "id",
         "doc_type",
         "source_path",
         "source_name",

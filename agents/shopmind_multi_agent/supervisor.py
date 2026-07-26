@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from .planning import AgentPlanner, DeterministicAgentPlanner
 from .observability import append_agent_step
 from .state import ShopMindMultiAgentState
 from .supervisor_router import DeterministicSupervisorRouter, SupervisorRouter
@@ -9,6 +10,7 @@ from .supervisor_router import DeterministicSupervisorRouter, SupervisorRouter
 
 SUPERVISOR_TOOLS: list[Any] = []
 DEFAULT_SUPERVISOR_ROUTER = DeterministicSupervisorRouter()
+DEFAULT_AGENT_PLANNER = DeterministicAgentPlanner()
 
 
 def get_last_user_message(state: ShopMindMultiAgentState) -> str:
@@ -43,6 +45,8 @@ def determine_routes(
 def supervisor_node(
     state: ShopMindMultiAgentState,
     router: SupervisorRouter | None = None,
+    planner: AgentPlanner | None = None,
+    runtime_context: Any | None = None,
 ) -> dict[str, Any]:
     message = get_last_user_message(state)
     user_id = state.get("user_id")
@@ -52,6 +56,24 @@ def supervisor_node(
         router=router,
     )
     routes = list(supervisor_decision["routes"])
+    policy_metadata = getattr(
+        getattr(runtime_context, "policy", None),
+        "metadata",
+        {},
+    )
+    execution_plan = (planner or DEFAULT_AGENT_PLANNER).build_plan(
+        routes,
+        message=message,
+        routing_reasons=supervisor_decision.get("routing_reasons"),
+        run_id=getattr(runtime_context, "run_id", None),
+        parallel_enabled=bool(policy_metadata.get("parallel_read_enabled", False)),
+        max_parallelism=int(policy_metadata.get("parallel_read_max_workers", 1)),
+        retry_policy=getattr(
+            getattr(runtime_context, "policy", None),
+            "agent_task_retry_policy",
+            None,
+        ),
+    )
     safety_flags = list(state.get("safety_flags", []))
     for flag in supervisor_decision.get("safety_flags", []):
         if flag not in safety_flags:
@@ -60,6 +82,7 @@ def supervisor_node(
     return {
         "intent": supervisor_decision["intent"],
         "supervisor_decision": supervisor_decision,
+        "execution_plan": execution_plan.model_dump(mode="python"),
         "routes": routes,
         "executed_routes": [],
         "current_route": None,
@@ -71,6 +94,19 @@ def supervisor_node(
             node="supervisor",
             event="routed",
             routes=routes,
+            plan_id=execution_plan.plan_id,
+            plan_step_count=len(execution_plan.steps),
+            plan_execution_mode=execution_plan.execution_mode,
+            plan_max_parallelism=execution_plan.max_parallelism,
+            planner_type=execution_plan.planner_type,
+            planner_provider=execution_plan.metadata.get("planner_provider"),
+            planner_model=execution_plan.metadata.get("planner_model"),
+            planner_fallback_reason=execution_plan.metadata.get(
+                "planner_fallback_reason"
+            ),
+            fallback_planner_type=execution_plan.metadata.get(
+                "fallback_planner_type"
+            ),
             intent=supervisor_decision["intent"],
             confidence=supervisor_decision["confidence"],
             fallback_used=supervisor_decision["fallback_used"],

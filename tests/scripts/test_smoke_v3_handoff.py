@@ -13,7 +13,7 @@ def make_postgres_report() -> SmokeReport:
         database_url="postgresql+psycopg://postgres:***@127.0.0.1:5432/app",
         database_name="app",
         database_user="postgres",
-        alembic_version="0003_candidate_contexts",
+        alembic_version="0007_governance_audit",
         table_counts={
             "customers": 50,
             "products": 25,

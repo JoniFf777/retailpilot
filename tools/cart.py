@@ -19,6 +19,7 @@ PENDING_STATUS = cart_repository.PENDING_STATUS
 CONFIRMED_STATUS = cart_repository.CONFIRMED_STATUS
 CANCELLED_STATUS = cart_repository.CANCELLED_STATUS
 ADD_TO_CART_ACTION = cart_repository.ADD_TO_CART_ACTION
+SAVE_PREFERENCE_ACTION = cart_repository.SAVE_PREFERENCE_ACTION
 
 
 class PrepareAddToCartInput(BaseModel):
@@ -29,13 +30,30 @@ class PrepareAddToCartInput(BaseModel):
 
 
 class ConfirmAddToCartInput(BaseModel):
+    thread_id: Optional[str] = None
+    updated_arguments: Optional[dict[str, Any]] = None
     pending_action_id: str = Field(..., description="待确认动作 ID。")
     user_id: str = Field(..., description="用户 ID，必须与待确认动作所属用户一致。")
 
 
 class CancelPendingActionInput(BaseModel):
+    thread_id: Optional[str] = None
     pending_action_id: str = Field(..., description="待取消的 pending action ID。")
     user_id: str = Field(..., description="用户 ID，必须与待确认动作所属用户一致。")
+
+
+class PrepareSavePreferenceInput(BaseModel):
+    user_id: str = Field(..., min_length=1)
+    preference_type: str = Field(..., min_length=1)
+    preference_value: str = Field(..., min_length=1)
+    thread_id: Optional[str] = None
+
+
+class ConfirmSavePreferenceInput(BaseModel):
+    pending_action_id: str = Field(..., min_length=1)
+    user_id: str = Field(..., min_length=1)
+    thread_id: Optional[str] = None
+    updated_arguments: Optional[dict[str, Any]] = None
 
 
 class GetCartItemsInput(BaseModel):
@@ -76,6 +94,58 @@ def _format_product_snapshot(product: ProductRow, quantity: int) -> str:
         f"- 价格：${product['price']:.2f}\n"
         f"- 数量：{quantity}\n"
         f"- 小计：${product['price'] * quantity:.2f}"
+    )
+
+
+def resolve_pending_action(
+    pending_action_id: str,
+    user_id: str,
+    thread_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Read server-owned action metadata for confirmation dispatch."""
+
+    with _get_cart_session() as session:
+        return cart_repository.resolve_pending_action(
+            session,
+            pending_action_id=pending_action_id,
+            user_id=user_id,
+            thread_id=thread_id,
+        )
+
+
+@tool(args_schema=PrepareSavePreferenceInput)
+def prepare_save_preference(
+    user_id: str,
+    preference_type: str,
+    preference_value: str,
+    thread_id: Optional[str] = None,
+) -> str:
+    """创建保存用户偏好的待确认动作，确认前不会写入长期偏好。"""
+
+    with _get_cart_session() as session:
+        try:
+            result = cart_repository.prepare_save_preference(
+                session,
+                user_id=user_id,
+                preference_type=preference_type,
+                preference_value=preference_value,
+                thread_id=thread_id,
+            )
+            if result["status"] == PENDING_STATUS:
+                session.commit()
+            else:
+                session.rollback()
+        except Exception:
+            session.rollback()
+            raise
+    if result["status"] == "error":
+        return f"无法准备保存偏好：{result['message']}。"
+    return (
+        "已生成待确认的保存偏好动作。\n"
+        f"- pending_action_id：{result['pending_action_id']}\n"
+        f"- 偏好类型：{result['preference_type']}\n"
+        f"- 偏好内容：{result['preference_value']}\n"
+        "请用户确认后再保存，当前尚未写入长期偏好。"
     )
 
 
@@ -137,7 +207,12 @@ def prepare_add_to_cart(
 
 
 @tool(args_schema=ConfirmAddToCartInput)
-def confirm_add_to_cart(pending_action_id: str, user_id: str) -> str:
+def confirm_add_to_cart(
+    pending_action_id: str,
+    user_id: str,
+    thread_id: Optional[str] = None,
+    updated_arguments: Optional[dict[str, Any]] = None,
+) -> str:
     """确认 pending action 并真正把商品写入购物车，适合在用户明确确认加购后调用。
 
     输入字段含义：
@@ -156,9 +231,13 @@ def confirm_add_to_cart(pending_action_id: str, user_id: str) -> str:
     with _get_cart_session() as session:
         try:
             result = cart_repository.confirm_add_to_cart(
-                session, pending_action_id, user_id
+                session,
+                pending_action_id,
+                user_id,
+                thread_id=thread_id,
+                updated_arguments=updated_arguments,
             )
-            if result["status"] == CONFIRMED_STATUS:
+            if result["status"] == CONFIRMED_STATUS or result.get("message") == "pending action expired":
                 session.commit()
             else:
                 session.rollback()
@@ -189,8 +268,48 @@ def confirm_add_to_cart(pending_action_id: str, user_id: str) -> str:
     )
 
 
+@tool(args_schema=ConfirmSavePreferenceInput)
+def confirm_save_preference(
+    pending_action_id: str,
+    user_id: str,
+    thread_id: Optional[str] = None,
+    updated_arguments: Optional[dict[str, Any]] = None,
+) -> str:
+    """确认待处理动作并将偏好写入长期偏好表。"""
+
+    with _get_cart_session() as session:
+        try:
+            result = cart_repository.confirm_save_preference(
+                session,
+                pending_action_id=pending_action_id,
+                user_id=user_id,
+                thread_id=thread_id,
+                updated_arguments=updated_arguments,
+            )
+            if result["status"] == CONFIRMED_STATUS or result.get("message") == "pending action expired":
+                session.commit()
+            else:
+                session.rollback()
+        except Exception:
+            session.rollback()
+            raise
+    if result["status"] == "error":
+        return f"无法确认保存偏好：{result['message']}。"
+    preference = result["preference"]
+    return (
+        "已确认保存购物偏好。\n"
+        f"- 偏好类型：{preference['preference_type']}\n"
+        f"- 偏好内容：{preference['preference_value']}\n"
+        f"pending_action_id：{pending_action_id}"
+    )
+
+
 @tool(args_schema=CancelPendingActionInput)
-def cancel_pending_action(pending_action_id: str, user_id: str) -> str:
+def cancel_pending_action(
+    pending_action_id: str,
+    user_id: str,
+    thread_id: Optional[str] = None,
+) -> str:
     """取消待确认动作，适合在用户拒绝或放弃某个 pending action 时调用。
 
     输入字段含义：
@@ -209,9 +328,12 @@ def cancel_pending_action(pending_action_id: str, user_id: str) -> str:
     with _get_cart_session() as session:
         try:
             result = cart_repository.cancel_pending_action(
-                session, pending_action_id, user_id
+                session,
+                pending_action_id,
+                user_id,
+                thread_id=thread_id,
             )
-            if result["status"] == CANCELLED_STATUS:
+            if result["status"] == CANCELLED_STATUS or result.get("message") == "pending action expired":
                 session.commit()
             else:
                 session.rollback()
@@ -302,5 +424,8 @@ __all__ = [
     "confirm_add_to_cart",
     "cancel_pending_action",
     "get_cart_items",
+    "prepare_save_preference",
+    "confirm_save_preference",
+    "resolve_pending_action",
     "clear_cart_items",
 ]

@@ -1,0 +1,640 @@
+# ShopMind Project Status
+
+Snapshot date: 2026-07-26
+
+## Summary
+
+ShopMind is a FastAPI and LangGraph shopping-decision backend with a released V3
+public baseline, a complete V4 in-process Agent Runtime foundation, and a
+complete V5 collaboration layer with canonical planning, bounded specialist
+execution/replay, local/HTTP adapter equivalence and editable/resumable HITL.
+V6 evaluation and production-reference work is active; Slices 1-2's versioned
+catalog, accepted-baseline regression, and deterministic resilience/restart
+replay implementation are complete and PostgreSQL-verified. V6 Slice 3 now has
+typed local/Redis coordination implementations, renewable SSE admission and an
+accepted offline equivalence gate. Real two-client Redis verification now
+passes, completing Slice 3. Slice 4 now has a server-owned
+authenticated-principal/owner-binding boundary and a closed PII-safe governance
+audit contract plus fingerprint-only PostgreSQL persistence, exact-owner
+inspection, retention pruning and default-off production emission while
+preserving the V3 development default. Authenticated owner-data inventory,
+memory correction/deletion and explicitly confirmed full deletion are now
+implemented with independent deletion audit retention. The production-facing
+`signed_header` identity adapter now verifies bounded HMAC assertions and uses
+local/Redis fingerprint-only replay claims while keeping the V3 development
+default. Audit emission now has a thread-safe PII-free process monitor,
+configurable consecutive-failure alert/recovery logging and an additive
+operational health snapshot.
+The model-independent governance lifecycle gate is now explicitly accepted as
+the eighth closed V6 catalog suite, completing Slice 4. V6 Slice 5 production
+configuration preflight is now implemented with a closed sanitized report,
+fail-closed production application creation, internal health output and a CI
+artifact. The second Slice 5 substage adds closed live deployment readiness for
+PostgreSQL, migration head, selected coordination backend and recent committed
+retention cleanup evidence. The third substage now instruments the common
+Harness with bounded PII-free service counters/latencies and a versioned
+per-replica availability/p95 SLO snapshot. The fourth substage adds executable,
+versioned rollout/rollback/incident decisions over those existing health
+boundaries. The fifth substage adds the compact public-API reference client and
+an exact-owner, payload-free run/trace inspection projection. Slice 5
+functional implementation is complete. An isolated source-export rehearsal
+passes the full, integration, smoke, migration, production-preflight and
+evaluation matrix without copied Git metadata, secrets, caches or virtual
+environments. Clean validation from an immutable committed checkout remains.
+
+## Release Baseline
+
+- Version/tag: `v3.0.0`.
+- Main release commit: `c995896`.
+- Release: <https://github.com/JoniFf777/retailpilot/releases/tag/v3.0.0>
+- Endpoints: `GET /api/health`, `POST /api/chat`,
+  `POST /api/chat/confirm`.
+- Release path: multi-agent mode with deterministic Supervisor routing.
+
+## What Exists Today
+
+### Agents
+
+- A legacy V1 single Agent remains available for comparison.
+- The V3 Supervisor routes to Product, RAG, and Preference read Agents.
+- The Decision Agent combines structured summaries into the final answer.
+- LLM routing is optional and has deterministic fallback.
+- Routes, Agent steps, decisions, safety flags, and confirmation events can be
+  exposed as stable debug metadata.
+
+### Safety And HITL
+
+- Per-Agent allowlists prevent read Agents from using write tools.
+- Add-to-cart intent crosses a dedicated guarded handoff.
+- Explicit product identity or valid same-thread candidate selection is required
+  before creating a pending action.
+- `/api/chat/confirm` is the only public cart mutation boundary.
+- Pending actions support confirmation/cancellation and validate user ownership.
+- Candidate contexts are PostgreSQL-backed, bounded, and expire after ten
+  minutes.
+
+### Data And Retrieval
+
+- PostgreSQL stores business data, preferences, cart items, pending actions, and
+  candidate contexts.
+- V4.1 now adds internal runtime persistence models for conversation threads,
+  conversation messages, agent runs, run events, conversation summaries, and
+  idempotency records.
+- V4.3 adds explicit owner/thread-scoped memory records and bounded context
+  slices with provenance, priority, expiry, and token estimates.
+- V6 Slice 4 adds `governance_audit_records` with no direct owner/thread/run/
+  resource identifiers, an immutable append repository, exact-owner
+  fingerprint inspection and independent expiry pruning.
+- Additive authenticated owner-data endpoints expose a bounded inventory and
+  memory records, replace an exact-owner memory, hard-delete one memory, or
+  transactionally delete all ShopMind-owned personal runtime/business data.
+  Catalog/documents and inherited customer/order seed data are outside that
+  deletion boundary; fingerprint-only audit facts retain their own expiry.
+- V4.5 adds the first centralized `ToolGateway` slice over the V3 allowlists,
+  with structured argument, ownership, sensitive-policy, output-limit, and
+  per-run budget checks.
+- pgvector stores product and policy document chunks.
+- SQLAlchemy repositories isolate persistence from tools.
+- Alembic head is `0007_governance_audit`.
+- Bootstrap, seed, index, PostgreSQL smoke, and combined V3 smoke scripts exist.
+
+### API, CI, And Evaluation
+
+- Pydantic schemas provide OpenAPI examples for chat, selection, confirmation,
+  and cancellation.
+- Internal V4.1 runtime contracts now map the current V3 API into
+  `RunRequest`, `RunContext`, `RunResult`, `AgentEvent`, `ToolCallRecord`, and
+  a shared error model.
+- GitHub Actions runs default tests and PostgreSQL/API integration checks.
+- Event health artifacts, metrics, job summaries, and PR comments come from
+  deterministic samples.
+- LangSmith dataset/evaluation CLIs cover the V3 write handoff.
+- API identity is selected only by server configuration. The default
+  `development_payload` adapter preserves V3 behavior; explicit
+  `trusted_header` mode binds a fixed proxy-authenticated subject, while
+  `signed_header` additionally verifies timestamp/nonce/HMAC credentials and
+  one-time replay admission before Agent/stream/action execution. Both return
+  stable 401/403 failures.
+- `shopmind.governance-audit.v1` defines frozen fingerprint-only records for
+  authentication, tool, action, memory and deletion decisions. Its metadata is
+  an exact typed allowlist and cannot carry raw messages, credentials, URLs or
+  arbitrary runtime payloads. The internal repository persists that exact
+  contract, bounds owner-scoped inspection and hides expired records.
+
+### V4/V5 Complete, V6 Slice 4 Complete, And Slice 5 In Progress
+
+- The runtime Harness records the current V3 `/api/chat` and
+  `/api/chat/confirm` invocations without changing user-visible responses.
+- Request policy and budget now flow into `RunContext`; retryable failures,
+  deadlines, cancellation checks, step/tool-call budgets, structured control
+  errors, and finalization events share one lifecycle.
+- Server-owned settings now resolve retries and optional duration, step, tool,
+  and prompt budgets for every API-originated run. Sensitive-tool policy stays
+  deny-first and is enabled only for the confirmation operation.
+- Completed idempotent requests replay their persisted result without invoking
+  tools or appending messages; conflicting or in-progress keys are rejected
+  before execution.
+- Conversation, message, run, summary, event, and idempotency repositories now
+  follow the existing SQLAlchemy session-backed repository style.
+- Runtime retention now has a concrete cleanup path through
+  `scripts/cleanup_runtime_persistence.py`, alongside the existing
+  candidate-context cleanup script.
+- Default local tests cover the new contracts, repositories, Harness, and V3
+  backward-compatibility path.
+- Current V4.1-V6 Slice 5 validation is `668 passed, 6 skipped`;
+  reference-client/API/docs focused coverage is `58/58`. The two
+  real Redis integration cases remain explicit opt-ins in
+  the default suite.
+- PostgreSQL integration passes `23/23`, including fresh-store restart,
+  repository isolation and Harness governance emission assertions; combined
+  PostgreSQL/Redis integration passes `25/25`. PostgreSQL smoke passed at
+  migration `0007_governance_audit`, and V3 API handoff smoke passed `3/3`.
+- V4.2 intentionally does not include async graph execution, Redis, or remote
+  A2A; V4.3 memory loading is limited to the explicit local records and
+  conversation sources described above.
+- V4.3 provides explicit memory record repositories and a deterministic context
+  manager; automatic long-term memory extraction and compaction remain out of
+  scope for this slice.
+- V4.4 adds `/api/chat/stream` SSE over the ordered Harness event sequence and
+  keeps `/api/chat` as the complete JSON compatibility path. The current bridge
+  streams lifecycle events and a final `run.result`; token-level provider
+  streaming and hard interruption remain future work.
+- V4.4's second slice bounds each SSE event queue and applies local in-process
+  admission control. A full limit returns HTTP 429, while queue pressure
+  requests Harness cancellation without changing the V3 JSON path.
+- V4.5's first slice routes the existing V3 permission wrapper through a
+  centralized capability registry. Invalid arguments, cross-user/thread
+  references, disallowed sensitive tools, and exhausted tool budgets fail before
+  delegation; generic action types and OS sandboxing remain future work.
+- V4.5's second slice adds typed action definitions, risk/preview/expiry fields,
+  row-locked confirmation transitions, and user/thread checks for pending actions.
+- V4.5's third slice routes `/api/chat/confirm` through the `confirmation_boundary`
+  capability. Sensitive tools require the explicit approved runtime policy, and
+  gateway-generated `ToolCallRecord` data is preserved by the Harness.
+- V4.5's fourth slice routes actual V3 read-tool delegation through
+  `ToolGateway.invoke`, so validation and execution no longer use separate paths;
+  legacy tool arguments and public responses remain unchanged.
+- V4.5's fifth slice binds a fresh `RunContext` to each V3 read graph invocation,
+  enabling per-run ownership and tool-budget enforcement without shared mutable
+  Agent state.
+- V4.5's sixth slice carries read-tool gateway records into `RunResult` and emits
+  ordered `tool.call.completed` audit events before terminal run events; public
+  API responses remain unchanged.
+- V4.5's seventh slice records failed tool attempts with safe error metadata,
+  persists the failure record, and emits `tool.call.failed` before `run.failed`
+  without exposing underlying tool exception text through public responses.
+- V4.5's eighth slice routes pending-action confirmation/cancellation through a
+  typed `ActionTransitionRequest`; the registry validates action identity and
+  rejects duplicate action definitions before selecting the transition tool.
+- V4.5's ninth slice validates action creation through the same registry before
+  the V3 write handoff creates a pending action; rejected definitions stop
+  safely without changing valid add-to-cart responses.
+- V4.5's tenth slice routes `prepare_add_to_cart` through a dedicated gateway
+  capability classified as `WRITE`; only confirm and cancel remain sensitive
+  cart boundaries, and prepare audit records are persisted by the Harness.
+- V4.5's eleventh slice adds cooperative gateway execution controls: cancelled
+  or timed-out runs skip tool invocation with structured audit records, while
+  per-capability duration overruns remain audit metadata after successful
+  provider return.
+- V4.5's twelfth slice rejects blank and duplicate action/tool capability
+  definitions during registry construction as well as later registration, so
+  policy entries cannot be silently overwritten.
+- V4.5's thirteenth slice adds typed, capability-owned database resource policy
+  to `ToolCallRecord` audit data. Current registered catalog/document/preference
+  tools are database reads, while prepare/confirm/cancel cart operations are
+  database writes. Future network tools must supply an HTTPS host allowlist.
+- V4.5's fourteenth slice makes production Gateway construction strict against
+  the explicit V3 capability policy manifest. A newly allowed tool without a
+  declared side-effect, confirmation, and resource policy fails before it can
+  enter the multi-agent, write-handoff, or confirmation path.
+- V4.5's fifteenth slice declares allowed Agent ownership in the same manifest.
+  Strict Gateway construction now rejects allowlist drift that assigns an
+  otherwise valid tool to a different Agent.
+- V4.5's sixteenth slice exposes the capability manifest as read-only and
+  validates it directly against the production V3 allowlist, preventing runtime
+  mutation and test-fixture drift.
+- V4.5's seventeenth slice also freezes nested `ToolResourcePolicy` contracts,
+  preventing mutation of database or future network access declarations through
+  an otherwise read-only manifest entry.
+- V4.5's eighteenth slice validates confirmation semantics during capability
+  registration: sensitive writes require confirmation, and non-write tools
+  cannot declare it.
+- V4.5's nineteenth slice includes the confirmation requirement in structured
+  tool-call records and Harness audit events for persistence, streaming, and
+  evaluation consumers.
+- V5's first slice adds typed `AgentTask`/`AgentResult` contracts and an
+  `InProcessAgentAdapter` that verifies recipient and task-result identity
+  before a local handler runs. No HTTP/A2A transport or parallel fan-out is
+  introduced.
+- V5's second slice routes the existing product specialist through a typed
+  local adapter bridge. It preserves current V3 state updates, tool selection,
+  route order, and public API behavior.
+- V5's third slice routes the existing RAG specialist through the same local
+  adapter boundary. Existing RAG filtering and graph updates remain intact, and
+  retrieved citation document IDs become typed `AgentResult.evidence_references`.
+- V5's fourth slice routes the existing preference specialist through the local
+  adapter and preserves its exact task `user_id` when reading preferences. All
+  current V3 read specialists now use typed local adapter bridges, while their
+  graph route order and public API behavior remain unchanged.
+- V5's fifth slice validates task parent/depth identity and applies a shared,
+  thread-safe delegation budget guard before each local handler. The guard
+  rejects over-depth tasks and over-limit children of the same parent; the
+  current V3 graph still creates root tasks only and does not enable fan-out.
+- V5's sixth slice carries RAG document evidence references through the graph
+  and records a conservative product-document scope mismatch in the structured
+  decision when their product IDs do not overlap. It is observability only and
+  does not change the user response, routes, or write policy.
+- V5's seventh slice adds typed evidence conflict/resolution contracts and
+  resolves that mismatch fail closed: the Decision Agent excludes the
+  mismatched RAG summary, preserves non-conflicting summaries and reference
+  IDs, and asks the user to clarify the product model. Matching evidence keeps
+  the existing combined-read behavior.
+- V5's eighth slice adds typed plan/step contracts and a deterministic route-plan
+  builder. Plans validate unique step IDs, dependency references, acyclic
+  dependencies, and execution-mode parallelism. Current read steps are marked
+  logically independent, but execution remains sequential with
+  `max_parallelism=1` and the existing dispatcher stays authoritative.
+- V5's ninth slice adds typed plan-step/plan result contracts and a local bounded
+  executor. Parallel mode is disabled by default, limited to independent steps,
+  and preserves plan order during fan-in while deduplicating evidence and
+  aggregating usage. Step exceptions become sanitized runtime errors. The
+  executor is not connected to the V3 graph or public configuration yet.
+- V5's tenth slice adds server-owned parallel-read settings (default off, one to
+  three workers), isolated per-step graph state, and deterministic fan-in state
+  mapping. Settings flow into runtime policy metadata but remain inert because
+  shared runtime/tool counters are not yet approved for concurrent mutation.
+- V5's eleventh slice adds a private metadata lock and stable snapshots to each
+  `RunContext`. Tool calls atomically reserve budget before execution and carry
+  ordered `audit_sequence` values, preventing concurrent budget overruns, lost
+  records, and completion-order audit drift.
+- V5's twelfth slice connects the server-owned parallel-read feature gate to the
+  graph. Explicitly enabled multi-route reads use isolated specialist state and
+  deterministic typed fan-in; default, single-route, and write paths remain
+  sequential. Equivalence, partial failure, atomic shared-budget, and
+  pre-execution cancellation tests preserve the V3 API and safety behavior.
+- V5's thirteenth slice binds local cancellation and event callbacks to
+  `RunContext` without serializing them. Plan workers cancel queued steps before
+  execution, emit atomically sequenced lifecycle events, and allow already
+  running synchronous calls to finish. Cancelled-run finalization preserves
+  their real completed/failed tool records and audit events.
+- V5's fourteenth slice adds an injectable planner protocol and validates every
+  provider proposal against a server-compiled canonical plan. Route/intent,
+  step/dependency, run identity, execution-mode, or parallelism drift triggers
+  sanitized deterministic fallback. Accepted proposals are recompiled rather
+  than trusted. No production planner setting or model invocation exists yet.
+- V5's fifteenth slice adds `SHOPMIND_AGENT_PLANNER=llm` as an explicit,
+  default-deterministic switch for a lazy LangChain structured-output provider.
+  Provider output still passes the canonical validator and fallback. Router and
+  planner modes are independent, and empty/write plans skip model invocation.
+  Default tests use fake structured models only.
+- V5's sixteenth slice adds a local planner policy evaluation: 10 fixed
+  accepted/adversarial/fallback/write-guard trajectories with 70 canonical
+  checks. The text/JSON CLI is model- and LangSmith-independent, sanitizes
+  provider failures, and currently passes `10/10` cases and `70/70` checks.
+- V5's seventeenth slice makes the deterministic planner policy suite a default
+  CI gate. CI pins deterministic planner mode, writes the readable result to the
+  workflow summary, and uploads the full JSON as `v5-planner-policy-eval` even
+  when the gate reports policy failures. No planner model or credential is used.
+- V5's eighteenth slice adds six fixed graph trajectory replays with 72 checks
+  across complete fan-out/fan-in, partial failure, atomic shared tool/step
+  budgets, pre-execution cancellation, and cooperative queued-step cancellation. Replays
+  exercise the production graph, adapters, Gateway, executor, and Decision
+  boundary with fake tools only. Their normalized versioned result excludes
+  thread order, generated IDs, and timing. Its original baseline passed `6/6`,
+  `72/72`; the twenty-second slice extends this gate as described below.
+  Parallel plan workers now receive independent copies of the parent execution
+  context, preserving request-local context variables without sharing a mutable
+  `Context`; this also keeps the replay's tracing-disabled boundary offline.
+- V5's nineteenth slice makes graph trajectory replay a default CI gate. It
+  publishes a readable workflow summary and uploads the versioned JSON as
+  `v5-plan-trajectory-eval`, independently of the planner policy artifact. Both
+  gates run with deterministic planning and without model or tracing traffic.
+- SSE finalization now flushes every event delivery already accepted from the
+  worker before enqueueing the final result/error or stream terminator. This
+  closes a thread/event-loop race without changing bounded-buffer overflow
+  cancellation or the V3 JSON endpoints.
+- V5's twentieth slice atomically reserves local Agent task steps in the shared
+  delegation guard before handlers run. Admissions are isolated by run/task ID,
+  use the stricter server-trusted/task budget, and return the stable
+  `plan.step_budget_exceeded` code before a denied task can invoke a tool. Plan
+  step identity now propagates into typed tasks on sequential and parallel paths.
+- V5's twenty-first slice adds non-negative cost to `RunUsage`, carries typed
+  usage through sequential/parallel specialist state and deterministic fan-in,
+  and persists the aggregate on `RunResult`. The shared guard atomically
+  reconciles every completed invocation against the stricter server/task
+  prompt, completion, total-token, and cost ceilings. Missing or incomplete
+  measurement fails closed when a ceiling is configured; repeated execution is
+  charged again and run accounting remains isolated. Default unset ceilings
+  preserve V3 behavior.
+- V5's twenty-second slice checks delegation deadline and run-duration budgets
+  before local handlers and again after they return or raise. The earliest
+  task/server deadline and stricter task/server duration are authoritative;
+  stable plan errors use the timeout source and record admission versus
+  reconciliation. Synchronous calls are not force-terminated. Two offline
+  expired-time scenarios extend graph trajectory replay to `8/8` cases and
+  `96/96` checks, both with zero specialist tool calls.
+- V5's twenty-third slice adds a runtime-checkable `AgentAdapter` protocol and
+  shared invocation boundary for recipient, result type, and task-ID
+  validation. All three specialist graph bridges depend on this protocol while
+  their production factories remain in-process. The conformance suite includes
+  a structural protocol-only adapter and graph bridge; no remote transport,
+  endpoint configuration, or A2A network behavior exists.
+- V5's twenty-fourth slice adds an immutable exact-recipient adapter registry.
+  It rejects duplicate, malformed, unknown, and non-Protocol registrations.
+  The server-owned graph factory registers only the three current in-process
+  specialists, all sharing one trusted delegation guard. Registry selection is
+  not exposed through API input or configuration, and remote adapters remain
+  unavailable in production.
+- V5's twenty-fifth slice makes delegation policy transport-independent.
+  `InProcessAgentAdapter` is now a local typed transport only, while
+  `PolicyEnforcedAgentAdapter` applies the shared admission, time, usage, and
+  result-validation lifecycle around any Protocol implementation. All three
+  production factory entries use this decorator and the same trusted guard; a
+  protocol-only transport test confirms budgets apply before transport calls.
+- V5's twenty-sixth slice makes policy wrapping mandatory for production
+  registration. The generic registry remains transport-neutral by default,
+  while its explicit policy-required mode rejects bare transports at
+  construction. The server-owned ShopMind factory always enables that mode and
+  exposes it as read-only diagnostic state; contract tests cover the fail-closed
+  boundary.
+- V5's twenty-seventh slice sanitizes Registry/graph/Harness failures. Unknown
+  executor text is no longer persisted, and adapter contract plus delegation
+  budget failures receive stable typed mappings without changing Tool Gateway
+  errors. Complete parallel-graph fault injection covers private transport
+  exceptions and wrong task IDs; both retain successful fan-in and expose only
+  `plan.step_failed`. Registry testing confirms timeout reconciliation still
+  wins over a private transport exception.
+- V5's twenty-eighth slice introduces `AgentTransportError` with three
+  server-defined failure classes, internally derived safe messages/source, and
+  a required boolean retriable flag. Harness retries consume this typed signal;
+  plan results preserve its code/source/retriability without replaying parallel
+  steps. Invalid arbitrary codes and non-boolean retry flags fail closed.
+- V5's twenty-ninth slice adds frozen `AgentTaskRetryPolicy` and deterministic
+  task idempotency keys. Only the Plan Executor may own a multi-attempt policy;
+  task identity must remain stable, every attempt must be accounted, and unsafe
+  combinations fail validation. All production specialist tasks receive the
+  runtime-derived key but remain retry-disabled with one attempt. Replay awaits
+  failed-attempt usage reconciliation.
+- V5's thirtieth slice requires typed usage on every transport failure and
+  reconciles it through the shared delegation guard before propagation. Plan
+  fan-in and Harness retry/finalization aggregate failed and successful attempt
+  usage without converting unknown metrics to zero. Failed usage that is
+  missing or over budget blocks replay; production specialist replay remains
+  disabled.
+- V5's thirty-first slice carries one frozen server-owned retry policy from the
+  runtime through canonical plan steps into generated tasks. Production remains
+  disabled at one attempt by default; explicit configuration is capped at three
+  attempts and permits only typed unavailable/timeout failures. The Plan
+  Executor preserves task identity/idempotency, checks cancellation between
+  attempts, and aggregates all measured usage. Planner proposals cannot widen
+  this policy, and opt-in sequential plans use the same typed executor.
+- V5's thirty-second slice adds frozen structured attempt-event payloads and
+  emits ordered attempt/retry lifecycle events through the existing Harness
+  sequence. The same events are persistable run events and streamable SSE
+  events. Five deterministic transport fault scenarios cover retry
+  scheduled/started, success after retry, exhausted attempts, non-retriable
+  failure, usage-budget blocking, and cancellation before replay. The offline
+  graph gate now passes `13/13` cases and `195/195` checks under the versioned
+  `shopmind.plan-trajectory-eval.v2` artifact, while the default remains one
+  specialist attempt.
+- V5's thirty-third slice implements a bounded HTTPS `HttpAgentAdapter` with a
+  fixed host allowlist, no redirects, typed wire schemas, identity propagation,
+  response limits and sanitized transport failures. Its offline equivalence
+  gate passes `5/5` cases and `24/24` checks without network access.
+- V5's thirty-fourth slice lets server configuration select that transport for
+  RAG only. It remains disabled by default, fails closed when endpoint policy is
+  incomplete, and keeps the same policy wrapper, Supervisor and graph contract.
+- V5's thirty-fifth slice resolves pending action type from persisted scope and
+  dispatches registered add-to-cart or save-preference handlers through the
+  same confirmation boundary. Preference preparation has no final side effect;
+  confirm/cancel/expiry/duplicate/scope/failure paths emit ordered `action.*`
+  events. The offline gate passes `7/7` cases and `28/28` checks.
+- V5's thirty-sixth slice adds exact Registry-owned edit schemas and an optional
+  `updated_arguments` confirmation field. Add-to-cart permits only positive
+  integer quantity edits; save-preference permits only normalized type/value
+  edits. The handler applies edits and confirmation under one row lock and
+  transaction, while owner/thread/type/risk/expiry/handler remain server-owned.
+  Persisted action IDs resume without graph memory and emit ordered
+  `action.resumed/edited/confirmed` events. PostgreSQL proves edit-confirm,
+  reject, expiry and idempotent replay across fresh sessions. The action gate is
+  now `shopmind.action-lifecycle-eval.v2` at `10/10` cases and `60/60` checks.
+- The V5 exit condition is satisfied: canonical planning, bounded parallel
+  collaboration, evidence conflict handling, shared delegation budgets,
+  equivalent local/HTTP specialist contracts and generalized HITL are all
+  executable without changing Supervisor business logic or the V3 API.
+- V6 Slice 1 adds a closed `shopmind.evaluation-catalog.v1` manifest over five
+  server-registered deterministic suites and requires explicit coverage for ten
+  dimensions: per-Agent, router, answer, trajectory, multi-turn, memory,
+  safety, latency, token, and cost. The accepted baseline locks every suite's
+  artifact schema and minimum case/check counts. The comparison fails closed
+  on missing suites/categories, schema or count shrinkage, quality/safety
+  decline, or increased latency/token/cost regression counts. It currently
+  passes `5/5` suites, `45/45` cases, `356/356` suite checks, and `33/33`
+  baseline checks. CI publishes readable and JSON results and never accepts a
+  new baseline automatically.
+- V6 Slice 2 adds terminal-only, owner/thread-scoped normalized trajectory
+  snapshots over existing persisted runs/events, with contiguous sequence,
+  trace/identity and terminal-status validation. Raw request, result, output,
+  debug, tool and event payloads are hashed; a closed safe scalar event
+  classification remains available for assertions.
+- The required resilience suite covers provider fallback, Tool Gateway failure,
+  transport retry success, cancellation before retry, idempotent replay after a
+  fresh store, and action resume after a fresh store. It passes `6/6` cases and
+  `72/72` checks. The expanded catalog passes `7/7` suites, `56/56` cases,
+  `446/446` suite checks, and `43/43` baseline checks against the explicitly
+  tracked Slice 3 baseline.
+- Two PostgreSQL integration assertions add retry/idempotency and action resume
+  replay through a newly created engine/session factory. The expanded
+  integration suite passes `18/18`.
+- V6 Slice 3's first substage defines PII-safe coordination inputs and typed
+  admission, renewal, release, rate-limit, duplicate-claim and bounded-cache
+  decisions. The local backend uses one lock, injectable monotonic time, TTL
+  cleanup and explicit cardinality/value-size limits. It passes `8/8` focused
+  contract tests; the complete runtime group now passes `166/166`.
+- The second substage adds a server-owned factory and configuration contract.
+  Local remains the default. Explicit Redis selection requires a secret URL,
+  installed client and reachable service; configuration/connection failures
+  are sanitized and fail closed. Unknown values preserve compatibility by
+  normalizing to local.
+- SSE admission now uses renewable opaque leases and token-specific release
+  through the selected backend. Existing capacity exhaustion remains HTTP 429
+  and stream event/result behavior is unchanged.
+- The third substage adds versioned Redis same-slot keys and atomic Lua
+  admission, rate-limit, deduplication and bounded TTL/LRU cache operations.
+  Offline local/Redis equivalence passes `5/5` cases and `18/18` checks. The
+  expanded catalog passes `7/7` suites, `56/56` cases, `446/446` suite checks
+  and `43/43` accepted-baseline checks. The default-skipped two-client real
+  Redis gate passed with concurrent atomic admission and server TTL/cache
+  expiry; combined PostgreSQL/Redis integration passes `22/22`.
+- V6 Slice 4's first substage adds `AuthenticatedPrincipal` and
+  `IdentityBoundary`, with server-selected compatibility/trusted-header modes
+  and pre-execution owner binding.
+- The second substage adds `GovernanceAuditFactory` and the frozen
+  `shopmind.governance-audit.v1` schema. Every direct identity is reduced to a
+  domain-separated fingerprint, operation/decision/reason values are closed,
+  and category-specific metadata rejects arbitrary fields. Typed converters
+  cover current authentication, Tool Gateway, action, memory and deletion
+  boundaries without adding a public API.
+- The third substage adds `governance_audit_records` and an immutable repository.
+  Exact owner fingerprints are mandatory for inspection, results are
+  newest-first and capped, expired rows are hidden, and the existing runtime
+  cleanup command prunes only audit rows past their independent retention.
+- The fourth substage adds server-owned, default-off production emission.
+  Identity allow/deny decisions and Harness-projected typed tool, closed action
+  lifecycle and selected persisted-memory facts use independent best-effort
+  transactions and deterministic IDs. Sanitized storage failure cannot change
+  HTTP, Agent or action results.
+- The fifth substage adds four authenticated owner-data lifecycle endpoints.
+  Inspection is bounded to 100 memory records and returns fixed category
+  counts. Correction and memory deletion require an exact owner match; full
+  deletion additionally requires a UUID request and literal confirmation.
+  One transaction deletes preferences, cart/pending/candidate state and all
+  owner conversation/run/event/summary/idempotency/memory rows. PII-safe memory
+  and deletion request/execute facts remain independently retained. Cross-owner,
+  duplicate-by-effect, sanitized failure and real PostgreSQL trajectories are
+  executable.
+- The sixth substage adds server-selected `signed_header` identity. A
+  short-lived versioned HMAC assertion covers the normalized subject, epoch
+  timestamp and nonce. Invalid, expired, replayed and backend-unavailable
+  assertions share one public 401 response; one-time claims use only
+  fingerprints and are atomic across Redis clients. The default remains
+  `development_payload`, and request bodies still cannot carry identity mode,
+  roles, scopes or credentials.
+- The seventh substage adds `shopmind.governance-audit-monitor.v1`. Exact
+  process counters cover closed emitter outcomes and records without retaining
+  audit facts or raw identity/payload data. Three consecutive failures activate
+  a configurable sanitized alert, a successful/duplicate commit recovers it,
+  and `/api/health/governance-audit` returns the process snapshot without
+  changing liveness or business outcomes.
+- The eighth substage adds `shopmind.governance-lifecycle-eval.v1` with signed
+  identity replay/owner denial, memory inspection/correction/deletion, full
+  owner deletion and duplicate-by-effect execution, audit alert/recovery, and
+  immutable audit persistence/idempotency. It passes `5/5` cases and `42/42`
+  checks. The explicitly tracked `shopmind-v6-slice4-accepted` baseline now
+  closes `8/8` suites, `61/61` cases, `488/488` suite checks and `48/48`
+  comparisons; CI runs and publishes the governance artifact before the catalog
+  gate.
+- V6 Slice 5's first substage adds `shopmind.production-preflight.v1`. Six
+  static, closed checks cover identity, coordination topology, audit emission,
+  RAG transport, retention cleanup and runtime bounds. Explicit production
+  mode blocks application creation when any check fails; development remains
+  the default and reports `not_applicable`. The CLI, internal health route and
+  CI artifact contain no configuration values or raw exceptions.
+- V6 Slice 5's second substage adds `shopmind.deployment-readiness.v1`. Five
+  closed live checks combine static preflight state with PostgreSQL
+  connectivity, exact migration head, selected local/Redis coordination and
+  recent cleanup success evidence. Cleanup writes a minimal atomic
+  `shopmind.runtime-cleanup-evidence.v1` marker only after commit. The health
+  endpoint, CLI and PostgreSQL CI artifact use only closed reasons and never
+  serialize dependency values, paths or raw errors.
+- V6 Slice 5's third substage adds `shopmind.service-metrics.v1`,
+  `shopmind.service-slo.v1` and `shopmind.service-health.v1`. The Harness
+  observes every terminal chat/confirmation request once. Cumulative closed
+  counters and a fixed 1000-entry outcome/latency window have no identity,
+  request or payload labels. Configured minimum sample, success-rate and p95
+  targets produce only `insufficient_data|met|breached`; the internal endpoint
+  always returns HTTP 200 and cannot alter business or readiness outcomes.
+- V6 Slice 5's fourth substage adds `shopmind.release-operation-input.v1` and
+  `shopmind.release-operation-check.v1`. Seven ordered checks compose captured
+  liveness, readiness, coordination, service-SLO, audit-monitor and rollback
+  target/migration evidence without making network, database or migration
+  calls. Deployment, rollback and incident modes emit only closed decisions.
+  Unverified/incompatible rollback evidence fails closed. The standalone
+  `shopmind.release-operations-eval.v1` gate passes `7/7` cases and `42/42`
+  checks in CI without changing the accepted catalog baseline.
+- V6 Slice 5's fifth substage adds
+  `examples/shopmind_reference_client.py` for bounded JSON chat, ordered SSE,
+  registered HITL resume, memory inspection and run/trace inspection through
+  public APIs only. Additive debug responses expose opaque run/trace IDs.
+  `shopmind.owner-run-inspection.v1` requires exact-owner authentication and
+  returns only run status/usage/timestamps plus at most 100 client-visible
+  event summaries; content, arbitrary payloads, errors, debug metadata,
+  idempotency data and internal/audit events are excluded.
+
+## V3 Validation Record
+
+- Full local suite: `227 passed, 4 skipped`.
+- Deterministic router: `7/7` exact matches.
+- LLM fallback router: `7/7` exact matches.
+- PostgreSQL integration: `12/12`.
+- API handoff smoke: `3/3`.
+- LangSmith experiment `shopmind-v3-handoff-ef66ba2f`: 2 root runs, 0 errors.
+- LangSmith deterministic feedback: `6/6` scores at `1.0`.
+- Evaluation-owned runtime rows cleaned to zero.
+
+See `docs/v3_release_notes.md` for the immutable release record.
+
+## Remaining Scope To Project Completion
+
+| Capability | Current state | Completion target |
+| --- | --- | --- |
+| Remote specialist | Default-off server-owned HTTP RAG transport, policy-required Registry selection and 5/5 equivalence gate | Add deployment/operational checks only where V6 production requirements need them; do not distribute every Agent |
+| Generic HITL | Add-to-cart/save-preference prepare, edit, approve, reject, resume, expire and replay through exact registered schemas and persisted IDs | V5 target met; V6 adds catalog-level regression and governance coverage |
+| Planner decomposition | Canonical deterministic/validated provider plans with bounded multi-step parallel execution | V5 target met; V6 catalogs per-Agent and trajectory quality baselines |
+| Evidence conflicts | Typed provenance, product/document mismatch detection and fail-closed resolution | V5 target met; V6 versions broader evidence/safety datasets |
+| Memory lifecycle | Explicit records, summaries, bounded context/cleanup, authenticated inspection, correction and hard deletion | Automatic extraction/compaction only after the new lifecycle is accepted into regression baselines |
+| Streaming control | SSE lifecycle events, bounded buffers and cooperative cancellation | Provider token streaming and documented hard/soft cancellation boundaries where supported |
+| Distributed operations | Local default plus explicit atomic Redis admission, rate limits, deduplication and bounded cache; static topology validation, live database/migration/coordination readiness and executable rollout/rollback/incident checks | Aggregate per-replica telemetry in the deployment platform; do not add distributed coordination without a concrete runtime need |
+| Production governance | Server-owned development/trusted/signed identity boundary, authenticated owner binding, closed PII-safe audit/persistence/retention/default-off emission, audit alerts, owner-data lifecycle, accepted offline regression, production preflight/readiness, service SLOs, release-operation checks and a policy-preserving reference client | Complete clean release validation and release documentation |
+| Evaluation platform | Closed ten-dimension catalog, eight deterministic suites, normalized restart/coordination/governance replay, accepted Slice 4 baseline CI comparison and standalone release-operations gate | Add the operations gate to the accepted catalog only after explicit baseline review |
+
+Full commerce, checkout, payment, fulfillment and storefront UI remain explicit
+non-goals; they are not required for V6 completion.
+
+## Current Risks
+
+- Remote adapter endpoint trust, response-size and server credential policy are
+  enforced; deployment identity/mTLS and operational monitoring remain V6 work.
+- Synchronous providers and tools cannot be force-terminated once running;
+  cancellation and timeouts are cooperative at current boundaries.
+- Automatic memory extraction/compaction is intentionally absent, so persisted
+  memory evolution still requires explicit writes and summaries.
+- Tool Gateway resource declarations are application policy, not database-role,
+  network, process or OS isolation.
+- Local admission control does not coordinate multiple API processes; operators
+  must explicitly configure Redis mode for that boundary.
+- Governance emission remains intentionally default-off as an explicit
+  operator opt-in even though its lifecycle suite is accepted. Metrics are
+  process-local, so operators must scrape every replica. Signed ingress requires
+  protected shared-secret distribution and Redis coordination when more than
+  one API process accepts requests.
+- Production preflight validates declared relationships only. The separate live
+  readiness contract now proves PostgreSQL/selected Redis reachability, exact
+  migration head and a recent committed cleanup marker. It cannot prove proxy
+  header stripping, future scheduler execution, certificate identity or secret
+  rotation; the release-operation check therefore consumes explicit
+  deployment-controller evidence rather than claiming to prove those facts.
+- Service metrics and their 1000-observation SLO window are process-local and
+  reset on process restart. Operators must scrape every replica and aggregate
+  externally; the JSON health surface is not a durable metrics warehouse.
+- Rollback target verification and schema compatibility are trusted
+  deployment-controller attestations. The check fails closed when either is
+  unverified, but deliberately does not perform destructive Alembic downgrade
+  or prove backup restoration.
+- The reference client intentionally cannot inject trusted/signed identity
+  headers. Production use must pass through the configured trusted ingress;
+  the client is not an authentication credential generator.
+- V4-V6 remain in a large dirty worktree and have not been proven from a clean
+  committed release candidate or published after `v3.0.0`. The isolated
+  source-export rehearsal passed, but HEAD remains V3 `c995896`; that rehearsal
+  is deliberately not treated as Git provenance or a clean-checkout proof.
+
+## Next-Window Handoff
+
+1. Read `AGENTS.md` and `.local/retailpilot-runbook.md`.
+2. Check the worktree before touching files.
+3. Run read-only PostgreSQL smoke; do not reseed by default.
+4. The isolated source-export rehearsal has passed. Do not clean or reuse the
+   current intentionally dirty implementation worktree as the final proof.
+5. Only after explicit authorization materializes a reviewed immutable V4-V6
+   reference, validate a fresh checkout of that exact reference and require
+   clean status before and after the release matrix.
+
+## Historical Documents
+
+- `docs/v2_infra_upgrade_handoff.md` - completed V2 infrastructure.
+- `docs/v3_multi_agent_handoff_summary.md` - chronological V3 implementation.
+- `docs/v3_release_notes.md` - formal V3.0.0 release.
+- `docs/v3_api_handoff_contract.md` - current V3 caller contract.
+
+Historical files explain how V3 was built; the active roadmap is `PLAN.md`.

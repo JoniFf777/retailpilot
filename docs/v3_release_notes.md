@@ -86,4 +86,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation/
 
 ## Next Release Line
 
-V4 will extend the same confirmation and evaluation architecture to the remaining cart lifecycle operations before adding checkout or other higher-risk writes.
+V4 will build the Agent Runtime Foundation around the released graph: unified
+execution harness, durable conversation memory, bounded context construction,
+SSE streaming and cancellation, and a centralized tool-policy layer. The active
+scope and ordering live in `PLAN.md`; this release note remains the V3 record.

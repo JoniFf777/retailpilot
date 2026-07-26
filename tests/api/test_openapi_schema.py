@@ -24,7 +24,11 @@ def test_openapi_chat_schemas_include_v3_handoff_examples() -> None:
         "description"
     ]
     assert chat_response["examples"][0]["pending_action_id"] == "pending-action-id"
+    assert "run_id" in chat_response["properties"]
+    assert "trace_id" in chat_response["properties"]
     assert confirm_request["examples"][0]["confirmed"] is True
+    assert confirm_request["examples"][0]["updated_arguments"] == {"quantity": 2}
+    assert "updated_arguments" in confirm_request["properties"]
     assert confirm_request["examples"][1]["confirmed"] is False
 
 
@@ -41,3 +45,12 @@ def test_openapi_paths_reference_chat_contract_schemas() -> None:
 
     assert chat_body_ref.endswith("/ChatRequest")
     assert confirm_body_ref.endswith("/ConfirmChatRequest")
+    assert any(
+        parameter["name"] == "Idempotency-Key"
+        for parameter in paths["/api/chat"]["post"]["parameters"]
+    )
+    assert "/api/health/governance-audit" in paths
+    assert "/api/health/preflight" in paths
+    assert "/api/health/readiness" in paths
+    assert "/api/health/service-metrics" in paths
+    assert "/api/owner-data/runs/inspect" in paths

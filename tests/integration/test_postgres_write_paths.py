@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -108,3 +109,151 @@ def test_postgres_cart_pending_confirm_write_path(postgres_session, smoke_user_i
     assert len(cart_items) == 1
     assert cart_items[0]["product_id"] == product_id
     assert cart_items[0]["quantity"] == 2
+
+
+def test_postgres_generic_preference_action_write_path(postgres_session, smoke_user_id):
+    prepared = cart_repository.prepare_save_preference(
+        postgres_session,
+        user_id=smoke_user_id,
+        preference_type="style",
+        preference_value="quiet keyboard",
+        thread_id="integration-preference-thread",
+    )
+    postgres_session.commit()
+
+    resolved = cart_repository.resolve_pending_action(
+        postgres_session,
+        prepared["pending_action_id"],
+        smoke_user_id,
+        thread_id="integration-preference-thread",
+    )
+    confirmed = cart_repository.confirm_save_preference(
+        postgres_session,
+        prepared["pending_action_id"],
+        smoke_user_id,
+        thread_id="integration-preference-thread",
+    )
+    postgres_session.commit()
+
+    preferences = preference_repository.get_user_preferences(
+        postgres_session, smoke_user_id
+    )
+    assert resolved["action_type"] == "save_preference"
+    assert confirmed["status"] == cart_repository.CONFIRMED_STATUS
+    assert [item["preference_value"] for item in preferences] == ["quiet keyboard"]
+
+
+def test_postgres_prepare_restart_edit_confirm_uses_persisted_action_id(
+    smoke_user_id,
+):
+    prepare_session = SessionLocal()
+    try:
+        prepared = cart_repository.prepare_save_preference(
+            prepare_session,
+            user_id=smoke_user_id,
+            preference_type="style",
+            preference_value="quiet keyboard",
+            thread_id="restart-edit-thread",
+        )
+        prepare_session.commit()
+        action_id = prepared["pending_action_id"]
+    finally:
+        prepare_session.close()
+
+    resume_session = SessionLocal()
+    try:
+        resolved = cart_repository.resolve_pending_action(
+            resume_session,
+            action_id,
+            smoke_user_id,
+            thread_id="restart-edit-thread",
+        )
+        confirmed = cart_repository.confirm_save_preference(
+            resume_session,
+            action_id,
+            smoke_user_id,
+            thread_id="restart-edit-thread",
+            updated_arguments={"preference_value": "silent switches"},
+        )
+        resume_session.commit()
+    finally:
+        resume_session.close()
+
+    verify_session = SessionLocal()
+    try:
+        action = verify_session.get(cart_repository.PendingAction, action_id)
+        preferences = preference_repository.get_user_preferences(
+            verify_session, smoke_user_id
+        )
+        assert resolved["action_status"] == cart_repository.PENDING_STATUS
+        assert confirmed["status"] == cart_repository.CONFIRMED_STATUS
+        assert action.status == cart_repository.CONFIRMED_STATUS
+        assert action.payload_json["preference_value"] == "silent switches"
+        assert [item["preference_value"] for item in preferences] == [
+            "silent switches"
+        ]
+    finally:
+        verify_session.close()
+
+
+def test_postgres_prepare_restart_reject_uses_persisted_action_id(smoke_user_id):
+    prepare_session = SessionLocal()
+    try:
+        prepared = cart_repository.prepare_save_preference(
+            prepare_session,
+            user_id=smoke_user_id,
+            preference_type="style",
+            preference_value="quiet keyboard",
+            thread_id="restart-reject-thread",
+        )
+        prepare_session.commit()
+        action_id = prepared["pending_action_id"]
+    finally:
+        prepare_session.close()
+
+    resume_session = SessionLocal()
+    try:
+        cancelled = cart_repository.cancel_pending_action(
+            resume_session,
+            action_id,
+            smoke_user_id,
+            thread_id="restart-reject-thread",
+        )
+        resume_session.commit()
+    finally:
+        resume_session.close()
+
+    assert cancelled["status"] == cart_repository.CANCELLED_STATUS
+
+
+def test_postgres_expired_action_fails_closed_after_restart(smoke_user_id):
+    prepare_session = SessionLocal()
+    try:
+        prepared = cart_repository.prepare_save_preference(
+            prepare_session,
+            user_id=smoke_user_id,
+            preference_type="style",
+            preference_value="quiet keyboard",
+            expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
+        )
+        prepare_session.commit()
+        action_id = prepared["pending_action_id"]
+    finally:
+        prepare_session.close()
+
+    resume_session = SessionLocal()
+    try:
+        expired = cart_repository.confirm_save_preference(
+            resume_session,
+            action_id,
+            smoke_user_id,
+        )
+        resume_session.commit()
+        action_status = resume_session.get(
+            cart_repository.PendingAction, action_id
+        ).status
+    finally:
+        resume_session.close()
+
+    assert expired["message"] == "pending action expired"
+    assert action_status == cart_repository.EXPIRED_STATUS

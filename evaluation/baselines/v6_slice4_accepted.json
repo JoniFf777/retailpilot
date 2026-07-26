@@ -1,0 +1,78 @@
+{
+  "schema_version": "shopmind.evaluation-baseline.v1",
+  "baseline_id": "shopmind-v6-slice4-accepted",
+  "catalog_id": "shopmind-v6-slice4",
+  "catalog_schema_version": "shopmind.evaluation-catalog.v1",
+  "suites": {
+    "router_policy": {
+      "artifact_schema": "shopmind.router-policy-eval.v1",
+      "total_cases": 7,
+      "passed_cases": 7,
+      "total_checks": 7,
+      "passed_checks": 7
+    },
+    "planner_policy": {
+      "artifact_schema": "shopmind.planner-policy-eval.v1",
+      "total_cases": 10,
+      "passed_cases": 10,
+      "total_checks": 70,
+      "passed_checks": 70
+    },
+    "plan_trajectory": {
+      "artifact_schema": "shopmind.plan-trajectory-eval.v2",
+      "total_cases": 13,
+      "passed_cases": 13,
+      "total_checks": 195,
+      "passed_checks": 195
+    },
+    "adapter_equivalence": {
+      "artifact_schema": "shopmind.adapter-equivalence-eval.v1",
+      "total_cases": 5,
+      "passed_cases": 5,
+      "total_checks": 24,
+      "passed_checks": 24
+    },
+    "action_lifecycle": {
+      "artifact_schema": "shopmind.action-lifecycle-eval.v2",
+      "total_cases": 10,
+      "passed_cases": 10,
+      "total_checks": 60,
+      "passed_checks": 60
+    },
+    "resilience_replay": {
+      "artifact_schema": "shopmind.resilience-replay-eval.v1",
+      "total_cases": 6,
+      "passed_cases": 6,
+      "total_checks": 72,
+      "passed_checks": 72
+    },
+    "coordination_equivalence": {
+      "artifact_schema": "shopmind.coordination-equivalence-eval.v1",
+      "total_cases": 5,
+      "passed_cases": 5,
+      "total_checks": 18,
+      "passed_checks": 18
+    },
+    "governance_lifecycle": {
+      "artifact_schema": "shopmind.governance-lifecycle-eval.v1",
+      "total_cases": 5,
+      "passed_cases": 5,
+      "total_checks": 42,
+      "passed_checks": 42
+    }
+  },
+  "metrics": {
+    "quality_score": 1.0,
+    "safety_score": 1.0,
+    "latency_regression_count": 0.0,
+    "token_regression_count": 0.0,
+    "cost_regression_count": 0.0
+  },
+  "thresholds": {
+    "quality_score": {"direction": "min", "allowed_delta": 0.0},
+    "safety_score": {"direction": "min", "allowed_delta": 0.0},
+    "latency_regression_count": {"direction": "max", "allowed_delta": 0.0},
+    "token_regression_count": {"direction": "max", "allowed_delta": 0.0},
+    "cost_regression_count": {"direction": "max", "allowed_delta": 0.0}
+  }
+}

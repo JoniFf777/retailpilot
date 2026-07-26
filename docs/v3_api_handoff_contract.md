@@ -17,6 +17,73 @@ SHOPMIND_SUPERVISOR_ROUTER=deterministic
 The local smoke suite sets these values automatically unless
 `--preserve-agent-mode` is used.
 
+## Optional V6 Identity Binding
+
+The released default remains `SHOPMIND_IDENTITY_PROVIDER=development_payload`,
+so existing V3 request bodies and responses are unchanged. An operator may
+explicitly select `trusted_header`; then a trusted ingress must remove any
+caller-supplied `X-ShopMind-Authenticated-User` value and inject the
+authenticated subject.
+
+An operator may instead select `signed_header`. The trusted ingress must remove
+all caller copies and inject the same subject plus
+`X-ShopMind-Identity-Timestamp`, `X-ShopMind-Identity-Nonce`, and
+`X-ShopMind-Identity-Signature`. The server verifies a short-lived versioned
+HMAC-SHA256 assertion and atomically claims its fingerprint once through the
+configured local/Redis coordination backend. Credential, expiry, replay and
+backend failures share the stable HTTP 401
+`ShopMindSignedHeader` challenge. The adapter makes no remote IdP/JWKS call.
+
+In trusted-header mode, an omitted header returns HTTP 401. If a body `user_id`
+is present and differs from the authenticated subject, the request returns HTTP
+403 before read-Agent, write-confirmation or stream-admission execution. If the
+body owner is omitted, the authenticated subject becomes the effective
+`user_id`. Request bodies cannot supply roles, scopes, identity providers or
+credentials.
+
+Slice 4 also defines an internal `shopmind.governance-audit.v1` record for
+authentication, tool/action, memory and deletion decisions. It stores
+fingerprints and closed allowlisted metadata only. This does not add response
+fields or change the V3 JSON/status/confirmation contract. The record now has
+an internal PostgreSQL repository with exact-owner fingerprint inspection and
+expiry enforcement. A server-owned default-off switch can emit identity,
+typed-tool, closed-action and selected-memory facts through an independent
+best-effort transaction. It adds no public audit-record inspection endpoint,
+response field or caller-controlled policy, and audit failure cannot change V3
+HTTP/action results.
+
+The additive `GET /api/health/governance-audit` operations endpoint exposes
+only a versioned process-local counter/alert snapshot; it is not an audit-record
+endpoint and contains no identity, request or resource fingerprint. It remains
+HTTP 200 while degraded, so it does not change V3 liveness, chat, confirmation,
+streaming or action results.
+
+## Additive V6 Owner-Data Boundary
+
+The authenticated endpoints below are additive and do not change default
+`/api/chat`, `/api/chat/confirm`, or `/api/chat/stream` payloads:
+
+| Endpoint | Boundary |
+| --- | --- |
+| `POST /api/owner-data/inspect` | Bounded exact-owner inventory and memory inspection |
+| `POST /api/owner-data/runs/inspect` | Payload-free exact-owner run/trace projection with bounded client-event summaries |
+| `POST /api/owner-data/memory/correct` | Exact-owner active-memory replacement |
+| `POST /api/owner-data/memory/delete` | Exact-owner memory hard deletion |
+| `POST /api/owner-data/delete` | Explicitly confirmed transactional owner-data deletion |
+
+Every operation requires a bound principal. Trusted-header owner mismatch still
+returns 403 before storage access. Full deletion requires a UUID request ID and
+literal `confirmed=true`; it excludes catalogs, inherited seed customers/orders
+and independently retained fingerprint-only audit facts. A backend failure is
+sanitized to HTTP 503 and does not expose an exception, URL or owner record.
+
+Run inspection requires exactly one opaque `run_id` or `trace_id`. It returns
+only closed run metadata, typed usage and ordered client-visible event
+summaries; request/result JSON, content, debug/error/metadata, tool records,
+idempotency records, event payloads and internal/audit events remain private.
+The selector is always combined with the authenticated owner and is not an
+authorization token.
+
 ## Endpoints
 
 | Endpoint | Purpose |
@@ -25,6 +92,14 @@ The local smoke suite sets these values automatically unless
 | `POST /api/chat/confirm` | Confirm or cancel a pending action returned by `/api/chat`. |
 
 Both endpoints return `ChatResponse`.
+
+### Optional Idempotency Header
+
+All chat, confirmation, and streaming requests may send an `Idempotency-Key`
+header. The key is scoped to the current user and operation. Repeating the same
+request returns the persisted result without executing tools or adding messages;
+reusing a key with different input returns `status="failed"`. Existing clients
+that omit the header keep the V3 behavior unchanged.
 
 ## POST /api/chat
 
@@ -46,7 +121,13 @@ Fields:
 | `message` | yes | User message. Write handoff currently supports explicit product IDs or same-thread candidate selection. |
 | `user_id` | write flow: yes | Required before creating pending add-to-cart actions. |
 | `thread_id` | recommended | Required for same-thread candidate selection context. |
-| `include_debug` | no | Set to `true` for evaluation, smoke checks, and troubleshooting. |
+| `include_debug` | no | Set to `true` for evaluation, smoke checks, troubleshooting, and opaque run/trace selectors. |
+
+When `include_debug=true`, chat and confirmation responses may add top-level
+`run_id` and `trace_id`; the terminal SSE `run.result` payload may add the same
+selectors. They are omitted by default, so existing V3 clients receive the
+unchanged payload. A bound owner can pass one selector to
+`POST /api/owner-data/runs/inspect`; the selector alone never authorizes access.
 
 Explicit product response:
 
@@ -130,7 +211,7 @@ Fields:
 | `pending_action_id` | yes | Value returned by `/api/chat`. |
 | `confirmed` | yes | `true` confirms the action; `false` cancels it. |
 | `thread_id` | no | Echoed in the response for client continuity. |
-| `include_debug` | no | Set to `true` to include confirmation events. |
+| `include_debug` | no | Set to `true` to include confirmation events and opaque run/trace selectors. |
 
 Confirmed response:
 
@@ -215,7 +296,8 @@ When `include_debug=true`, callers may receive these event names:
 
 Debug payloads are for evaluation and observability. Client product behavior
 should depend on stable top-level fields: `status`, `answer`, `tool_calls`, and
-`pending_action_id`.
+`pending_action_id`. Optional `run_id` and `trace_id` are correlation selectors
+for authenticated inspection, not business-status fields or credentials.
 
 ## Local Validation
 

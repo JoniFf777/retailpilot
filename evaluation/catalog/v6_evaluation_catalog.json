@@ -1,0 +1,133 @@
+{
+  "schema_version": "shopmind.evaluation-catalog.v1",
+  "catalog_id": "shopmind-v6-slice4",
+  "required_categories": [
+    "per_agent",
+    "router",
+    "answer",
+    "trajectory",
+    "multi_turn",
+    "memory",
+    "safety",
+    "latency",
+    "token",
+    "cost"
+  ],
+  "suites": [
+    {
+      "suite_id": "router_policy",
+      "runner": "deterministic_router",
+      "artifact_schema": "shopmind.router-policy-eval.v1",
+      "artifact_path": "artifacts/v6-router-policy/summary.json",
+      "categories": [
+        "router",
+        "safety"
+      ],
+      "required": true
+    },
+    {
+      "suite_id": "planner_policy",
+      "runner": "planner_policy",
+      "artifact_schema": "shopmind.planner-policy-eval.v1",
+      "artifact_path": "artifacts/v5-planner-policy/summary.json",
+      "categories": [
+        "planner",
+        "router",
+        "safety"
+      ],
+      "required": true
+    },
+    {
+      "suite_id": "plan_trajectory",
+      "runner": "plan_trajectory",
+      "artifact_schema": "shopmind.plan-trajectory-eval.v2",
+      "artifact_path": "artifacts/v5-plan-trajectories/summary.json",
+      "categories": [
+        "per_agent",
+        "answer",
+        "trajectory",
+        "latency",
+        "token",
+        "cost",
+        "safety"
+      ],
+      "required": true
+    },
+    {
+      "suite_id": "adapter_equivalence",
+      "runner": "adapter_equivalence",
+      "artifact_schema": "shopmind.adapter-equivalence-eval.v1",
+      "artifact_path": "artifacts/v5-adapter-equivalence/summary.json",
+      "categories": [
+        "per_agent",
+        "trajectory",
+        "safety",
+        "adapter"
+      ],
+      "required": true
+    },
+    {
+      "suite_id": "action_lifecycle",
+      "runner": "action_lifecycle",
+      "artifact_schema": "shopmind.action-lifecycle-eval.v2",
+      "artifact_path": "artifacts/v5-action-lifecycle/summary.json",
+      "categories": [
+        "answer",
+        "trajectory",
+        "multi_turn",
+        "memory",
+        "safety",
+        "action"
+      ],
+      "required": true
+    },
+    {
+      "suite_id": "resilience_replay",
+      "runner": "resilience_replay",
+      "artifact_schema": "shopmind.resilience-replay-eval.v1",
+      "artifact_path": "artifacts/v6-resilience-replay/summary.json",
+      "categories": [
+        "per_agent",
+        "answer",
+        "trajectory",
+        "multi_turn",
+        "memory",
+        "safety",
+        "latency",
+        "token",
+        "cost",
+        "adapter",
+        "action"
+      ],
+      "required": true
+    },
+    {
+      "suite_id": "coordination_equivalence",
+      "runner": "coordination_equivalence",
+      "artifact_schema": "shopmind.coordination-equivalence-eval.v1",
+      "artifact_path": "artifacts/v6-coordination-equivalence/summary.json",
+      "categories": [
+        "trajectory",
+        "safety",
+        "latency"
+      ],
+      "required": true
+    },
+    {
+      "suite_id": "governance_lifecycle",
+      "runner": "governance_lifecycle",
+      "artifact_schema": "shopmind.governance-lifecycle-eval.v1",
+      "artifact_path": "artifacts/v6-governance-lifecycle/summary.json",
+      "categories": [
+        "trajectory",
+        "multi_turn",
+        "memory",
+        "safety",
+        "identity",
+        "governance",
+        "privacy"
+      ],
+      "required": true
+    }
+  ]
+}

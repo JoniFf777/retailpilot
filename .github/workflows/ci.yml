@@ -22,6 +22,11 @@ jobs:
       LANGSMITH_TRACING: "false"
       EMBEDDING_PROVIDER: "huggingface"
       WORKSHOP_MODEL: "anthropic:claude-haiku-4-5"
+      SHOPMIND_AGENT_PLANNER: "deterministic"
+      SHOPMIND_AGENT_TASK_MAX_ATTEMPTS: "1"
+      SHOPMIND_IDENTITY_PROVIDER: "development_payload"
+      SHOPMIND_GOVERNANCE_AUDIT_ENABLED: "false"
+      SHOPMIND_GOVERNANCE_AUDIT_ALERT_FAILURE_THRESHOLD: "3"
     steps:
       - uses: actions/checkout@v6
 
@@ -37,7 +42,230 @@ jobs:
 
       - name: Run default tests
         run: |
-          python -m pytest tests/config tests/db tests/repositories tests/scripts tests/tools tests/api tests/agents tests/evaluation tests/integration
+          python -m pytest tests/config tests/db tests/repositories tests/scripts tests/tools tests/api tests/agents tests/runtime tests/security tests/governance tests/operations tests/docs tests/evaluation tests/integration
+
+      - name: Gate V6 production configuration preflight
+        env:
+          SHOPMIND_DEPLOYMENT_PROFILE: "production"
+          SHOPMIND_DEPLOYMENT_REPLICAS: "1"
+          SHOPMIND_IDENTITY_PROVIDER: "trusted_header"
+          SHOPMIND_TRUSTED_PROXY_AUTHENTICATION: "true"
+          SHOPMIND_COORDINATION_BACKEND: "local"
+          SHOPMIND_GOVERNANCE_AUDIT_ENABLED: "true"
+          SHOPMIND_RUNTIME_CLEANUP_SCHEDULED: "true"
+          SHOPMIND_RAG_AGENT_TRANSPORT: "in_process"
+          SHOPMIND_RUNTIME_MAX_DURATION_MS: "30000"
+          SHOPMIND_RUNTIME_MAX_STEPS: "20"
+          SHOPMIND_RUNTIME_MAX_TOOL_CALLS: "10"
+          SHOPMIND_RUNTIME_MAX_TOTAL_TOKENS: "20000"
+          SHOPMIND_RUNTIME_MAX_COST_USD: "1.0"
+        run: |
+          mkdir -p artifacts/v6-production-preflight
+          python scripts/check_production_config.py --output-json artifacts/v6-production-preflight/summary.json | tee artifacts/v6-production-preflight/summary.md
+
+      - name: Publish V6 production configuration preflight
+        if: always()
+        run: |
+          if [ -f artifacts/v6-production-preflight/summary.md ]; then
+            cat artifacts/v6-production-preflight/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V6 production configuration preflight
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v6-production-preflight
+          path: artifacts/v6-production-preflight
+          if-no-files-found: error
+
+      - name: Gate V6 release operations checks
+        if: always()
+        run: |
+          mkdir -p artifacts/v6-release-operations
+          python evaluation/run_release_operations_eval.py --output-json artifacts/v6-release-operations/summary.json | tee artifacts/v6-release-operations/summary.md
+
+      - name: Publish V6 release operations summary
+        if: always()
+        run: |
+          if [ -f artifacts/v6-release-operations/summary.md ]; then
+            cat artifacts/v6-release-operations/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V6 release operations artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v6-release-operations
+          path: artifacts/v6-release-operations
+          if-no-files-found: error
+
+      - name: Gate V5 planner policy
+        if: always()
+        run: |
+          mkdir -p artifacts/v5-planner-policy
+          python evaluation/run_planner_eval.py --output-json artifacts/v5-planner-policy/summary.json | tee artifacts/v5-planner-policy/summary.md
+
+      - name: Publish V5 planner policy summary
+        if: always()
+        run: |
+          if [ -f artifacts/v5-planner-policy/summary.md ]; then
+            cat artifacts/v5-planner-policy/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V5 planner policy artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v5-planner-policy-eval
+          path: artifacts/v5-planner-policy/summary.json
+          if-no-files-found: error
+
+      - name: Gate V5 plan trajectory replay
+        if: always()
+        run: |
+          mkdir -p artifacts/v5-plan-trajectories
+          python evaluation/run_plan_trajectory_eval.py --output-json artifacts/v5-plan-trajectories/summary.json | tee artifacts/v5-plan-trajectories/summary.md
+
+      - name: Publish V5 plan trajectory summary
+        if: always()
+        run: |
+          if [ -f artifacts/v5-plan-trajectories/summary.md ]; then
+            cat artifacts/v5-plan-trajectories/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V5 plan trajectory artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v5-plan-trajectory-eval
+          path: artifacts/v5-plan-trajectories/summary.json
+          if-no-files-found: error
+
+      - name: Gate V5 adapter equivalence
+        if: always()
+        run: |
+          mkdir -p artifacts/v5-adapter-equivalence
+          python evaluation/run_adapter_equivalence_eval.py --output-json artifacts/v5-adapter-equivalence/summary.json | tee artifacts/v5-adapter-equivalence/summary.md
+
+      - name: Publish V5 adapter equivalence summary
+        if: always()
+        run: |
+          if [ -f artifacts/v5-adapter-equivalence/summary.md ]; then
+            cat artifacts/v5-adapter-equivalence/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V5 adapter equivalence artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v5-adapter-equivalence-eval
+          path: artifacts/v5-adapter-equivalence/summary.json
+          if-no-files-found: error
+
+      - name: Gate V5 generic action lifecycle
+        if: always()
+        run: |
+          mkdir -p artifacts/v5-action-lifecycle
+          python evaluation/run_action_lifecycle_eval.py --output-json artifacts/v5-action-lifecycle/summary.json | tee artifacts/v5-action-lifecycle/summary.md
+
+      - name: Publish V5 action lifecycle summary
+        if: always()
+        run: |
+          if [ -f artifacts/v5-action-lifecycle/summary.md ]; then
+            cat artifacts/v5-action-lifecycle/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V5 action lifecycle artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v5-action-lifecycle-eval
+          path: artifacts/v5-action-lifecycle/summary.json
+          if-no-files-found: error
+
+      - name: Gate V6 resilience and restart replay
+        if: always()
+        run: |
+          mkdir -p artifacts/v6-resilience-replay
+          python evaluation/run_resilience_replay_eval.py --output-json artifacts/v6-resilience-replay/summary.json | tee artifacts/v6-resilience-replay/summary.md
+
+      - name: Publish V6 resilience and restart replay summary
+        if: always()
+        run: |
+          if [ -f artifacts/v6-resilience-replay/summary.md ]; then
+            cat artifacts/v6-resilience-replay/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V6 resilience and restart replay artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v6-resilience-replay-eval
+          path: artifacts/v6-resilience-replay/summary.json
+          if-no-files-found: error
+
+      - name: Gate V6 coordination backend equivalence
+        if: always()
+        run: |
+          mkdir -p artifacts/v6-coordination-equivalence
+          python evaluation/run_coordination_eval.py --output-json artifacts/v6-coordination-equivalence/summary.json | tee artifacts/v6-coordination-equivalence/summary.md
+
+      - name: Publish V6 coordination backend equivalence summary
+        if: always()
+        run: |
+          if [ -f artifacts/v6-coordination-equivalence/summary.md ]; then
+            cat artifacts/v6-coordination-equivalence/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V6 coordination backend equivalence artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v6-coordination-equivalence-eval
+          path: artifacts/v6-coordination-equivalence/summary.json
+          if-no-files-found: error
+
+      - name: Gate V6 governance lifecycle
+        if: always()
+        run: |
+          mkdir -p artifacts/v6-governance-lifecycle
+          python evaluation/run_governance_lifecycle_eval.py --output-json artifacts/v6-governance-lifecycle/summary.json | tee artifacts/v6-governance-lifecycle/summary.md
+
+      - name: Publish V6 governance lifecycle summary
+        if: always()
+        run: |
+          if [ -f artifacts/v6-governance-lifecycle/summary.md ]; then
+            cat artifacts/v6-governance-lifecycle/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V6 governance lifecycle artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v6-governance-lifecycle-eval
+          path: artifacts/v6-governance-lifecycle/summary.json
+          if-no-files-found: error
+
+      - name: Gate V6 evaluation catalog regression
+        if: always()
+        run: |
+          mkdir -p artifacts/v6-evaluation-catalog
+          python evaluation/run_catalog_eval.py --artifacts-root . --reuse-existing --output-json artifacts/v6-evaluation-catalog/summary.json | tee artifacts/v6-evaluation-catalog/summary.md
+
+      - name: Publish V6 evaluation catalog summary
+        if: always()
+        run: |
+          if [ -f artifacts/v6-evaluation-catalog/summary.md ]; then
+            cat artifacts/v6-evaluation-catalog/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload V6 evaluation catalog regression artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: v6-evaluation-catalog-regression
+          path: artifacts/v6-evaluation-catalog
+          if-no-files-found: error
 
       - name: Generate V3 event artifacts
         run: python evaluation/generate_event_artifacts.py --output-dir artifacts/v3-events

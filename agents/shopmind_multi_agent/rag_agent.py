@@ -48,6 +48,7 @@ def _citations(documents: list[Document]) -> list[dict[str, Any]]:
     for doc in documents[:3]:
         citations.append(
             {
+                "document_id": doc.metadata.get("id"),
                 "source_name": doc.metadata.get("source_name")
                 or doc.metadata.get("policy_name")
                 or doc.metadata.get("product_name")
