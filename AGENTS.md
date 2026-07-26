@@ -12,36 +12,40 @@ Read these before changing code:
 1. `AGENTS.md` - operating rules and commands.
 2. `.local/retailpilot-runbook.md` - machine-specific, non-secret state.
 3. `docs/project_status.md` - implemented features and known gaps.
-4. `PLAN.md` - active roadmap and immediate next slice.
-5. `docs/architecture.md` - current architecture.
-6. `docs/agent_runtime_design.md` - V4-V6 runtime design and contracts.
-7. `docs/development.md` - non-secret environment and database guide.
-8. `docs/v3_api_handoff_contract.md` - backward-compatible public boundary.
+4. `docs/project_introduction.md` - complete capability overview.
+5. `PLAN.md` - completed backend roadmap and post-V6 direction.
+6. `docs/frontend_implementation_plan.md` - active Web frontend plan.
+7. `docs/architecture.md` - current backend architecture.
+8. `docs/agent_runtime_design.md` - V4-V6 runtime design and contracts.
+9. `docs/development.md` - non-secret environment and database guide.
+10. `docs/v3_api_handoff_contract.md` - backward-compatible public boundary.
 
 Machine-specific facts belong in `.local/retailpilot-runbook.md`. `.local/` is
 ignored by Git. Never copy API keys or private passwords into tracked files.
 
 ## Current Baseline
 
-- Release: `v3.0.0`, commit `c995896` on `main`.
+- Published release/tag: `v3.0.0`, release commit `c995896`.
+- V4-V6 backend and documentation are merged into `main`; creating a new
+  version/tag and deploying remain separate release actions.
 - V1 complete: single shopping Agent and confirmed add-to-cart.
 - V2 complete: PostgreSQL/pgvector, repositories, migrations, seed/index/smoke.
 - V3 complete: multi-agent read graph, guarded write handoff, candidate context,
   API/CI events, and LangSmith evaluation.
-- V4 complete in the current worktree: runtime contracts/persistence, unified
+- V4 complete on `main`: runtime contracts/persistence, unified
   Harness, memory/context, SSE/runtime control, and Tool Gateway/policy slices.
-- V5 is complete in the current worktree through Slice 36: typed local/HTTP
+- V5 is complete on `main` through Slice 36: typed local/HTTP
   Agent adapters, canonical planning, bounded parallel fan-out/fan-in, shared budgets, typed transport
   failures, failed-attempt accounting, disabled-by-default bounded specialist
   replay, deterministic retry attempt lifecycle evaluation, model-independent
   adapter equivalence, default-off remote RAG Registry selection, and an
   executable generic add-to-cart/save-preference HITL lifecycle, exact action
   edit schemas, and PostgreSQL-backed restart/resume/replay trajectories.
-- Current branch: `codex/v4-1-runtime-contracts-persistence`. The intentionally
-  accumulated V4-V6 worktree was materialized by explicit user authorization as
-  immutable implementation commit `908b918`; that commit passed the clean
-  detached-worktree matrix. Preserve unrelated future changes and do not push,
-  tag, or deploy without explicit instruction.
+- Current branch: `main`. The accumulated V4-V6 implementation was materialized
+  as immutable commit `908b918`, clean-checkout validation and release-candidate
+  notes were completed at `690b0cb`, and the full project introduction/frontend
+  plan was added at `5146329`. Preserve unrelated future changes and do not tag,
+  release, or deploy without explicit instruction.
 - V6 Slices 1-2 (global Slices 37-38) are complete: a closed, versioned
   evaluation catalog composes deterministic suites across ten required
   dimensions, and normalized persisted trajectories verify local fault and
@@ -54,8 +58,8 @@ ignored by Git. Never copy API keys or private passwords into tracked files.
   sanitized fail-closed connection behavior. SSE admission uses renewable,
   token-specific leases. Real Redis verification covers two clients, concurrent
   atomic admission, server TTL expiry, rate limits, deduplication and cache.
-- Project completion still requires the remaining V6 exit criteria. V6 Slice 4
-  is complete with authenticated owner-data inventory/memory inspection, exact-owner
+- V6 is complete. Slice 4 includes authenticated owner-data inventory/memory
+  inspection, exact-owner
   correction and hard deletion, explicitly confirmed full deletion, and
   PII-safe deletion request/result facts. The identity, closed audit,
   fingerprint-only PostgreSQL persistence, retention and default-off emission
@@ -80,9 +84,14 @@ ignored by Git. Never copy API keys or private passwords into tracked files.
   immutable implementation commit `908b918` passes the full, integration,
   smoke, migration, production-preflight and evaluation matrix from a fresh
   detached worktree with clean Git status before and after. All V6
-  implementation exit criteria are satisfied. Push, PR, version/tag and
-  deployment remain separate explicitly authorized release actions. The
+  implementation exit criteria are satisfied. Version/tag, release, and
+  deployment remain separate explicitly authorized actions. The
   production/default specialist path remains in-process.
+- The repository has no Web frontend yet. The next authorized productization
+  work is the phased React/TypeScript implementation in
+  `docs/frontend_implementation_plan.md`, rooted at
+  `D:\python\retailpilot\frontend`. Start with F0 contract/schema validation and
+  a Vite `react-ts` scaffold; do not place frontend files at repository root.
 
 Current validation: `668 passed, 6 skipped`; PostgreSQL integration `23/23`;
 reference-client/API/docs focused `58/58`; runtime coordination focused `12/12`;
@@ -95,6 +104,7 @@ regression passed `8/8` suites, `61/61` cases, `488/488` suite checks, and
 `48/48` baseline checks; release operations passed `7/7` cases and `42/42`
 checks. Historical V3 validation
 remains `227 passed, 4 skipped` with LangSmith evaluator scores `6/6` at `1.0`.
+The post-completion project/frontend documentation tests pass `10/10`.
 
 ## First Five Minutes
 
@@ -103,6 +113,7 @@ From `D:\python\retailpilot`:
 ```powershell
 git status --short --branch
 Get-Content .local\retailpilot-runbook.md
+Get-Content docs\frontend_implementation_plan.md -TotalCount 220
 docker compose ps postgres
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_postgres.py
 ```

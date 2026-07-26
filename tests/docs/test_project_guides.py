@@ -6,6 +6,8 @@ def test_agent_handoff_links_current_sources_of_truth() -> None:
 
     for path in (
         "docs/project_status.md",
+        "docs/project_introduction.md",
+        "docs/frontend_implementation_plan.md",
         "PLAN.md",
         "docs/architecture.md",
         "docs/agent_runtime_design.md",

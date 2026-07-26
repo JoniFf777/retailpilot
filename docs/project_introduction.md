@@ -4,7 +4,7 @@
 >
 > 实现状态：V1–V6 已完成
 >
-> 当前分支：`codex/v4-1-runtime-contracts-persistence`
+> 当前分支：`main`
 >
 > V4–V6 实现提交：`908b918`
 >
@@ -35,7 +35,7 @@ ShopMind 的 V1–V6 规划已经全部落地，V5 退出条件和 V6 exit crite
 需要区分“实现完成”和“发布完成”：
 
 - **实现完成**：V1–V6 代码、测试、评估、运行文档和发布候选验证已经完成。
-- **正式发布未执行**：V4–V6 尚未推送、创建新版本 tag 或部署到生产环境。
+- **正式发布未执行**：V4–V6 已合并到 `main`，但尚未创建新版本 tag 或部署。
 - **当前正式 release**：仍是 `v3.0.0`。
 
 | 阶段 | 状态 | 主要成果 |
@@ -518,10 +518,10 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe examples\sh
 
 V6 实现本身已经完成。后续工作属于发布和产品化选择，需要单独授权：
 
-1. 推送当前分支并创建 PR。
-2. 选择 V4–V6 的正式版本号并创建 tag/release notes。
-3. 在目标环境配置可信 ingress、PostgreSQL、可选 Redis 和生产 secrets。
-4. 执行 preflight、readiness、rollout/rollback 演练后部署。
+1. 选择 V4–V6 的正式版本号并创建 tag/release notes。
+2. 在目标环境配置可信 ingress、PostgreSQL、可选 Redis 和生产 secrets。
+3. 执行 preflight、readiness、rollout/rollback 演练后部署。
+4. 按[前端实施方案](frontend_implementation_plan.md)在 `frontend/` 开发 Web UI。
 5. 如果要演进 V7，应先建立新的目标和 roadmap，而不是继续扩大 V6 范围。
 
 ## 延伸文档

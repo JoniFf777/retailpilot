@@ -33,9 +33,9 @@ The project is complete when the satisfied V5 adapter/HITL exit conditions and
 all V6 exit criteria below pass on a clean release candidate. That rule is now
 satisfied: immutable implementation commit
 `908b91888795f4d3d35096d6daf0592c840acdc3` passed the full clean detached
-worktree matrix with empty Git status before and after validation. The current
-published release remains V3 until an explicitly authorized release workflow
-pushes, reviews, versions, and tags the candidate.
+worktree matrix with empty Git status before and after validation. The backend
+is merged into `main`; the currently published formal release remains V3 until
+an explicitly authorized workflow versions, tags, and publishes a newer release.
 
 ## Post-V6 Productization
 

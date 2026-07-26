@@ -47,9 +47,9 @@ Agent Runtime。
 | V5 | 完成 | Slice 36：remote RAG、通用多 action HITL、受控编辑与持久化恢复 |
 | V6 | 完成 | Slices 1-5、完整 clean committed-checkout validation 与 release-candidate 文档均完成 |
 
-当前正式 release 仍是 **ShopMind V3.0.0**（tag `v3.0.0`）。V4-V6 已提交在
-`codex/v4-1-runtime-contracts-persistence`，并已通过 clean committed-checkout
-验证；尚未执行 push、创建新版本 tag 或部署。
+当前正式 release 仍是 **ShopMind V3.0.0**（tag `v3.0.0`）。V4-V6 已合并到
+`main`，并已通过 clean committed-checkout 验证；尚未创建新的正式版本 tag
+或执行部署。
 
 V5 正式退出条件与 V6 exit criteria 已全部满足。当前验证基线：
 

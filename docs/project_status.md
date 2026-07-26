@@ -25,11 +25,11 @@ All V6 implementation exit criteria are satisfied.
 ## Release Baseline
 
 - Version/tag: `v3.0.0`.
-- Main release commit: `c995896`.
+- V3 release commit: `c995896`.
 - Release: <https://github.com/JoniFf777/retailpilot/releases/tag/v3.0.0>
-- V4-V6 implementation candidate:
-  `908b91888795f4d3d35096d6daf0592c840acdc3`, clean-checkout validated but not
-  yet published or tagged.
+- V4-V6 implementation commit:
+  `908b91888795f4d3d35096d6daf0592c840acdc3`, clean-checkout validated and
+  merged into `main`; no newer formal release/tag has been created.
 - Endpoints: `GET /api/health`, `POST /api/chat`,
   `POST /api/chat/confirm`.
 - Release path: multi-agent mode with deterministic Supervisor routing.
