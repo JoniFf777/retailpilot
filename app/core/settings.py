@@ -7,9 +7,18 @@ introduced incrementally.
 
 from functools import lru_cache
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, SecretStr, model_validator
+
+from app.core.langsmith_policy import (
+    DEFAULT_LANGSMITH_ENDPOINT,
+    DEFAULT_LANGSMITH_PROJECT,
+    DEFAULT_LANGSMITH_TRACING,
+    DEFAULT_LANGSMITH_TRACING_SAMPLING_RATE,
+    DeploymentProfile,
+    initialize_langsmith_runtime,
+)
 
 try:
     from dotenv import load_dotenv
@@ -27,8 +36,6 @@ DEFAULT_TEST_DATABASE_URL = (
 )
 DEFAULT_EMBEDDING_PROVIDER = "huggingface"
 DEFAULT_VECTOR_DIMENSION = 768
-DEFAULT_LANGSMITH_TRACING = True
-DEFAULT_LANGSMITH_PROJECT = "langsmith-agent-lifecycle-workshop"
 DEFAULT_WORKSHOP_MODEL = "anthropic:claude-haiku-4-5"
 DEFAULT_SHOPMIND_AGENT_MODE = "single"
 DEFAULT_SHOPMIND_SUPERVISOR_ROUTER = "deterministic"
@@ -185,14 +192,20 @@ class Settings(BaseModel):
     test_database_url: str = Field(default=DEFAULT_TEST_DATABASE_URL)
     embedding_provider: str = Field(default=DEFAULT_EMBEDDING_PROVIDER)
     vector_dimension: int = Field(default=DEFAULT_VECTOR_DIMENSION)
-    langsmith_api_key: Optional[str] = Field(default=None)
+    langsmith_api_key: SecretStr | None = Field(default=None, repr=False)
     langsmith_tracing: bool = Field(default=DEFAULT_LANGSMITH_TRACING)
     langsmith_project: str = Field(default=DEFAULT_LANGSMITH_PROJECT)
+    langsmith_endpoint: str = Field(default=DEFAULT_LANGSMITH_ENDPOINT)
+    langsmith_tracing_sampling_rate: float = Field(
+        default=DEFAULT_LANGSMITH_TRACING_SAMPLING_RATE,
+        gt=0,
+        le=1,
+    )
     workshop_model: str = Field(default=DEFAULT_WORKSHOP_MODEL)
     shopmind_agent_mode: str = Field(default=DEFAULT_SHOPMIND_AGENT_MODE)
     shopmind_supervisor_router: str = Field(default=DEFAULT_SHOPMIND_SUPERVISOR_ROUTER)
     shopmind_agent_planner: str = Field(default=DEFAULT_SHOPMIND_AGENT_PLANNER)
-    shopmind_deployment_profile: Literal["development", "production"] = Field(
+    shopmind_deployment_profile: DeploymentProfile = Field(
         default=DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE
     )
     shopmind_deployment_replicas: int = Field(
@@ -345,7 +358,10 @@ class Settings(BaseModel):
     @classmethod
     def from_env(cls) -> "Settings":
         """Build settings from environment variables and an optional `.env` file."""
-        _load_dotenv()
+        langsmith_runtime = initialize_langsmith_runtime(
+            load_environment=True,
+            dotenv_loader=load_dotenv,
+        )
         lease_ttl_ms, renew_interval_ms = _get_stream_admission_timing()
         identity_max_age_seconds, identity_clock_skew_seconds = (
             _get_identity_signature_timing()
@@ -373,13 +389,15 @@ class Settings(BaseModel):
                 "EMBEDDING_PROVIDER", DEFAULT_EMBEDDING_PROVIDER
             ),
             vector_dimension=_get_int_env("VECTOR_DIMENSION", DEFAULT_VECTOR_DIMENSION),
-            langsmith_api_key=os.getenv("LANGSMITH_API_KEY"),
-            langsmith_tracing=_get_bool_env(
-                "LANGSMITH_TRACING", DEFAULT_LANGSMITH_TRACING
+            langsmith_api_key=(
+                SecretStr(os.getenv("LANGSMITH_API_KEY", "").strip())
+                if os.getenv("LANGSMITH_API_KEY", "").strip()
+                else None
             ),
-            langsmith_project=os.getenv(
-                "LANGSMITH_PROJECT", DEFAULT_LANGSMITH_PROJECT
-            ),
+            langsmith_tracing=langsmith_runtime.tracing_enabled,
+            langsmith_project=langsmith_runtime.project,
+            langsmith_endpoint=langsmith_runtime.endpoint,
+            langsmith_tracing_sampling_rate=langsmith_runtime.sampling_rate,
             workshop_model=os.getenv("WORKSHOP_MODEL", DEFAULT_WORKSHOP_MODEL),
             shopmind_agent_mode=(
                 "multi"
@@ -411,17 +429,7 @@ class Settings(BaseModel):
                 == "llm"
                 else DEFAULT_SHOPMIND_AGENT_PLANNER
             ),
-            shopmind_deployment_profile=(
-                "production"
-                if os.getenv(
-                    "SHOPMIND_DEPLOYMENT_PROFILE",
-                    DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE,
-                )
-                .strip()
-                .lower()
-                == "production"
-                else DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE
-            ),
+            shopmind_deployment_profile=langsmith_runtime.profile,
             shopmind_deployment_replicas=_get_bounded_positive_int_env(
                 "SHOPMIND_DEPLOYMENT_REPLICAS",
                 DEFAULT_SHOPMIND_DEPLOYMENT_REPLICAS,

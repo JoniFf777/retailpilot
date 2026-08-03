@@ -1,5 +1,12 @@
 from fastapi import FastAPI
 
+from app.core.langsmith_policy import initialize_langsmith_runtime
+
+# Resolve dotenv/profile policy before importing the API graph.  LangChain and
+# LangGraph then see the fail-closed SDK environment before runtime objects are
+# constructed.
+initialize_langsmith_runtime()
+
 from app.api.router import api_router
 from app.core.settings import Settings, get_settings
 from app.operations import assert_production_preflight

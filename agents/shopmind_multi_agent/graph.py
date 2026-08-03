@@ -2,6 +2,11 @@
 
 from typing import Any, Callable
 
+from app.core.langsmith_policy import initialize_langsmith_runtime
+
+# Keep direct graph imports safe even when FastAPI has not been imported.
+initialize_langsmith_runtime()
+
 from langgraph.graph import END, START, StateGraph
 
 from app.runtime import (

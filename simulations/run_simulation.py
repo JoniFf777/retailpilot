@@ -24,13 +24,17 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
+# Add parent directory to path before importing any LangChain/LangGraph SDK.
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from app.core.langsmith_policy import initialize_langsmith_runtime
+
+initialize_langsmith_runtime()
+
 from dotenv import load_dotenv
 from langgraph_sdk import get_client
 from langgraph_sdk.schema import Command
 from langchain.chat_models import init_chat_model
-
-# Add parent directory to path to import from project root
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from simulations.simulation_config import (
     DEFAULT_CONVERSATIONS_PER_RUN,

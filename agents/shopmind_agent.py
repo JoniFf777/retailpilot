@@ -7,6 +7,12 @@ directly today and later wired into the FastAPI `/api/chat` endpoint.
 import re
 from typing import Any
 
+from app.core.langsmith_policy import initialize_langsmith_runtime
+
+# Direct V1 imports must receive the same fail-closed policy as the FastAPI
+# entrypoint before constructing any LangChain objects.
+initialize_langsmith_runtime()
+
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage, BaseMessage

@@ -1,5 +1,9 @@
 # TechHub Agent Simulation System
 
+> GitHub Actions runs are manual-only. The `demo` profile keeps LangSmith
+> tracing off unless the `enable_langsmith` input is explicitly enabled and the
+> Secret is present.
+
 本目录提供自动化模拟系统，用于针对已部署的 `supervisor_hitl_sql_agent` 生成接近真实客服场景的 trace，方便 demo、测试和 LangSmith Insights 分析。
 
 ## 概览
@@ -10,7 +14,7 @@
 - **Automatic HITL interrupt handling** (email verification)
 - **LLM-generated follow-up questions** matching persona characteristics
 - **LangSmith trace tagging** with `archetype_id`, `generation_mode`, `segment`, and `sentiment` for rich Insights filtering
-- **GitHub Actions automation** — 6 scheduled runs/day on weekdays, naturally spread across business hours
+- **GitHub Actions automation** — manual `workflow_dispatch` only; demo tracing is opt-in
 
 ## 快速开始
 
@@ -93,7 +97,9 @@ uv run python simulations/run_simulation.py --url https://custom-deployment.lang
 
 ## GitHub Actions Automation
 
-The workflow in `.github/workflows/simulate_traffic.yml` runs 1 dynamic conversation 6 times per weekday at 2-hour intervals (9am–5:30pm ET), producing naturally spread traffic patterns for LangSmith dashboards.
+The workflow in `.github/workflows/simulate_traffic.yml` runs only through
+manual `workflow_dispatch`. It uses the `demo` profile and keeps tracing off
+unless `enable_langsmith=true` and the GitHub Secret is present.
 
 ### 必需的 GitHub Secrets
 
@@ -177,7 +183,7 @@ simulations/
 └── README.md                      # This file
 
 .github/workflows/
-└── simulate_traffic.yml           # Scheduled GitHub Actions automation
+└── simulate_traffic.yml           # Manual GitHub Actions demo workflow
 ```
 
 ## 故障排查
@@ -215,3 +221,12 @@ simulations/
 - **3-5 average turns** — Realistic conversation length
 - **100% interrupt handling** — All HITL scenarios successfully resume
 - **Archetype variety** — Filter by `metadata.archetype_id` to see distribution across runs
+
+## ShopMind LangSmith safety
+
+The GitHub Actions simulation is manual-only. It uses the `demo` profile and
+keeps tracing disabled unless the `enable_langsmith` workflow input is
+explicitly set to `true` and the `LANGSMITH_API_KEY` Secret exists. This is a
+demo call-chain workflow, not a cloud evaluation experiment; use the
+`evaluation` profile and `evaluation/run_langsmith_eval.py` only for an
+explicit LangSmith experiment.

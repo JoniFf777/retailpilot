@@ -118,7 +118,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe ...
 启动 API：
 
 ```powershell
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m uvicorn app.main:app --reload
+.\scripts\start_shopmind.ps1 -Profile development -Action api -Reload
 ```
 
 运行全量测试：
@@ -131,6 +131,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest
 只读 PostgreSQL smoke：
 
 ```powershell
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_postgres.py
 ```
 
@@ -151,10 +152,15 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe examples\sh
 ## 离线评估
 
 ```powershell
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_planner_eval.py --output-json artifacts\v5-planner-policy\summary.json
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_plan_trajectory_eval.py --output-json artifacts\v5-plan-trajectories\summary.json
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_adapter_equivalence_eval.py --output-json artifacts\v5-adapter-equivalence\summary.json
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_action_lifecycle_eval.py --output-json artifacts\v5-action-lifecycle\summary.json
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_catalog_eval.py --output-json artifacts\v6-evaluation-catalog\summary.json
 ```
 
@@ -173,6 +179,7 @@ LangSmith 仅用于显式云端 trace/experiment。
 - [V4-V6 Runtime design](docs/agent_runtime_design.md)
 - [开发与数据库指南](docs/development.md)
 - [PR checklist](docs/pr_checklist.md)
+- [LangSmith observability policy](docs/langsmith_observability.md)
 - [V6 release-candidate notes](docs/v6_release_candidate_notes.md)
 
 `docs/v2_*`、`docs/v3_multi_agent_handoff_summary.md` 和

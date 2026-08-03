@@ -115,6 +115,7 @@ git status --short --branch
 Get-Content .local\retailpilot-runbook.md
 Get-Content docs\frontend_implementation_plan.md -TotalCount 220
 docker compose ps postgres
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_postgres.py
 ```
 
@@ -137,19 +138,24 @@ Do not run raw `python`, `pytest`, or `uv run`. Do not replace the environment.
 
 ```powershell
 # Full tests
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest
 
 # Focused tests
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m pytest tests\agents tests\api
 
 # API
-conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe -m uvicorn app.main:app --reload
+.\scripts\start_shopmind.ps1 -Profile development -Action api -Reload
 
 # Read-only smoke
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_postgres.py
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smoke_v3_handoff.py --json
 
 # Model-independent planner policy gate
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_planner_eval.py --output-json artifacts\v5-planner-policy\summary.json
 
 # Model-independent graph trajectory replay
@@ -159,6 +165,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_adapter_equivalence_eval.py --output-json artifacts\v5-adapter-equivalence\summary.json
 
 # Generic action lifecycle, edit, resume, and replay gate
+$env:LANGSMITH_TRACING = "false"
 conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_action_lifecycle_eval.py --output-json artifacts\v5-action-lifecycle\summary.json
 
 # V6 deterministic fault and restart replay gate
@@ -230,8 +237,23 @@ SHOPMIND_DEPLOYMENT_PROFILE="development"
 - `rag_agent` transport defaults to `in_process`. HTTP selection is server-only,
   requires a fixed HTTPS endpoint/allowlist, and never comes from API payloads.
 
-LangSmith is optional for local tests and required only for cloud traces or
-experiments. Do not block unrelated work on LangSmith configuration.
+LangSmith is optional for local tests and required only for explicitly
+authorized cloud traces or experiments. Do not block unrelated work on
+LangSmith configuration.
+
+## LangSmith Policy
+
+- LangSmith is an optional side-channel; normal development, tests, lint,
+  integration checks, and offline evaluations keep tracing disabled.
+- Use `scripts\start_shopmind.ps1` as the unified startup entrypoint. Ordinary
+  commands must explicitly set `LANGSMITH_TRACING=false`.
+- Never read, print, commit, or place a real LangSmith Key in tracked files;
+  never expose it in logs, metadata, or exceptions.
+- Do not create cloud Trace or spend LangSmith quota without explicit user
+  authorization. Cloud evaluation must be explicitly initiated with the
+  `evaluation` profile.
+- LangSmith missing, unavailable, unauthorized, rate-limited, or quota-limited
+  must not interrupt the ShopMind business path.
 
 ## V3 Safety Contract
 

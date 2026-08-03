@@ -14,8 +14,16 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from dotenv import load_dotenv
-from langsmith.evaluation import evaluate
+from app.core.langsmith_policy import initialize_langsmith_runtime
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - python-dotenv is a project dependency.
+    load_dotenv = None
+
+# Test seams only; the SDK evaluator is imported lazily inside main after the
+# explicit evaluation-profile and Key checks have passed.
+evaluate = None
 
 from agents.shopmind_multi_agent import (
     create_supervisor_router,
@@ -193,7 +201,26 @@ def resolve_eval_config(target: str) -> dict[str, Any]:
 
 
 def main() -> None:
-    load_dotenv(override=False)
+    runtime = initialize_langsmith_runtime(dotenv_loader=load_dotenv)
+    if runtime.profile != "evaluation" or not runtime.tracing_enabled:
+        raise SystemExit(
+            "LangSmith evaluation is disabled. Set SHOPMIND_DEPLOYMENT_PROFILE="
+            "evaluation, LANGSMITH_TRACING=true, and provide a local/deployment "
+            "Secret before explicitly running this command."
+        )
+
+    # Keep the explicit evaluation API out of ordinary application imports;
+    # this import is reached only by the explicit cloud-evaluation command.
+    evaluator = evaluate
+    if evaluator is None:
+        try:
+            from langsmith.evaluation import evaluate as evaluator
+        except ImportError as exc:
+            raise SystemExit(
+                "LangSmith evaluation support is not installed. Install the project's "
+                "existing LangChain dependencies before running this command."
+            ) from exc
+
     include_correctness = os.getenv("INCLUDE_CORRECTNESS_EVALUATOR", "").lower() in {
         "1",
         "true",
@@ -204,7 +231,7 @@ def main() -> None:
         target = V1_EVAL_TARGET
     eval_config = resolve_eval_config(target)
 
-    results = evaluate(
+    results = evaluator(
         eval_config["target_fn"],
         data=eval_config["dataset"],
         evaluators=build_evaluators(

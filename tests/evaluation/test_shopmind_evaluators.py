@@ -1258,6 +1258,9 @@ def test_langsmith_eval_cli_loads_dotenv_before_evaluate(monkeypatch) -> None:
 
     calls = []
     monkeypatch.setenv("SHOPMIND_EVAL_TARGET", "v3-handoff")
+    monkeypatch.setenv("SHOPMIND_DEPLOYMENT_PROFILE", "evaluation")
+    monkeypatch.setenv("LANGSMITH_TRACING", "true")
+    monkeypatch.setenv("LANGSMITH_API_KEY", "test-only-key")
     monkeypatch.setattr(
         eval_module,
         "load_dotenv",
