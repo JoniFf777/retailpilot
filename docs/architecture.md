@@ -1,19 +1,166 @@
 # ShopMind Architecture
 
-Updated: 2026-07-26
+Updated: 2026-08-11
 
 ## Purpose
 
-ShopMind uses shopping decisions to demonstrate reliable Agent engineering.
-Inherited TechHub workshop material remains, but the active worktree contains
-the released V3 boundary, the complete V4 runtime foundation and V5, and V6
-through Slice 3 plus Slice 4's identity and PII-safe audit-contract substages.
-Slice 4 also includes authenticated owner-data inspection, correction and
-deletion with independently retained governance facts. Remaining V6 design is in
-`docs/agent_runtime_design.md`; milestone order and completion criteria are in
-`PLAN.md`.
+ShopMind is the current Release Candidate architecture for a complete,
+SKU-level commerce workflow: Multi-Agent recommendation -> Catalog / SKU ->
+PendingAction / HITL -> Cart -> Checkout Preview -> Order and Inventory
+Reservation -> Mock Payment -> Transactional Outbox -> optional RocketMQ FIFO
+publisher. PostgreSQL is the source of truth for commerce state.
 
-## V3 System
+The current Alembic head is `0014_shopmind_outbox_events`.
+`0007_governance_audit` is the pre-commerce / pre-ShopMind-commerce baseline,
+not the current migration head.
+
+
+## Current Commerce Architecture
+
+```mermaid
+flowchart TB
+    Browser["React / TypeScript"] --> API["FastAPI"]
+    API --> Agents["Multi-Agent recommendation"]
+    Agents --> Catalog["Catalog filter / rank"]
+    Catalog --> Pending["PendingAction / HITL"]
+    Pending --> Cart
+    Cart --> Checkout["Checkout Preview"]
+    Checkout --> Order
+    Order --> Payment["Mock Payment"]
+    Order --> PG[(PostgreSQL)]
+    Payment --> PG
+    PG --> Outbox["Transactional Outbox"]
+    Outbox -. "optional publisher" .-> MQ["RocketMQ"]
+```
+
+Agents and Catalog reads can propose a SKU, but only an explicitly confirmed
+PendingAction can mutate the owner-scoped Cart. PostgreSQL owns every commerce
+fact; RocketMQ is not on the synchronous request path.
+
+### Checkout, Payment, and Outbox transaction sequence
+
+```mermaid
+sequenceDiagram
+    participant UI as React
+    participant API as FastAPI
+    participant DB as PostgreSQL
+    participant Provider as Mock Provider
+    participant Worker as Outbox Worker
+    participant MQ as RocketMQ
+
+    UI->>API: Checkout Preview
+    API->>DB: read stable Cart/Catalog snapshot
+    API-->>UI: signed checkout token
+    UI->>API: Create Order + Idempotency-Key
+    API->>DB: lock SKUs, reserve inventory, create pending_payment Order + Outbox
+    DB-->>API: commit
+    API-->>UI: Order
+
+    UI->>API: Pay + Idempotency-Key
+    API->>DB: claim PaymentAttempt
+    DB-->>API: commit claim
+    API->>Provider: provider call outside DB transaction
+    Provider-->>API: success / failure / unknown
+    API->>DB: persist provider outcome
+    DB-->>API: commit outcome
+    API->>DB: lock Order/Attempt/Reservations/Inventory; consume stock; mark paid/succeeded; enqueue Outbox
+    DB-->>API: atomic finalization commit
+
+    Worker->>DB: claim lease and commit
+    Worker->>MQ: publish outside business transaction
+    MQ-->>Worker: acknowledgement
+    Worker->>DB: CAS mark published
+```
+
+Provider I/O never holds a PostgreSQL transaction. MQ publish is also outside
+the business transaction: the committed Outbox row is the durable handoff, so
+delivery is at-least-once rather than exactly-once.
+
+### Commerce state and data relationships
+
+```mermaid
+stateDiagram-v2
+    state Order {
+        [*] --> pending_payment
+        pending_payment --> paid
+        pending_payment --> cancelled
+    }
+    state PaymentAttempt {
+        [*] --> processing
+        processing --> unknown
+        processing --> provider_succeeded
+        processing --> failed
+        unknown --> provider_succeeded
+        unknown --> failed
+        provider_succeeded --> succeeded
+    }
+    state InventoryReservation {
+        [*] --> active
+        active --> consumed
+        active --> released
+    }
+    state OutboxEvent {
+        [*] --> pending
+        pending --> publishing
+        publishing --> published
+        publishing --> pending: retry
+        publishing --> dead_letter
+        dead_letter --> pending: operator redrive
+    }
+```
+
+`OrderItem` snapshots price, currency, product, and SKU names/codes. Active
+Reservations point to OrderItems and SKU Inventory. Payment success atomically
+decrements on-hand and reserved quantities, consumes Reservations, marks the
+Order and PaymentAttempt successful, increments inventory versions, and writes
+the versioned Outbox event.
+
+## Current API Boundary
+
+The running FastAPI application and its versioned OpenAPI artifacts expose:
+
+- `GET /api/health`
+- `GET /api/health/governance-audit`
+- `GET /api/health/outbox`
+- `GET /api/health/postgres`
+- `GET /api/health/preflight`
+- `GET /api/health/readiness`
+- `GET /api/health/service-metrics`
+- `POST /api/chat`
+- `POST /api/chat/confirm`
+- `POST /api/chat/stream`
+- `GET /api/cart`
+- `DELETE /api/cart`
+- `PATCH /api/cart/items/{cart_item_id}`
+- `DELETE /api/cart/items/{cart_item_id}`
+- `POST /api/checkout/preview`
+- `POST /api/orders`
+- `GET /api/orders`
+- `GET /api/orders/{order_id}`
+- `POST /api/orders/{order_id}/cancel`
+- `POST /api/orders/{order_id}/payments`
+- `GET /api/orders/{order_id}/payments`
+- `POST /api/pending-actions/add-to-cart`
+- `GET /api/pending-actions/{pending_action_id}`
+- `POST /api/pending-actions/{pending_action_id}/confirm`
+- `POST /api/pending-actions/{pending_action_id}/cancel`
+- `POST /api/owner-data/inspect`
+- `POST /api/owner-data/memory/correct`
+- `POST /api/owner-data/memory/delete`
+- `POST /api/owner-data/delete`
+- `POST /api/owner-data/runs/inspect`
+
+Identity and anti-enumeration behavior remain server-owned. Generated OpenAPI
+is the machine-readable contract; this list is the human-readable entry point.
+
+## Retained Agent Runtime / Historical Architecture Context
+
+The following V3-V6 sections document retained runtime compatibility and the
+design lineage still present in the RC. Their historical roadmap language does
+not override the current commerce architecture, API boundary, or migration
+head above.
+
+### V3 System
 
 ```mermaid
 flowchart LR
@@ -49,7 +196,7 @@ synthesizes their structured output. A server-owned, default-off V5 feature gate
 can run multiple independent read routes with bounded parallelism; single-route
 and write flows retain the V3 path.
 
-## Responsibilities
+### Responsibilities
 
 | Component | Responsibility | Tool capability |
 | --- | --- | --- |
@@ -64,7 +211,7 @@ and write flows retain the V3 path.
 Deterministic routing is the V3 baseline. The optional LLM router uses structured
 output and falls back to deterministic routing on provider/model failure.
 
-## Read Flow
+### Read Flow
 
 1. FastAPI validates `ChatRequest`.
 2. `app.dependencies.agent.call_shopmind_agent` selects single or multi mode.
@@ -77,7 +224,7 @@ output and falls back to deterministic routing on provider/model failure.
 The route is declared `async`, but V3 Agent execution is synchronous. SSE,
 disconnect cancellation, and centralized deadlines are V4 work.
 
-## Write Flow
+### Write Flow
 
 ```mermaid
 sequenceDiagram
@@ -110,15 +257,15 @@ Invariants:
 - Confirmation checks user ownership and action state.
 - Smoke/evaluation users are cleaned before and after execution.
 
-## State And Persistence
+### State And Persistence
 
-### Working State
+#### Working State
 
 `ShopMindMultiAgentState` carries request identity, routing fields, specialist
 summaries, final decision, safety flags, tool names, and Agent-step events. It is
 working memory for one invocation, not durable conversation memory.
 
-### PostgreSQL And pgvector
+#### PostgreSQL And pgvector
 
 PostgreSQL is the ShopMind persistence path:
 
@@ -130,31 +277,13 @@ PostgreSQL is the ShopMind persistence path:
 - V6 governance audit records containing only domain-separated actor, owner,
   thread, run and resource fingerprints plus closed allowlisted metadata;
 - product and policy document chunks with pgvector embeddings;
-- Alembic migrations, currently `0007_governance_audit`.
+- Alembic migrations through the historical `0007_governance_audit` baseline;
+  current commerce migrations continue through `0014_shopmind_outbox_events`.
 
 Inherited SQLite/vectorstore paths remain for workshop/legacy compatibility.
 New ShopMind runtime persistence should use PostgreSQL.
 
-## API Boundary
-
-- `GET /api/health`
-- `GET /api/health/governance-audit`
-- `GET /api/health/preflight`
-- `GET /api/health/readiness`
-- `GET /api/health/service-metrics`
-- `POST /api/chat`
-- `POST /api/chat/confirm`
-- `POST /api/chat/stream`
-- `POST /api/owner-data/inspect`
-- `POST /api/owner-data/memory/correct`
-- `POST /api/owner-data/memory/delete`
-- `POST /api/owner-data/delete`
-
-The owner-data endpoints are additive and authentication-required. They do not
-change the V3 chat/confirm response models. See
-`docs/v3_api_handoff_contract.md`.
-
-## Observability And Evaluation
+### Observability And Evaluation
 
 V3 emits stable metadata rather than raw LangChain objects: Supervisor decisions,
 routes, Agent steps, tool names, Decision output, safety flags, candidate-context
@@ -169,7 +298,7 @@ versioned policy artifact; candidate execution cannot rewrite it. CI reuses the
 separate V5 JSON artifacts when present, runs missing deterministic suites, and
 publishes a catalog-run JSON plus a readable 43-check regression summary.
 
-## V4 Runtime Compatibility Layer
+### V4 Runtime Compatibility Layer
 
 V4.1 keeps the public V3 API contract intact while inserting a thin internal
 runtime layer:
@@ -237,7 +366,7 @@ runtime layer:
   the Harness; confirm and cancel remain `SENSITIVE_WRITE` operations requiring
   the explicit confirmation policy.
 
-## Current Limits
+### Historical Runtime Limits and Boundaries
 
 - No hard async execution interruption or token-level provider streaming.
 - No context compaction or automatic memory extraction.
@@ -445,7 +574,7 @@ runtime layer:
   clarification while retaining non-conflicting summaries; matching evidence
   follows the existing answer path.
 
-## Target Direction
+### Retained Target Direction
 
 ```mermaid
 flowchart TB
@@ -556,7 +685,7 @@ client-visible event metadata. Raw request/result/input/output/debug/error/
 metadata/tool-call/idempotency fields, event payloads and internal/audit events
 never cross this API boundary.
 
-## Decisions
+### Retained Runtime Decisions
 
 - PostgreSQL is ShopMind's system of record; SQLite is legacy/workshop support.
 - Deterministic policy surrounds model decisions and cannot be overridden by an

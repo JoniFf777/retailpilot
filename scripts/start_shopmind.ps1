@@ -1,23 +1,41 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("development", "demo", "production", "public-demo", "evaluation")]
+    [ValidateSet("development", "offline-demo", "demo", "production", "public-demo", "evaluation")]
     [string]$Profile = "development",
     [ValidateSet("api", "tests", "langsmith-eval")]
     [string]$Action = "api",
     [switch]$Reload,
+    [string]$PythonExecutable = $env:SHOPMIND_PYTHON,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$Arguments
 )
 
 $ErrorActionPreference = "Stop"
 
-$python = "D:\DL\Anaconda3\envs\pythonLearn\python.exe"
+function Resolve-ShopMindPython {
+    param([string]$ExplicitPath)
+    if ($ExplicitPath) {
+        $command = Get-Command $ExplicitPath -ErrorAction SilentlyContinue
+        if ($command) { return $command.Source }
+        throw "Python executable '$ExplicitPath' was not found. Set -PythonExecutable or SHOPMIND_PYTHON to a valid interpreter."
+    }
+    $command = Get-Command python -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+    throw "Python was not found on PATH. Activate the project environment or set SHOPMIND_PYTHON."
+}
+
+$python = Resolve-ShopMindPython -ExplicitPath $PythonExecutable
 $env:SHOPMIND_DEPLOYMENT_PROFILE = $Profile
 
 switch ($Profile) {
     "development" {
         $env:LANGSMITH_TRACING = "false"
         $env:LANGSMITH_PROJECT = "shopmind-development"
+        $env:LANGSMITH_TRACING_SAMPLING_RATE = "1.0"
+    }
+    "offline-demo" {
+        $env:LANGSMITH_TRACING = "false"
+        $env:LANGSMITH_PROJECT = "shopmind-offline-demo"
         $env:LANGSMITH_TRACING_SAMPLING_RATE = "1.0"
     }
     "demo" {
@@ -56,13 +74,13 @@ switch ($Action) {
         if ($Reload) {
             $uvicornArgs += "--reload"
         }
-        & conda run -n pythonLearn $python @uvicornArgs
+        & $python @uvicornArgs
     }
     "tests" {
-        & conda run -n pythonLearn $python -m pytest @Arguments
+        & $python -m pytest @Arguments
     }
     "langsmith-eval" {
-        & conda run -n pythonLearn $python evaluation\run_langsmith_eval.py @Arguments
+        & $python evaluation\run_langsmith_eval.py @Arguments
     }
 }
 

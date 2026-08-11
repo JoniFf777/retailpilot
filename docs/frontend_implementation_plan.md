@@ -2,17 +2,19 @@
 
 > 文档日期：2026-07-26
 >
-> 当前状态：仓库尚无 Web 前端实现
+> 当前状态：React/Vite Web 前端已实现；Phase 1-6B-2 accepted/closed；Project Closure implementation in progress；Inbox/Consumer deferred
+
+历史方案中的“当前状态：仓库尚无 Web 前端实现”已被上面的实际工程状态
+取代；该历史措辞仅保留在这里用于文档演进追溯。
 >
 > 目标：为已完成的 ShopMind V6 后端提供安全、可用、可测试的中文 Web 界面
 
 ## 1. 结论
 
-当前仓库没有 `package.json`、前端源码、HTML 页面或 React/Vue/Svelte 工程。
-现有用户入口是 FastAPI 公共 API 和
-`examples/shopmind_reference_client.py` 命令行参考客户端。
+当前仓库已有 `frontend/` React/Vite 工程和真实 API 集成；
+`examples/shopmind_reference_client.py` 仍作为命令行参考客户端保留。
 
-建议新增独立的 `frontend/` 工程，第一版定位为 **ShopMind 购物决策工作台**，
+`frontend/` 定位为 **ShopMind 购物决策工作台**，
 而不是完整电商商城。它应优先把后端已有的核心能力正确呈现出来：
 
 - 中文对话式购物决策；
@@ -610,3 +612,153 @@ HTML 使用 no-cache 或短缓存，带 hash 的静态资源使用 immutable 长
 6. 是否需要首版支持英文。
 
 这些选择不会改变后端安全契约，但会影响导航、视觉、认证接入和部署配置。
+## 18. F0 implementation record (2026-07-26)
+
+F0 is implemented under `frontend/` and is intentionally limited to the
+browser foundation. The scaffold uses pinned React, TypeScript, Vite, and
+Vitest dependencies with a committed `package-lock.json`. It provides:
+
+- `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`, and
+  `npm run generate:api` quality commands;
+- a Vite `/api` proxy to `http://127.0.0.1:8000` with no frontend secret
+  configuration;
+- the versioned `shopmind.frontend-api.v1` public types for chat, confirmation,
+  SSE envelopes, owner-data, run inspection, and health responses;
+- a browser-safe API client that uses contract types, scoped idempotency keys,
+  and no identity signing secret;
+- a `fetch` POST stream client using `ReadableStream`, incremental UTF-8
+  decoding, standard SSE frame parsing, and sequence de-duplication;
+- the initial route shell, design tokens, responsive global styles, and unit
+  coverage for the SSE boundary and application shell.
+
+F0 validation on this machine: lint passed, typecheck passed, 4 frontend unit
+tests passed, API contract verification passed, and production build passed.
+F1 is the next implementation stage; it will add JSON chat behavior without
+changing the backend V3/V6 contract.
+
+## 19. F1 implementation record (2026-07-26)
+
+F1 JSON Chat MVP is complete. The `/` workbench now submits messages to
+`POST /api/chat` through the typed client and renders the stable response
+fields (`answer`, `status`, `tool_calls`, and `pending_action_id`). It also
+provides a persisted opaque thread selector, a development-only user identity
+field for the backend compatibility mode, empty/loading/success/error states,
+structured retry messaging, quick prompts, responsive layout, and an explicit
+notice that write actions still require the later F3 confirmation surface.
+
+F1 does not persist message content or pending action payloads, does not parse
+internal debug payloads as product data, and does not change any backend code.
+The next stage is F2 ordered POST-SSE interaction.
+
+## 20. F2 implementation record (2026-07-26)
+
+F2 ordered POST-SSE interaction is complete. The default workbench transport
+now calls `POST /api/chat/stream` using the existing `fetch` and
+`ReadableStream` client. A pure stream reducer tracks connection, ordered
+progress, terminal result, confirmation-required, failure, and cancellation
+states. It accepts only increasing sequence numbers, maps client-visible event
+categories to human-readable progress, and never renders arbitrary event
+payloads or internal debug data.
+
+The UI includes a real-time progress strip, stop action using
+`AbortController`, terminal assistant response rendering, a JSON/stream
+transport toggle, and the existing structured retry path. F2 tests cover the
+actual `/api/chat/stream` request shape, terminal SSE rendering, reducer
+ordering, duplicate/out-of-order rejection, cancellation, and missing-terminal
+failure. F3 is the next stage for the explicit HITL action surface.
+## 21. F3 implementation record (2026-07-26)
+
+F3 HITL Actions is complete. A pending `confirmation_required` response now
+opens an action drawer that uses only the public action boundary. The drawer
+supports `add_to_cart` and `save_preference`, shows a bounded preview and risk
+class, validates exact editable fields, and submits all writes through
+`POST /api/chat/confirm`.
+
+The client sends only `quantity` for add-to-cart edits, and only the allowlisted
+preference type/value fields for preference edits. Confirm and cancel are
+separate explicit actions, duplicate submits are disabled, and backend failure,
+expiry, owner mismatch, and conflict responses remain visible without
+pretending the write succeeded. No pending action payload is persisted in
+browser storage. F4 owner-data, memory, and run-inspection pages are next.
+## 22. F4 implementation record (2026-07-26)
+
+F4 owner-data, memory, and run inspection is complete. The frontend now has an
+application-scoped development identity context so Chat, Privacy Center, and
+Run Inspector use the same owner selector without persisting identity secrets.
+`/privacy` calls the exact-owner inventory endpoint, displays bounded counts and
+memory records, supports allowlisted memory correction, requires a second
+confirmation for memory deletion, and requires the exact full-deletion phrase
+before issuing the explicitly confirmed deletion request. `/runs` supports one
+run_id or trace_id selector at a time and renders only the public payload-free
+run summary and ordered event facts.
+
+Production mode leaves owner identity to the trusted ingress boundary; the
+browser sends no signing secret. F4 validation passed with clean lint,
+typecheck, 17 frontend tests, and production build.
+The backend V1-V6 implementation was not changed. F5.1 health/status is
+complete; the remaining F5 browser-level E2E setup is separate.
+## 23. F5.1 implementation record (2026-07-26)
+
+The first F5 slice is complete. `/status` now calls the public liveness and
+deployment-readiness endpoints, treats the backend's readiness `503` JSON as a
+valid blocked report, and renders sanitized aggregate/check facts with refresh,
+loading, error, and retry states. Responsive status cards and bounded check rows
+were added without introducing a UI framework. A local bundle-budget command
+checks JavaScript and CSS output after production build; the current bundle is
+within the configured limits.
+
+F5.1 validation passed with clean lint, typecheck, 18 frontend tests,
+production build, and bundle-budget check. Browser-level Playwright execution is
+not claimed here because the repository does not yet include a browser runner;
+adding that dependency/browser install is a separate authorized setup step.
+## 24. F5.2 implementation record (2026-07-26)
+
+F5.2 adds a project-local Playwright setup under `frontend/`, with a pinned
+lockfile dependency, Chromium project configuration, Vite web-server startup,
+separate E2E typechecking, and two mocked critical paths: ordered POST-SSE chat
+completion and sanitized blocked readiness rendering. Vitest explicitly excludes
+`e2e/` so the unit runner and Playwright runner do not load each other's tests.
+
+The runner lists both tests successfully. Actual browser execution is currently
+blocked because this machine has no Playwright Chromium executable. No browser
+binary, global package, Node installation, backend service, or backend file was
+changed automatically. Lint, app typecheck, E2E typecheck, 18 unit tests,
+production build, and bundle-budget validation all pass. The next authorized
+setup step is installing the project-required Playwright Chromium binary, then
+running `npm run e2e`.
+## 25. F5.2 browser verification addendum (2026-07-27)
+
+The Playwright Chromium binary is now available on the development machine.
+After correcting the Chat E2E expectation to assert the input is cleared and
+the empty composer is disabled, both critical paths pass: `2 passed`. The
+complete frontend validation is now clean: lint, app typecheck, E2E typecheck,
+18 unit tests, Playwright E2E, production build, and bundle-budget check.
+F5.2 is complete; F6 release configuration remains separate.
+
+## 26. Phase 4B frontend implementation record (2026-08-08)
+
+The Phase 4B frontend implementation is now present under `frontend/`. It adds
+the generated Phase 4A Checkout/Order API client surface, the explicit Cart to
+Checkout Preview to Confirm Order flow, identity-scoped unknown-result retry,
+Order list/detail/cancel views, and responsive UI styling. Cart navigation to
+Checkout never creates an Order; creation requires a valid backend Preview and
+an explicit confirmation.
+
+Validation passed with 20 Vitest files / 97 tests, 23 Playwright tests, lint,
+app typecheck, E2E typecheck, production build, and bundle-budget checks.
+Phase 4B is accepted and closed. Phase 5A Mock Payment and Phase 6A
+Transactional Outbox are backend capabilities already available to the demo;
+fulfillment, address/shipping/tax, automatic expiration, Redis, Inbox/Consumer
+and real Payment providers remain outside scope.
+
+## 27. Phase 6B-1 Core Demo Packaging (accepted/closed)
+
+The real frontend now participates in the copyable `offline-demo`
+Prepare/Start/Verify flow documented in `docs/demo_runbook.md`. The live
+Playwright gate uses real browser, frontend, backend and PostgreSQL requests;
+the normal mocked Playwright suite remains separate. The critical path is
+Recommendation -> explicit SKU -> PendingAction confirmation -> Cart ->
+Checkout Preview -> Create Order -> Mock Payment -> paid. Core startup never
+requires LangSmith credentials or RocketMQ SDK/Broker/Publisher. Phase 6B-2
+Minimal Observability is accepted/closed. Project Closure implementation is in
+progress; Inbox/Consumer remains deferred.

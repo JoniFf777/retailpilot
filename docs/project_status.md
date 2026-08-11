@@ -1,6 +1,9 @@
 # ShopMind Project Status
 
-Snapshot date: 2026-07-26
+Snapshot date: 2026-08-11
+
+Current closure state: Phase 1-6B-2 accepted/closed; Project Closure
+implementation in progress; Inbox/Consumer deferred.
 
 ## Summary
 
@@ -38,13 +41,15 @@ All V6 implementation exit criteria are satisfied.
 
 ### User Interfaces
 
-- The repository currently has no Web frontend, `package.json`, HTML entrypoint,
-  or React/Vue/Svelte application.
-- `examples/shopmind_reference_client.py` is the current compact public-API reference client
+- The repository now contains the real `frontend/` React/Vite application and
+  a separate live Playwright gate; the normal mocked frontend suites remain
+  available for development without a running Backend.
+- `examples/shopmind_reference_client.py` remains the compact public-API reference client
   and command-line demonstration.
-- A security- and contract-aligned Web implementation is specified in
-  `docs/frontend_implementation_plan.md`; it is post-V6 productization scope,
-  not an incomplete V6 backend slice.
+- The implementation plan remains at `docs/frontend_implementation_plan.md`; the
+  current runnable setup is `docs/demo_runbook.md`.
+- `docs/demo_runbook.md` is the current copyable Core Demo setup and browser
+  path; it uses the explicit `offline-demo` profile.
 
 ### Agents
 
@@ -88,7 +93,8 @@ All V6 implementation exit criteria are satisfied.
   per-run budget checks.
 - pgvector stores product and policy document chunks.
 - SQLAlchemy repositories isolate persistence from tools.
-- Alembic head is `0007_governance_audit`.
+- The ShopMind Alembic head is `0014_shopmind_outbox_events` (`0007_governance_audit`
+  remains the pre-ShopMind baseline revision).
 - Bootstrap, seed, index, PostgreSQL smoke, and combined V3 smoke scripts exist.
 
 ### API, CI, And Evaluation
@@ -141,7 +147,7 @@ All V6 implementation exit criteria are satisfied.
 - PostgreSQL integration passes `23/23`, including fresh-store restart,
   repository isolation and Harness governance emission assertions; combined
   PostgreSQL/Redis integration passes `25/25`. PostgreSQL smoke passed at
-  migration `0007_governance_audit`, and V3 API handoff smoke passed `3/3`.
+  migration `0014_shopmind_outbox_events`, and V3 API handoff smoke passed `3/3`.
 - The exact immutable implementation commit `908b918` passed that matrix from a
   fresh detached worktree. Production preflight passed `6/6`, the V6 catalog
   passed `8/8` suites with `488/488` checks and `48/48` comparisons, release
@@ -564,6 +570,16 @@ See `docs/v3_release_notes.md` for the immutable release record.
 
 ## Post-V6 Optional Scope
 
+### Phase 4A Checkout/Order Backend (accepted/closed)
+
+Phase 4A implements the isolated Checkout Preview and pending-payment Order
+reservation backend. It currently exposes `POST /api/checkout/preview`,
+`POST /api/orders`, `GET /api/orders`, `GET /api/orders/{order_id}`, and
+`POST /api/orders/{order_id}/cancel`. The backend is implemented and accepted/
+closed. Payment was not part of Phase 4A; automatic expiration,
+shipping/address/tax, the Phase 4B frontend, Redis/RocketMQ, and Outbox/Inbox
+remain outside that phase.
+
 | Capability | V6 completed state | Optional follow-up |
 | --- | --- | --- |
 | Remote specialist | Default-off server-owned HTTP RAG transport, policy-required Registry selection and 5/5 equivalence gate | Add deployment/operational checks only where V6 production requirements need them; do not distribute every Agent |
@@ -576,8 +592,77 @@ See `docs/v3_release_notes.md` for the immutable release record.
 | Production governance | Server-owned development/trusted/signed identity boundary, authenticated owner binding, closed PII-safe audit/persistence/retention/default-off emission, audit alerts, owner-data lifecycle, accepted offline regression, production preflight/readiness, service SLOs, release-operation checks, policy-preserving reference client, and clean release validation | Publish and deploy only through an explicitly authorized release workflow |
 | Evaluation platform | Closed ten-dimension catalog, eight deterministic suites, normalized restart/coordination/governance replay, accepted Slice 4 baseline CI comparison and standalone release-operations gate | Add the operations gate to the accepted catalog only after explicit baseline review |
 
-Full commerce, checkout, payment, fulfillment and storefront UI remain explicit
-non-goals; they are not required for V6 completion.
+Full payment/fulfillment/storefront commerce remains outside V6 scope;
+Phase 4A adds the isolated Checkout Preview and pending-payment Order
+reservation backend, and Phase 5A adds the isolated Mock Payment Attempt
+backend with local finalization.
+
+### Phase 5A Mock Payment Backend (accepted/closed)
+
+Phase 5A now adds the isolated ShopMind Mock Payment Attempt backend. It exposes
+`POST /api/orders/{order_id}/payments` and
+`GET /api/orders/{order_id}/payments`, with owner-bound Order amount/currency,
+required idempotency, provider-outcome persistence and local reservation
+finalization. Successful payment moves an Order from `pending_payment` to
+`paid` and consumes its active Reservations; declined or unknown payment keeps
+the Order pending and Reservations active.
+
+`0013_shopmind_payments` is implemented after `0012_shopmind_orders`. The
+server-owned Mock Provider supports success, decline and unknown/reconciliation
+test scenarios through dependency injection or test/development setup only;
+the client cannot submit scenario, amount, currency or user identity fields.
+Phase 5A is accepted and closed. Phase 5B frontend, real payment providers,
+webhooks, refunds/chargebacks, and automatic reconciliation remain outside the
+implemented backend scope.
+
+### Phase 6A Transactional Outbox + RocketMQ (accepted/closed)
+
+Phase 6A adds migration `0014_shopmind_outbox_events` and a separate
+transactional Outbox model/repository. Order Create, Order Cancel, and
+successful Payment finalization enqueue immutable versioned events in the same
+PostgreSQL transaction as their business facts. Claims use short leases,
+database time, `FOR UPDATE SKIP LOCKED`, per-order sequence blocking, CAS
+completion, bounded retry/backoff, dead-letter state, and explicit operator
+redrive.
+
+The standalone publisher sends `shopmind.order.created.v1`,
+`shopmind.order.cancelled.v1`, and `shopmind.payment.succeeded.v1` to
+`shopmind-order-events-v1` with `message_group=order_id`, event-type tags, and
+event-ID keys. The Apache RocketMQ Python SDK is worker-only and lazy-loaded;
+development defaults keep publishing disabled. Phase 6A is accepted and closed;
+the publisher remains an optional Advanced Reliability Demo. Consumer, Inbox,
+deduplication consumer, webhook, automatic reconciliation worker and Redis
+remain deferred.
+
+### Phase 6B-1 Core Demo Packaging (accepted/closed)
+
+The current main chain is packaged by `scripts/start_shopmind_demo.ps1` into
+Prepare, Start and Verify stages. Prepare is idempotent and fail-closed for
+loopback/marked demo databases; Start launches only Backend and Frontend; Verify
+and `frontend/e2e/live-critical-path.spec.ts` exercise the real
+Recommendation -> explicit SKU -> PendingAction -> Cart -> Checkout -> Order ->
+Mock Payment path. PostgreSQL assertions cover paid Order, succeeded
+PaymentAttempt, consumed Reservation, exact inventory deltas and exactly-one
+versioned Order/Payment Outbox events. Core startup needs no LangSmith
+credentials and no RocketMQ SDK/Broker/Publisher. Phase 6B-1 is accepted and
+closed.
+
+### Phase 6B-2 Minimal Observability (accepted/closed)
+
+Phase 6B-2 adds bounded HTTP correlation through `X-Correlation-ID`, JSON
+structured logs with safe allowlisted fields, and transition logs for Order,
+Payment and Outbox state boundaries. Unexpected HTTP Order/Payment exceptions
+use stable error codes, exception class names and generic safe messages; they
+do not log original exception strings. It adds the read-only
+`scripts/inspect_outbox.py --json` operational snapshot plus optional
+`GET /api/health/outbox` reporting. Core readiness remains determined by
+Backend/PostgreSQL/core dependencies: a disabled publisher, backlog or
+dead-letter rows do not make the Order API unavailable, and readiness does not
+perform a RocketMQ network check. Health uses capped counters only and does
+not load recent Outbox rows or payloads. Phase 6B-2 is accepted and closed; it
+does not add Prometheus/Grafana/ELK,
+OpenTelemetry Collector, external tracing, a monitoring dashboard, new
+transaction behavior or Inbox/Consumer.
 
 ## Current Risks
 
@@ -636,3 +721,93 @@ non-goals; they are not required for V6 completion.
 - `docs/v6_release_candidate_notes.md` - validated V4-V6 implementation record.
 
 Historical files explain how V3 was built; the active roadmap is `PLAN.md`.
+
+## Frontend Status (2026-07-26)
+
+The ShopMind Web frontend has started in the isolated `frontend/` directory;
+no frontend package, source, Vite configuration, or dependency directory was
+added at the repository root. F0 is complete: the pinned React + TypeScript +
+Vite scaffold has lint, typecheck, Vitest, build, and API contract verification
+commands; a local `/api` proxy; browser-safe typed chat/confirm, owner-data,
+health, run-inspection, and POST-SSE clients; and the first responsive route
+shell with design tokens.
+
+F0 validation passed on 2026-07-26: lint, typecheck, 4 frontend tests,
+production build, and API contract verification. The backend remains unchanged
+and the PostgreSQL smoke baseline remains green. F1 JSON chat is the next
+frontend stage; V1-V6 backend release, tag, and deployment state is unchanged.
+
+F1 JSON Chat MVP is now complete. The root workbench submits typed requests to
+`POST /api/chat`, renders assistant replies and stable status fields, keeps an
+opaque thread identifier in browser storage, exposes development identity input
+only in Vite development mode, and includes accessible empty/loading/error/
+retry states with mocked component/API coverage. F1 validation passed with
+lint, typecheck, 6 frontend tests, and production build; the backend remains
+unchanged. F2 ordered POST-SSE is the next frontend stage.
+
+F2 ordered POST-SSE is now complete. The workbench defaults to the backend
+`POST /api/chat/stream` contract, consumes ordered `AgentEvent` frames through
+`fetch`/`ReadableStream`, de-duplicates sequence numbers, renders bounded
+client-visible progress, supports AbortController cancellation, and preserves
+the JSON path as an explicit fallback. F2 validation passed with lint,
+typecheck, 10 frontend tests, and production build. The backend remains
+unchanged; F3 HITL actions are next.
+## Frontend F3 Status (2026-07-26)
+
+F3 HITL Actions is now complete. `confirmation_required` responses open a
+typed action drawer for add-to-cart and save-preference, with exact editable
+schemas, explicit confirm/cancel controls, idempotent mutation headers,
+submission locking, and sanitized failure handling. F3 validation passed with
+lint, typecheck, 14 frontend tests, and production build. The frontend still
+does not persist action payloads or identity secrets, and the backend remains
+unchanged. F4 owner-data, memory, and run inspection are next.
+## Frontend F4 Status (2026-07-26)
+
+F4 owner-data, memory, and run inspection is now complete. The isolated
+`frontend/` app provides `/privacy` for exact-owner inventory, bounded Memory
+inspection, allowlisted correction, confirmed Memory deletion, and exact-phrase
+full deletion. `/runs` supports run_id/trace_id inspection and renders only
+payload-free run and ordered event facts. Chat, Privacy Center, and Run
+Inspector share the same development identity context; production identity
+remains ingress-owned and no browser signing secret is included.
+
+F4 validation passed with clean lint, typecheck,
+17 frontend tests, and production build. No backend files were modified.
+F5.1 health/status is complete; browser-level E2E setup remains separate.
+## Frontend F5.1 Status (2026-07-26)
+
+The first F5 slice is complete. `/status` integrates the public liveness and
+deployment-readiness endpoints, including the backend's sanitized readiness
+`503` JSON response, and provides loading, error, retry, refresh, responsive,
+and bounded check-list states. A local JavaScript/CSS bundle-budget command is
+also available after build. F5.1 passed clean lint, typecheck, 18 frontend
+tests, production build, and the bundle-budget check. Playwright browser E2E is
+explicitly pending a separate runner/browser setup; no machine-level software
+was installed. The backend remains unchanged.
+## Frontend F5.2 Status (2026-07-26)
+
+F5.2 adds project-local Playwright configuration and two mocked critical paths
+for POST-SSE chat completion and blocked readiness rendering. Playwright lists
+both tests, and Vitest now excludes the E2E directory. Lint, app typecheck, E2E
+typecheck, 18 unit tests, production build, and bundle budget all pass. Actual
+browser execution is pending the local Playwright Chromium binary; no global or
+machine-level software was installed and the backend remains unchanged.
+## Frontend F5.2 Verification (2026-07-27)
+
+Chromium is now installed for the project-level Playwright runner. The Chat
+critical path expectation was corrected to match the intended UX: after send,
+the input is cleared and the empty send button is disabled. Both Playwright
+critical paths pass (`2 passed`). The full frontend validation is clean:
+lint, app typecheck, E2E typecheck, 18 unit tests, Playwright E2E, production
+build, and bundle budget. F5.2 is complete; F6 release configuration remains
+separate. The backend remains unchanged.
+
+## Phase 1B-Frontend Acceptance Patch (2026-08-05)
+
+The frontend recommendation acceptance patch is complete. The current message
+scope supports comparison of up to four SKUs, including Alternative SKUs;
+selection beyond four is rejected visibly. Comparison focus lifecycle,
+structured outcomes, fixed projection-error copy, strict SSE terminal guards,
+literal OpenAPI enums, and budget/currency display are covered by the current
+tests. `npm run e2e:list` lists seven mocked scenarios, and `npm run e2e`
+passes all seven browser scenarios.
