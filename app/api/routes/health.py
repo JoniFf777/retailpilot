@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.settings import get_settings
+from app.outbox.repository import get_outbox_health_snapshot
 from app.governance import (
     GovernanceAuditEmissionMonitor,
     governance_audit_monitor,
@@ -31,6 +32,57 @@ GOVERNANCE_AUDIT_HEALTH_SCHEMA_VERSION = (
 @router.get("/health")
 async def health_check() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+def get_outbox_health_report(*, settings=None, session_factory=None) -> dict[str, Any]:
+    """Return a bounded optional Outbox snapshot without probing RocketMQ."""
+
+    resolved_settings = settings or get_settings()
+    if session_factory is None:
+        from app.db.session import SessionLocal
+
+        session_factory = SessionLocal
+    session = None
+    try:
+        session = session_factory()
+        snapshot = get_outbox_health_snapshot(session)
+        return {
+            "publisher_enabled": bool(resolved_settings.shopmind_outbox_enabled),
+            "status": "enabled" if resolved_settings.shopmind_outbox_enabled else "disabled",
+            "pending": snapshot["pending"],
+            "publishing": snapshot["publishing"],
+            "published": snapshot["published"],
+            "dead_letter": snapshot["dead_letter"],
+            "oldest_pending_seconds": snapshot["oldest_pending_seconds"],
+            "pending_truncated": snapshot["pending_truncated"],
+            "publishing_truncated": snapshot["publishing_truncated"],
+            "published_truncated": snapshot["published_truncated"],
+            "dead_letter_truncated": snapshot["dead_letter_truncated"],
+        }
+    except Exception:
+        return {
+            "publisher_enabled": bool(resolved_settings.shopmind_outbox_enabled),
+            "status": "unavailable",
+            "pending": None,
+            "publishing": None,
+            "published": None,
+            "dead_letter": None,
+            "oldest_pending_seconds": None,
+            "pending_truncated": False,
+            "publishing_truncated": False,
+            "published_truncated": False,
+            "dead_letter_truncated": False,
+            "error_code": "outbox_snapshot_unavailable",
+        }
+    finally:
+        if session is not None:
+            session.close()
+
+
+@router.get("/health/outbox")
+async def outbox_health_check(request: Request) -> dict[str, Any]:
+    settings = getattr(request.app.state, "runtime_settings", None)
+    return await run_in_threadpool(lambda: get_outbox_health_report(settings=settings))
 
 
 def get_governance_audit_health_report(
@@ -151,6 +203,9 @@ async def deployment_readiness_health_check(
             settings=settings,
             preflight_report=preflight,
         )
+    )
+    report["outbox"] = await run_in_threadpool(
+        lambda: get_outbox_health_report(settings=settings)
     )
     return JSONResponse(
         status_code=200 if report["ready"] else 503,

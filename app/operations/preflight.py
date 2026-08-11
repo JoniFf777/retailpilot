@@ -78,7 +78,7 @@ class ProductionPreflightReport(BaseModel):
     schema_version: Literal["shopmind.production-preflight.v1"] = (
         PRODUCTION_PREFLIGHT_SCHEMA_VERSION
     )
-    profile: Literal["development", "production"]
+    profile: Literal["development", "offline-demo", "production"]
     status: Literal["not_applicable", "ready", "blocked"]
     ready: bool
     total_checks: int = Field(ge=0)
@@ -94,7 +94,7 @@ class ProductionPreflightReport(BaseModel):
         failed = sum(check.status == "failed" for check in self.checks)
         if self.passed_checks != passed or self.failed_checks != failed:
             raise ValueError("Production preflight aggregate is invalid.")
-        if self.profile == "development":
+        if self.profile in {"development", "offline-demo"}:
             if self.status != "not_applicable" or self.ready or failed:
                 raise ValueError("Development preflight state is invalid.")
         elif self.ready != (self.status == "ready" and failed == 0):
@@ -279,7 +279,7 @@ def evaluate_production_preflight(
 ) -> ProductionPreflightReport:
     """Evaluate only settings relationships; never probe external services."""
 
-    if settings.shopmind_deployment_profile == "development":
+    if settings.shopmind_deployment_profile in {"development", "offline-demo"}:
         checks = tuple(
             ProductionPreflightCheck(
                 check_id=check_id,
@@ -300,7 +300,7 @@ def evaluate_production_preflight(
             )
         )
         return ProductionPreflightReport(
-            profile="development",
+            profile=settings.shopmind_deployment_profile,
             status="not_applicable",
             ready=False,
             total_checks=len(checks),

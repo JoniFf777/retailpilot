@@ -23,7 +23,9 @@ except ImportError:  # pragma: no cover - python-dotenv is a project dependency.
 LOGGER = logging.getLogger(__name__)
 _DEFAULT_DOTENV_LOADER = object()
 
-DeploymentProfile = Literal["development", "demo", "production", "evaluation"]
+DeploymentProfile = Literal[
+    "development", "offline-demo", "demo", "production", "evaluation"
+]
 
 DEFAULT_LANGSMITH_TRACING = False
 DEFAULT_LANGSMITH_PROJECT = "shopmind-development"
@@ -32,6 +34,7 @@ DEFAULT_LANGSMITH_TRACING_SAMPLING_RATE = 1.0
 
 _PROFILE_DEFAULTS: dict[DeploymentProfile, tuple[bool, str, float]] = {
     "development": (False, "shopmind-development", 1.0),
+    "offline-demo": (False, "shopmind-offline-demo", 1.0),
     "demo": (True, "shopmind-demo", 1.0),
     "production": (True, "shopmind-production", 0.1),
     "evaluation": (True, "shopmind-evaluation", 1.0),
@@ -143,6 +146,12 @@ def initialize_langsmith_runtime(
                 # but malformed values still fail closed.
                 _, tracing_valid = _parse_bool(dotenv_tracing)
                 requested_tracing = profile_tracing
+
+        # The offline demo is deliberately self-contained.  A stale local
+        # dotenv/process value must not turn LangSmith into a core dependency.
+        if profile == "offline-demo":
+            requested_tracing = False
+            tracing_valid = True
 
         project = explicit.get("LANGSMITH_PROJECT") or profile_project
         endpoint = explicit.get("LANGSMITH_ENDPOINT") or DEFAULT_LANGSMITH_ENDPOINT

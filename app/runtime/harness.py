@@ -180,6 +180,8 @@ def run_result_to_legacy_response(
         "run_id": result.run_id,
         "trace_id": result.trace_id,
     }
+    if "recommendation" in result.output_data:
+        response["recommendation"] = result.output_data["recommendation"]
     if include_debug and result.debug is not None:
         response["debug"] = result.debug
     return response
@@ -321,6 +323,7 @@ class ShopMindRuntimeHarness:
 
             try:
                 raw_result = executor(context)
+                self._validate_public_output(raw_result)
             except Exception as exc:
                 runtime_error = self._as_runtime_error(exc)
                 if runtime_error.usage is not None:
@@ -914,6 +917,13 @@ class ShopMindRuntimeHarness:
                 "pending_action_id",
                 "debug",
                 "delegated_usage",
+                "raw_result",
+                "recommendation_diagnostics",
+                "catalog_candidates",
+                "structured_constraints",
+                "recommendation_result",
+                "top_k_product_evidence",
+                "policy_evidence",
             }
         }
         error = None
@@ -1351,9 +1361,29 @@ class ShopMindRuntimeHarness:
             "answer": result.answer,
             "pending_action_id": result.pending_action_id,
             "tool_calls": result.tool_calls,
+            "recommendation": result.output_data.get("recommendation"),
         }
         encoded = json.dumps(payload, sort_keys=True, ensure_ascii=True).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
+
+    @staticmethod
+    def _validate_public_output(raw_result: dict[str, Any]) -> None:
+        """Reject a malformed recommendation before the run is completed/persisted."""
+
+        recommendation = raw_result.get("recommendation")
+        if recommendation is None:
+            return
+        try:
+            from app.schemas.recommendation import RecommendationResult
+
+            RecommendationResult.model_validate(recommendation)
+        except Exception as exc:
+            raise RuntimeExecutionError(
+                "recommendation.validation_failed",
+                "Recommendation result did not satisfy the public contract.",
+                source=ErrorSource.AGENT,
+                details={"validation_error": exc.__class__.__name__},
+            ) from exc
 
     @contextmanager
     def _open_session(self) -> Iterator[Session | None]:

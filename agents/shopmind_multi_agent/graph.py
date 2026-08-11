@@ -44,6 +44,26 @@ from .preference_adapter import (
 )
 from .rag_adapter import create_rag_agent_adapter, rag_agent_adapter_node
 from .rag_agent import RAG_AGENT_TOOLS
+from .recommendation_nodes import (
+    catalog_candidates_node,
+    deterministic_ranking_node,
+    next_graph_path_after_recommendation_gate,
+    recommendation_decision_node,
+    recommendation_evidence_node,
+    recommendation_gate_node,
+    recommendation_preference_node,
+)
+from app.recommendation.providers import (
+    CatalogCandidateProvider,
+    RecommendationPreferenceProvider,
+    SqlAlchemyCatalogCandidateProvider,
+    SqlAlchemyRecommendationPreferenceProvider,
+)
+from app.recommendation.rag import (
+    OfflineDemoRecommendationEvidenceProvider,
+    RecommendationEvidenceProvider,
+    SqlAlchemyRecommendationEvidenceProvider,
+)
 from .state import ShopMindMultiAgentState
 from .preference_agent import PREFERENCE_AGENT_TOOLS
 from .supervisor import supervisor_node
@@ -350,7 +370,11 @@ def create_shopmind_multi_agent_graph(
     runtime_context: Any | None = None,
     adapter_settings: Settings | None = None,
     rag_http_client: Any | None = None,
+    catalog_candidate_provider: CatalogCandidateProvider | None = None,
+    recommendation_preference_provider: RecommendationPreferenceProvider | None = None,
+    recommendation_evidence_provider: RecommendationEvidenceProvider | None = None,
 ):
+    runtime_settings = adapter_settings or get_settings()
     if runtime_context is not None:
         product_tools = product_tools or guard_tools(
             "product_agent",
@@ -403,11 +427,42 @@ def create_shopmind_multi_agent_graph(
         "rag_agent": rag_node,
         "preference_agent": preference_node,
     }
+    catalog_candidate_provider = catalog_candidate_provider or SqlAlchemyCatalogCandidateProvider()
+    recommendation_preference_provider = (
+        recommendation_preference_provider or SqlAlchemyRecommendationPreferenceProvider()
+    )
+    recommendation_evidence_provider = (
+        recommendation_evidence_provider
+        or (
+            OfflineDemoRecommendationEvidenceProvider()
+            if runtime_settings.shopmind_deployment_profile == "offline-demo"
+            else SqlAlchemyRecommendationEvidenceProvider()
+        )
+    )
 
     graph.add_node(
         "supervisor",
         _bind_supervisor_node(supervisor_router, agent_planner, runtime_context),
     )
+    graph.add_node("recommendation_gate", recommendation_gate_node)
+    graph.add_node(
+        "catalog_candidates",
+        lambda state: catalog_candidates_node(state, provider=catalog_candidate_provider),
+    )
+    graph.add_node(
+        "recommendation_preference",
+        lambda state: recommendation_preference_node(
+            state, provider=recommendation_preference_provider
+        ),
+    )
+    graph.add_node("deterministic_ranking", deterministic_ranking_node)
+    graph.add_node(
+        "recommendation_evidence",
+        lambda state: recommendation_evidence_node(
+            state, provider=recommendation_evidence_provider
+        ),
+    )
+    graph.add_node("recommendation_decision", recommendation_decision_node)
     graph.add_node("route_dispatcher", route_dispatcher_node)
     graph.add_node("product_agent", product_node)
     graph.add_node("rag_agent", rag_node)
@@ -423,12 +478,14 @@ def create_shopmind_multi_agent_graph(
     graph.add_node("decision_agent", decision_agent_node)
 
     graph.add_edge(START, "supervisor")
+    graph.add_edge("supervisor", "recommendation_gate")
     graph.add_conditional_edges(
-        "supervisor",
-        next_execution_path,
+        "recommendation_gate",
+        next_graph_path_after_recommendation_gate,
         {
             "route_dispatcher": "route_dispatcher",
             "parallel_read_executor": "parallel_read_executor",
+            "catalog_candidates": "catalog_candidates",
         },
     )
     graph.add_conditional_edges(
@@ -444,7 +501,12 @@ def create_shopmind_multi_agent_graph(
     for route in READ_AGENT_ROUTES:
         graph.add_edge(route, "route_dispatcher")
     graph.add_edge("parallel_read_executor", "decision_agent")
+    graph.add_edge("catalog_candidates", "recommendation_preference")
+    graph.add_edge("recommendation_preference", "deterministic_ranking")
+    graph.add_edge("deterministic_ranking", "recommendation_evidence")
+    graph.add_edge("recommendation_evidence", "recommendation_decision")
     graph.add_edge("decision_agent", END)
+    graph.add_edge("recommendation_decision", END)
 
     return graph.compile()
 
@@ -456,11 +518,17 @@ def invoke_shopmind_multi_agent(
     supervisor_router: SupervisorRouter | None = None,
     agent_planner: AgentPlanner | None = None,
     runtime_context: Any | None = None,
+    catalog_candidate_provider: CatalogCandidateProvider | None = None,
+    recommendation_preference_provider: RecommendationPreferenceProvider | None = None,
+    recommendation_evidence_provider: RecommendationEvidenceProvider | None = None,
 ) -> dict[str, Any]:
     graph = create_shopmind_multi_agent_graph(
         supervisor_router=supervisor_router,
         agent_planner=agent_planner,
         runtime_context=runtime_context,
+        catalog_candidate_provider=catalog_candidate_provider,
+        recommendation_preference_provider=recommendation_preference_provider,
+        recommendation_evidence_provider=recommendation_evidence_provider,
     )
     raw_result = graph.invoke(
         {
@@ -485,5 +553,6 @@ def invoke_shopmind_multi_agent(
             else runtime_context.metadata_snapshot().get("tool_call_records", [])
         ),
         "debug": build_multi_agent_debug_metadata(raw_result),
+        "recommendation": raw_result.get("recommendation"),
         "raw_result": raw_result,
     }

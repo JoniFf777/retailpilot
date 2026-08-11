@@ -1,0 +1,21 @@
+{
+  "seed_source": "shopmind-laptop-catalog",
+  "seed_version": "2026.08.03",
+  "category": {"code": "laptop", "name": "Laptop", "status": "active"},
+  "attribute_definitions": [
+    {"code": "cpu_tier", "name": "CPU tier", "scope": "spu", "data_type": "string", "filterable": true, "comparable": true, "display_order": 10},
+    {"code": "gpu_tier", "name": "GPU tier", "scope": "spu", "data_type": "string", "filterable": true, "comparable": true, "display_order": 20},
+    {"code": "memory_gb", "name": "Memory", "scope": "spu", "data_type": "integer", "unit": "GB", "filterable": true, "comparable": true, "display_order": 30},
+    {"code": "storage_gb", "name": "Storage", "scope": "spu", "data_type": "integer", "unit": "GB", "filterable": true, "comparable": true, "display_order": 40},
+    {"code": "weight_kg", "name": "Weight", "scope": "spu", "data_type": "decimal", "unit": "kg", "filterable": true, "comparable": true, "display_order": 50},
+    {"code": "screen_inches", "name": "Screen", "scope": "spu", "data_type": "decimal", "unit": "in", "filterable": true, "comparable": true, "display_order": 60},
+    {"code": "use_cases", "name": "Use cases", "scope": "spu", "data_type": "string_list", "searchable": true, "display_order": 70}
+  ],
+  "products": [
+    {"product_code": "LAP-MBA-M2-13", "legacy_product_id": "TECH-LAP-001", "brand": "Apple", "name": "MacBook Air M2 13", "description": "Portable laptop for study and office.", "sale_status": "active", "attributes": {"cpu_tier": "m2", "gpu_tier": "entry", "memory_gb": 16, "storage_gb": 256, "weight_kg": 1.24, "screen_inches": 13.6, "use_cases": ["office", "study"]}, "sku": {"sku_code": "LAP-MBA-M2-13-16-256", "name": "16GB / 256GB", "money_amount": "7299.00", "currency": "CNY", "sale_status": "active", "variant_attributes": {"memory_gb": 16, "storage_gb": 256}, "inventory": 18}},
+    {"product_code": "LAP-MBP-M3-14", "legacy_product_id": "TECH-LAP-002", "brand": "Apple", "name": "MacBook Pro M3 14", "description": "Professional portable workstation.", "sale_status": "active", "attributes": {"cpu_tier": "m3", "gpu_tier": "rtx4050", "memory_gb": 18, "storage_gb": 512, "weight_kg": 1.55, "screen_inches": 14.2, "use_cases": ["office", "coding", "creative"]}, "sku": {"sku_code": "LAP-MBP-M3-14-18-512", "name": "18GB / 512GB", "money_amount": "14999.00", "currency": "CNY", "sale_status": "active", "variant_attributes": {"memory_gb": 18, "storage_gb": 512}, "inventory": 8}},
+    {"product_code": "LAP-DELL-XPS-13", "legacy_product_id": "TECH-LAP-003", "brand": "Dell", "name": "Dell XPS 13", "description": "Compact Windows laptop.", "sale_status": "active", "attributes": {"cpu_tier": "i7", "gpu_tier": "entry", "memory_gb": 16, "storage_gb": 512, "weight_kg": 1.17, "screen_inches": 13.4, "use_cases": ["office", "coding", "study"]}, "sku": {"sku_code": "LAP-DELL-XPS-13-16-512", "name": "16GB / 512GB", "money_amount": "8999.00", "currency": "CNY", "sale_status": "active", "variant_attributes": {"memory_gb": 16, "storage_gb": 512}, "inventory": 12}},
+    {"product_code": "LAP-LEN-X1-14", "legacy_product_id": "TECH-LAP-004", "brand": "Lenovo", "name": "ThinkPad X1 Carbon", "description": "Business laptop with a light chassis.", "sale_status": "active", "attributes": {"cpu_tier": "i7", "gpu_tier": "entry", "memory_gb": 32, "storage_gb": 1024, "weight_kg": 1.12, "screen_inches": 14.0, "use_cases": ["office", "coding", "travel"]}, "sku": {"sku_code": "LAP-LEN-X1-14-32-1T", "name": "32GB / 1TB", "money_amount": "11999.00", "currency": "CNY", "sale_status": "active", "variant_attributes": {"memory_gb": 32, "storage_gb": 1024}, "inventory": 6}},
+    {"product_code": "LAP-HP-PAV-15", "legacy_product_id": "TECH-LAP-005", "brand": "HP", "name": "HP Pavilion 15", "description": "Value laptop for everyday work.", "sale_status": "active", "attributes": {"cpu_tier": "ryzen5", "gpu_tier": "entry", "memory_gb": 16, "storage_gb": 512, "weight_kg": 1.75, "screen_inches": 15.6, "use_cases": ["office", "study", "java_development"]}, "sku": {"sku_code": "LAP-HP-PAV-15-16-512", "name": "16GB / 512GB", "money_amount": "4999.00", "currency": "CNY", "sale_status": "active", "variant_attributes": {"memory_gb": 16, "storage_gb": 512}, "inventory": 25}}
+  ]
+}

@@ -138,6 +138,52 @@ def search_product_documents(
     )
 
 
+def search_product_documents_for_product_ids(
+    session: Session,
+    query_embedding: Sequence[float],
+    *,
+    product_ids: Sequence[str],
+    k: int = 6,
+) -> list[dict[str, Any]]:
+    """Search only the explicit legacy-product whitelist selected by Catalog.
+
+    This is deliberately not a natural-language product-ID extraction path.  A
+    candidate with no legacy mapping simply has no product-document evidence.
+    """
+
+    normalized_ids = sorted({str(product_id) for product_id in product_ids if product_id})
+    if not normalized_ids:
+        return []
+    bind = session.get_bind()
+    if bind.dialect.name != "postgresql":
+        statement = (
+            select(Document)
+            .where(Document.doc_type == "product", Document.product_id.in_(normalized_ids))
+            .order_by(Document.product_id.asc(), Document.id.asc())
+            .limit(k)
+        )
+        return [document_to_dict(document) for document in session.scalars(statement).all()]
+
+    embedding = _format_pgvector(query_embedding)
+    statement = text(
+        """
+        SELECT id, doc_type, source_path, source_name, product_id, product_name,
+               policy_name, chunk_index, content, metadata_json,
+               embedding_provider, embedding_model,
+               embedding <=> CAST(:embedding AS vector) AS distance
+        FROM documents
+        WHERE doc_type = 'product' AND product_id = ANY(:product_ids)
+        ORDER BY embedding <=> CAST(:embedding AS vector), id ASC
+        LIMIT :k
+        """
+    )
+    rows = session.execute(
+        statement,
+        {"embedding": embedding, "product_ids": normalized_ids, "k": k},
+    ).mappings()
+    return [_row_to_dict(row) for row in rows]
+
+
 def search_policy_documents(
     session: Session,
     query_embedding: Sequence[float],

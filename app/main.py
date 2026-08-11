@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.middleware import CorrelationIdMiddleware
 from app.core.langsmith_policy import initialize_langsmith_runtime
 
 # Resolve dotenv/profile policy before importing the API graph.  LangChain and
@@ -21,6 +22,7 @@ def create_app(*, settings: Settings | None = None) -> FastAPI:
         version="0.1.0",
         description="FastAPI backend skeleton for the RetailPilot / ShopMind project.",
     )
+    app.add_middleware(CorrelationIdMiddleware)
     app.state.production_preflight = preflight
     app.state.runtime_settings = resolved_settings
     app.include_router(api_router, prefix="/api")

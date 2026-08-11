@@ -204,6 +204,7 @@ class PendingAction(Base):
             "status IN ('pending', 'confirmed', 'cancelled', 'expired', 'failed')",
             name="ck_pending_actions_status",
         ),
+        CheckConstraint("version >= 1", name="ck_pending_actions_version_positive"),
         Index("idx_pending_actions_user_status", "user_id", "status"),
         Index("idx_pending_actions_thread", "thread_id"),
         Index("idx_pending_actions_expires_at", "expires_at"),
@@ -221,6 +222,12 @@ class PendingAction(Base):
     metadata_json: Mapped[dict] = mapped_column(
         JSONB_TYPE, nullable=False, server_default="{}"
     )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    result_json: Mapped[dict] = mapped_column(
+        JSONB_TYPE, nullable=False, server_default="{}"
+    )
+    resolution_request_hash: Mapped[Optional[str]] = mapped_column(String(128))
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -82,7 +82,10 @@ def supervisor_node(
     return {
         "intent": supervisor_decision["intent"],
         "supervisor_decision": supervisor_decision,
-        "execution_plan": execution_plan.model_dump(mode="python"),
+        # Graph state is persisted in JSONB; use the JSON representation so
+        # retry-policy frozensets and other typed containers cannot leak into
+        # the runtime result and make a successful recommendation unpersistable.
+        "execution_plan": execution_plan.model_dump(mode="json"),
         "routes": routes,
         "executed_routes": [],
         "current_route": None,

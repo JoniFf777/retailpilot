@@ -92,7 +92,7 @@ class DeploymentReadinessReport(BaseModel):
     schema_version: Literal["shopmind.deployment-readiness.v1"] = (
         DEPLOYMENT_READINESS_SCHEMA_VERSION
     )
-    profile: Literal["development", "production"]
+    profile: Literal["development", "offline-demo", "production"]
     status: Literal["ready", "blocked"]
     ready: bool
     total_checks: int = Field(ge=0)
@@ -139,7 +139,7 @@ def _configuration_check(
     settings: Settings,
     report: ProductionPreflightReport,
 ) -> DeploymentReadinessCheck:
-    if settings.shopmind_deployment_profile == "development":
+    if settings.shopmind_deployment_profile in {"development", "offline-demo"}:
         return _check(
             "configuration.preflight",
             DeploymentReadinessCategory.CONFIGURATION,
@@ -270,7 +270,7 @@ def _retention_check(
     now: datetime,
     loader: Callable[[str], RuntimeCleanupEvidence | None],
 ) -> DeploymentReadinessCheck:
-    if settings.shopmind_deployment_profile == "development":
+    if settings.shopmind_deployment_profile in {"development", "offline-demo"}:
         return _check(
             "retention.cleanup",
             DeploymentReadinessCategory.RETENTION,

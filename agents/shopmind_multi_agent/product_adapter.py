@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -41,7 +42,7 @@ class ProductAgentTaskOutput(BaseModel):
 
 
 def create_product_agent_adapter(
-    tools: Mapping[str, Any] | None = None,
+    tools: Mapping[str, Any] | Iterable[Any] | None = None,
     delegation_guard: DelegationBudgetGuard | None = None,
 ) -> PolicyEnforcedAgentAdapter:
     """Wrap the current product node without changing its tool behavior."""

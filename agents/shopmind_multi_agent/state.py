@@ -24,6 +24,17 @@ class ShopMindMultiAgentState(TypedDict, total=False):
     evidence_references: list[dict[str, Any]]
     delegated_usage: list[dict[str, Any]]
 
+    # Phase 1B structured recommendation state.  Every value is JSON-compatible
+    # so graph snapshots can be inspected without ORM/session objects.
+    recommendation_gate: Optional[dict[str, Any]]
+    structured_constraints: Optional[dict[str, Any]]
+    catalog_candidates: list[dict[str, Any]]
+    recommendation_result: Optional[dict[str, Any]]
+    recommendation_diagnostics: Optional[dict[str, Any]]
+    top_k_product_evidence: dict[str, list[dict[str, Any]]]
+    policy_evidence: list[dict[str, Any]]
+    recommendation: Optional[dict[str, Any]]
+
     decision: Optional[dict[str, Any]]
     final_response: Optional[str]
     handoff_reason: Optional[str]

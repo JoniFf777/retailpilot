@@ -1,6 +1,6 @@
 from langchain_core.tools import tool
 
-from agents.shopmind_multi_agent.permissions import guard_tool, tools_by_name
+from agents.shopmind_multi_agent.permissions import guard_tool
 from agents.shopmind_multi_agent.product_adapter import (
     ProductAgentTaskInput,
     create_product_agent_adapter,
@@ -24,7 +24,7 @@ def fake_search_products(query: str, limit: int = 5) -> str:
 
 def test_product_adapter_invokes_existing_specialist_through_typed_task() -> None:
     adapter = create_product_agent_adapter(
-        tools_by_name([guard_tool("product_agent", fake_search_products)])
+        [guard_tool("product_agent", fake_search_products)]
     )
     task = AgentTask(
         run_id="run-1",

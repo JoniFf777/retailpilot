@@ -59,6 +59,8 @@ DEFAULT_SHOPMIND_STREAM_ADMISSION_RENEW_INTERVAL_MS = 10_000
 MAX_SHOPMIND_STREAM_ADMISSION_LEASE_TTL_MS = 300_000
 DEFAULT_SHOPMIND_COORDINATION_BACKEND = "local"
 DEFAULT_SHOPMIND_IDENTITY_PROVIDER = "development_payload"
+DEFAULT_SHOPMIND_CHECKOUT_TOKEN_TTL_SECONDS = 900
+MAX_SHOPMIND_CHECKOUT_TOKEN_TTL_SECONDS = 3_600
 DEFAULT_SHOPMIND_IDENTITY_SIGNATURE_MAX_AGE_SECONDS = 60
 MAX_SHOPMIND_IDENTITY_SIGNATURE_MAX_AGE_SECONDS = 300
 DEFAULT_SHOPMIND_IDENTITY_SIGNATURE_CLOCK_SKEW_SECONDS = 5
@@ -75,6 +77,14 @@ DEFAULT_SHOPMIND_RAG_AGENT_HTTP_MAX_RESPONSE_BYTES = 1_048_576
 DEFAULT_SHOPMIND_PARALLEL_READ_ENABLED = False
 DEFAULT_SHOPMIND_PARALLEL_READ_MAX_WORKERS = 2
 MAX_SHOPMIND_PARALLEL_READ_WORKERS = 3
+DEFAULT_SHOPMIND_OUTBOX_ENABLED = False
+DEFAULT_SHOPMIND_OUTBOX_TOPIC = "shopmind-order-events-v1"
+DEFAULT_SHOPMIND_OUTBOX_LEASE_SECONDS = 60
+DEFAULT_SHOPMIND_OUTBOX_BATCH_SIZE = 10
+DEFAULT_SHOPMIND_OUTBOX_POLL_INTERVAL_SECONDS = 1.0
+DEFAULT_SHOPMIND_OUTBOX_BASE_BACKOFF_SECONDS = 5
+DEFAULT_SHOPMIND_OUTBOX_MAX_BACKOFF_SECONDS = 15 * 60
+DEFAULT_SHOPMIND_OUTBOX_MAX_ATTEMPTS = 12
 
 
 def _load_dotenv() -> None:
@@ -265,6 +275,12 @@ class Settings(BaseModel):
         "signed_header",
     ] = Field(default=DEFAULT_SHOPMIND_IDENTITY_PROVIDER)
     shopmind_identity_signing_secret: SecretStr | None = Field(default=None)
+    shopmind_checkout_signing_secret: SecretStr | None = Field(default=None)
+    shopmind_checkout_token_ttl_seconds: int = Field(
+        default=DEFAULT_SHOPMIND_CHECKOUT_TOKEN_TTL_SECONDS,
+        ge=1,
+        le=MAX_SHOPMIND_CHECKOUT_TOKEN_TTL_SECONDS,
+    )
     shopmind_identity_signature_max_age_seconds: int = Field(
         default=DEFAULT_SHOPMIND_IDENTITY_SIGNATURE_MAX_AGE_SECONDS,
         ge=1,
@@ -322,6 +338,27 @@ class Settings(BaseModel):
         ge=1,
         le=MAX_SHOPMIND_PARALLEL_READ_WORKERS,
     )
+    shopmind_outbox_enabled: bool = Field(default=DEFAULT_SHOPMIND_OUTBOX_ENABLED)
+    shopmind_outbox_rocketmq_endpoint: str | None = Field(default=None)
+    shopmind_outbox_rocketmq_topic: str = Field(default=DEFAULT_SHOPMIND_OUTBOX_TOPIC)
+    shopmind_outbox_rocketmq_access_key: SecretStr | None = Field(default=None, repr=False)
+    shopmind_outbox_rocketmq_secret_key: SecretStr | None = Field(default=None, repr=False)
+    shopmind_outbox_lease_seconds: int = Field(
+        default=DEFAULT_SHOPMIND_OUTBOX_LEASE_SECONDS, ge=1, le=3_600
+    )
+    shopmind_outbox_batch_size: int = Field(default=DEFAULT_SHOPMIND_OUTBOX_BATCH_SIZE, ge=1, le=100)
+    shopmind_outbox_poll_interval_seconds: float = Field(
+        default=DEFAULT_SHOPMIND_OUTBOX_POLL_INTERVAL_SECONDS, gt=0, le=60
+    )
+    shopmind_outbox_base_backoff_seconds: int = Field(
+        default=DEFAULT_SHOPMIND_OUTBOX_BASE_BACKOFF_SECONDS, ge=1, le=900
+    )
+    shopmind_outbox_max_backoff_seconds: int = Field(
+        default=DEFAULT_SHOPMIND_OUTBOX_MAX_BACKOFF_SECONDS, ge=1, le=86_400
+    )
+    shopmind_outbox_max_attempts: int = Field(
+        default=DEFAULT_SHOPMIND_OUTBOX_MAX_ATTEMPTS, ge=1, le=100
+    )
 
     @model_validator(mode="after")
     def validate_coordination_settings(self) -> "Settings":
@@ -353,6 +390,13 @@ class Settings(BaseModel):
                 raise ValueError(
                     "Signed-header clock skew must be shorter than max age."
                 )
+        if (
+            self.shopmind_checkout_signing_secret is not None
+            and len(self.shopmind_checkout_signing_secret.get_secret_value()) < 32
+        ):
+            raise ValueError("Checkout signing secret is too short.")
+        if self.shopmind_outbox_max_backoff_seconds < self.shopmind_outbox_base_backoff_seconds:
+            raise ValueError("Outbox maximum backoff must be at least its base backoff.")
         return self
 
     @classmethod
@@ -501,6 +545,14 @@ class Settings(BaseModel):
             shopmind_identity_signing_secret=(
                 os.getenv("SHOPMIND_IDENTITY_SIGNING_SECRET") or None
             ),
+            shopmind_checkout_signing_secret=(
+                os.getenv("SHOPMIND_CHECKOUT_SIGNING_SECRET") or None
+            ),
+            shopmind_checkout_token_ttl_seconds=_get_bounded_positive_int_env(
+                "SHOPMIND_CHECKOUT_TOKEN_TTL_SECONDS",
+                DEFAULT_SHOPMIND_CHECKOUT_TOKEN_TTL_SECONDS,
+                MAX_SHOPMIND_CHECKOUT_TOKEN_TTL_SECONDS,
+            ),
             shopmind_identity_signature_max_age_seconds=identity_max_age_seconds,
             shopmind_identity_signature_clock_skew_seconds=(
                 identity_clock_skew_seconds
@@ -589,6 +641,51 @@ class Settings(BaseModel):
                 "SHOPMIND_PARALLEL_READ_MAX_WORKERS",
                 DEFAULT_SHOPMIND_PARALLEL_READ_MAX_WORKERS,
                 MAX_SHOPMIND_PARALLEL_READ_WORKERS,
+            ),
+            shopmind_outbox_enabled=_get_bool_env(
+                "SHOPMIND_OUTBOX_ENABLED", DEFAULT_SHOPMIND_OUTBOX_ENABLED
+            ),
+            shopmind_outbox_rocketmq_endpoint=(
+                os.getenv("SHOPMIND_OUTBOX_ROCKETMQ_ENDPOINT") or None
+            ),
+            shopmind_outbox_rocketmq_topic=os.getenv(
+                "SHOPMIND_OUTBOX_ROCKETMQ_TOPIC", DEFAULT_SHOPMIND_OUTBOX_TOPIC
+            ),
+            shopmind_outbox_rocketmq_access_key=(
+                SecretStr(os.getenv("SHOPMIND_OUTBOX_ROCKETMQ_ACCESS_KEY"))
+                if os.getenv("SHOPMIND_OUTBOX_ROCKETMQ_ACCESS_KEY")
+                else None
+            ),
+            shopmind_outbox_rocketmq_secret_key=(
+                SecretStr(os.getenv("SHOPMIND_OUTBOX_ROCKETMQ_SECRET_KEY"))
+                if os.getenv("SHOPMIND_OUTBOX_ROCKETMQ_SECRET_KEY")
+                else None
+            ),
+            shopmind_outbox_lease_seconds=_get_bounded_positive_int_env(
+                "SHOPMIND_OUTBOX_LEASE_SECONDS",
+                DEFAULT_SHOPMIND_OUTBOX_LEASE_SECONDS,
+                3_600,
+            ),
+            shopmind_outbox_batch_size=_get_bounded_positive_int_env(
+                "SHOPMIND_OUTBOX_BATCH_SIZE", DEFAULT_SHOPMIND_OUTBOX_BATCH_SIZE, 100
+            ),
+            shopmind_outbox_poll_interval_seconds=_get_bounded_positive_float_env(
+                "SHOPMIND_OUTBOX_POLL_INTERVAL_SECONDS",
+                DEFAULT_SHOPMIND_OUTBOX_POLL_INTERVAL_SECONDS,
+                60.0,
+            ),
+            shopmind_outbox_base_backoff_seconds=_get_bounded_positive_int_env(
+                "SHOPMIND_OUTBOX_BASE_BACKOFF_SECONDS",
+                DEFAULT_SHOPMIND_OUTBOX_BASE_BACKOFF_SECONDS,
+                900,
+            ),
+            shopmind_outbox_max_backoff_seconds=_get_bounded_positive_int_env(
+                "SHOPMIND_OUTBOX_MAX_BACKOFF_SECONDS",
+                DEFAULT_SHOPMIND_OUTBOX_MAX_BACKOFF_SECONDS,
+                86_400,
+            ),
+            shopmind_outbox_max_attempts=_get_bounded_positive_int_env(
+                "SHOPMIND_OUTBOX_MAX_ATTEMPTS", DEFAULT_SHOPMIND_OUTBOX_MAX_ATTEMPTS, 100
             ),
         )
 

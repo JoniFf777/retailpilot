@@ -1,7 +1,8 @@
 """Product read agent for ShopMind V3."""
 
 import re
-from typing import Any, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from tools.products import compare_products, get_product_detail, search_products
 
@@ -76,9 +77,14 @@ def _build_product_summary(
 
 def product_agent_node(
     state: ShopMindMultiAgentState,
-    tools: Mapping[str, Any] | None = None,
+    tools: Mapping[str, Any] | Iterable[Any] | None = None,
 ) -> dict[str, Any]:
-    tool_map = dict(tools or tools_by_name(PRODUCT_AGENT_TOOLS))
+    if tools is None:
+        tool_map = tools_by_name(PRODUCT_AGENT_TOOLS)
+    elif isinstance(tools, Mapping):
+        tool_map = dict(tools)
+    else:
+        tool_map = tools_by_name(tools)
     message = get_last_user_message(state)
     lowered = message.lower()
     product_ids = _product_ids(message)

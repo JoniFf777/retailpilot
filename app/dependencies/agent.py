@@ -28,6 +28,7 @@ from app.runtime import (
     RunMode,
     RunOperation,
     RunRequest,
+    RunResult,
     ShopMindRuntimeHarness,
     ToolGateway,
     build_runtime_budget,
@@ -163,7 +164,7 @@ def _attach_multi_agent_handoff_debug(
     return result
 
 
-def call_shopmind_agent(
+def execute_shopmind_agent_run(
     message: str,
     user_id: Optional[str] = None,
     thread_id: Optional[str] = None,
@@ -171,8 +172,8 @@ def call_shopmind_agent(
     idempotency_key: str | None = None,
     event_sink: EventSink | None = None,
     cancellation_check: CancellationCheck | None = None,
-) -> dict[str, Any]:
-    """Call the ShopMind Agent behind the API boundary.
+) -> RunResult:
+    """Execute one run and return the canonical runtime result.
 
     This thin wrapper keeps route handlers simple and gives tests a stable
     monkeypatch target so API tests do not need to call a real LLM.
@@ -234,9 +235,30 @@ def call_shopmind_agent(
             thread_id=thread_id,
         )
 
-    result = runtime_harness.run(
+    return runtime_harness.run(
         request,
         executor,
+        event_sink=event_sink,
+        cancellation_check=cancellation_check,
+    )
+
+
+def call_shopmind_agent(
+    message: str,
+    user_id: Optional[str] = None,
+    thread_id: Optional[str] = None,
+    *,
+    idempotency_key: str | None = None,
+    event_sink: EventSink | None = None,
+    cancellation_check: CancellationCheck | None = None,
+) -> dict[str, Any]:
+    """Backward-compatible dict facade over :func:`execute_shopmind_agent_run`."""
+
+    result = execute_shopmind_agent_run(
+        message,
+        user_id,
+        thread_id,
+        idempotency_key=idempotency_key,
         event_sink=event_sink,
         cancellation_check=cancellation_check,
     )

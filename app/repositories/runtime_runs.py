@@ -6,10 +6,11 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models import AgentRun, AgentRunEvent, ConversationThread, IdempotencyRecord
+from app.schemas.recommendation import RecommendationResult
 
 
 def _now() -> datetime:
@@ -68,6 +69,64 @@ def get_agent_run(session: Session, *, run_id: str) -> dict[str, Any] | None:
 
     run = session.get(AgentRun, run_id)
     return None if run is None else _run_to_dict(run)
+
+
+def get_owned_recommendation_run(
+    session: Session,
+    *,
+    run_id: str,
+    user_id: str,
+    thread_id: str,
+    now: datetime | None = None,
+) -> dict[str, Any] | None:
+    """Return a validated recommendation only when the run is fully in scope.
+
+    This is deliberately the sole authority for recommendation-backed writes.
+    A mismatch, missing run, expired run, or corrupt/non-recommended result all
+    return ``None`` so API callers can use one non-enumerating 404 response.
+    """
+
+    normalized_run = run_id.strip()
+    normalized_user = user_id.strip()
+    normalized_thread = thread_id.strip()
+    if not normalized_run or not normalized_user or not normalized_thread:
+        return None
+    # Public APIs carry the stable client thread id, while the runtime
+    # persistence layer stores its own UUID thread id. Accept either exact
+    # form only within the same owner-scoped ConversationThread.
+    run = session.scalar(
+        select(AgentRun)
+        .join(ConversationThread, ConversationThread.id == AgentRun.thread_id)
+        .where(
+            AgentRun.id == normalized_run,
+            AgentRun.user_id == normalized_user,
+            AgentRun.operation == "chat",
+            AgentRun.status == "completed",
+            or_(
+                AgentRun.thread_id == normalized_thread,
+                ConversationThread.client_thread_id == normalized_thread,
+            ),
+        )
+    )
+    if run is None:
+        return None
+    current_time = now or _now()
+    if run.expires_at is not None:
+        expiry = run.expires_at
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        if expiry <= current_time:
+            return None
+    raw_recommendation = (run.result_json or {}).get("recommendation")
+    if raw_recommendation is None:
+        return None
+    try:
+        recommendation = RecommendationResult.model_validate(raw_recommendation)
+    except Exception:
+        return None
+    if recommendation.outcome != "recommended":
+        return None
+    return {"run": _run_to_dict(run), "recommendation": recommendation}
 
 
 def _event_to_dict(event: AgentRunEvent) -> dict[str, Any]:

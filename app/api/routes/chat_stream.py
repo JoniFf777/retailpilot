@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from app.core.settings import get_settings
+from app.api.chat_response import build_chat_response
 from app.dependencies import agent as agent_dependency
 from app.dependencies.security import bind_request_user, get_identity_boundary
 from app.runtime import AgentEvent, EventVisibility, RunResult
@@ -31,38 +32,12 @@ def _legacy_stream_result(
     effective_user_id: str | None,
     include_debug: bool,
 ) -> dict[str, Any]:
-    if isinstance(result, dict):
-        payload = {
-            "answer": result.get("answer", ""),
-            "status": result.get("status", "completed"),
-            "tool_calls": result.get("tool_calls", []),
-            "user_id": effective_user_id,
-            "thread_id": request.thread_id,
-            "pending_action_id": result.get("pending_action_id"),
-        }
-        if include_debug:
-            if result.get("debug") is not None:
-                payload["debug"] = result["debug"]
-            if result.get("run_id") is not None:
-                payload["run_id"] = result["run_id"]
-            if result.get("trace_id") is not None:
-                payload["trace_id"] = result["trace_id"]
-        return payload
-
-    payload = {
-        "answer": result.answer,
-        "status": result.status,
-        "tool_calls": result.tool_calls,
-        "user_id": result.user_id,
-        "thread_id": result.client_thread_id,
-        "pending_action_id": result.pending_action_id,
-    }
-    if include_debug:
-        if result.debug is not None:
-            payload["debug"] = result.debug
-        payload["run_id"] = result.run_id
-        payload["trace_id"] = result.trace_id
-    return payload
+    return build_chat_response(
+        result,
+        user_id=effective_user_id,
+        thread_id=request.thread_id,
+        include_debug=include_debug,
+    ).model_dump(mode="json", exclude_none=True)
 
 
 @router.post("/chat/stream")
@@ -194,6 +169,10 @@ async def chat_stream(
                 if disconnected:
                     continue
                 if isinstance(item, AgentEvent):
+                    if item.visibility != EventVisibility.CLIENT or item.event_type in {
+                        "run.completed", "run.failed", "run.cancelled", "run.timed_out"
+                    }:
+                        continue
                     last_sequence = max(last_sequence, item.sequence)
                     yield encode_sse_event(item)
                     continue

@@ -8,6 +8,11 @@ from alembic import context
 from app.core.settings import get_settings
 from app.db.base import Base
 from app.db import models  # noqa: F401
+from app.catalog import models as catalog_models  # noqa: F401
+from app.cart import models as cart_models  # noqa: F401
+from app.orders import models as order_models  # noqa: F401
+from app.payments import models as payment_models  # noqa: F401
+from app.outbox import models as outbox_models  # noqa: F401
 
 
 config = context.config
@@ -37,15 +42,20 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations with a live database connection."""
+    external_connection = config.attributes.get("connection")
+    if external_connection is not None:
+        context.configure(connection=external_connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
-
         with context.begin_transaction():
             context.run_migrations()
 

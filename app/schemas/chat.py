@@ -1,6 +1,9 @@
-from typing import Any, List, Optional
+from typing import Any, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.recommendation import RecommendationResult
+from app.schemas.pending_actions import RecommendationContextView
 
 
 STATUS_DESCRIPTION = (
@@ -8,6 +11,15 @@ STATUS_DESCRIPTION = (
     "confirmation_required, cancelled, and failed."
 )
 STATUS_EXAMPLES = ["completed", "confirmation_required", "cancelled", "failed"]
+ChatStatus = Literal["completed", "confirmation_required", "cancelled", "failed"]
+ProjectionErrorCode = Literal["recommendation_projection_corrupt"]
+
+
+class ProjectionError(BaseModel):
+    """Safe public projection failure for a completed persisted run."""
+
+    code: ProjectionErrorCode
+    message: str
 
 
 class ChatRequest(BaseModel):
@@ -64,7 +76,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str = Field(..., description="Assistant answer returned by the backend.")
-    status: str = Field(
+    status: ChatStatus = Field(
         default="completed",
         description=STATUS_DESCRIPTION,
         examples=STATUS_EXAMPLES,
@@ -91,6 +103,18 @@ class ChatResponse(BaseModel):
         default=None,
         description="Pending action identifier when user confirmation is required.",
         examples=["pending-action-id"],
+    )
+    recommendation: RecommendationResult | None = Field(
+        default=None,
+        description="Structured catalog recommendation when the Recommendation Gate handled the request.",
+    )
+    recommendation_context: RecommendationContextView | None = Field(
+        default=None,
+        description="Stable source run identifier for creating a recommendation-backed action.",
+    )
+    projection_error: ProjectionError | None = Field(
+        default=None,
+        description="Stable public projection error for a corrupt persisted recommendation; run state is unchanged.",
     )
     run_id: Optional[str] = Field(
         default=None,

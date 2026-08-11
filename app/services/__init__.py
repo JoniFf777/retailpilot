@@ -1,0 +1,1 @@
+"""ShopMind application services."""

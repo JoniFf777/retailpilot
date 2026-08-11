@@ -103,17 +103,53 @@ def test_harness_persists_legacy_chat_run():
     assert runs[0].status == "completed"
     assert runs[0].expires_at is not None
     assert [message.role for message in messages] == ["user", "assistant"]
-
     session = session_factory()
     try:
         thread = session.query(ConversationThread).one()
         idempotency = session.query(IdempotencyRecord).one()
     finally:
         session.close()
-
     assert thread.expires_at is not None
     assert all(message.expires_at is not None for message in messages)
     assert idempotency.expires_at is not None
+
+
+def test_harness_persists_only_canonical_recommendation_and_fingerprints_it():
+    session_factory = make_session_factory()
+    harness = ShopMindRuntimeHarness(session_factory=session_factory)
+    recommendation = {
+        "outcome": "no_match", "ranking_policy_version": "v1", "request_summary": "x",
+        "structured_constraints": {}, "no_match_reason": "none",
+    }
+    result = harness.run(
+        RunRequest(operation=RunOperation.CHAT, user_id="user-1", idempotency_key="rec-idem"),
+        lambda context: {
+            "answer": "none", "status": "completed", "recommendation": recommendation,
+            "raw_result": {"secret": "raw"}, "recommendation_diagnostics": {"secret": "diagnostic"},
+        },
+    )
+    assert result.output_data == {"recommendation": recommendation}
+    session = session_factory()
+    try:
+        run = session.query(AgentRun).one()
+        record = session.query(IdempotencyRecord).one()
+    finally:
+        session.close()
+    assert run.result_json == {"recommendation": recommendation}
+    assert record.response_fingerprint == harness._response_fingerprint(result)
+
+
+def test_harness_fails_before_persistence_when_recommendation_contract_is_invalid():
+    session_factory = make_session_factory()
+    harness = ShopMindRuntimeHarness(session_factory=session_factory)
+    result = harness.run(
+        RunRequest(operation=RunOperation.CHAT, user_id="user-1"),
+        lambda context: {"answer": "bad", "status": "completed", "recommendation": {"outcome": "recommended"}},
+        raise_on_error=False,
+    )
+    assert result.status == RunStatus.FAILED
+    assert result.error is not None
+    assert result.error.code == "recommendation.validation_failed"
 
 
 def test_harness_streams_and_persists_structured_attempt_event() -> None:
