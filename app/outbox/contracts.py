@@ -16,10 +16,12 @@ from app.payments.models import ShopMindPaymentAttempt
 EVENT_VERSION = 1
 ORDER_CREATED_EVENT = "shopmind.order.created.v1"
 ORDER_CANCELLED_EVENT = "shopmind.order.cancelled.v1"
+ORDER_EXPIRED_EVENT = "shopmind.order.expired.v1"
 PAYMENT_SUCCEEDED_EVENT = "shopmind.payment.succeeded.v1"
 EventType = Literal[
     "shopmind.order.created.v1",
     "shopmind.order.cancelled.v1",
+    "shopmind.order.expired.v1",
     "shopmind.payment.succeeded.v1",
 ]
 
@@ -85,6 +87,27 @@ def build_order_cancelled_event(
         aggregate_sequence=order.version,
         occurred_at=occurred_at,
         payload={"order_id": str(order.id), "status": "cancelled"},
+    )
+
+
+def build_order_expired_event(
+    order: ShopMindOrder,
+    *,
+    occurred_at: datetime,
+    reason: str = "payment_deadline",
+) -> OutboxEventEnvelope:
+    return OutboxEventEnvelope(
+        event_id=uuid4(),
+        event_type=ORDER_EXPIRED_EVENT,
+        aggregate_id=order.id,
+        aggregate_sequence=order.version,
+        occurred_at=occurred_at,
+        payload={
+            "order_id": str(order.id),
+            "status": "expired",
+            "expired_at": occurred_at.isoformat(),
+            "reason": reason,
+        },
     )
 
 

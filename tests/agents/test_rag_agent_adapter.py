@@ -1,3 +1,4 @@
+import pytest
 from langchain_core.documents import Document
 
 from agents.shopmind_multi_agent.permissions import guard_tool, tools_by_name
@@ -5,7 +6,7 @@ from agents.shopmind_multi_agent.rag_adapter import (
     RagAgentTaskInput,
     create_rag_agent_adapter,
 )
-from app.runtime import AgentTask
+from app.runtime import AgentTask, ToolGatewayExecutionError
 
 
 class FakeRagTool:
@@ -54,3 +55,40 @@ def test_rag_adapter_returns_typed_document_evidence() -> None:
     assert result.output_data["tool_calls"] == ["search_product_docs"]
     assert result.evidence_references[0].ref_id == "42"
     assert result.evidence_references[0].metadata["source_name"] == "keyboard-guide"
+
+
+class FailingRagTool:
+    name = "search_product_docs"
+
+    def invoke(self, arguments: dict[str, str]):
+        raise RuntimeError("embedding provider unavailable")
+
+
+def test_rag_adapter_does_not_promote_invocation_failure_to_completed() -> None:
+    adapter = create_rag_agent_adapter(
+        tools_by_name([guard_tool("rag_agent", FailingRagTool())])
+    )
+    task = AgentTask(
+        run_id="run-failing-rag",
+        thread_id="thread-failing-rag",
+        user_id="user-failing-rag",
+        sender="route_dispatcher",
+        recipient="rag_agent",
+        intent="document_retrieval",
+        input_data=RagAgentTaskInput(
+            message="keyboard documentation",
+            tool_calls=[],
+            executed_routes=[],
+            safety_flags=[],
+            agent_steps=[],
+        ).model_dump(mode="python"),
+        trace_id="trace-failing-rag",
+    )
+
+    with pytest.raises(ToolGatewayExecutionError) as raised:
+        adapter.invoke(task)
+
+    assert raised.value.tool_call_record.status == "failed"
+    assert raised.value.tool_call_record.result_metadata["error_code"] == (
+        "tool.execution_failed"
+    )

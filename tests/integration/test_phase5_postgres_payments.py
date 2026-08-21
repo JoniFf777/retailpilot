@@ -97,7 +97,7 @@ def phase5a_factory():
         # Payment finalization enqueues its success event in the same
         # transaction; run the unchanged Phase 5A scenarios at the current
         # migration head.
-        command.upgrade(_alembic(connection), "0014_shopmind_outbox_events")
+        command.upgrade(_alembic(connection), "0015_shopmind_order_expiration")
 
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     try:

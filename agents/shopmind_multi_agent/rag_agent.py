@@ -1,9 +1,10 @@
 """RAG read agent for ShopMind V3."""
 
 import re
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 from langchain_core.documents import Document
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from tools.documents import search_policy_docs, search_product_docs
 
@@ -29,13 +30,48 @@ INJECTION_PATTERNS = (
     "ignore previous",
 )
 
+RagSummaryStatus = Literal["success", "degraded"]
+RagDegradedReason = Literal[
+    "rag_tool_not_configured",
+    "rag_unavailable_before_invocation",
+]
+
+
+class RagSummary(BaseModel):
+    """Typed direct-RAG status without introducing a global task status."""
+
+    model_config = ConfigDict(extra="allow")
+
+    status: RagSummaryStatus = "success"
+    reason_code: RagDegradedReason | None = None
+    citations: list[dict[str, Any]] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_status_semantics(self) -> "RagSummary":
+        if self.status == "degraded":
+            if self.reason_code is None:
+                raise ValueError("Degraded RAG summaries require a bounded reason.")
+            if self.citations:
+                raise ValueError("Degraded RAG summaries cannot contain citations.")
+        elif self.reason_code is not None:
+            raise ValueError("Successful RAG summaries cannot contain a degraded reason.")
+        return self
+
+
+class RagToolResultError(ValueError):
+    """Raised when an invoked RAG tool returns an invalid result shape."""
+
 
 def _content_and_documents(result: Any) -> tuple[str, list[Document]]:
     if isinstance(result, tuple):
-        content = str(result[0])
-        docs = result[1] if len(result) > 1 and isinstance(result[1], list) else []
+        if len(result) != 2 or not isinstance(result[0], str) or not isinstance(result[1], list):
+            raise RagToolResultError("RAG tool returned an invalid result shape.")
+        content = result[0]
+        docs = result[1]
         return content, docs
-    return str(result), []
+    if isinstance(result, str):
+        return result, []
+    raise RagToolResultError("RAG tool returned an invalid result shape.")
 
 
 def _compact_text(text: str, max_chars: int = 500) -> str:
@@ -75,7 +111,12 @@ def rag_agent_node(
     state: ShopMindMultiAgentState,
     tools: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    tool_map = dict(tools or tools_by_name(RAG_AGENT_TOOLS))
+    if tools is None:
+        tool_map = tools_by_name(RAG_AGENT_TOOLS)
+    elif isinstance(tools, Mapping):
+        tool_map = dict(tools)
+    else:
+        tool_map = tools_by_name(tools)
     message = get_last_user_message(state)
     lowered = message.lower()
 
@@ -86,12 +127,25 @@ def rag_agent_node(
     else:
         tool_name = "search_product_docs"
 
-    result = tool_map[tool_name].invoke({"query": message})
-    content, documents = _content_and_documents(result)
+    tool = tool_map.get(tool_name)
+    degraded_reason: RagDegradedReason | None = None
+    if tool is None:
+        # Local development intentionally permits the graph to run without a
+        # downloaded embedding model. Catalog facts remain available through
+        # the product path; document evidence is optional enrichment.
+        content, documents = "本地开发未启用文档检索，已跳过 embedding 证据。", []
+        degraded_reason = "rag_tool_not_configured"
+    else:
+        # Once invocation begins, failures must reach the typed adapter/plan
+        # boundary. They are not optional degradation and must not look like a
+        # completed specialist result.
+        result = tool.invoke({"query": message})
+        content, documents = _content_and_documents(result)
     security_notes = _security_notes(content)
 
     tool_calls = list(state.get("tool_calls", []))
-    tool_calls.append(tool_name)
+    if tool is not None:
+        tool_calls.append(tool_name)
     executed_routes = list(state.get("executed_routes", []))
     executed_routes.append("rag_agent")
     safety_flags = list(state.get("safety_flags", []))
@@ -104,16 +158,19 @@ def rag_agent_node(
         else _compact_text(content)
     )
 
+    summary = RagSummary(
+        status="degraded" if degraded_reason is not None else "success",
+        reason_code=degraded_reason,
+        summary=safe_summary,
+        source=tool_name,
+        doc_type=_doc_type(tool_name),
+        citations=_citations(documents),
+        confidence="medium" if content else "low",
+        security_notes=security_notes,
+        raw_result_stored=False,
+    )
     return {
-        "rag_summary": {
-            "summary": safe_summary,
-            "source": tool_name,
-            "doc_type": _doc_type(tool_name),
-            "citations": _citations(documents),
-            "confidence": "medium" if content else "low",
-            "security_notes": security_notes,
-            "raw_result_stored": False,
-        },
+        "rag_summary": summary.model_dump(mode="python"),
         "executed_routes": executed_routes,
         "current_route": None,
         "safety_flags": safety_flags,
@@ -121,7 +178,7 @@ def rag_agent_node(
         "agent_steps": append_agent_step(
             state,
             node="rag_agent",
-            event="completed",
+            event="degraded" if degraded_reason is not None else "completed",
             route="rag_agent",
             tool_name=tool_name,
             doc_type=_doc_type(tool_name),

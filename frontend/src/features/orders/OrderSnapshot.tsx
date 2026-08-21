@@ -12,6 +12,6 @@ export function OrderSnapshot({ order }: { order: OrderView }) {
 }
 
 export function OrderStatus({ status }: { status: OrderView["status"] }) {
-  const label = status === "pending_payment" ? "Pending payment" : status === "paid" ? "Paid" : "Cancelled";
+  const label = status === "pending_payment" ? "Pending payment" : status === "paid" ? "Paid" : status === "expired" ? "Expired" : "Cancelled";
   return <span className={`order-status order-status-${status}`}>{label}</span>;
 }

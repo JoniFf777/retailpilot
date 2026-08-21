@@ -17,6 +17,9 @@ const messages: Record<ActionErrorResponse["code"], string> = {
   cart_quantity_limit: "加入后会超过单个 SKU 的数量上限。",
   unsupported_action_schema: "此操作版本不再支持，请重新开始。",
   invalid_action_payload: "待确认操作数据无效，请重新开始。",
+  catalog_identifier_ambiguous: "商品标识对应多个 SKU，请重新选择具体商品。",
+  sku_ambiguous: "该商品有多个规格，请先选择具体规格。",
+  expected_version_required: "确认信息已过期，请刷新待确认操作后重试。",
 };
 
 export function actionErrorMessage(error: ActionErrorResponse): string {

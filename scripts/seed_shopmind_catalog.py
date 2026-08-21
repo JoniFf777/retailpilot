@@ -17,6 +17,10 @@ from app.db.models import Product
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CATALOG_PATH = PROJECT_ROOT / "data" / "catalog" / "laptop_catalog.json"
+DEFAULT_CATALOG_PATHS = (
+    DEFAULT_CATALOG_PATH,
+    PROJECT_ROOT / "data" / "catalog" / "monitor_catalog.json",
+)
 
 
 @dataclass
@@ -103,14 +107,28 @@ def print_report(report: SeedReport, *, replace_managed_seed: bool) -> None:
     print(f"dangling legacy mapping：{report.dangling_legacy_ids}")
 
 
-def run_seed(*, path: Path = DEFAULT_CATALOG_PATH, replace_managed_seed: bool = False, dry_run: bool = False, session_factory: Callable[[], Session] | None = None) -> SeedReport:
+def run_seed(*, path: Path | None = None, replace_managed_seed: bool = False, dry_run: bool = False, session_factory: Callable[[], Session] | None = None) -> SeedReport:
     if session_factory is None:
         from app.db.session import SessionLocal
         session_factory = SessionLocal
     session = session_factory()
     try:
         print("变更计划：" + ("replace managed seed" if replace_managed_seed else "insert missing only"))
-        report = seed_catalog(session, load_catalog_seed(path), replace_managed_seed=replace_managed_seed, dry_run=dry_run)
+        paths = (path,) if path is not None else DEFAULT_CATALOG_PATHS
+        report = SeedReport()
+        for catalog_path in paths:
+            current = seed_catalog(
+                session,
+                load_catalog_seed(catalog_path),
+                replace_managed_seed=replace_managed_seed,
+                dry_run=dry_run,
+            )
+            for key in report.inserted:
+                report.inserted[key] += current.inserted[key]
+                report.skipped[key] += current.skipped[key]
+            for key in report.updated:
+                report.updated[key] += current.updated[key]
+            report.dangling_legacy_ids.extend(current.dangling_legacy_ids)
         print_report(report, replace_managed_seed=replace_managed_seed)
         if not dry_run: session.commit()
         return report
@@ -124,7 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Seed the independent ShopMind catalog.")
     parser.add_argument("--replace-managed-seed", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--data", type=Path, default=DEFAULT_CATALOG_PATH)
+    parser.add_argument("--data", type=Path, default=None, help="Seed one catalog file instead of the default Laptop + Monitor set.")
     return parser
 
 

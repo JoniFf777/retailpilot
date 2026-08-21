@@ -72,6 +72,7 @@ DEFAULT_SHOPMIND_RUNTIME_MAX_RETRIES = 0
 DEFAULT_SHOPMIND_AGENT_TASK_MAX_ATTEMPTS = 1
 MAX_SHOPMIND_AGENT_TASK_MAX_ATTEMPTS = 3
 DEFAULT_SHOPMIND_RAG_AGENT_TRANSPORT = "in_process"
+DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED = False
 DEFAULT_SHOPMIND_RAG_AGENT_HTTP_TIMEOUT_SECONDS = 10.0
 DEFAULT_SHOPMIND_RAG_AGENT_HTTP_MAX_RESPONSE_BYTES = 1_048_576
 DEFAULT_SHOPMIND_PARALLEL_READ_ENABLED = False
@@ -85,6 +86,8 @@ DEFAULT_SHOPMIND_OUTBOX_POLL_INTERVAL_SECONDS = 1.0
 DEFAULT_SHOPMIND_OUTBOX_BASE_BACKOFF_SECONDS = 5
 DEFAULT_SHOPMIND_OUTBOX_MAX_BACKOFF_SECONDS = 15 * 60
 DEFAULT_SHOPMIND_OUTBOX_MAX_ATTEMPTS = 12
+DEFAULT_SHOPMIND_ORDER_PAYMENT_TTL_SECONDS = 1_800
+MAX_SHOPMIND_ORDER_PAYMENT_TTL_SECONDS = 86_400
 
 
 def _load_dotenv() -> None:
@@ -215,6 +218,9 @@ class Settings(BaseModel):
     shopmind_agent_mode: str = Field(default=DEFAULT_SHOPMIND_AGENT_MODE)
     shopmind_supervisor_router: str = Field(default=DEFAULT_SHOPMIND_SUPERVISOR_ROUTER)
     shopmind_agent_planner: str = Field(default=DEFAULT_SHOPMIND_AGENT_PLANNER)
+    shopmind_recommendation_evidence_enabled: bool = Field(
+        default=DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED
+    )
     shopmind_deployment_profile: DeploymentProfile = Field(
         default=DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE
     )
@@ -359,6 +365,11 @@ class Settings(BaseModel):
     shopmind_outbox_max_attempts: int = Field(
         default=DEFAULT_SHOPMIND_OUTBOX_MAX_ATTEMPTS, ge=1, le=100
     )
+    shopmind_order_payment_ttl_seconds: int = Field(
+        default=DEFAULT_SHOPMIND_ORDER_PAYMENT_TTL_SECONDS,
+        ge=1,
+        le=MAX_SHOPMIND_ORDER_PAYMENT_TTL_SECONDS,
+    )
 
     @model_validator(mode="after")
     def validate_coordination_settings(self) -> "Settings":
@@ -472,6 +483,10 @@ class Settings(BaseModel):
                 .lower()
                 == "llm"
                 else DEFAULT_SHOPMIND_AGENT_PLANNER
+            ),
+            shopmind_recommendation_evidence_enabled=_get_bool_env(
+                "SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED",
+                DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED,
             ),
             shopmind_deployment_profile=langsmith_runtime.profile,
             shopmind_deployment_replicas=_get_bounded_positive_int_env(
@@ -686,6 +701,11 @@ class Settings(BaseModel):
             ),
             shopmind_outbox_max_attempts=_get_bounded_positive_int_env(
                 "SHOPMIND_OUTBOX_MAX_ATTEMPTS", DEFAULT_SHOPMIND_OUTBOX_MAX_ATTEMPTS, 100
+            ),
+            shopmind_order_payment_ttl_seconds=_get_bounded_positive_int_env(
+                "SHOPMIND_ORDER_PAYMENT_TTL_SECONDS",
+                DEFAULT_SHOPMIND_ORDER_PAYMENT_TTL_SECONDS,
+                MAX_SHOPMIND_ORDER_PAYMENT_TTL_SECONDS,
             ),
         )
 

@@ -1,6 +1,7 @@
 """Pydantic contracts for structured Catalog reads."""
 
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -41,3 +42,23 @@ class CatalogSkuCandidate(BaseModel):
     @property
     def attributes(self) -> dict[str, object]:
         return {**self.product_attributes, **self.variant_attributes}
+
+
+IdentifierNamespace = Literal["sku_code", "legacy_product_id", "product_code"]
+
+
+class CatalogIdentifierResolution(BaseModel):
+    """Machine-readable result of collision-safe legacy identifier lookup."""
+
+    model_config = ConfigDict(frozen=True)
+
+    status: Literal["resolved", "not_found", "ambiguous"]
+    code: Literal[
+        "catalog_not_found",
+        "catalog_identifier_ambiguous",
+        "sku_ambiguous",
+    ] | None = None
+    product_id: UUID | None = None
+    sku_id: UUID | None = None
+    matched_namespaces: tuple[IdentifierNamespace, ...] = ()
+    target_count: int = Field(default=0, ge=0)

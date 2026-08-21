@@ -15,24 +15,30 @@ from sqlalchemy.orm import Session
 from app.cart.constants import MAX_CART_ITEM_QUANTITY
 from app.catalog.models import CatalogInventory, CatalogProduct, CatalogSku
 from app.db.models import PendingAction, Product
+from app.repositories import preferences as preference_repository
 from app.repositories.runtime_runs import get_owned_recommendation_run
+from app.repositories.catalog import resolve_catalog_identifier
 from app.repositories.shopmind_cart import get_cart_item_for_update, get_cart_item_view, upsert_cart_item
 from app.schemas.pending_actions import (
     ActionErrorResponse,
     AddToCartPreview,
     CartItemView,
+    CartActionOutcome,
     EnumEditableField,
     IntegerEditableField,
     PendingActionErrorDetails,
     PendingActionResolutionRecord,
     PendingActionTransitionResponse,
     PendingActionView,
+    SavePreferenceActionPayload,
     TextEditableField,
 )
 from app.schemas.recommendation import AvailabilityView, Money
 
 
 PENDING_ACTION_SCHEMA_VERSION = "shopmind.pending_action.add_to_cart.v1"
+PREFERENCE_ACTION_SCHEMA_VERSION = "shopmind.pending_action.save_preference.v1"
+PREFERENCE_ACTION_OPERATION = "add"
 LEGACY_ACTION_SCHEMA_VERSION = "legacy.pending_action.v1"
 RESOLUTION_SCHEMA_VERSION = "shopmind.pending_action.resolution.v1"
 DEFAULT_PENDING_ACTION_TTL = timedelta(minutes=30)
@@ -112,15 +118,143 @@ def create_add_to_cart_pending_action(
     available = _available(inventory)
     if quantity > available:
         raise PendingActionServiceError("insufficient_inventory", "Requested quantity is not currently available.", details={"available_quantity": available})
+    return _create_catalog_pending_action(
+        session,
+        user_id=user_id,
+        thread_id=thread_id,
+        product=product,
+        sku=sku,
+        inventory=inventory,
+        quantity=quantity,
+        source_run_id=source_run_id,
+        source_recommendation_schema_version=recommendation.schema_version,
+    )
+
+
+def prepare_save_preference_pending_action(
+    session: Session,
+    *,
+    user_id: str,
+    thread_id: str | None,
+    preference_type: str,
+    preference_value: str,
+) -> PendingActionView:
+    """Prepare an append-only preference action without writing UserPreference."""
+
+    if not user_id.strip():
+        raise PendingActionServiceError("invalid_action_payload", "Preference owner is required.")
+    if not preference_value.strip():
+        raise PendingActionServiceError("invalid_action_payload", "Preference value is required.")
+    normalized_type, _was_invalid = preference_repository._normalize_preference_type(
+        preference_type
+    )
+    payload = SavePreferenceActionPayload.model_validate(
+        {
+            "schema_version": PREFERENCE_ACTION_SCHEMA_VERSION,
+            "operation": PREFERENCE_ACTION_OPERATION,
+            "preference_type": normalized_type,
+            "preference_value": preference_value.strip(),
+        }
+    )
+    now = _now()
+    action = PendingAction(
+        id=str(uuid4()),
+        user_id=user_id.strip(),
+        thread_id=thread_id,
+        action_type="save_preference",
+        payload_json=payload.model_dump(mode="json"),
+        risk_class="medium",
+        preview_text=f"Save {payload.preference_type} preference: {payload.preference_value}",
+        status="pending",
+        version=1,
+        result_json={},
+        metadata_json={
+            "schema_version": PREFERENCE_ACTION_SCHEMA_VERSION,
+            "operation": PREFERENCE_ACTION_OPERATION,
+        },
+        expires_at=now + DEFAULT_PENDING_ACTION_TTL,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(action)
+    session.flush()
+    return pending_action_to_view(session, action)
+
+
+def prepare_legacy_add_to_cart(
+    session: Session,
+    *,
+    user_id: str,
+    thread_id: str | None,
+    identifier: str,
+    quantity: int,
+) -> CartActionOutcome:
+    """Resolve legacy intent and prepare only a canonical SKU PendingAction."""
+
+    _validate_quantity(quantity)
+    resolution = resolve_catalog_identifier(session, identifier)
+    if resolution.status != "resolved" or resolution.sku_id is None:
+        code = resolution.code or "catalog_not_found"
+        details = PendingActionErrorDetails(
+            matched_namespace_count=len(resolution.matched_namespaces),
+            target_count=resolution.target_count,
+        )
+        status = "clarification_required" if code == "sku_ambiguous" else "failed"
+        return CartActionOutcome(status=status, code=code, details=details)
+
+    product, sku, inventory = _load_catalog(session, resolution.sku_id)
+    try:
+        _require_sellable(product, sku, inventory)
+        available = _available(inventory)
+        if quantity > available:
+            raise PendingActionServiceError(
+                "insufficient_inventory",
+                "Requested quantity is not currently available.",
+                details={"available_quantity": available},
+            )
+        view = _create_catalog_pending_action(
+            session,
+            user_id=user_id,
+            thread_id=thread_id,
+            product=product,
+            sku=sku,
+            inventory=inventory,
+            quantity=quantity,
+            origin_identifier=identifier,
+        )
+    except PendingActionServiceError as exc:
+        return CartActionOutcome(
+            status="failed",
+            code=exc.code,
+            details=exc.details,
+        )
+    return CartActionOutcome(
+        status="prepared",
+        pending_action_id=view.pending_action_id,
+        pending_action=view,
+    )
+
+
+def _create_catalog_pending_action(
+    session: Session,
+    *,
+    user_id: str,
+    thread_id: str | None,
+    product: CatalogProduct,
+    sku: CatalogSku,
+    inventory: CatalogInventory,
+    quantity: int,
+    source_run_id: str | None = None,
+    source_recommendation_schema_version: str | None = None,
+    origin_identifier: str | None = None,
+) -> PendingActionView:
     now = _now()
     amount = Decimal(sku.money_amount).quantize(Decimal("0.01"))
-    payload = {
+    payload: dict[str, Any] = {
         "schema_version": PENDING_ACTION_SCHEMA_VERSION,
         "sku_id": str(sku.id),
         "initial_quantity": quantity,
         "quantity": quantity,
-        "source_run_id": source_run_id,
-        "source_recommendation_schema_version": recommendation.schema_version,
         "source_product_id": str(product.id),
         "product_code_snapshot": product.product_code,
         "product_name_snapshot": product.name,
@@ -130,16 +264,24 @@ def create_add_to_cart_pending_action(
         "currency_snapshot": sku.currency,
         "availability_snapshot": {
             "sale_status": sku.sale_status,
-            "available_quantity": available,
-            "in_stock": available > 0,
-            "reason_code": None if available > 0 else "out_of_stock",
+            "available_quantity": _available(inventory),
+            "in_stock": _available(inventory) > 0,
+            "reason_code": None if _available(inventory) > 0 else "out_of_stock",
         },
     }
+    metadata: dict[str, Any] = {"schema_version": PENDING_ACTION_SCHEMA_VERSION}
+    if source_run_id is not None:
+        payload["source_run_id"] = source_run_id
+        payload["source_recommendation_schema_version"] = source_recommendation_schema_version
+    if origin_identifier is not None:
+        payload["origin"] = "legacy_chat"
+        payload["origin_identifier"] = origin_identifier.strip()
+        metadata["origin"] = "legacy_chat"
     action = PendingAction(
         id=str(uuid4()), user_id=user_id, thread_id=thread_id, action_type="add_to_cart",
         payload_json=payload, risk_class="high",
         preview_text=f"Add {quantity} x {product.name} ({sku.sku_code}) to cart",
-        status="pending", version=1, result_json={}, metadata_json={"schema_version": PENDING_ACTION_SCHEMA_VERSION},
+        status="pending", version=1, result_json={}, metadata_json=metadata,
         expires_at=now + DEFAULT_PENDING_ACTION_TTL, created_at=now, updated_at=now,
     )
     session.add(action)
@@ -156,21 +298,26 @@ def get_pending_action_view(session: Session, *, pending_action_id: str, user_id
 
 def confirm_add_to_cart(
     session: Session, *, pending_action_id: str, user_id: str, thread_id: str,
-    expected_version: int, updated_fields: dict[str, Any] | None = None,
+    expected_version: int | None, updated_fields: dict[str, Any] | None = None,
 ) -> PendingActionTransitionResponse:
     action = _get_scoped_action(session, pending_action_id, user_id, thread_id, lock=True)
     request_hash = _request_hash("confirm", updated_fields)
     if action.status != "pending":
         return _replay_or_conflict(action, request_hash)
+    payload = action.payload_json or {}
+    if payload.get("schema_version") != PENDING_ACTION_SCHEMA_VERSION:
+        raise _terminal_error(session, action, "confirm", request_hash, "unsupported_action_schema", "Pending action schema is not supported.")
+    if expected_version is None:
+        raise PendingActionServiceError(
+            "expected_version_required",
+            "Canonical add-to-cart confirmation requires the client-held action version.",
+        )
     if action.version != expected_version:
         raise PendingActionServiceError("version_conflict", "Pending action version is stale.", details={"current_version": action.version})
     if _is_expired(action.expires_at):
         raise _terminal_error(session, action, "confirm", request_hash, "action_expired", "Pending action has expired.", 410)
     fields = _normalize_fields(updated_fields)
     quantity = _validated_edit_quantity(fields, action)
-    payload = action.payload_json or {}
-    if payload.get("schema_version") != PENDING_ACTION_SCHEMA_VERSION:
-        raise _terminal_error(session, action, "confirm", request_hash, "unsupported_action_schema", "Pending action schema is not supported.")
     try:
         sku_id = UUID(str(payload["sku_id"]))
         source_product_id = UUID(str(payload["source_product_id"]))
@@ -208,6 +355,90 @@ def confirm_add_to_cart(
         snapshot_money=_money_or_none(snapshot_amount, snapshot_currency),
         current_money=Money(amount=format(amount, ".2f"), currency=sku.currency),
         requested_quantity=quantity, cart_quantity=merged_quantity, status="confirmed",
+    )
+    return _response_from_record(record, replay=False)
+
+
+def confirm_save_preference(
+    session: Session,
+    *,
+    pending_action_id: str,
+    user_id: str,
+    thread_id: str | None,
+    expected_version: int | None,
+    updated_fields: dict[str, Any] | None = None,
+) -> PendingActionTransitionResponse:
+    """Confirm one canonical append-only preference action deterministically."""
+
+    action = _get_scoped_action(session, pending_action_id, user_id, thread_id, lock=True)
+    request_hash = _request_hash("confirm", updated_fields)
+    if action.status != "pending":
+        return _replay_or_conflict(action, request_hash)
+    payload = action.payload_json or {}
+    if (
+        payload.get("schema_version") != PREFERENCE_ACTION_SCHEMA_VERSION
+        or payload.get("operation") != PREFERENCE_ACTION_OPERATION
+    ):
+        raise _terminal_error(
+            session,
+            action,
+            "confirm",
+            request_hash,
+            "unsupported_action_schema",
+            "Pending preference action schema is not supported.",
+        )
+    if expected_version is None:
+        raise PendingActionServiceError(
+            "expected_version_required",
+            "Canonical preference confirmation requires the client-held action version.",
+        )
+    if action.version != expected_version:
+        raise PendingActionServiceError(
+            "version_conflict",
+            "Pending preference action version is stale.",
+            details={"current_version": action.version},
+        )
+    if _is_expired(action.expires_at):
+        raise _terminal_error(
+            session,
+            action,
+            "confirm",
+            request_hash,
+            "action_expired",
+            "Pending preference action has expired.",
+            410,
+        )
+
+    fields = _validate_preference_edits(updated_fields)
+    merged_payload = {**payload, **fields}
+    try:
+        canonical_payload = SavePreferenceActionPayload.model_validate(merged_payload)
+    except Exception:
+        raise _terminal_error(
+            session,
+            action,
+            "confirm",
+            request_hash,
+            "invalid_action_payload",
+            "Pending preference action payload is invalid.",
+        )
+
+    preference_repository.add_user_preference(
+        session,
+        user_id=user_id.strip(),
+        preference_type=canonical_payload.preference_type,
+        preference_value=canonical_payload.preference_value,
+    )
+    action.payload_json = canonical_payload.model_dump(mode="json")
+    view = pending_action_to_view(session, action)
+    record = _persist_success(
+        session,
+        action,
+        "confirm",
+        request_hash,
+        view,
+        None,
+        status="confirmed",
     )
     return _response_from_record(record, replay=False)
 
@@ -375,6 +606,35 @@ def _validated_edit_quantity(fields: dict[str, Any], action: PendingAction) -> i
     if type(raw) is not int or not 1 <= raw <= MAX_CART_ITEM_QUANTITY:
         raise PendingActionServiceError("invalid_quantity", "Quantity must be an integer between 1 and 20.")
     return raw
+
+
+def _validate_preference_edits(fields: dict[str, Any] | None) -> dict[str, Any]:
+    normalized = _normalize_fields(fields)
+    if set(normalized) - {"preference_type", "preference_value"}:
+        raise PendingActionServiceError(
+            "invalid_updated_fields",
+            "Only preference_type and preference_value may be edited.",
+        )
+    if "preference_type" in normalized:
+        preference_type = normalized["preference_type"]
+        if not isinstance(preference_type, str):
+            raise PendingActionServiceError("invalid_updated_fields", "Preference type is invalid.")
+        normalized_type, was_invalid = preference_repository._normalize_preference_type(
+            preference_type
+        )
+        if was_invalid:
+            raise PendingActionServiceError("invalid_updated_fields", "Preference type is invalid.")
+        normalized["preference_type"] = normalized_type
+    if "preference_value" in normalized:
+        preference_value = normalized["preference_value"]
+        if (
+            not isinstance(preference_value, str)
+            or not preference_value.strip()
+            or len(preference_value.strip()) > 2000
+        ):
+            raise PendingActionServiceError("invalid_updated_fields", "Preference value is invalid.")
+        normalized["preference_value"] = preference_value.strip()
+    return normalized
 
 
 def _request_hash(transition: str, fields: dict[str, Any] | None) -> str:

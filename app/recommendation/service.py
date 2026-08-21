@@ -7,12 +7,61 @@ from decimal import Decimal
 from app.schemas.catalog import CatalogAttributeDefinition, CatalogSkuCandidate
 from app.schemas.recommendation import (
     AlternativeSkuView, AvailabilityView, LaptopConstraints, Money, ProductSpecificationView,
-    Recommendation, RecommendationResult, ScoreBreakdownItem,
+    Recommendation, RecommendationRequest, RecommendationResult, ScoreBreakdownItem,
 )
+from app.recommendation.request import MonitorCategoryAttributes
 
 
 RANKING_POLICY_VERSION = "shopmind.laptop-ranking.v1"
+MONITOR_RANKING_POLICY_VERSION = "shopmind.monitor-ranking.v1"
 _TIER_ORDER = {"entry": 1, "i5": 2, "ryzen5": 2, "i7": 3, "ryzen7": 3, "i9": 4, "ryzen9": 4, "m2": 3, "m3": 4, "rtx4050": 3, "rtx4060": 4}
+
+
+def build_recommendation(
+    candidates: list[CatalogSkuCandidate],
+    request: RecommendationRequest,
+    *,
+    request_summary: str = "",
+) -> RecommendationResult:
+    """Shared orchestration entry point for registered deterministic policies."""
+
+    if request.category == "laptop":
+        constraints = LaptopConstraints.model_validate(
+            {
+                **request.category_attributes,
+                "budget_max": request.budget_max,
+                "budget_currency": request.budget_currency,
+            }
+        )
+        result = build_laptop_recommendation(
+            candidates,
+            constraints,
+            request_summary=request_summary,
+        )
+        return result.model_copy(
+            update={
+                "category": "laptop",
+                "recommendation_request": request,
+                "category_attributes": dict(request.category_attributes),
+            }
+        )
+    if request.category == "monitor":
+        return build_monitor_recommendation(
+            candidates,
+            request,
+            request_summary=request_summary,
+        )
+    return RecommendationResult(
+        category="unknown",
+        outcome="clarification_required",
+        error_code="unsupported_category",
+        ranking_policy_version=MONITOR_RANKING_POLICY_VERSION,
+        request_summary=request_summary,
+        structured_constraints=LaptopConstraints(),
+        recommendation_request=request,
+        missing_fields=["category"],
+        clarification_question="当前暂不支持该商品品类，请选择笔记本或显示器。",
+    )
 
 
 def build_laptop_recommendation(candidates: list[CatalogSkuCandidate], constraints: LaptopConstraints, request_summary: str = "") -> RecommendationResult:
@@ -54,6 +103,8 @@ def _tier(value: object) -> int:
 
 
 def _score(candidate: CatalogSkuCandidate, constraints: LaptopConstraints) -> tuple[CatalogSkuCandidate, int | None, list[ScoreBreakdownItem], list[str]]:
+    if candidate.available_quantity <= 0:
+        return candidate, None, [], []
     if constraints.budget_max is not None and candidate.money_amount > constraints.budget_max:
         return candidate, None, [], []
     hard_fields = (("memory_min_gb", "memory_gb", lambda a, b: a >= b), ("storage_min_gb", "storage_gb", lambda a, b: a >= b), ("weight_max_kg", "weight_kg", lambda a, b: a <= b))
@@ -156,3 +207,188 @@ def _to_recommendation(candidate: CatalogSkuCandidate, score: int, breakdown: li
         sku_name=candidate.sku_name, money=Money(amount=str(candidate.money_amount), currency=candidate.currency),
         specifications=_specifications(candidate), score=score, score_breakdown=breakdown, matched_hard_constraints=matched,
         reason="Deterministic catalog ranking after hard-constraint filtering.", availability=_availability(candidate), alternative_skus=alternatives)
+
+
+_MONITOR_RESOLUTION_ORDER = {"1080p": 1, "1440p": 2, "4k": 3}
+
+
+def _monitor_number(candidate: CatalogSkuCandidate, code: str) -> Decimal | None:
+    value = candidate.attributes.get(code)
+    try:
+        return Decimal(str(value)) if value is not None else None
+    except Exception:
+        return None
+
+
+def _monitor_resolution(candidate: CatalogSkuCandidate) -> int:
+    return _MONITOR_RESOLUTION_ORDER.get(
+        str(candidate.attributes.get("resolution", "")).strip().lower(),
+        0,
+    )
+
+
+def build_monitor_recommendation(
+    candidates: list[CatalogSkuCandidate],
+    request: RecommendationRequest,
+    *,
+    request_summary: str = "",
+) -> RecommendationResult:
+    """Deterministic Monitor policy behind the shared recommendation envelope."""
+
+    attributes = MonitorCategoryAttributes.model_validate(request.category_attributes)
+    if not request.category_attributes and request.budget_max is None:
+        return RecommendationResult(
+            category="monitor",
+            outcome="clarification_required",
+            error_code="insufficient_constraints",
+            ranking_policy_version=MONITOR_RANKING_POLICY_VERSION,
+            request_summary=request_summary,
+            structured_constraints=LaptopConstraints(),
+            recommendation_request=request,
+            category_attributes=attributes.model_dump(exclude_none=True),
+            missing_fields=["budget_or_monitor_attribute"],
+            clarification_question="请补充显示器预算、尺寸、分辨率或刷新率要求。",
+        )
+    if request.budget_max is not None and request.budget_currency != "CNY":
+        return RecommendationResult(
+            category="monitor",
+            outcome="clarification_required",
+            error_code="budget_currency_unsupported",
+            ranking_policy_version=MONITOR_RANKING_POLICY_VERSION,
+            request_summary=request_summary,
+            structured_constraints=LaptopConstraints(),
+            recommendation_request=request,
+            category_attributes=attributes.model_dump(exclude_none=True),
+            missing_fields=["budget_currency"],
+            clarification_question="当前显示器目录仅支持 CNY 预算，请补充人民币预算。",
+        )
+
+    scored: list[tuple[CatalogSkuCandidate, int, list[ScoreBreakdownItem], list[str]]] = []
+    for candidate in candidates:
+        if request.availability_required and candidate.available_quantity <= 0:
+            continue
+        if request.budget_max is not None and candidate.money_amount > request.budget_max:
+            continue
+        size = _monitor_number(candidate, "size_inches")
+        if attributes.size_min_inches is not None and (
+            size is None or size < attributes.size_min_inches
+        ):
+            continue
+        resolution = _monitor_resolution(candidate)
+        if attributes.resolution_min is not None and (
+            resolution < _MONITOR_RESOLUTION_ORDER[attributes.resolution_min]
+        ):
+            continue
+        refresh = _monitor_number(candidate, "refresh_rate_hz")
+        if attributes.refresh_rate_min_hz is not None and (
+            refresh is None or refresh < attributes.refresh_rate_min_hz
+        ):
+            continue
+
+        breakdown = [
+            ScoreBreakdownItem(
+                code="eligible",
+                name="Eligible monitor",
+                points=50,
+                max_points=50,
+                reason="Passed category, availability, budget, and requested hard constraints.",
+            )
+        ]
+        matched = ["availability"]
+        if attributes.size_min_inches is not None:
+            matched.append("size_min_inches")
+        if attributes.resolution_min is not None:
+            matched.append("resolution_min")
+        if attributes.refresh_rate_min_hz is not None:
+            matched.append("refresh_rate_min_hz")
+
+        soft_points = 0
+        panel = str(candidate.attributes.get("panel_type", "")).lower()
+        if attributes.panel_type is not None:
+            points = 10 if panel == attributes.panel_type else 0
+            soft_points += points
+            breakdown.append(
+                ScoreBreakdownItem(
+                    code="panel_type",
+                    name="Panel preference",
+                    points=points,
+                    max_points=10,
+                    reason=(
+                        "Matches the requested panel type."
+                        if points
+                        else "Panel type is unavailable or does not match."
+                    ),
+                )
+            )
+        if attributes.use_case is not None:
+            use_cases = candidate.attributes.get("use_cases", [])
+            matches_use_case = isinstance(use_cases, list) and attributes.use_case in use_cases
+            points = 15 if matches_use_case else 0
+            soft_points += points
+            breakdown.append(
+                ScoreBreakdownItem(
+                    code="use_case",
+                    name="Use case",
+                    points=points,
+                    max_points=15,
+                    reason=(
+                        "Matches the requested Monitor use case."
+                        if points
+                        else "Use-case attribute is unavailable or does not match."
+                    ),
+                )
+            )
+        if attributes.resolution_min is None:
+            points = min(10, resolution * 3)
+            soft_points += points
+            breakdown.append(
+                ScoreBreakdownItem(
+                    code="resolution",
+                    name="Resolution",
+                    points=points,
+                    max_points=10,
+                    reason="Higher declared resolution receives a bounded preference score.",
+                )
+            )
+        score = min(100, 50 + soft_points)
+        scored.append((candidate, score, breakdown, matched))
+
+    if not scored:
+        return RecommendationResult(
+            category="monitor",
+            outcome="no_match",
+            error_code="no_candidates",
+            ranking_policy_version=MONITOR_RANKING_POLICY_VERSION,
+            request_summary=request_summary,
+            structured_constraints=LaptopConstraints(),
+            recommendation_request=request,
+            category_attributes=attributes.model_dump(exclude_none=True),
+            no_match_reason="没有满足显示器硬约束且仍可售的 SKU。",
+        )
+
+    scored.sort(key=lambda item: (-item[1], item[0].money_amount, item[0].sku_code))
+    winners: list[tuple[CatalogSkuCandidate, int, list[ScoreBreakdownItem], list[str]]] = []
+    seen_products: set[object] = set()
+    for item in scored:
+        if item[0].product_id in seen_products:
+            continue
+        winners.append(item)
+        seen_products.add(item[0].product_id)
+        if len(winners) == 3:
+            break
+    recommendations = [
+        _to_recommendation(candidate, score, breakdown, matched, scored).model_copy(
+            update={"category": "monitor"}
+        )
+        for candidate, score, breakdown, matched in winners
+    ]
+    return RecommendationResult(
+        category="monitor",
+        outcome="recommended",
+        ranking_policy_version=MONITOR_RANKING_POLICY_VERSION,
+        request_summary=request_summary,
+        structured_constraints=LaptopConstraints(),
+        recommendation_request=request,
+        category_attributes=attributes.model_dump(exclude_none=True),
+        recommendations=recommendations,
+    )

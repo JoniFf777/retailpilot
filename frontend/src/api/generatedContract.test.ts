@@ -35,7 +35,7 @@ describe("generated OpenAPI contract", () => {
   it("contains the Phase 5A Payment endpoints and status enums", () => {
     const openapi = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../openapi.json"), "utf8")) as { paths: Record<string, unknown>; components: { schemas: Record<string, { properties?: Record<string, { enum?: string[] }> }> } };
     expect(openapi.paths["/api/orders/{order_id}/payments"]).toBeDefined();
-    expect(openapi.components.schemas.OrderView.properties?.status?.enum).toEqual(["pending_payment", "cancelled", "paid"]);
+    expect(openapi.components.schemas.OrderView.properties?.status?.enum).toEqual(["pending_payment", "cancelled", "paid", "expired"]);
     expect(openapi.components.schemas.PaymentAttemptView.properties?.status?.enum).toEqual(["processing", "unknown", "provider_succeeded", "failed", "succeeded"]);
   });
 

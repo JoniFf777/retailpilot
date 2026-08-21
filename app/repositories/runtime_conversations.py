@@ -7,6 +7,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import ConversationMessage, ConversationSummary, ConversationThread
@@ -125,7 +126,27 @@ def get_or_create_conversation_thread(
             created_at=current_time,
             updated_at=current_time,
         )
-        session.add(thread)
+        try:
+            with session.begin_nested():
+                session.add(thread)
+                session.flush()
+        except IntegrityError:
+            if not (normalized_user_id and normalized_client_thread_id):
+                raise
+            thread = session.scalar(
+                select(ConversationThread).where(
+                    ConversationThread.user_id == normalized_user_id,
+                    ConversationThread.client_thread_id == normalized_client_thread_id,
+                )
+            )
+            if thread is None:
+                raise
+            if title is not None:
+                thread.title = title
+            thread.status = "active"
+            thread.metadata_json = _merge_metadata(thread.metadata_json, metadata)
+            thread.expires_at = expires_at
+            thread.updated_at = current_time
     else:
         if title is not None:
             thread.title = title

@@ -24,8 +24,23 @@ optional and must remain disabled for normal tests and the Core Demo.
 ```powershell
 $env:LANGSMITH_TRACING = "false"
 docker compose up -d postgres
-python -m alembic upgrade head
+# Set DATABASE_URL to an isolated *_demo, *_test, or *_smoke database.
+# For an empty database, set POSTGRES_ADMIN_URL to an operator connection
+# for the same database before running the idempotent demo preparation.
+python scripts/prepare_shopmind_demo.py --json
 ```
+
+`POSTGRES_ADMIN_URL` is used only by the bootstrap prerequisite step to ensure
+the `vector` extension. It must target the same database as `DATABASE_URL` and
+is never used by the application runtime. If `vector` is already installed,
+the admin URL is not needed. Bootstrap fails closed with an actionable message
+when the prerequisite is missing and no valid operator connection is given.
+
+For the explicit full bootstrap plan (including destructive legacy seed), use
+`python scripts/bootstrap_postgres.py --execute --confirm-clear --skip-documents`
+only after verifying that `DATABASE_URL` targets an isolated database. The
+bootstrap plan includes the ShopMind catalog seed and a document-free smoke
+mode when `--skip-documents` is selected.
 
 ## Backend
 

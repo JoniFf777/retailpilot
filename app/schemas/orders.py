@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, Strict
 from app.schemas.recommendation import Money
 
 
-OrderStatus = Literal["pending_payment", "cancelled", "paid"]
+OrderStatus = Literal["pending_payment", "cancelled", "paid", "expired"]
 
 
 class CreateOrderRequest(BaseModel):
@@ -46,6 +46,7 @@ class OrderView(BaseModel):
     version: StrictInt = Field(ge=1)
     created_at: datetime
     updated_at: datetime
+    expires_at: datetime | None = None
 
 
 class CreateOrderResponse(BaseModel):
@@ -85,6 +86,8 @@ OrderErrorCode = Literal[
     "reservation_inconsistent",
     "order_not_cancellable",
     "payment_in_progress",
+    "payment_state_inconsistent",
+    "order_expired",
     "idempotency_key_invalid",
     "cursor_invalid",
 ]
@@ -96,6 +99,7 @@ class OrderErrorDetails(BaseModel):
     available_quantity: StrictInt | None = Field(default=None, ge=0)
     requested_quantity: StrictInt | None = Field(default=None, ge=1)
     reservation_count: StrictInt | None = Field(default=None, ge=0)
+    reason: StrictStr | None = None
 
 
 class OrderErrorResponse(BaseModel):

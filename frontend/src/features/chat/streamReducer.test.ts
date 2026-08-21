@@ -33,13 +33,13 @@ describe("ordered stream reducer", () => {
     expect(state.response?.recommendation).toEqual(response.recommendation);
   });
 
-  it("represents cancellation and missing terminal output", () => {
+  it("represents transport detach and missing terminal output", () => {
     const running = streamReducer(initialStreamState, { type: "start" });
-    const cancelled = streamReducer(running, { type: "cancel" });
+    const detached = streamReducer(running, { type: "detach" });
     const failed = streamReducer(running, { type: "eof" });
-    expect(cancelled.status).toBe("cancelled");
+    expect(detached.status).toBe("detached");
     expect(failed.status).toBe("failed");
-    expect(cancelled.response).toBeNull();
+    expect(detached.response).toBeNull();
     expect(failed.response).toBeNull();
   });
 

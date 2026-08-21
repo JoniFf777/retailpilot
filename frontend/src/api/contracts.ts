@@ -17,6 +17,7 @@ export type Money = components["schemas"]["Money"];
 export type ProductSpecificationView = components["schemas"]["ProductSpecificationView"];
 export type ProjectionError = components["schemas"]["ProjectionError"];
 export type Recommendation = components["schemas"]["Recommendation"];
+export type RecommendationRequest = components["schemas"]["RecommendationRequest"];
 export type RecommendationResult = components["schemas"]["RecommendationResult"];
 export type ScoreBreakdownItem = components["schemas"]["ScoreBreakdownItem"];
 export type RecommendationContextView = components["schemas"]["RecommendationContextView"];

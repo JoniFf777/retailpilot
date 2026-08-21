@@ -40,6 +40,10 @@ def parse_laptop_constraints(message: str) -> LaptopConstraints:
     lowered = text.lower()
     if "java" in lowered:
         primary.append("java_development")
+    if "gaming" in lowered or "游戏" in text or "电竞" in text:
+        primary.append("gaming")
+    if any(term in text for term in ("轻薄", "便携", "出差")) or "portable" in lowered or "travel" in lowered:
+        primary.append("travel")
     if "剪视频" in text or "video" in lowered:
         secondary.append("video_editing")
     values["primary_use_cases"] = primary

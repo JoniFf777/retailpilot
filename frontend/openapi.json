@@ -14,13 +14,16 @@
               "action_resolution_conflict",
               "action_expired",
               "catalog_not_found",
+              "catalog_identifier_ambiguous",
+              "sku_ambiguous",
               "catalog_identity_changed",
               "product_inactive",
               "sku_inactive",
               "insufficient_inventory",
               "cart_quantity_limit",
               "unsupported_action_schema",
-              "invalid_action_payload"
+              "invalid_action_payload",
+              "expected_version_required"
             ],
             "title": "Code",
             "type": "string"
@@ -757,6 +760,18 @@
             "title": "Answer",
             "type": "string"
           },
+          "authoritative_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Winner Run identity for an in-progress idempotency recovery response.",
+            "title": "Authoritative Run Id"
+          },
           "debug": {
             "anyOf": [
               {
@@ -818,6 +833,17 @@
             ],
             "description": "Stable source run identifier for creating a recommendation-backed action."
           },
+          "retry_state": {
+            "default": "none",
+            "description": "Machine-readable transport/retry state. In-progress is recoverable and is not terminal failure.",
+            "enum": [
+              "none",
+              "in_progress",
+              "terminal"
+            ],
+            "title": "Retry State",
+            "type": "string"
+          },
           "run_id": {
             "anyOf": [
               {
@@ -832,6 +858,18 @@
               "runtime-run-id"
             ],
             "title": "Run Id"
+          },
+          "runtime_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Machine-readable runtime error code when a retry/recovery state is present.",
+            "title": "Runtime Error Code"
           },
           "status": {
             "default": "completed",
@@ -1201,6 +1239,22 @@
             ],
             "title": "Confirmed",
             "type": "boolean"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Client-held PendingAction version. Required when confirming or cancelling a canonical SKU add-to-cart action.",
+            "examples": [
+              1
+            ],
+            "title": "Expected Version"
           },
           "include_debug": {
             "default": false,
@@ -1621,6 +1675,17 @@
             ],
             "title": "Available Quantity"
           },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
           "requested_quantity": {
             "anyOf": [
               {
@@ -1669,6 +1734,8 @@
               "reservation_inconsistent",
               "order_not_cancellable",
               "payment_in_progress",
+              "payment_state_inconsistent",
+              "order_expired",
               "idempotency_key_invalid",
               "cursor_invalid"
             ],
@@ -1791,6 +1858,18 @@
             "title": "Currency",
             "type": "string"
           },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/OrderItemView"
@@ -1807,7 +1886,8 @@
             "enum": [
               "pending_payment",
               "cancelled",
-              "paid"
+              "paid",
+              "expired"
             ],
             "title": "Status",
             "type": "string"
@@ -2636,7 +2716,9 @@
               "payment_in_progress",
               "payment_declined",
               "payment_provider_unavailable",
-              "payment_finalization_pending"
+              "payment_finalization_pending",
+              "order_expired",
+              "payment_state_inconsistent"
             ],
             "title": "Code",
             "type": "string"
@@ -2750,6 +2832,18 @@
             ],
             "title": "Current Version"
           },
+          "matched_namespace_count": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Namespace Count"
+          },
           "max_quantity": {
             "anyOf": [
               {
@@ -2761,6 +2855,18 @@
               }
             ],
             "title": "Max Quantity"
+          },
+          "target_count": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Count"
           }
         },
         "title": "PendingActionErrorDetails",
@@ -3122,6 +3228,22 @@
           "availability": {
             "$ref": "#/components/schemas/AvailabilityView"
           },
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "laptop",
+                  "monitor",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
           "evidence": {
             "items": {
               "$ref": "#/components/schemas/EvidenceView"
@@ -3232,9 +3354,90 @@
         "title": "RecommendationContextView",
         "type": "object"
       },
+      "RecommendationRequest": {
+        "additionalProperties": false,
+        "description": "Shared request envelope with bounded category-owned attributes.",
+        "properties": {
+          "availability_required": {
+            "default": true,
+            "title": "Availability Required",
+            "type": "boolean"
+          },
+          "budget_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Currency"
+          },
+          "budget_max": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Max"
+          },
+          "category": {
+            "enum": [
+              "laptop",
+              "monitor",
+              "unknown"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "category_attributes": {
+            "additionalProperties": true,
+            "title": "Category Attributes",
+            "type": "object"
+          },
+          "generic_preferences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Generic Preferences",
+            "type": "array"
+          }
+        },
+        "required": [
+          "category"
+        ],
+        "title": "RecommendationRequest",
+        "type": "object"
+      },
       "RecommendationResult": {
         "additionalProperties": false,
         "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "laptop",
+                  "monitor",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_attributes": {
+            "additionalProperties": true,
+            "title": "Category Attributes",
+            "type": "object"
+          },
           "clarification_question": {
             "anyOf": [
               {
@@ -3245,6 +3448,17 @@
               }
             ],
             "title": "Clarification Question"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
           },
           "missing_fields": {
             "items": {
@@ -3276,6 +3490,16 @@
           "ranking_policy_version": {
             "title": "Ranking Policy Version",
             "type": "string"
+          },
+          "recommendation_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "recommendations": {
             "items": {

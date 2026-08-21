@@ -12,6 +12,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.catalog.models import CatalogInventory
+from app.core.time import ensure_utc
 from app.orders.models import ShopMindOrder
 from app.orders.state import request_hash, validate_idempotency_key
 from app.outbox.contracts import build_payment_succeeded_event
@@ -153,6 +154,14 @@ def claim_payment_attempt(
                 "The Idempotency-Key was already used with a different request.",
                 409,
             )
+        if existing.status == "succeeded" and order.status == "pending_payment":
+            raise _error(
+                "payment_state_inconsistent",
+                "Payment state is inconsistent with the Order state.",
+                409,
+                details={"reason": "succeeded_payment_pending_order"},
+                idempotent_replay=True,
+            )
         return _claim_from_attempt(existing, idempotent_replay=True)
 
     # New claims serialize on the Order.  The second key lookup closes the
@@ -176,12 +185,31 @@ def claim_payment_attempt(
                 "The Idempotency-Key was already used with a different request.",
                 409,
             )
+        if existing.status == "succeeded" and locked_order.status == "pending_payment":
+            raise _error(
+                "payment_state_inconsistent",
+                "Payment state is inconsistent with the Order state.",
+                409,
+                details={"reason": "succeeded_payment_pending_order"},
+                idempotent_replay=True,
+            )
         return _claim_from_attempt(existing, idempotent_replay=True)
 
     if locked_order.status == "paid":
         raise _error("order_already_paid", "The Order has already been paid.", 409)
+    if locked_order.status == "expired":
+        raise _error("order_expired", "The Order payment deadline has expired.", 409)
     if locked_order.status != "pending_payment":
         raise _error("order_not_payable", "The Order is not payable.", 409)
+    if locked_order.expires_at is None:
+        raise _error(
+            "order_not_payable",
+            "The Order has no valid payment deadline.",
+            409,
+            details={"reason": "expiration_deadline_missing"},
+        )
+    if datetime.now(timezone.utc) >= ensure_utc(locked_order.expires_at):
+        raise _error("order_expired", "The Order payment deadline has expired.", 409)
     active = get_active_payment_attempt(
         session, order_id=locked_order.id, for_update=True
     )

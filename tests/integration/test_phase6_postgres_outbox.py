@@ -109,7 +109,7 @@ def phase6_factory():
 
     with engine.connect() as connection:
         command.stamp(_alembic(connection), "0007_governance_audit")
-        command.upgrade(_alembic(connection), "0014_shopmind_outbox_events")
+        command.upgrade(_alembic(connection), "0015_shopmind_order_expiration")
 
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     try:

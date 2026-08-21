@@ -80,7 +80,7 @@ def test_shopmind_agent_tools_include_preference_tools() -> None:
     tool_names = {tool.name for tool in SHOPMIND_TOOLS}
 
     assert "get_user_preferences" in tool_names
-    assert "add_user_preference" in tool_names
+    assert "add_user_preference" not in tool_names
     assert "clear_user_preferences" not in tool_names
 
 

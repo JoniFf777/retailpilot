@@ -87,11 +87,9 @@ ignored by Git. Never copy API keys or private passwords into tracked files.
   implementation exit criteria are satisfied. Version/tag, release, and
   deployment remain separate explicitly authorized actions. The
   production/default specialist path remains in-process.
-- The repository has no Web frontend yet. The next authorized productization
-  work is the phased React/TypeScript implementation in
-  `docs/frontend_implementation_plan.md`, rooted at
-  `D:\python\retailpilot\frontend`. Start with F0 contract/schema validation and
-  a Vite `react-ts` scaffold; do not place frontend files at repository root.
+- The repository includes the React/TypeScript Web frontend under
+  `D:\python\retailpilot\frontend`. Keep frontend files there and use the
+  committed Vite scripts for build, mocked browser tests, and live demo checks.
 
 Current validation: `668 passed, 6 skipped`; PostgreSQL integration `23/23`;
 reference-client/API/docs focused `58/58`; runtime coordination focused `12/12`;

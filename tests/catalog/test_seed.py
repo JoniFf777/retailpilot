@@ -23,11 +23,11 @@ def test_catalog_seed_is_idempotent_and_does_not_modify_legacy_products() -> Non
     seed = load_catalog_seed()
     first = seed_catalog(session, seed); session.commit()
     second = seed_catalog(session, seed); session.commit()
-    assert first.inserted["products"] == 5
+    assert first.inserted["products"] == 9
     assert second.inserted["products"] == 0
     assert session.get(Product, "TECH-LAP-001").name == "Legacy name"
-    assert len(session.scalars(select(CatalogProduct)).all()) == 5
-    assert len(session.scalars(select(CatalogSku)).all()) == 5
+    assert len(session.scalars(select(CatalogProduct)).all()) == 9
+    assert len(session.scalars(select(CatalogSku)).all()) == 9
 
 
 def test_replace_only_updates_managed_seed_and_never_resets_inventory() -> None:
@@ -39,7 +39,7 @@ def test_replace_only_updates_managed_seed_and_never_resets_inventory() -> None:
     report = seed_catalog(session, seed, replace_managed_seed=True); session.commit()
     assert product.name == "Manual product"
     assert session.get(CatalogInventory, sku.id).on_hand_quantity == 1
-    assert report.skipped["inventory"] == 5
+    assert report.skipped["inventory"] == 9
 
 
 def test_seed_reports_dangling_legacy_mapping_without_rejecting_catalog_product() -> None:
@@ -54,3 +54,38 @@ def test_seed_script_prints_change_plan_before_dry_run(capsys) -> None:
     output = capsys.readouterr().out
     assert output.index("变更计划") < output.index("插入：")
     assert session.scalars(select(CatalogProduct)).all() == []
+
+
+def test_monitor_seed_contains_real_second_category_attributes() -> None:
+    session = make_session()
+    monitor_path = Path(__file__).resolve().parents[2] / "data" / "catalog" / "monitor_catalog.json"
+
+    report = seed_catalog(session, load_catalog_seed(monitor_path))
+
+    assert report.inserted["products"] == 7
+    assert report.inserted["skus"] == 7
+    monitor = session.scalar(select(CatalogProduct).where(CatalogProduct.product_code == "MON-DELL-U4K-27"))
+    assert monitor is not None
+    assert monitor.category.code == "monitor"
+    assert monitor.attributes_json["resolution"] == "4k"
+
+
+def test_default_laptop_monitor_seed_is_idempotent_and_preserves_inventory() -> None:
+    session = make_session()
+
+    first = run_seed(session_factory=lambda: session)
+    inventory = session.scalars(select(CatalogInventory)).first()
+    assert inventory is not None
+    inventory_sku_id = inventory.sku_id
+    inventory.on_hand_quantity = 2
+    session.commit()
+
+    second = run_seed(session_factory=lambda: session)
+
+    assert first.inserted["products"] == 16
+    assert first.inserted["skus"] == 16
+    assert second.inserted["products"] == 0
+    assert second.inserted["skus"] == 0
+    assert len(session.scalars(select(CatalogProduct)).all()) == 16
+    assert len(session.scalars(select(CatalogSku)).all()) == 16
+    assert session.get(CatalogInventory, inventory_sku_id).on_hand_quantity == 2

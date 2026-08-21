@@ -44,7 +44,12 @@ def preference_agent_node(
     state: ShopMindMultiAgentState,
     tools: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    tool_map = dict(tools or tools_by_name(PREFERENCE_AGENT_TOOLS))
+    if tools is None:
+        tool_map = tools_by_name(PREFERENCE_AGENT_TOOLS)
+    elif isinstance(tools, Mapping):
+        tool_map = dict(tools)
+    else:
+        tool_map = tools_by_name(tools)
     user_id = state.get("user_id") or ""
     result = tool_map["get_user_preferences"].invoke({"user_id": user_id})
 

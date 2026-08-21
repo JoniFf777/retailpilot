@@ -20,7 +20,7 @@ from app.runtime import (
 )
 from app.runtime.contracts import AgentTaskRetryPolicy, MemoryReference, RunBudget
 
-from .rag_agent import rag_agent_node
+from .rag_agent import RagSummary, rag_agent_node
 from .state import ShopMindMultiAgentState
 from .supervisor import get_last_user_message
 
@@ -34,7 +34,7 @@ class RagAgentTaskInput(BaseModel):
 
 
 class RagAgentTaskOutput(BaseModel):
-    rag_summary: dict[str, Any]
+    rag_summary: RagSummary
     executed_routes: list[str]
     current_route: str | None = None
     safety_flags: list[str]
@@ -43,9 +43,7 @@ class RagAgentTaskOutput(BaseModel):
 
 
 def _evidence_references(output: RagAgentTaskOutput) -> list[MemoryReference]:
-    citations = output.rag_summary.get("citations", [])
-    if not isinstance(citations, list):
-        return []
+    citations = output.rag_summary.citations
 
     references: list[MemoryReference] = []
     for index, citation in enumerate(citations):

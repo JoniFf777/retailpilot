@@ -22,8 +22,11 @@ Create a local `.env` from `.env.example` if needed. Set `DATABASE_URL` to an
 isolated loopback PostgreSQL database whose name contains `_demo`, `_test` or
 `_smoke` (for example `retailpilot_v2_smoke`). The prepare command refuses
 non-loopback hosts and production-looking database names. Do not point it at a
-shared or production database. Start PostgreSQL/pgvector on port 5432 and
-install the frontend lockfile dependencies once:
+shared or production database. Start PostgreSQL on port 5432 and set
+`POSTGRES_ADMIN_URL` to an administrator connection for that same database when
+it does not already contain pgvector. The public prepare flow provisions the
+extension before application migrations; no manual `psql` step is required.
+Install the frontend lockfile dependencies once:
 
 ```powershell
 npm --prefix frontend ci
@@ -35,8 +38,9 @@ npm --prefix frontend ci
 .\scripts\start_shopmind_demo.ps1 -Prepare
 ```
 
-Prepare checks PostgreSQL reachability and frontend dependencies, upgrades
-Alembic to `0014_shopmind_outbox_events`, and runs the legacy seed plus the
+Prepare checks PostgreSQL reachability and frontend dependencies, ensures
+pgvector through the operator prerequisite, upgrades Alembic to
+`0015_shopmind_order_expiration`, and runs the legacy seed plus the
 ShopMind catalog seed. Both seeds are idempotent and insert missing records
 only. No `--clear`, table deletion or document/vector indexing is performed;
 an unsafe database target fails closed before any write.

@@ -55,6 +55,73 @@ describe("ChatPage backend flows", () => {
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     await waitFor(() => expect(screen.getByText("The service recovered.")).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("Idempotency-Key")).toBe(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Idempotency-Key"));
+    const firstRequest = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    const retryRequest = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as Record<string, unknown>;
+    expect(retryRequest).toMatchObject({ user_id: firstRequest.user_id, thread_id: firstRequest.thread_id });
+  });
+
+  it("creates a new retry identity when the frontend user scope changes", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ detail: "Owner data storage unavailable." }, 503))
+      .mockResolvedValueOnce(jsonResponse({ ...completedResponse, answer: "User B response." }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderChat();
+    fireEvent.click(screen.getByTestId("json-mode-button"));
+    fireEvent.change(screen.getByTestId("chat-input"), { target: { value: "Recover this message" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+    await screen.findByRole("alert");
+    const firstKey = new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Idempotency-Key");
+    fireEvent.change(screen.getByLabelText("开发用户标识"), { target: { value: "user-b" } });
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(await screen.findByText("User B response.")).toBeInTheDocument();
+    const secondRequest = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as Record<string, unknown>;
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("Idempotency-Key")).not.toBe(firstKey);
+    expect(secondRequest.user_id).toBe("user-b");
+  });
+
+  it("does not reuse a pending key after starting a new thread", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ detail: "Owner data storage unavailable." }, 503))
+      .mockResolvedValueOnce(jsonResponse({ ...completedResponse, answer: "New thread response." }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderChat();
+    fireEvent.click(screen.getByTestId("json-mode-button"));
+    fireEvent.change(screen.getByTestId("chat-input"), { target: { value: "Old thread message" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+    await screen.findByRole("alert");
+    const firstKey = new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Idempotency-Key");
+    const firstRequest = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    fireEvent.click(screen.getByRole("button", { name: "新建会话" }));
+    expect(screen.queryByRole("button", { name: "重试" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("chat-input"), { target: { value: "New thread message" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+    expect(await screen.findByText("New thread response.")).toBeInTheDocument();
+    const secondRequest = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as Record<string, unknown>;
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("Idempotency-Key")).not.toBe(firstKey);
+    expect(secondRequest.thread_id).not.toBe(firstRequest.thread_id);
+  });
+
+  it("does not let a stale completion reattach an old key after user switch", async () => {
+    let rejectFirst: (reason?: unknown) => void = () => undefined;
+    const firstRequest = new Promise<Response>((_resolve, reject) => { rejectFirst = reject; });
+    const fetchMock = vi.fn()
+      .mockReturnValueOnce(firstRequest)
+      .mockResolvedValueOnce(jsonResponse({ ...completedResponse, answer: "Recovered for user B." }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderChat();
+    fireEvent.click(screen.getByTestId("json-mode-button"));
+    fireEvent.change(screen.getByTestId("chat-input"), { target: { value: "Stale completion message" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+    const firstKey = new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Idempotency-Key");
+    fireEvent.change(screen.getByLabelText("开发用户标识"), { target: { value: "user-b" } });
+    rejectFirst(new Error("connection lost"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(await screen.findByText("Recovered for user B.")).toBeInTheDocument();
+    const secondRequest = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as Record<string, unknown>;
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("Idempotency-Key")).not.toBe(firstKey);
+    expect(secondRequest.user_id).toBe("user-b");
   });
 
   it("connects to POST SSE and renders the terminal answer", async () => {
@@ -70,6 +137,27 @@ describe("ChatPage backend flows", () => {
     fireEvent.click(screen.getByTestId("send-button"));
     expect(await screen.findByText(completedResponse.answer)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/chat/stream", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("treats browser Stop as transport detach and keeps the logical retry", async () => {
+    const started = JSON.stringify({ sequence: 1, event_type: "run.started", timestamp: "2026-07-26T00:00:00Z", visibility: "client", payload: {} });
+    const fetchMock = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(`event: run.started\nid: 1\ndata: ${started}\n\n`));
+          init.signal?.addEventListener("abort", () => controller.error(new DOMException("aborted", "AbortError")));
+        },
+      });
+      return Promise.resolve(new Response(body, { headers: { "Content-Type": "text/event-stream" } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderChat();
+    fireEvent.change(screen.getByTestId("chat-input"), { target: { value: "stop receiving" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+    fireEvent.click(await screen.findByRole("button", { name: "停止接收" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("已停止接收实时过程");
+    expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Idempotency-Key")).toMatch(/^chat-idem-/);
   });
 
   it("projects the same structured recommendation from JSON and terminal SSE", async () => {
@@ -106,7 +194,7 @@ describe("ChatPage backend flows", () => {
     expect((await screen.findAllByText("Action confirmed.")).length).toBeGreaterThanOrEqual(1);
     const confirmCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/chat/confirm"));
     const confirmRequest = JSON.parse(String(confirmCall?.[1]?.body)) as Record<string, unknown>;
-    expect(confirmRequest).toMatchObject({ pending_action_id: "action-add-1", confirmed: true, updated_arguments: { quantity: 2 } });
+    expect(confirmRequest).toMatchObject({ pending_action_id: "action-add-1", confirmed: true, expected_version: 1, updated_arguments: { quantity: 2 } });
   });
 
   it("cancels a pending action through the confirmation boundary", async () => {

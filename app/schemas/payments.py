@@ -67,6 +67,8 @@ PaymentErrorCode = Literal[
     "payment_declined",
     "payment_provider_unavailable",
     "payment_finalization_pending",
+    "order_expired",
+    "payment_state_inconsistent",
 ]
 
 

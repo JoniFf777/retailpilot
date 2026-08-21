@@ -1,3 +1,5 @@
+import asyncio
+import threading
 from types import SimpleNamespace
 
 import pytest
@@ -48,6 +50,9 @@ async def test_chat_returns_agent_answer(monkeypatch) -> None:
         "user_id": "user-001",
         "thread_id": "thread-001",
         "pending_action_id": None,
+        "retry_state": "none",
+        "runtime_error_code": None,
+        "authoritative_run_id": None,
     }
 
 
@@ -76,6 +81,33 @@ async def test_chat_forwards_optional_idempotency_header(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["answer"] == "ok"
+
+
+@pytest.mark.anyio
+async def test_chat_does_not_block_health_while_agent_runs(monkeypatch) -> None:
+    started = threading.Event()
+    release = threading.Event()
+
+    def slow_call_shopmind_agent(*_args, **_kwargs) -> dict:
+        started.set()
+        assert release.wait(timeout=2)
+        return {"answer": "ok", "status": "completed", "tool_calls": []}
+
+    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", slow_call_shopmind_agent)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        chat_task = asyncio.create_task(
+            client.post("/api/chat", json={"message": "slow request"})
+        )
+        assert await asyncio.to_thread(started.wait, 1)
+
+        health_response = await client.get("/api/health")
+        release.set()
+        chat_response = await chat_task
+
+    assert health_response.status_code == 200
+    assert chat_response.status_code == 200
 
 
 @pytest.mark.anyio
@@ -152,6 +184,9 @@ async def test_chat_returns_pending_action_when_confirmation_required(monkeypatc
         "user_id": "user-001",
         "thread_id": "thread-001",
         "pending_action_id": pending_action_id,
+        "retry_state": "none",
+        "runtime_error_code": None,
+        "authoritative_run_id": None,
     }
 
 
@@ -208,6 +243,9 @@ async def test_chat_uses_single_agent_by_default(monkeypatch) -> None:
         "user_id": "user-001",
         "thread_id": "thread-001",
         "pending_action_id": None,
+        "retry_state": "terminal",
+        "runtime_error_code": None,
+        "authoritative_run_id": None,
     }
 
 
@@ -265,6 +303,9 @@ async def test_chat_multi_mode_keeps_response_schema(monkeypatch) -> None:
         "user_id": "user-001",
         "thread_id": "thread-001",
         "pending_action_id": None,
+        "retry_state": "terminal",
+        "runtime_error_code": None,
+        "authoritative_run_id": None,
     }
 
 

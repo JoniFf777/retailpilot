@@ -11,6 +11,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
+from app.core.chat_errors import (
+    log_public_exception,
+    public_failure_result,
+)
+from app.core.logging import log_event
 from app.core.settings import get_settings
 from app.api.chat_response import build_chat_response
 from app.dependencies import agent as agent_dependency
@@ -71,18 +76,20 @@ async def chat_stream(
         maxsize=settings.shopmind_stream_event_buffer_size
     )
     loop = asyncio.get_running_loop()
-    cancellation = Event()
+    delivery_detached = Event()
+    runtime_cancellation = Event()
     pending_deliveries: set[ConcurrentFuture[None]] = set()
     delivery_lock = Lock()
 
     def enqueue_event(event: AgentEvent) -> None:
-        if cancellation.is_set():
+        if delivery_detached.is_set():
             return
         try:
             queue.put_nowait(event)
         except asyncio.QueueFull:
-            # Stop producing events when a slow client exhausts its local buffer.
-            cancellation.set()
+            # Stop delivery when a slow/disconnected client exhausts its local buffer.
+            # This must not cancel the authoritative runtime execution.
+            delivery_detached.set()
 
     async def deliver_event(event: AgentEvent) -> None:
         enqueue_event(event)
@@ -92,13 +99,15 @@ async def chat_stream(
             pending_deliveries.discard(delivery)
 
     def event_sink(event: AgentEvent) -> None:
+        if delivery_detached.is_set():
+            return
         try:
             delivery = asyncio.run_coroutine_threadsafe(deliver_event(event), loop)
             with delivery_lock:
                 pending_deliveries.add(delivery)
             delivery.add_done_callback(forget_delivery)
         except RuntimeError:
-            cancellation.set()
+            delivery_detached.set()
 
     async def flush_event_deliveries() -> None:
         while True:
@@ -115,7 +124,7 @@ async def chat_stream(
         try:
             call_kwargs = {
                 "event_sink": event_sink,
-                "cancellation_check": cancellation.is_set,
+                "cancellation_check": runtime_cancellation.is_set,
             }
             if idempotency_key:
                 call_kwargs["idempotency_key"] = idempotency_key
@@ -127,17 +136,45 @@ async def chat_stream(
                 **call_kwargs,
             )
             await flush_event_deliveries()
-            await queue.put(result)
+            if not delivery_detached.is_set():
+                try:
+                    queue.put_nowait(result)
+                except asyncio.QueueFull:
+                    delivery_detached.set()
         except Exception as exc:
+            log_public_exception(
+                "chat.stream_execution_failed",
+                exc,
+                thread_id=request.thread_id,
+            )
             await flush_event_deliveries()
-            await queue.put(exc)
+            if not delivery_detached.is_set():
+                try:
+                    queue.put_nowait(public_failure_result(exc))
+                except asyncio.QueueFull:
+                    delivery_detached.set()
         finally:
-            await queue.put(_STREAM_END)
+            if not delivery_detached.is_set():
+                try:
+                    queue.put_nowait(_STREAM_END)
+                except asyncio.QueueFull:
+                    delivery_detached.set()
+
+    def consume_detached_task(completed_task: asyncio.Task) -> None:
+        try:
+            completed_task.result()
+        except Exception as exc:
+            log_event(
+                "chat.stream.detached_task_failed",
+                status="failed",
+                error_code="runtime.detached_task_failed",
+                error_class=type(exc).__name__,
+                error_message="Detached Chat execution failed after transport loss.",
+            )
 
     task = asyncio.create_task(run_agent())
 
     async def generate():
-        disconnected = False
         last_sequence = 0
         next_renewal_at = (
             monotonic()
@@ -151,14 +188,16 @@ async def chat_stream(
                         lease_ttl_ms=settings.shopmind_stream_admission_lease_ttl_ms,
                     )
                     if not renewal.renewed:
-                        cancellation.set()
+                        runtime_cancellation.set()
                     next_renewal_at = (
                         monotonic()
                         + settings.shopmind_stream_admission_renew_interval_ms / 1_000
                     )
                 if await http_request.is_disconnected():
-                    disconnected = True
-                    cancellation.set()
+                    delivery_detached.set()
+                    break
+                if delivery_detached.is_set():
+                    break
                 try:
                     item = await asyncio.wait_for(queue.get(), timeout=0.1)
                 except TimeoutError:
@@ -166,8 +205,6 @@ async def chat_stream(
 
                 if item is _STREAM_END:
                     break
-                if disconnected:
-                    continue
                 if isinstance(item, AgentEvent):
                     if item.visibility != EventVisibility.CLIENT or item.event_type in {
                         "run.completed", "run.failed", "run.cancelled", "run.timed_out"
@@ -200,18 +237,20 @@ async def chat_stream(
 
                 error_event = AgentEvent(
                     sequence=last_sequence + 1,
-                    event_type="run.failed",
+                    event_type="run.result",
                     visibility=EventVisibility.CLIENT,
-                    payload={"error": "runtime execution failed"},
+                    payload=public_failure_result(
+                        RuntimeError("unexpected stream result type")
+                    ),
                 )
                 yield encode_sse_event(error_event)
         finally:
             if not task.done():
-                cancellation.set()
-            try:
-                await task
-            finally:
-                STREAM_ADMISSION_CONTROLLER.release(lease_id)
+                delivery_detached.set()
+                task.add_done_callback(consume_detached_task)
+            else:
+                consume_detached_task(task)
+            STREAM_ADMISSION_CONTROLLER.release(lease_id)
 
     return StreamingResponse(
         generate(),

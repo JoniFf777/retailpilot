@@ -16,8 +16,14 @@ from app.runtime import (
     EventVisibility,
     ToolGateway,
 )
+from app.schemas.pending_actions import CartActionOutcome
 from agents.shopmind_multi_agent.permissions import AGENT_TOOL_ALLOWLIST
-from tools.cart import prepare_add_to_cart, prepare_save_preference
+from tools.cart import (
+    format_cart_action_outcome,
+    format_preference_action_outcome,
+    prepare_add_to_cart,
+    prepare_save_preference,
+)
 
 from .observability import (
     append_candidate_context_event,
@@ -374,6 +380,17 @@ def extract_pending_action_id(tool_result: str) -> str | None:
     return match.group(1) if match else None
 
 
+def parse_cart_action_outcome(tool_result: Any) -> CartActionOutcome | None:
+    """Decode the internal typed result without inspecting presentation text."""
+
+    if not isinstance(tool_result, str):
+        return None
+    try:
+        return CartActionOutcome.model_validate_json(tool_result)
+    except (TypeError, ValueError):
+        return None
+
+
 def is_preference_write_intent(message: str) -> bool:
     lowered = message.lower()
     return any(
@@ -453,7 +470,8 @@ def _invoke_preference_write_handoff(
         },
         context=runtime_context,
     )
-    pending_action_id = extract_pending_action_id(tool_result)
+    outcome = parse_cart_action_outcome(tool_result)
+    pending_action_id = outcome.pending_action_id if outcome is not None else None
     if pending_action_id and runtime_context is not None:
         runtime_context.emit_event(
             "action.prepared",
@@ -467,9 +485,15 @@ def _invoke_preference_write_handoff(
             },
         )
     return {
-        "answer": tool_result,
+        "answer": (
+            format_preference_action_outcome(outcome)
+            if outcome is not None
+            else "无法解析保存偏好动作结果，请稍后重试。"
+        ),
         "status": (
-            "confirmation_required" if pending_action_id else "failed"
+            "confirmation_required"
+            if outcome is not None and outcome.status == "prepared" and pending_action_id
+            else "failed"
         ),
         "tool_calls": [PREFERENCE_WRITE_HANDOFF_TOOL_CALL],
         "tool_call_records": [tool_record.model_dump(mode="json")],
@@ -595,16 +619,47 @@ def invoke_write_handoff(
         },
         context=runtime_context,
     )
-    pending_action_id = extract_pending_action_id(tool_result)
-    if not pending_action_id:
+    outcome = parse_cart_action_outcome(tool_result)
+    if outcome is None:
         result = {
-            "answer": tool_result,
+            "answer": "当前无法解析加购动作结果，请稍后重试。",
             "status": "failed",
             "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
             "tool_call_records": [tool_record.model_dump(mode="json")],
         }
         if candidate_context_events:
             result["debug"] = build_candidate_context_debug(candidate_context_events)
+        return result
+
+    pending_action_id = outcome.pending_action_id
+    if outcome.status == "clarification_required":
+        result = {
+            "answer": format_cart_action_outcome(outcome),
+            "status": "completed",
+            "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
+            "tool_call_records": [tool_record.model_dump(mode="json")],
+            "debug": {"write_handoff_outcome": outcome.model_dump(mode="json")},
+        }
+        if candidate_context_events:
+            result["debug"] = {
+                **result["debug"],
+                **build_candidate_context_debug(candidate_context_events),
+            }
+        return result
+
+    if outcome.status != "prepared" or not pending_action_id:
+        result = {
+            "answer": format_cart_action_outcome(outcome),
+            "status": "failed",
+            "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
+            "tool_call_records": [tool_record.model_dump(mode="json")],
+            "debug": {"write_handoff_outcome": outcome.model_dump(mode="json")},
+        }
+        if candidate_context_events:
+            result["debug"] = {
+                **result["debug"],
+                **build_candidate_context_debug(candidate_context_events),
+            }
         return result
 
     if runtime_context is not None:
@@ -628,15 +683,16 @@ def invoke_write_handoff(
             cleared=cleared,
         )
     result = {
-        "answer": (
-            f"我已为商品 {product_id} 生成待确认加购，数量 {quantity}，"
-            "请确认是否加入购物车。"
-        ),
+        "answer": format_cart_action_outcome(outcome),
         "status": "confirmation_required",
         "tool_calls": [WRITE_HANDOFF_TOOL_CALL],
         "tool_call_records": [tool_record.model_dump(mode="json")],
         "pending_action_id": pending_action_id,
+        "debug": {"write_handoff_outcome": outcome.model_dump(mode="json")},
     }
     if candidate_context_events:
-        result["debug"] = build_candidate_context_debug(candidate_context_events)
+        result["debug"] = {
+            **result["debug"],
+            **build_candidate_context_debug(candidate_context_events),
+        }
     return result

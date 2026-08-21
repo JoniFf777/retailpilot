@@ -15,6 +15,7 @@ from app.schemas.recommendation import AvailabilityView, Money
 
 PendingActionStatus = Literal["pending", "confirmed", "cancelled", "expired", "failed"]
 PendingActionType = Literal["add_to_cart", "save_preference"]
+PreferenceType = Literal["budget", "brand", "avoid", "usage", "style", "other"]
 RiskClass = Literal["low", "medium", "high"]
 ActionErrorCode = Literal[
     "pending_action_not_found",
@@ -26,6 +27,8 @@ ActionErrorCode = Literal[
     "action_resolution_conflict",
     "action_expired",
     "catalog_not_found",
+    "catalog_identifier_ambiguous",
+    "sku_ambiguous",
     "catalog_identity_changed",
     "product_inactive",
     "sku_inactive",
@@ -33,6 +36,7 @@ ActionErrorCode = Literal[
     "cart_quantity_limit",
     "unsupported_action_schema",
     "invalid_action_payload",
+    "expected_version_required",
 ]
 
 
@@ -40,6 +44,17 @@ class RecommendationContextView(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     source_run_id: StrictStr = Field(min_length=1)
+
+
+class SavePreferenceActionPayload(BaseModel):
+    """Canonical payload for an append-only preference PendingAction."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal["shopmind.pending_action.save_preference.v1"]
+    operation: Literal["add"]
+    preference_type: PreferenceType
+    preference_value: StrictStr = Field(min_length=1, max_length=2000)
 
 
 class IntegerEditableField(BaseModel):
@@ -172,6 +187,27 @@ class PendingActionErrorDetails(BaseModel):
     max_quantity: StrictInt | None = Field(default=None, ge=1)
     current_version: StrictInt | None = Field(default=None, ge=1)
     action_status: PendingActionStatus | None = None
+    matched_namespace_count: StrictInt | None = Field(default=None, ge=0)
+    target_count: StrictInt | None = Field(default=None, ge=0)
+
+
+class CartActionOutcome(BaseModel):
+    """Machine-readable compatibility-tool result before presentation text."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    status: Literal[
+        "prepared", "clarification_required", "failed", "confirmed", "cancelled"
+    ]
+    code: ActionErrorCode | None = None
+    pending_action_id: StrictStr | None = None
+    pending_action: PendingActionView | None = None
+    cart_item: CartItemView | None = None
+    price_changed: StrictBool = False
+    requested_quantity: StrictInt | None = Field(default=None, ge=1, le=MAX_CART_ITEM_QUANTITY)
+    cart_quantity: StrictInt | None = Field(default=None, ge=1, le=MAX_CART_ITEM_QUANTITY)
+    idempotent_replay: StrictBool = False
+    details: PendingActionErrorDetails = Field(default_factory=PendingActionErrorDetails)
 
 
 class ActionErrorResponse(BaseModel):

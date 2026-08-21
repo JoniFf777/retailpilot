@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 from app.core.settings import get_settings
 from app.db.version import MIGRATION_HEAD
+from scripts.bootstrap_postgres import ensure_pgvector_prerequisite
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -71,6 +72,7 @@ def prepare() -> dict[str, object]:
         except Exception:
             pass
 
+    ensure_pgvector_prerequisite(settings.database_url)
     _upgrade()
     # Both seeders are intentionally invoked without their destructive options.
     run_legacy_seed(clear=False)

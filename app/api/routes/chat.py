@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Header
+from fastapi.concurrency import run_in_threadpool
 
+from app.core.chat_errors import log_public_exception, public_failure_result
 from app.dependencies import agent as agent_dependency
 from app.dependencies.security import bind_request_user, get_identity_boundary
 from app.api.chat_response import build_chat_response
@@ -29,7 +31,18 @@ async def chat(
     }
     if idempotency_key:
         call_kwargs["idempotency_key"] = idempotency_key
-    result = agent_dependency.call_shopmind_agent(**call_kwargs)
+    # Agent execution is synchronous and may perform database/model work.
+    # Keep it off the Uvicorn event loop so health checks and other requests
+    # remain responsive while a chat run is in progress.
+    try:
+        result = await run_in_threadpool(agent_dependency.call_shopmind_agent, **call_kwargs)
+    except Exception as exc:
+        log_public_exception(
+            "chat.json_execution_failed",
+            exc,
+            thread_id=request.thread_id,
+        )
+        result = public_failure_result(exc)
 
     return build_chat_response(
         result,

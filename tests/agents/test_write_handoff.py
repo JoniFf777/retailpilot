@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from decimal import Decimal
 
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker
@@ -13,6 +14,7 @@ from agents.shopmind_multi_agent.write_handoff import (
     invoke_write_handoff,
 )
 from app.db.base import Base
+from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
 from app.db.models import PendingAction, Product, UserPreference
 from app.runtime import RunContext, RunRequest
 from app.runtime.actions import ActionRegistryError
@@ -21,6 +23,31 @@ import tools.cart as cart_tools
 
 TEST_USER_ID = "WRITE_HANDOFF_USER"
 TEST_PRODUCT_ID = "TECH-KEY-001"
+
+
+def _seed_catalog_for_legacy_products(session, product_ids: list[str]) -> None:
+    category = CatalogCategory(code="keyboards", name="Keyboards", status="active")
+    session.add(category)
+    for index, product_id in enumerate(product_ids, 1):
+        product = CatalogProduct(
+            product_code=f"CAT-KEY-{index}",
+            legacy_product_id=product_id,
+            category=category,
+            brand="ShopMind",
+            name=f"Catalog {product_id}",
+            sale_status="active",
+            attributes_json={},
+        )
+        sku = CatalogSku(
+            product=product,
+            sku_code=f"{product_id}-SKU",
+            name="Standard",
+            money_amount=Decimal("99.00"),
+            currency="CNY",
+            sale_status="active",
+            variant_attributes_json={},
+        )
+        session.add_all([product, sku, CatalogInventory(sku=sku, on_hand_quantity=20, reserved_quantity=0, version=0)])
 
 
 def _candidate_context_events(result: dict) -> list[dict]:
@@ -106,6 +133,7 @@ def test_write_handoff_suggests_candidates_without_creating_action(monkeypatch) 
             ),
         ]
     )
+    _seed_catalog_for_legacy_products(session, [TEST_PRODUCT_ID, "TECH-KEY-002"])
     session.commit()
 
     @contextmanager
@@ -155,6 +183,7 @@ def test_write_handoff_resolves_same_thread_candidate_selection(monkeypatch) -> 
             ),
         ]
     )
+    _seed_catalog_for_legacy_products(session, [TEST_PRODUCT_ID, "TECH-KEY-002"])
     session.commit()
 
     @contextmanager
@@ -187,7 +216,9 @@ def test_write_handoff_resolves_same_thread_candidate_selection(monkeypatch) -> 
     assert second_result["tool_calls"] == ["prepare_add_to_cart"]
     assert pending_action is not None
     assert pending_action.thread_id == thread_id
-    assert pending_action.payload_json == {"product_id": TEST_PRODUCT_ID, "quantity": 2}
+    assert pending_action.payload_json["schema_version"] == "shopmind.pending_action.add_to_cart.v1"
+    assert pending_action.payload_json["origin"] == "legacy_chat"
+    assert pending_action.payload_json["origin_identifier"] == TEST_PRODUCT_ID
 
     clear_candidate_context(TEST_USER_ID, thread_id)
     session.close()
@@ -294,6 +325,7 @@ def test_find_product_candidates_uses_catalog_category(monkeypatch) -> None:
             in_stock=True,
         )
     )
+    _seed_catalog_for_legacy_products(session, [TEST_PRODUCT_ID])
     session.commit()
 
     @contextmanager
@@ -326,6 +358,7 @@ def test_write_handoff_prepares_add_to_cart(monkeypatch) -> None:
             in_stock=True,
         )
     )
+    _seed_catalog_for_legacy_products(session, [TEST_PRODUCT_ID])
     session.commit()
 
     @contextmanager
@@ -353,7 +386,8 @@ def test_write_handoff_prepares_add_to_cart(monkeypatch) -> None:
     assert pending_action is not None
     assert pending_action.thread_id == "thread-write-native"
     assert pending_action.status == "pending"
-    assert pending_action.payload_json == {"product_id": TEST_PRODUCT_ID, "quantity": 2}
+    assert pending_action.payload_json["schema_version"] == "shopmind.pending_action.add_to_cart.v1"
+    assert pending_action.payload_json["origin"] == "legacy_chat"
 
     session.close()
 
@@ -396,6 +430,8 @@ def test_write_handoff_prepares_preference_without_writing_it(monkeypatch) -> No
     assert action.action_type == "save_preference"
     assert action.risk_class == "medium"
     assert action.payload_json == {
+        "schema_version": "shopmind.pending_action.save_preference.v1",
+        "operation": "add",
         "preference_type": "style",
         "preference_value": "记住我喜欢安静键盘",
     }
@@ -428,6 +464,7 @@ def test_write_handoff_reports_candidate_context_debug_events(monkeypatch) -> No
             ),
         ]
     )
+    _seed_catalog_for_legacy_products(session, [TEST_PRODUCT_ID, "TECH-KEY-002"])
     session.commit()
 
     @contextmanager

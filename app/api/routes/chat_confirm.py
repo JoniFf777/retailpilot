@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Header
 
+from app.api.chat_response import build_chat_response
+from app.core.chat_errors import log_public_exception, public_failure_result
 from app.dependencies import agent as agent_dependency
 from app.dependencies.security import bind_request_user, get_identity_boundary
 from app.security import AuditRequestOperation, IdentityBoundary
@@ -34,32 +36,28 @@ async def confirm_chat(
         }
         if idempotency_key:
             call_kwargs["idempotency_key"] = idempotency_key
+        if request.expected_version is not None:
+            call_kwargs["expected_version"] = request.expected_version
         if request.updated_arguments is not None:
             call_kwargs["updated_arguments"] = request.updated_arguments
         result = agent_dependency.confirm_pending_action(**call_kwargs)
     except Exception as exc:
-        result = {
-            "answer": f"处理确认请求时发生错误：{exc}",
-            "status": "failed",
-            "tool_calls": [],
-            "pending_action_id": request.pending_action_id,
-        }
+        log_public_exception(
+            "chat.confirmation_failed",
+            exc,
+            thread_id=request.thread_id,
+            pending_action_id=request.pending_action_id,
+        )
+        result = public_failure_result(exc)
+        result["pending_action_id"] = request.pending_action_id
 
-    response_kwargs = {}
-    if request.include_debug:
-        if result.get("debug") is not None:
-            response_kwargs["debug"] = result["debug"]
-        if result.get("run_id") is not None:
-            response_kwargs["run_id"] = result["run_id"]
-        if result.get("trace_id") is not None:
-            response_kwargs["trace_id"] = result["trace_id"]
-
-    return ChatResponse(
-        answer=result.get("answer", ""),
-        status=result.get("status", "completed"),
-        tool_calls=result.get("tool_calls", []),
+    return build_chat_response(
+        result,
         user_id=identity.effective_user_id,
         thread_id=request.thread_id,
-        pending_action_id=result.get("pending_action_id", request.pending_action_id),
-        **response_kwargs,
+        include_debug=request.include_debug,
+        include_runtime_fields=any(
+            key in result
+            for key in ("retry_state", "runtime_error_code", "authoritative_run_id")
+        ),
     )

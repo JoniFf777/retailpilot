@@ -58,9 +58,18 @@ Activate the Python environment first. If `python` is not on PATH, set `SHOPMIND
 ```powershell
 docker compose up -d postgres
 npm --prefix frontend ci
-python -m alembic upgrade head
+# Set DATABASE_URL to an isolated *_demo, *_test, or *_smoke database first.
+# Set POSTGRES_ADMIN_URL when that database does not yet have pgvector.
+python scripts/prepare_shopmind_demo.py --json
 python -m uvicorn app.main:app --reload
 ```
+
+For an empty database, the prepare command ensures the `vector` extension
+through the operator-only connection, then runs Alembic and idempotent seeds
+through the application connection. The application role is never granted
+extension-install or superuser access. The explicit full bootstrap entry point
+is `python scripts/bootstrap_postgres.py --execute --confirm-clear --skip-documents`
+against a deliberately isolated target.
 
 In another terminal:
 
@@ -122,7 +131,7 @@ This is an at-least-once publisher demo. A RocketMQ consumer and Inbox are not i
 ```text
 agents/       multi-agent recommendation and guarded handoff
 app/          FastAPI, services, repositories, commerce and Outbox
-alembic/      PostgreSQL migrations through 0014
+alembic/      PostgreSQL migrations through 0015
 frontend/     React/TypeScript application and browser tests
 tests/        unit, API, migration and real PostgreSQL acceptance
 scripts/      setup, demo, smoke and Outbox operator commands

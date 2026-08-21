@@ -455,7 +455,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "pending_action_not_found" | "recommendation_not_found" | "sku_not_in_recommendation" | "invalid_quantity" | "invalid_updated_fields" | "version_conflict" | "action_resolution_conflict" | "action_expired" | "catalog_not_found" | "catalog_identity_changed" | "product_inactive" | "sku_inactive" | "insufficient_inventory" | "cart_quantity_limit" | "unsupported_action_schema" | "invalid_action_payload";
+            code: "pending_action_not_found" | "recommendation_not_found" | "sku_not_in_recommendation" | "invalid_quantity" | "invalid_updated_fields" | "version_conflict" | "action_resolution_conflict" | "action_expired" | "catalog_not_found" | "catalog_identifier_ambiguous" | "sku_ambiguous" | "catalog_identity_changed" | "product_inactive" | "sku_inactive" | "insufficient_inventory" | "cart_quantity_limit" | "unsupported_action_schema" | "invalid_action_payload" | "expected_version_required";
             details?: components["schemas"]["PendingActionErrorDetails"];
             /**
              * Idempotent Replay
@@ -702,6 +702,11 @@ export interface components {
              */
             answer: string;
             /**
+             * Authoritative Run Id
+             * @description Winner Run identity for an in-progress idempotency recovery response.
+             */
+            authoritative_run_id?: string | null;
+            /**
              * Debug
              * @description Optional structured debug metadata when requested. V3 handoff debug may include multi_agent_handoff, write_handoff_debug, candidate_context events, and confirmation events.
              */
@@ -720,10 +725,22 @@ export interface components {
             /** @description Stable source run identifier for creating a recommendation-backed action. */
             recommendation_context?: components["schemas"]["RecommendationContextView"] | null;
             /**
+             * Retry State
+             * @description Machine-readable transport/retry state. In-progress is recoverable and is not terminal failure.
+             * @default none
+             * @enum {string}
+             */
+            retry_state: "none" | "in_progress" | "terminal";
+            /**
              * Run Id
              * @description Opaque persisted run identifier returned only when include_debug=true.
              */
             run_id?: string | null;
+            /**
+             * Runtime Error Code
+             * @description Machine-readable runtime error code when a retry/recovery state is present.
+             */
+            runtime_error_code?: string | null;
             /**
              * Status
              * @description Chat processing status. Stable public values are completed, confirmation_required, cancelled, and failed.
@@ -848,6 +865,11 @@ export interface components {
              * @description Whether the user confirmed the pending action.
              */
             confirmed: boolean;
+            /**
+             * Expected Version
+             * @description Client-held PendingAction version. Required when confirming or cancelling a canonical SKU add-to-cart action.
+             */
+            expected_version?: number | null;
             /**
              * Include Debug
              * @description Return optional debug metadata for evaluation and troubleshooting.
@@ -1011,6 +1033,8 @@ export interface components {
         OrderErrorDetails: {
             /** Available Quantity */
             available_quantity?: number | null;
+            /** Reason */
+            reason?: string | null;
             /** Requested Quantity */
             requested_quantity?: number | null;
             /** Reservation Count */
@@ -1022,7 +1046,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "checkout_invalid" | "checkout_expired" | "checkout_unavailable" | "cart_changed" | "mixed_currency" | "product_inactive" | "sku_inactive" | "inventory_missing" | "insufficient_inventory" | "price_changed" | "idempotency_conflict" | "order_not_found" | "reservation_inconsistent" | "order_not_cancellable" | "payment_in_progress" | "idempotency_key_invalid" | "cursor_invalid";
+            code: "checkout_invalid" | "checkout_expired" | "checkout_unavailable" | "cart_changed" | "mixed_currency" | "product_inactive" | "sku_inactive" | "inventory_missing" | "insufficient_inventory" | "price_changed" | "idempotency_conflict" | "order_not_found" | "reservation_inconsistent" | "order_not_cancellable" | "payment_in_progress" | "payment_state_inconsistent" | "order_expired" | "idempotency_key_invalid" | "cursor_invalid";
             details?: components["schemas"]["OrderErrorDetails"];
             /**
              * Idempotent Replay
@@ -1073,6 +1097,8 @@ export interface components {
             created_at: string;
             /** Currency */
             currency: string;
+            /** Expires At */
+            expires_at?: string | null;
             /** Items */
             items: components["schemas"]["OrderItemView"][];
             /**
@@ -1084,7 +1110,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "pending_payment" | "cancelled" | "paid";
+            status: "pending_payment" | "cancelled" | "paid" | "expired";
             subtotal: components["schemas"]["Money"];
             total: components["schemas"]["Money"];
             /**
@@ -1398,7 +1424,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "idempotency_key_invalid" | "idempotency_conflict" | "order_not_found" | "order_not_payable" | "order_already_paid" | "payment_in_progress" | "payment_declined" | "payment_provider_unavailable" | "payment_finalization_pending";
+            code: "idempotency_key_invalid" | "idempotency_conflict" | "order_not_found" | "order_not_payable" | "order_already_paid" | "payment_in_progress" | "payment_declined" | "payment_provider_unavailable" | "payment_finalization_pending" | "order_expired" | "payment_state_inconsistent";
             details?: components["schemas"]["PaymentErrorDetails"];
             /**
              * Idempotent Replay
@@ -1427,8 +1453,12 @@ export interface components {
             current_quantity?: number | null;
             /** Current Version */
             current_version?: number | null;
+            /** Matched Namespace Count */
+            matched_namespace_count?: number | null;
             /** Max Quantity */
             max_quantity?: number | null;
+            /** Target Count */
+            target_count?: number | null;
         };
         /** PendingActionTransitionRequest */
         PendingActionTransitionRequest: {
@@ -1548,6 +1578,8 @@ export interface components {
             /** Alternative Skus */
             alternative_skus?: components["schemas"]["AlternativeSkuView"][];
             availability: components["schemas"]["AvailabilityView"];
+            /** Category */
+            category?: ("laptop" | "monitor" | "unknown") | null;
             /** Evidence */
             evidence?: components["schemas"]["EvidenceView"][];
             /** Matched Hard Constraints */
@@ -1587,10 +1619,44 @@ export interface components {
             /** Source Run Id */
             source_run_id: string;
         };
+        /**
+         * RecommendationRequest
+         * @description Shared request envelope with bounded category-owned attributes.
+         */
+        RecommendationRequest: {
+            /**
+             * Availability Required
+             * @default true
+             */
+            availability_required: boolean;
+            /** Budget Currency */
+            budget_currency?: string | null;
+            /** Budget Max */
+            budget_max?: string | null;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "laptop" | "monitor" | "unknown";
+            /** Category Attributes */
+            category_attributes?: {
+                [key: string]: unknown;
+            };
+            /** Generic Preferences */
+            generic_preferences?: string[];
+        };
         /** RecommendationResult */
         RecommendationResult: {
+            /** Category */
+            category?: ("laptop" | "monitor" | "unknown") | null;
+            /** Category Attributes */
+            category_attributes?: {
+                [key: string]: unknown;
+            };
             /** Clarification Question */
             clarification_question?: string | null;
+            /** Error Code */
+            error_code?: string | null;
             /** Missing Fields */
             missing_fields?: string[];
             /** No Match Reason */
@@ -1602,6 +1668,7 @@ export interface components {
             outcome: "recommended" | "no_match" | "clarification_required";
             /** Ranking Policy Version */
             ranking_policy_version: string;
+            recommendation_request?: components["schemas"]["RecommendationRequest"] | null;
             /** Recommendations */
             recommendations?: components["schemas"]["Recommendation"][];
             /** Request Summary */

@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -172,3 +174,66 @@ async def test_chat_stream_forwards_optional_idempotency_header(monkeypatch) -> 
 
     assert response.status_code == 200
     assert "event: run.result" in response.text
+
+
+@pytest.mark.anyio
+async def test_chat_stream_disconnect_detaches_delivery_without_runtime_cancellation(monkeypatch) -> None:
+    entered = threading.Event()
+    release = threading.Event()
+    finished = threading.Event()
+    cancellation_states: list[bool] = []
+
+    monkeypatch.setattr(
+        chat_stream,
+        "bind_request_user",
+        lambda *_args, **_kwargs: type("Binding", (), {"effective_user_id": "stream-user"})(),
+    )
+
+    def fake_call_shopmind_agent(
+        *_args,
+        event_sink=None,
+        cancellation_check=None,
+        **_kwargs,
+    ) -> dict:
+        cancellation_states.append(cancellation_check())
+        entered.set()
+        assert release.wait(timeout=5)
+        cancellation_states.append(cancellation_check())
+        event_sink(
+            AgentEvent(
+                sequence=1,
+                event_type="agent.completed",
+                visibility=EventVisibility.CLIENT,
+                payload={},
+            )
+        )
+        finished.set()
+        return {"answer": "authoritative", "status": "completed", "tool_calls": []}
+
+    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+
+    class DisconnectingRequest:
+        checks = 0
+
+        async def is_disconnected(self) -> bool:
+            self.checks += 1
+            return self.checks > 1
+
+    response = await chat_stream.chat_stream(
+        chat_stream.ChatRequest(
+            message="recommend a keyboard",
+            user_id="stream-user",
+            thread_id="stream-thread",
+        ),
+        DisconnectingRequest(),
+        identity_boundary=object(),
+        idempotency_key="detach-idem-1",
+    )
+
+    iterator = response.body_iterator
+    with pytest.raises(StopAsyncIteration):
+        await iterator.__anext__()
+    assert entered.wait(timeout=5)
+    release.set()
+    assert finished.wait(timeout=5)
+    assert cancellation_states == [False, False]

@@ -1,5 +1,5 @@
 import os
-import re
+import json
 import uuid
 
 import pytest
@@ -14,6 +14,7 @@ from app.db.session import SessionLocal
 from app.repositories import cart as cart_repository
 from app.repositories import preferences as preference_repository
 from app.repositories import products as product_repository
+from app.repositories.shopmind_cart import clear_cart, list_cart_items
 from tools.cart import (
     clear_cart_items,
     confirm_add_to_cart,
@@ -50,20 +51,14 @@ def _clear_user_state(user_id: str) -> None:
     def clear(session):
         preference_repository.clear_user_preferences(session, user_id)
         cart_repository.clear_cart_items(session, user_id)
+        clear_cart(session, user_id=user_id)
         session.commit()
 
     _with_session(clear)
 
 
 def _get_smoke_product_id() -> str:
-    def get_product(session):
-        products = product_repository.search_products(
-            session, query="keyboard", in_stock_only=True, limit=1
-        )
-        assert products, "seeded PostgreSQL database should contain a keyboard product"
-        return products[0]["product_id"]
-
-    return _with_session(get_product)
+    return "TECH-LAP-001"
 
 
 def _get_preferences(user_id: str):
@@ -73,13 +68,14 @@ def _get_preferences(user_id: str):
 
 
 def _get_cart_items(user_id: str):
-    return _with_session(lambda session: cart_repository.get_cart_items(session, user_id))
+    return _with_session(lambda session: list_cart_items(session, user_id=user_id))
 
 
 def _extract_pending_action_id(result: str) -> str:
-    match = re.search(r"pending_action_id[^0-9a-f]*([0-9a-f-]+)", result)
-    assert match is not None, result
-    return match.group(1)
+    payload = json.loads(result)
+    assert payload["status"] == "prepared", payload
+    assert isinstance(payload["pending_action_id"], str), payload
+    return payload["pending_action_id"]
 
 
 def test_product_tool_reads_from_postgres():
@@ -124,13 +120,28 @@ def test_cart_tools_prepare_confirm_and_clear_postgres(smoke_user_id):
     empty_cart_result = get_cart_items.invoke({"user_id": smoke_user_id})
     other_user_id = f"{smoke_user_id}-other"
     confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": other_user_id}
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": other_user_id,
+            "thread_id": "integration-tool-thread",
+            "expected_version": 1,
+        }
     )
     confirm_result = confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": smoke_user_id}
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": smoke_user_id,
+            "thread_id": "integration-tool-thread",
+            "expected_version": 1,
+        }
     )
     confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": smoke_user_id}
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": smoke_user_id,
+            "thread_id": "integration-tool-thread",
+            "expected_version": 1,
+        }
     )
     cart_result = get_cart_items.invoke({"user_id": smoke_user_id})
     cart_items = _get_cart_items(smoke_user_id)
@@ -139,9 +150,12 @@ def test_cart_tools_prepare_confirm_and_clear_postgres(smoke_user_id):
     assert pending_action_id
     assert product_id not in empty_cart_result
     assert _get_cart_items(other_user_id) == []
-    assert product_id in confirm_result
-    assert product_id in cart_result
+    typed_confirm = json.loads(confirm_result)
+    assert typed_confirm["status"] == "confirmed", typed_confirm
+    sku_code = typed_confirm["cart_item"]["sku_code"]
+    assert sku_code
+    assert sku_code in cart_result
     assert len(cart_items) == 1
-    assert cart_items[0]["quantity"] == 2
+    assert cart_items[0].quantity == 2
     assert smoke_user_id in clear_result
     assert _get_cart_items(smoke_user_id) == []

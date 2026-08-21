@@ -127,8 +127,17 @@ def assert_documents_present(document_counts: dict[str, int]) -> None:
         raise RuntimeError(f"documents 缺少 doc_type 数据：{', '.join(missing)}")
 
 
-def run_repository_checks(session: Session, vector_dimension: int) -> tuple[int, int, int]:
+def run_repository_checks(
+    session: Session,
+    vector_dimension: int,
+    *,
+    require_documents: bool = True,
+) -> tuple[int, int, int]:
     products = product_repository.search_products(session, query="keyboard", limit=2)
+    if not products:
+        raise RuntimeError("Repository 商品搜索未返回结果")
+    if not require_documents:
+        return len(products), 0, 0
     query_embedding = _build_query_embedding(vector_dimension)
     product_docs = document_repository.search_product_documents(
         session, query_embedding, k=1
@@ -136,8 +145,6 @@ def run_repository_checks(session: Session, vector_dimension: int) -> tuple[int,
     policy_docs = document_repository.search_policy_documents(
         session, query_embedding, k=1
     )
-    if not products:
-        raise RuntimeError("Repository 商品搜索未返回结果")
     if not product_docs:
         raise RuntimeError("Repository product documents 搜索未返回结果")
     if not policy_docs:
@@ -165,6 +172,7 @@ def run_smoke(
     *,
     session_factory: Callable[[], Session] | None = None,
     include_tools: bool = False,
+    require_documents: bool = True,
 ) -> SmokeReport:
     settings = get_settings()
     if session_factory is None:
@@ -185,9 +193,12 @@ def run_smoke(
         table_counts = get_structured_counts(session)
         document_counts = get_document_counts(session)
         assert_seed_data_present(table_counts)
-        assert_documents_present(document_counts)
+        if require_documents:
+            assert_documents_present(document_counts)
         product_count, product_doc_count, policy_doc_count = run_repository_checks(
-            session, settings.vector_dimension
+            session,
+            settings.vector_dimension,
+            require_documents=require_documents,
         )
     finally:
         session.close()

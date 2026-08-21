@@ -12,6 +12,11 @@ from typing import TYPE_CHECKING, Any, Callable, Iterator
 
 from sqlalchemy.orm import Session
 
+from app.core.chat_errors import (
+    public_error,
+    public_error_for_result,
+    sanitize_public_debug,
+)
 from app.db.session import SessionLocal
 from app.repositories.runtime_conversations import (
     append_conversation_message,
@@ -19,10 +24,12 @@ from app.repositories.runtime_conversations import (
 )
 from app.repositories.runtime_runs import (
     append_agent_run_event,
+    claim_idempotency_record,
     create_agent_run,
     finalize_agent_run,
     get_agent_run,
     get_idempotency_record,
+    RuntimeIdempotencyPersistenceError,
     save_idempotency_record,
 )
 
@@ -172,18 +179,38 @@ def run_result_to_legacy_response(
     *,
     include_debug: bool = False,
 ) -> dict[str, Any]:
+    error_code = (
+        result.error.code
+        if result.error is not None
+        else result.metadata.get("runtime_error_code")
+    )
+    public_failure = public_error_for_result(
+        status=result.status,
+        code=error_code,
+        retry_state=result.metadata.get("retry_state", "terminal"),
+        authoritative_run_id=result.metadata.get("authoritative_run_id"),
+    )
     response = {
-        "answer": result.answer,
+        "answer": public_failure.message if public_failure else result.answer,
         "status": result.status,
         "tool_calls": result.tool_calls,
         "pending_action_id": result.pending_action_id,
         "run_id": result.run_id,
         "trace_id": result.trace_id,
+        "retry_state": public_failure.retry_state if public_failure else result.metadata.get("retry_state", "terminal"),
+        "runtime_error_code": public_failure.code if public_failure else error_code,
+        "authoritative_run_id": (
+            public_failure.authoritative_run_id
+            if public_failure
+            else result.metadata.get("authoritative_run_id")
+        ),
     }
     if "recommendation" in result.output_data:
         response["recommendation"] = result.output_data["recommendation"]
     if include_debug and result.debug is not None:
-        response["debug"] = result.debug
+        safe_debug = sanitize_public_debug(result.debug)
+        if safe_debug:
+            response["debug"] = safe_debug
     return response
 
 
@@ -309,7 +336,23 @@ class ShopMindRuntimeHarness:
                 },
             )
         )
-        self._persist_start(context, events[0])
+        start_result = self._persist_start(context, events[0])
+        if start_result is not None:
+            recovery_event = self._build_event(
+                sequence=1,
+                event_type="run.replayed" if start_result.error is None else "run.rejected",
+                visibility=EventVisibility.CLIENT,
+                trace_id=start_result.trace_id,
+                payload={
+                    "idempotency_key": request.idempotency_key,
+                    "original_run_id": start_result.run_id,
+                    "retry_state": start_result.metadata.get("retry_state"),
+                },
+            )
+            start_result.events = [recovery_event]
+            if event_sink is not None:
+                event_sink(recovery_event)
+            return start_result
         self._load_context(context, events)
 
         attempt = 0
@@ -318,8 +361,7 @@ class ShopMindRuntimeHarness:
             control_error = self._check_controls(context, cancellation_check)
             if control_error is not None:
                 result = self._build_control_result(context, events, control_error)
-                self._persist_finish(context, result)
-                return result
+                return self._persist_or_fail_closed(context, result)
 
             try:
                 raw_result = executor(context)
@@ -356,7 +398,9 @@ class ShopMindRuntimeHarness:
                         else None
                     ),
                 )
-                self._persist_finish(context, result)
+                persisted_result = self._persist_or_fail_closed(context, result)
+                if persisted_result is not result:
+                    return persisted_result
                 if raise_on_error:
                     raise
                 return result
@@ -388,8 +432,7 @@ class ShopMindRuntimeHarness:
                     control_error,
                     raw_result=accounted_raw_result,
                 )
-                self._persist_finish(context, result)
-                return result
+                return self._persist_or_fail_closed(context, result)
 
             result = self._build_success_result(context, events, raw_result)
             if failed_attempt_usages:
@@ -397,8 +440,7 @@ class ShopMindRuntimeHarness:
                     [*failed_attempt_usages, result.usage]
                 )
             result.metadata["attempts"] = attempt + 1
-            self._persist_finish(context, result)
-            return result
+            return self._persist_or_fail_closed(context, result)
 
     def _resolve_idempotency(self, context: RunContext) -> RunResult | None:
         key = context.request.idempotency_key
@@ -423,6 +465,7 @@ class ShopMindRuntimeHarness:
                     code="runtime.idempotency_key_conflict",
                     message="Idempotency key was already used for a different request.",
                     retriable=False,
+                    authoritative_run_id=record.get("run_id"),
                 )
             if record["status"] == RunStatus.STARTED:
                 return self._idempotency_error_result(
@@ -430,6 +473,8 @@ class ShopMindRuntimeHarness:
                     code="runtime.idempotency_in_progress",
                     message="An equivalent request is already in progress.",
                     retriable=True,
+                    retry_state="in_progress",
+                    authoritative_run_id=record.get("run_id"),
                 )
 
             try:
@@ -475,9 +520,12 @@ class ShopMindRuntimeHarness:
         code: str,
         message: str,
         retriable: bool,
+        retry_state: str = "terminal",
+        authoritative_run_id: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> RunResult:
         return RunResult(
-            run_id=context.run_id,
+            run_id=authoritative_run_id or context.run_id,
             runtime_thread_id=context.runtime_thread_id,
             trace_id=context.trace_id,
             request_id=context.request.request_id,
@@ -489,8 +537,14 @@ class ShopMindRuntimeHarness:
                 message=message,
                 source=ErrorSource.VALIDATION,
                 retriable=retriable,
+                details=details or {},
             ),
-            metadata={"idempotency_rejected": True},
+            metadata={
+                "idempotency_rejected": True,
+                "retry_state": retry_state,
+                "runtime_error_code": code,
+                "authoritative_run_id": authoritative_run_id,
+            },
         )
 
     def _run_result_from_persisted_run(self, run: dict[str, Any]) -> RunResult:
@@ -520,7 +574,11 @@ class ShopMindRuntimeHarness:
             error=None if error_json is None else RunError.model_validate(error_json),
             debug=run.get("debug_json"),
             completed_at=run.get("completed_at") or run["updated_at"],
-            metadata={**(run.get("metadata") or {}), "idempotency_replayed": True},
+            metadata={
+                **(run.get("metadata") or {}),
+                "idempotency_replayed": True,
+                "retry_state": "terminal",
+            },
         )
 
     def _load_context(self, context: RunContext, events: list[AgentEvent]) -> None:
@@ -716,6 +774,15 @@ class ShopMindRuntimeHarness:
                     "tool_name": record.tool_name,
                     "tool_call_id": record.tool_call_id,
                 },
+            )
+        typed_code = getattr(exc, "code", None)
+        if typed_code:
+            projection = public_error(typed_code)
+            return RuntimeExecutionError(
+                projection.code,
+                projection.message,
+                source=ErrorSource.VALIDATION,
+                details={"exception_type": exc.__class__.__name__},
             )
         if isinstance(exc, AgentTransportError):
             return RuntimeExecutionError(
@@ -927,10 +994,17 @@ class ShopMindRuntimeHarness:
             }
         }
         error = None
+        public_failure = None
         if status == RunStatus.FAILED:
+            public_failure = public_error_for_result(
+                status=status,
+                code=raw_result.get("runtime_error_code") or "runtime.failed_result",
+                retry_state=str(raw_result.get("retry_state") or "terminal"),
+                authoritative_run_id=raw_result.get("authoritative_run_id"),
+            )
             error = RunError(
-                code="runtime.failed_result",
-                message=str(raw_result.get("answer", "runtime failed")),
+                code=public_failure.code,
+                message=public_failure.message,
                 source=ErrorSource.AGENT,
                 retriable=False,
                 event_sequence=events[-1].sequence,
@@ -947,7 +1021,11 @@ class ShopMindRuntimeHarness:
             user_id=context.user_id,
             client_thread_id=context.client_thread_id,
             status=status,
-            answer=str(raw_result.get("answer", "")),
+            answer=(
+                public_failure.message
+                if public_failure is not None
+                else str(raw_result.get("answer", ""))
+            ),
             output_data=output_data,
             tool_calls=tool_calls,
             tool_call_records=tool_call_records,
@@ -956,7 +1034,19 @@ class ShopMindRuntimeHarness:
             usage=usage,
             error=error,
             debug=debug,
-            metadata={"legacy_bridge": True, **self._context_metadata(context)},
+            metadata={
+                "legacy_bridge": True,
+                **self._context_metadata(context),
+                **(
+                    {
+                        "runtime_error_code": public_failure.code,
+                        "retry_state": public_failure.retry_state,
+                        "authoritative_run_id": public_failure.authoritative_run_id,
+                    }
+                    if public_failure is not None
+                    else {}
+                ),
+            },
         )
 
     @staticmethod
@@ -1172,19 +1262,84 @@ class ShopMindRuntimeHarness:
             tool_call_id=tool_call_id,
         )
 
-    def _persist_start(self, context: RunContext, started_event: AgentEvent) -> None:
+    def _claim_record_result(
+        self,
+        context: RunContext,
+        session: Session,
+        record: dict[str, Any],
+    ) -> RunResult:
+        if record["request_hash"] != self._request_hash(context.request):
+            return self._idempotency_error_result(
+                context,
+                code="runtime.idempotency_key_conflict",
+                message="Idempotency key was already used for a different request.",
+                retriable=False,
+                authoritative_run_id=record.get("run_id"),
+            )
+        if record["status"] == RunStatus.STARTED:
+            return self._idempotency_error_result(
+                context,
+                code="runtime.idempotency_in_progress",
+                message="An equivalent request is already in progress.",
+                retriable=True,
+                retry_state="in_progress",
+                authoritative_run_id=record.get("run_id"),
+            )
+        try:
+            status = RunStatus(record["status"])
+        except ValueError:
+            status = None
+        if status in TERMINAL_IDEMPOTENCY_STATUSES and record.get("run_id"):
+            run = get_agent_run(session, run_id=record["run_id"])
+            if run is not None:
+                return self._run_result_from_persisted_run(run)
+        return self._idempotency_error_result(
+            context,
+            code="runtime.idempotency_result_unavailable",
+            message="The stored idempotency result is unavailable.",
+            retriable=True,
+            retry_state="in_progress" if record.get("run_id") else "terminal",
+            authoritative_run_id=record.get("run_id"),
+        )
+
+    def _persist_start(
+        self, context: RunContext, started_event: AgentEvent
+    ) -> RunResult | None:
         with self._open_session() as session:
             if session is None:
-                return
+                return None
+            key = context.request.idempotency_key
             try:
+                if key:
+                    if not context.user_id:
+                        return self._idempotency_error_result(
+                            context,
+                            code="runtime.idempotency_owner_unavailable",
+                            message="A stable owner scope is required for Chat retry recovery.",
+                            retriable=False,
+                        )
+                    claim = claim_idempotency_record(
+                        session,
+                        user_id=context.user_id,
+                        operation=context.request.operation,
+                        idempotency_key=key,
+                        request_hash=self._request_hash(context.request),
+                        run_id=context.run_id,
+                        now=context.started_at,
+                        expires_at=context.started_at
+                        + timedelta(days=DEFAULT_IDEMPOTENCY_RETENTION_DAYS),
+                        metadata={"request_id": context.request.request_id},
+                    )
+                    if not claim.claimed:
+                        return self._claim_record_result(
+                            context, session, claim.record
+                        )
+
                 thread_expires_at = context.started_at + timedelta(
                     days=DEFAULT_THREAD_RETENTION_DAYS
                 )
                 run_expires_at = context.started_at + timedelta(
                     days=DEFAULT_RUN_RETENTION_DAYS
-                )
-                idempotency_expires_at = context.started_at + timedelta(
-                    days=DEFAULT_IDEMPOTENCY_RETENTION_DAYS
                 )
                 thread = get_or_create_conversation_thread(
                     session,
@@ -1210,7 +1365,7 @@ class ShopMindRuntimeHarness:
                     status=RunStatus.STARTED,
                     request_id=context.request.request_id,
                     trace_id=context.trace_id,
-                    idempotency_key=context.request.idempotency_key,
+                    idempotency_key=key,
                     input_text=context.request.input_text,
                     request_json=context.request.model_dump(mode="json"),
                     started_at=context.started_at,
@@ -1243,23 +1398,46 @@ class ShopMindRuntimeHarness:
                         now=context.started_at,
                         expires_at=thread_expires_at,
                     )
-                if context.request.idempotency_key:
+                if key:
                     save_idempotency_record(
                         session,
                         user_id=context.user_id,
                         thread_id=context.runtime_thread_id,
                         run_id=context.run_id,
                         operation=context.request.operation,
-                        idempotency_key=context.request.idempotency_key,
+                        idempotency_key=key,
                         request_hash=self._request_hash(context.request),
                         status=RunStatus.STARTED,
                         metadata={"request_id": context.request.request_id},
                         now=context.started_at,
-                        expires_at=idempotency_expires_at,
+                        expires_at=context.started_at
+                        + timedelta(days=DEFAULT_IDEMPOTENCY_RETENTION_DAYS),
                     )
                 session.commit()
-            except Exception:
+                return None
+            except RuntimeIdempotencyPersistenceError as exc:
                 session.rollback()
+                if key:
+                    return self._idempotency_error_result(
+                        context,
+                        code="runtime.idempotency_persistence_failed",
+                        message="Chat retry identity could not be established safely.",
+                        retriable=True,
+                        retry_state="in_progress",
+                        details={"exception_type": type(exc).__name__},
+                    )
+                raise
+            except Exception as exc:
+                session.rollback()
+                if key:
+                    return self._idempotency_error_result(
+                        context,
+                        code="runtime.idempotency_persistence_failed",
+                        message="Chat retry identity could not be persisted safely.",
+                        retriable=True,
+                        retry_state="in_progress",
+                        details={"exception_type": type(exc).__name__},
+                    )
 
     def _persist_finish(self, context: RunContext, result: RunResult) -> None:
         with self._open_session() as session:
@@ -1333,8 +1511,12 @@ class ShopMindRuntimeHarness:
                         expires_at=idempotency_expires_at,
                     )
                 session.commit()
-            except Exception:
+            except Exception as exc:
                 session.rollback()
+                if context.request.idempotency_key:
+                    raise RuntimeIdempotencyPersistenceError(
+                        "Runtime idempotency result could not be persisted safely."
+                    ) from exc
         if context.request.metadata.get("governance_audit_enabled") is True:
             try:
                 from app.governance import project_runtime_governance_records
@@ -1345,6 +1527,21 @@ class ShopMindRuntimeHarness:
                 # Governance persistence is independent and cannot rewrite an
                 # already-computed business/runtime result.
                 pass
+
+    def _persist_or_fail_closed(self, context: RunContext, result: RunResult) -> RunResult:
+        try:
+            self._persist_finish(context, result)
+        except RuntimeIdempotencyPersistenceError as exc:
+            return self._idempotency_error_result(
+                context,
+                code="runtime.idempotency_persistence_failed",
+                message="Chat retry result could not be persisted safely.",
+                retriable=True,
+                retry_state="in_progress",
+                authoritative_run_id=result.run_id,
+                details={"exception_type": type(exc).__name__},
+            )
+        return result
 
     def _request_hash(self, request: RunRequest) -> str:
         payload = request.model_dump(

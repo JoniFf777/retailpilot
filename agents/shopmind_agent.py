@@ -22,7 +22,7 @@ from langgraph.graph import MessagesState
 from config import Context, DEFAULT_MODEL
 from tools.cart import get_cart_items, prepare_add_to_cart
 from tools.documents import search_policy_docs, search_product_docs
-from tools.preferences import add_user_preference, get_user_preferences
+from tools.preferences import get_user_preferences
 from tools.products import compare_products, get_product_detail, search_products
 
 
@@ -39,7 +39,7 @@ SHOPMIND_SYSTEM_PROMPT = """你是 ShopMind，一名“智能购物决策 Agent�
 3. 涉及商品规格、兼容性、安装、使用说明、技术细节时，必须调用 search_product_docs。
 4. 涉及退换货、保修、配送、售后政策时，必须调用 search_policy_docs。
 5. 如果请求中传入了 user_id，在推荐商品、比较商品或给出购买建议前，优先调用 get_user_preferences 获取用户偏好。
-6. 当用户明确表达长期偏好时，例如“我不喜欢声音大的键盘”“以后别推荐青轴”“我预算一般在 100 美元以内”，调用 add_user_preference 保存。
+6. 当用户明确表达长期偏好时，例如“我不喜欢声音大的键盘”“以后别推荐青轴”“我预算一般在 100 美元以内”，交给系统的待确认保存偏好流程，不要直接写入。
 7. 偏好类型建议：
    - budget：预算偏好；
    - brand：品牌偏好；
@@ -69,7 +69,6 @@ SHOPMIND_TOOLS = [
     search_product_docs,
     search_policy_docs,
     get_user_preferences,
-    add_user_preference,
     prepare_add_to_cart,
     get_cart_items,
 ]

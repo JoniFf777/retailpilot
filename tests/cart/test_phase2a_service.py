@@ -6,9 +6,11 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.core.settings import Settings
 from app.db.base import Base
 from app.db.models import AgentRun, ConversationThread, PendingAction
 from app.repositories.shopmind_cart import list_cart_items
+from app.schemas.pending_actions import CartActionOutcome
 from app.schemas.recommendation import (
     AvailabilityView,
     LaptopConstraints,
@@ -20,8 +22,10 @@ from app.services.pending_actions import (
     PendingActionServiceError,
     confirm_add_to_cart,
     create_add_to_cart_pending_action,
+    prepare_legacy_add_to_cart,
     pending_action_to_view,
 )
+from app.services.checkout import preview_checkout
 
 
 def make_session():
@@ -174,6 +178,136 @@ def test_legacy_pending_action_view_uses_compatibility_preview():
     assert view.preview.legacy_product_id == "LEGACY-1"
     assert view.preview.unit_money_snapshot is None
     assert view.preview.availability_snapshot is None
+
+
+def test_legacy_identifier_prepares_canonical_sku_action_and_requires_version():
+    session = make_session()
+    sku_id = seed_recommendation(session)
+    outcome = prepare_legacy_add_to_cart(
+        session,
+        user_id="user-1",
+        thread_id="thread-1",
+        identifier="TECH-LAP-001",
+        quantity=1,
+    )
+    assert outcome.status == "prepared"
+    assert outcome.pending_action is not None
+    assert outcome.pending_action.preview.kind == "catalog_sku"
+    session.commit()
+
+    with __import__("pytest").raises(PendingActionServiceError) as missing:
+        confirm_add_to_cart(
+            session,
+            pending_action_id=outcome.pending_action_id,
+            user_id="user-1",
+            thread_id="thread-1",
+            expected_version=None,
+        )
+    assert missing.value.code == "expected_version_required"
+    assert list_cart_items(session, user_id="user-1") == []
+
+    confirmed = confirm_add_to_cart(
+        session,
+        pending_action_id=outcome.pending_action_id,
+        user_id="user-1",
+        thread_id="thread-1",
+        expected_version=1,
+    )
+    assert confirmed.cart_item is not None
+    assert confirmed.cart_item.sku_id == sku_id
+    preview = preview_checkout(
+        session,
+        user_id="user-1",
+        settings=Settings(shopmind_checkout_signing_secret="c" * 32),
+    )
+    assert preview.item_count == 1
+    assert preview.items[0].sku_id == sku_id
+    assert preview.can_create_order is True
+
+
+def test_legacy_identifier_multi_sku_returns_clarification_without_action():
+    session = make_session()
+    sku_id = seed_recommendation(session)
+    product = session.get(CatalogSku, sku_id).product
+    second = CatalogSku(
+        product=product,
+        sku_code="LP-001-32G",
+        name="32GB",
+        money_amount=Decimal("6999.00"),
+        currency="CNY",
+        sale_status="active",
+        variant_attributes_json={},
+    )
+    session.add_all([second, CatalogInventory(sku=second, on_hand_quantity=5, reserved_quantity=0, version=0)])
+    session.commit()
+
+    outcome = prepare_legacy_add_to_cart(
+        session,
+        user_id="user-1",
+        thread_id="thread-1",
+        identifier="TECH-LAP-001",
+        quantity=1,
+    )
+    assert isinstance(outcome, CartActionOutcome)
+    assert outcome.status == "clarification_required"
+    assert outcome.code == "sku_ambiguous"
+    assert outcome.pending_action_id is None
+    assert list_cart_items(session, user_id="user-1") == []
+
+
+def test_legacy_identifier_product_without_sku_is_failed_not_clarification():
+    session = make_session()
+    category = CatalogCategory(id=uuid4(), code="keyboard", name="Keyboard", status="active")
+    session.add(
+        CatalogProduct(
+            id=uuid4(),
+            product_code="NO-SKU-PRODUCT",
+            legacy_product_id="LEGACY-NO-SKU",
+            category=category,
+            brand="ShopMind",
+            name="Product without SKU",
+            sale_status="active",
+            attributes_json={},
+        )
+    )
+    session.commit()
+
+    outcome = prepare_legacy_add_to_cart(
+        session,
+        user_id="user-1",
+        thread_id="thread-1",
+        identifier="LEGACY-NO-SKU",
+        quantity=1,
+    )
+    assert outcome.status == "failed"
+    assert outcome.code == "catalog_not_found"
+    assert outcome.pending_action_id is None
+    assert list_cart_items(session, user_id="user-1") == []
+    assert session.query(PendingAction).count() == 0
+
+
+def test_historical_legacy_action_confirm_is_typed_safe_failure():
+    session = make_session()
+    seed_recommendation(session)
+    action = PendingAction(
+        id="legacy-confirm-action", user_id="user-1", thread_id="thread-1", action_type="add_to_cart",
+        payload_json={"product_id": "TECH-LAP-001", "quantity": 1}, risk_class="high",
+        preview_text="Legacy", status="pending", metadata_json={}, version=1, result_json={},
+    )
+    session.add(action)
+    session.commit()
+
+    with __import__("pytest").raises(PendingActionServiceError) as exc_info:
+        confirm_add_to_cart(
+            session,
+            pending_action_id=action.id,
+            user_id="user-1",
+            thread_id="thread-1",
+            expected_version=1,
+        )
+    assert exc_info.value.code == "unsupported_action_schema"
+    assert list_cart_items(session, user_id="user-1") == []
+    assert session.get(PendingAction, action.id).status == "failed"
 
 
 def test_catalog_preview_is_creation_snapshot_not_live_requery():

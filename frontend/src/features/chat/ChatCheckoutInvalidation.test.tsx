@@ -51,4 +51,61 @@ describe("structured ShopMind Cart mutations", () => {
     });
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/cart"))).toBe(true);
   });
+
+  it("uses the real legacy action version and invalidates Cart/Checkout after canonical confirm", async () => {
+    const pending = { pending_action_id: "pa-legacy-clear", action_type: "add_to_cart", risk_class: "high", status: "pending", version: 3, expires_at: null, preview: "Add SKU", editable_fields: [{ field_type: "integer", field: "quantity", label: "Quantity", current_value: 1, min_value: 1, max_value: 20, required: true }], confirm_label: "Confirm", cancel_label: "Cancel" };
+    const cart = { items: [], item_count: 0, total_quantity: 0, subtotal: null, currency: null, warnings: [] };
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/chat/confirm")) return Promise.resolve(jsonResponse({ answer: "Action confirmed.", status: "completed", tool_calls: ["confirm_add_to_cart"], pending_action_id: pending.pending_action_id }));
+      if (url.endsWith("/chat")) return Promise.resolve(jsonResponse({ answer: "Pending add-to-cart action created.", status: "confirmation_required", tool_calls: ["prepare_add_to_cart"], pending_action_id: pending.pending_action_id }));
+      if (url.includes(`/pending-actions/${pending.pending_action_id}`)) return Promise.resolve(jsonResponse(pending));
+      if (url.includes("/cart")) return Promise.resolve(jsonResponse(cart));
+      return Promise.resolve(jsonResponse({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    updateCheckoutAttempt(newCheckoutAttempt("demo-user", "old-token"), "unknown");
+    client.setQueryData(checkoutPreviewQueryKey("demo-user"), { checkout_token: "old-token" });
+    render(<QueryClientProvider client={client}><SessionProvider><MemoryRouter><ChatPage /></MemoryRouter></SessionProvider></QueryClientProvider>);
+
+    fireEvent.click(screen.getByTestId("json-mode-button"));
+    fireEvent.change(screen.getByTestId("chat-input"), { target: { value: "Add legacy SKU" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+    await screen.findByTestId("action-confirm");
+    fireEvent.click(screen.getByTestId("action-confirm"));
+
+    await waitFor(() => {
+      expect(readCheckoutAttempt("demo-user")).toBeNull();
+      expect(client.getQueryData(checkoutPreviewQueryKey("demo-user"))).toBeUndefined();
+    });
+    const confirmCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/api/chat/confirm"));
+    expect(JSON.parse(String(confirmCall?.[1]?.body))).toMatchObject({ expected_version: 3 });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/cart"))).toBe(true);
+  });
+
+  it("does not invalidate valid Checkout state when legacy confirm returns HTTP 200 with failed status", async () => {
+    const pending = { pending_action_id: "pa-legacy-failed", action_type: "add_to_cart", risk_class: "high", status: "pending", version: 4, expires_at: null, preview: "Add SKU", editable_fields: [{ field_type: "integer", field: "quantity", label: "Quantity", current_value: 1, min_value: 1, max_value: 20, required: true }], confirm_label: "Confirm", cancel_label: "Cancel" };
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/chat/confirm")) return Promise.resolve(jsonResponse({ answer: "Version conflict", status: "failed", tool_calls: ["confirm_add_to_cart"], pending_action_id: pending.pending_action_id }));
+      if (url.endsWith("/chat")) return Promise.resolve(jsonResponse({ answer: "Pending add-to-cart action created.", status: "confirmation_required", tool_calls: ["prepare_add_to_cart"], pending_action_id: pending.pending_action_id }));
+      if (url.includes(`/pending-actions/${pending.pending_action_id}`)) return Promise.resolve(jsonResponse(pending));
+      return Promise.resolve(jsonResponse({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    updateCheckoutAttempt(newCheckoutAttempt("demo-user", "valid-token"), "unknown");
+    client.setQueryData(checkoutPreviewQueryKey("demo-user"), { checkout_token: "valid-token" });
+    render(<QueryClientProvider client={client}><SessionProvider><MemoryRouter><ChatPage /></MemoryRouter></SessionProvider></QueryClientProvider>);
+
+    fireEvent.click(screen.getByTestId("json-mode-button"));
+    fireEvent.change(screen.getByTestId("chat-input"), { target: { value: "Add legacy SKU" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+    await screen.findByTestId("action-confirm");
+    fireEvent.click(screen.getByTestId("action-confirm"));
+    await screen.findByText("Version conflict");
+
+    expect(readCheckoutAttempt("demo-user")?.checkoutToken).toBe("valid-token");
+    expect(client.getQueryData(checkoutPreviewQueryKey("demo-user"))).toEqual({ checkout_token: "valid-token" });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/cart"))).toBe(false);
+  });
 });

@@ -13,6 +13,16 @@ from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
 from app.repositories import cart as cart_repository
+from app.repositories.shopmind_cart import clear_cart, get_cart_response
+from app.schemas.pending_actions import CartActionOutcome
+from app.services.pending_actions import (
+    PendingActionServiceError,
+    cancel_pending_action as cancel_canonical_pending_action,
+    confirm_add_to_cart as confirm_canonical_add_to_cart,
+    confirm_save_preference as confirm_canonical_save_preference,
+    prepare_save_preference_pending_action,
+    prepare_legacy_add_to_cart,
+)
 
 
 PENDING_STATUS = cart_repository.PENDING_STATUS
@@ -32,6 +42,7 @@ class PrepareAddToCartInput(BaseModel):
 class ConfirmAddToCartInput(BaseModel):
     thread_id: Optional[str] = None
     updated_arguments: Optional[dict[str, Any]] = None
+    expected_version: Optional[int] = Field(default=None, ge=1)
     pending_action_id: str = Field(..., description="待确认动作 ID。")
     user_id: str = Field(..., description="用户 ID，必须与待确认动作所属用户一致。")
 
@@ -40,6 +51,7 @@ class CancelPendingActionInput(BaseModel):
     thread_id: Optional[str] = None
     pending_action_id: str = Field(..., description="待取消的 pending action ID。")
     user_id: str = Field(..., description="用户 ID，必须与待确认动作所属用户一致。")
+    expected_version: Optional[int] = Field(default=None, ge=1)
 
 
 class PrepareSavePreferenceInput(BaseModel):
@@ -53,6 +65,7 @@ class ConfirmSavePreferenceInput(BaseModel):
     pending_action_id: str = Field(..., min_length=1)
     user_id: str = Field(..., min_length=1)
     thread_id: Optional[str] = None
+    expected_version: Optional[int] = Field(default=None, ge=1)
     updated_arguments: Optional[dict[str, Any]] = None
 
 
@@ -97,6 +110,69 @@ def _format_product_snapshot(product: ProductRow, quantity: int) -> str:
     )
 
 
+def _outcome_json(outcome: CartActionOutcome) -> str:
+    return outcome.model_dump_json()
+
+
+def format_cart_action_outcome(outcome: CartActionOutcome) -> str:
+    """Format a typed Cart outcome only after business classification."""
+
+    messages = {
+        "catalog_not_found": "无法找到对应的 ShopMind 商品或 SKU，请重新选择商品。",
+        "catalog_identifier_ambiguous": "商品标识存在冲突，请提供明确的 SKU 编码。",
+        "sku_ambiguous": "该商品有多个规格，请先明确要购买的具体规格。",
+        "product_inactive": "商品当前不可售。",
+        "sku_inactive": "该 SKU 当前不可售。",
+        "insufficient_inventory": "当前库存不足，无法完成加购。",
+        "invalid_quantity": "加购数量无效。",
+        "cart_quantity_limit": "购物车数量超过限制。",
+        "expected_version_required": "待确认动作信息已过期，请重新加载后再确认。",
+        "version_conflict": "待确认动作版本已变化，请重新加载后再确认。",
+        "unsupported_action_schema": "该历史待确认动作已无法继续，请重新发起加购。",
+        "action_expired": "待确认动作已过期，请重新发起加购。",
+        "pending_action_not_found": "待确认动作不存在或不属于当前用户/会话。",
+    }
+    if outcome.status == "clarification_required":
+        return messages.get(outcome.code or "sku_ambiguous", "请先明确要购买的具体规格。")
+    if outcome.status == "failed":
+        return messages.get(outcome.code or "", "无法处理加购动作，请稍后重试。")
+    if outcome.status == "prepared" and outcome.pending_action is not None:
+        preview = outcome.pending_action.preview
+        if hasattr(preview, "product_name"):
+            sku_code = getattr(preview, "sku_code", None) or ""
+            return (
+                f"已生成待确认的加入购物车动作：{preview.product_name}"
+                f"（{sku_code}），数量 {preview.requested_quantity}。"
+            )
+        return "已生成待确认的加入购物车动作。"
+    if outcome.status == "confirmed":
+        if outcome.cart_item is not None:
+            return f"已确认加入购物车：{outcome.cart_item.product_name}，数量 {outcome.cart_item.quantity}。"
+        return "已确认加入购物车。"
+    if outcome.status == "cancelled":
+        return "已取消待确认动作。"
+    return "无法处理加购动作，请稍后重试。"
+
+
+def format_preference_action_outcome(outcome: CartActionOutcome) -> str:
+    messages = {
+        "expected_version_required": "待确认偏好动作缺少版本，请重新加载后再确认。",
+        "version_conflict": "待确认偏好动作版本已变化，请重新加载后再确认。",
+        "unsupported_action_schema": "该历史偏好动作已无法继续，请重新发起保存偏好。",
+        "action_expired": "待确认偏好动作已过期，请重新发起保存偏好。",
+        "pending_action_not_found": "待确认偏好动作不存在或不属于当前用户/会话。",
+        "invalid_action_payload": "待确认偏好动作内容无效，请重新发起保存偏好。",
+        "invalid_updated_fields": "偏好修改字段无效，请重新编辑后再确认。",
+    }
+    if outcome.status == "prepared":
+        return "已生成待确认的保存偏好动作。"
+    if outcome.status == "confirmed":
+        return "已确认保存购物偏好。"
+    if outcome.status == "cancelled":
+        return "已取消保存购物偏好。"
+    return messages.get(outcome.code or "", "无法处理保存偏好动作，请稍后重试。")
+
+
 def resolve_pending_action(
     pending_action_id: str,
     user_id: str,
@@ -124,29 +200,30 @@ def prepare_save_preference(
 
     with _get_cart_session() as session:
         try:
-            result = cart_repository.prepare_save_preference(
+            pending_action = prepare_save_preference_pending_action(
                 session,
                 user_id=user_id,
                 preference_type=preference_type,
                 preference_value=preference_value,
                 thread_id=thread_id,
             )
-            if result["status"] == PENDING_STATUS:
-                session.commit()
-            else:
-                session.rollback()
+            session.commit()
+            outcome = CartActionOutcome(
+                status="prepared",
+                pending_action_id=pending_action.pending_action_id,
+                pending_action=pending_action,
+            )
+        except PendingActionServiceError as exc:
+            session.rollback()
+            outcome = CartActionOutcome(
+                status="failed",
+                code=exc.code,
+                details=exc.details,
+            )
         except Exception:
             session.rollback()
             raise
-    if result["status"] == "error":
-        return f"无法准备保存偏好：{result['message']}。"
-    return (
-        "已生成待确认的保存偏好动作。\n"
-        f"- pending_action_id：{result['pending_action_id']}\n"
-        f"- 偏好类型：{result['preference_type']}\n"
-        f"- 偏好内容：{result['preference_value']}\n"
-        "请用户确认后再保存，当前尚未写入长期偏好。"
-    )
+    return _outcome_json(outcome)
 
 
 @tool(args_schema=PrepareAddToCartInput)
@@ -164,46 +241,31 @@ def prepare_add_to_cart(
     - quantity：数量，必须大于 0；
     - thread_id：可选会话 ID，用于后续确认动作关联。
 
-    返回内容：
-    - 如果校验失败，返回中文错误提示；
-    - 如果商品存在，会创建 pending action，并返回 pending_action_id、商品名称、价格、数量和中文确认提示；
-    - 注意：本工具不会直接写入 cart_items，必须等待 confirm_add_to_cart 确认。
+    返回紧凑的 machine-readable CartActionOutcome；调用方在读取 typed
+    status/code 后再生成用户展示文案。
     """
     if _is_blank(user_id):
-        return "无法准备加入购物车：user_id 不能为空。"
+        return _outcome_json(CartActionOutcome(status="failed", code="invalid_action_payload"))
     if _is_blank(product_id):
-        return "无法准备加入购物车：product_id 不能为空。"
-    if quantity <= 0:
-        return "无法准备加入购物车：quantity 必须大于 0。"
+        return _outcome_json(CartActionOutcome(status="failed", code="catalog_not_found"))
 
     with _get_cart_session() as session:
         try:
-            result = cart_repository.prepare_add_to_cart(
+            outcome = prepare_legacy_add_to_cart(
                 session,
-                user_id=user_id,
-                product_id=product_id,
+                user_id=user_id.strip(),
+                identifier=product_id.strip(),
                 quantity=quantity,
                 thread_id=thread_id,
             )
-            session.commit()
-        except Exception:
+            if outcome.status == "prepared":
+                session.commit()
+            else:
+                session.rollback()
+        except PendingActionServiceError as exc:
             session.rollback()
-            raise
-
-    if result["status"] == "error":
-        if result["message"] == "product not found":
-            return f"无法准备加入购物车：商品 {product_id} 不存在，请检查商品 ID。"
-        return f"无法准备加入购物车：{result['message']}。"
-
-    pending_action_id = result["pending_action_id"]
-    product = result["product"]
-
-    return (
-        "已生成待确认的加入购物车动作。\n"
-        f"- pending_action_id：{pending_action_id}\n"
-        f"{_format_product_snapshot(product, quantity)}\n"
-        "请用户确认后再调用 confirm_add_to_cart，当前尚未写入购物车。"
-    )
+            outcome = CartActionOutcome(status="failed", code=exc.code, details=exc.details)
+    return _outcome_json(outcome)
 
 
 @tool(args_schema=ConfirmAddToCartInput)
@@ -211,61 +273,60 @@ def confirm_add_to_cart(
     pending_action_id: str,
     user_id: str,
     thread_id: Optional[str] = None,
+    expected_version: Optional[int] = None,
     updated_arguments: Optional[dict[str, Any]] = None,
 ) -> str:
-    """确认 pending action 并真正把商品写入购物车，适合在用户明确确认加购后调用。
+    """确认 canonical SKU PendingAction 并返回 machine-readable outcome。
 
     输入字段含义：
     - pending_action_id：prepare_add_to_cart 返回的待确认动作 ID；
     - user_id：用户 ID，必须与 pending action 所属用户一致。
 
-    返回内容：
-    - 成功时写入 cart_items，并将 pending action 状态改为 confirmed；
-    - 如果动作不存在、用户不匹配、已确认、已取消或动作类型不支持，返回中文错误提示。
+    用户展示文案由调用边界在读取 typed status/code 后生成。
     """
     if _is_blank(pending_action_id):
-        return "无法确认加入购物车：pending_action_id 不能为空。"
+        return _outcome_json(CartActionOutcome(status="failed", code="invalid_action_payload"))
     if _is_blank(user_id):
-        return "无法确认加入购物车：user_id 不能为空。"
+        return _outcome_json(CartActionOutcome(status="failed", code="invalid_action_payload"))
 
     with _get_cart_session() as session:
         try:
-            result = cart_repository.confirm_add_to_cart(
+            result = confirm_canonical_add_to_cart(
                 session,
-                pending_action_id,
-                user_id,
+                pending_action_id=pending_action_id,
+                user_id=user_id.strip(),
                 thread_id=thread_id,
-                updated_arguments=updated_arguments,
+                expected_version=expected_version,
+                updated_fields=updated_arguments,
             )
-            if result["status"] == CONFIRMED_STATUS or result.get("message") == "pending action expired":
+            session.commit()
+            outcome = CartActionOutcome(
+                status="confirmed",
+                pending_action_id=result.pending_action.pending_action_id,
+                pending_action=result.pending_action,
+                cart_item=result.cart_item,
+                price_changed=result.price_changed,
+                requested_quantity=result.requested_quantity,
+                cart_quantity=result.cart_quantity,
+                idempotent_replay=result.idempotent_replay,
+            )
+        except PendingActionServiceError as exc:
+            if exc.persisted_terminal:
                 session.commit()
             else:
                 session.rollback()
+            outcome = CartActionOutcome(
+                status="failed",
+                code=exc.code,
+                pending_action=(exc.resolution_record.pending_action if exc.resolution_record else None),
+                pending_action_id=(exc.resolution_record.pending_action.pending_action_id if exc.resolution_record else pending_action_id),
+                details=exc.details,
+                idempotent_replay=exc.idempotent_replay,
+            )
         except Exception:
             session.rollback()
             raise
-
-    if result["status"] == "error":
-        message = result["message"]
-        if message == "pending action not found":
-            return f"无法确认加入购物车：待确认动作 {pending_action_id} 不存在。"
-        if message == "user mismatch":
-            return "无法确认加入购物车：用户不匹配，不能确认其他用户的待处理动作。"
-        if message == "pending action is not confirmable":
-            return f"无法确认加入购物车：该动作当前状态为 {result['current_status']}，不能重复确认或确认已取消的动作。"
-        if message == "unsupported action type":
-            return f"无法确认加入购物车：不支持的动作类型 {result['action_type']}。"
-        if message == "invalid pending action payload":
-            return "无法确认加入购物车：待确认动作的数据格式无效。"
-        if message == "product not found":
-            return f"无法确认加入购物车：商品 {result['product_id']} 不存在。"
-        return f"无法确认加入购物车：{message}。"
-
-    return (
-        "已确认加入购物车。\n"
-        f"{_format_product_snapshot(result['product'], result['quantity'])}\n"
-        f"pending_action_id：{pending_action_id}"
-    )
+    return _outcome_json(outcome)
 
 
 @tool(args_schema=ConfirmSavePreferenceInput)
@@ -273,35 +334,50 @@ def confirm_save_preference(
     pending_action_id: str,
     user_id: str,
     thread_id: Optional[str] = None,
+    expected_version: Optional[int] = None,
     updated_arguments: Optional[dict[str, Any]] = None,
 ) -> str:
-    """确认待处理动作并将偏好写入长期偏好表。"""
+    """确认 canonical preference PendingAction through the deterministic service."""
 
     with _get_cart_session() as session:
         try:
-            result = cart_repository.confirm_save_preference(
+            result = confirm_canonical_save_preference(
                 session,
                 pending_action_id=pending_action_id,
                 user_id=user_id,
                 thread_id=thread_id,
-                updated_arguments=updated_arguments,
+                expected_version=expected_version,
+                updated_fields=updated_arguments,
             )
-            if result["status"] == CONFIRMED_STATUS or result.get("message") == "pending action expired":
+            session.commit()
+            outcome = CartActionOutcome(
+                status="confirmed",
+                pending_action_id=result.pending_action.pending_action_id,
+                pending_action=result.pending_action,
+                idempotent_replay=result.idempotent_replay,
+            )
+        except PendingActionServiceError as exc:
+            if exc.persisted_terminal:
                 session.commit()
             else:
                 session.rollback()
+            outcome = CartActionOutcome(
+                status="failed",
+                code=exc.code,
+                pending_action_id=(
+                    exc.resolution_record.pending_action.pending_action_id
+                    if exc.resolution_record else pending_action_id
+                ),
+                pending_action=(
+                    exc.resolution_record.pending_action if exc.resolution_record else None
+                ),
+                details=exc.details,
+                idempotent_replay=exc.idempotent_replay,
+            )
         except Exception:
             session.rollback()
             raise
-    if result["status"] == "error":
-        return f"无法确认保存偏好：{result['message']}。"
-    preference = result["preference"]
-    return (
-        "已确认保存购物偏好。\n"
-        f"- 偏好类型：{preference['preference_type']}\n"
-        f"- 偏好内容：{preference['preference_value']}\n"
-        f"pending_action_id：{pending_action_id}"
-    )
+    return _outcome_json(outcome)
 
 
 @tool(args_schema=CancelPendingActionInput)
@@ -309,6 +385,7 @@ def cancel_pending_action(
     pending_action_id: str,
     user_id: str,
     thread_id: Optional[str] = None,
+    expected_version: Optional[int] = None,
 ) -> str:
     """取消待确认动作，适合在用户拒绝或放弃某个 pending action 时调用。
 
@@ -324,6 +401,46 @@ def cancel_pending_action(
         return "无法取消待确认动作：pending_action_id 不能为空。"
     if _is_blank(user_id):
         return "无法取消待确认动作：user_id 不能为空。"
+
+    if expected_version is not None:
+        with _get_cart_session() as session:
+            try:
+                result = cancel_canonical_pending_action(
+                    session,
+                    pending_action_id=pending_action_id,
+                    user_id=user_id,
+                    thread_id=thread_id or "",
+                    expected_version=expected_version,
+                )
+                session.commit()
+                outcome = CartActionOutcome(
+                    status="cancelled",
+                    pending_action_id=result.pending_action.pending_action_id,
+                    pending_action=result.pending_action,
+                    idempotent_replay=result.idempotent_replay,
+                )
+            except PendingActionServiceError as exc:
+                if exc.persisted_terminal:
+                    session.commit()
+                else:
+                    session.rollback()
+                outcome = CartActionOutcome(
+                    status="failed",
+                    code=exc.code,
+                    pending_action_id=(
+                        exc.resolution_record.pending_action.pending_action_id
+                        if exc.resolution_record else pending_action_id
+                    ),
+                    pending_action=(
+                        exc.resolution_record.pending_action if exc.resolution_record else None
+                    ),
+                    details=exc.details,
+                    idempotent_replay=exc.idempotent_replay,
+                )
+            except Exception:
+                session.rollback()
+                raise
+        return _outcome_json(outcome)
 
     with _get_cart_session() as session:
         try:
@@ -369,24 +486,21 @@ def get_cart_items(user_id: str) -> str:
         return "无法读取购物车：user_id 不能为空。"
 
     with _get_cart_session() as session:
-        rows = cart_repository.get_cart_items(session, user_id.strip())
+        cart = get_cart_response(session, user_id=user_id.strip())
 
-    if not rows:
+    if not cart.items:
         return f"用户 {user_id} 的购物车暂无商品。"
 
     lines: List[str] = [f"用户 {user_id} 的购物车："]
-    total = 0.0
-    for index, row in enumerate(rows, 1):
-        product = row["product"]
-        subtotal = row["subtotal"]
-        total += subtotal
+    for index, item in enumerate(cart.items, 1):
         lines.append(
-            f"{index}. {product['name']}（{row['product_id']}）\n"
-            f"   - 数量：{row['quantity']}\n"
-            f"   - 单价：${row['unit_price']:.2f}\n"
-            f"   - 小计：${subtotal:.2f}"
+            f"{index}. {item.product_name}（{item.sku_code}）\n"
+            f"   - 数量：{item.quantity}\n"
+            f"   - 单价：{item.unit_money.amount} {item.unit_money.currency}\n"
+            f"   - 小计：{item.subtotal_money.amount} {item.subtotal_money.currency}"
         )
-    lines.append(f"购物车合计：${total:.2f}")
+    if cart.subtotal is not None:
+        lines.append(f"购物车合计：{cart.subtotal.amount} {cart.subtotal.currency}")
     return "\n".join(lines)
 
 
@@ -406,6 +520,7 @@ def clear_cart_items(user_id: str) -> str:
     with _get_cart_session() as session:
         try:
             result = cart_repository.clear_cart_items(session, user_id.strip())
+            result["deleted_cart_items"] += clear_cart(session, user_id=user_id.strip())
             session.commit()
         except Exception:
             session.rollback()
@@ -426,6 +541,7 @@ __all__ = [
     "get_cart_items",
     "prepare_save_preference",
     "confirm_save_preference",
+    "format_preference_action_outcome",
     "resolve_pending_action",
     "clear_cart_items",
 ]

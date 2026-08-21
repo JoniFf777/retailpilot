@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from app.core.langsmith_policy import initialize_langsmith_runtime
 from app.core.settings import Settings
+from app.db.version import MIGRATION_HEAD
 from app.main import create_app
 from app.operations import evaluate_deployment_readiness, evaluate_production_preflight
 from app.recommendation.rag import OfflineDemoRecommendationEvidenceProvider
@@ -41,7 +42,7 @@ def test_offline_demo_is_local_ready_and_does_not_run_production_preflight():
         engine = create_engine("sqlite:///:memory:")
         connection = engine.connect()
         connection.execute(text("create table alembic_version (version_num varchar(64))"))
-        connection.execute(text("insert into alembic_version values ('0014_shopmind_outbox_events')"))
+        connection.execute(text("insert into alembic_version values (:version)"), {"version": MIGRATION_HEAD})
         return Session(bind=connection)
 
     readiness = evaluate_deployment_readiness(

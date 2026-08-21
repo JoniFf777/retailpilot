@@ -12,7 +12,7 @@ def test_load_source_documents_reads_product_and_policy_markdown():
     product_docs = load_source_documents(DEFAULT_DOCUMENTS_DIR, "product")
     policy_docs = load_source_documents(DEFAULT_DOCUMENTS_DIR, "policy")
 
-    assert len(product_docs) == 25
+    assert len(product_docs) == 32
     assert len(policy_docs) == 5
     assert product_docs[0].metadata["doc_type"] == "product"
     assert product_docs[0].metadata["product_id"].startswith("TECH-")

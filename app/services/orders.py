@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.catalog.models import CatalogInventory, CatalogProduct, CatalogSku
 from app.checkout.tokens import CheckoutTokenError, verify_checkout_token
 from app.core.settings import Settings
-from app.repositories.inventory_reservations import mark_released
+from app.core.time import ensure_utc
 from app.repositories.shopmind_cart import (
     delete_cart_item_exact,
     list_cart_rows_for_update,
@@ -21,13 +21,16 @@ from app.repositories.shopmind_cart import (
 from app.repositories.shopmind_orders import (
     get_order_by_id,
     get_order_by_idempotency_key,
-    get_order_item_reservations_for_update,
-    has_active_payment_attempt,
     list_orders,
 )
 from app.orders.models import ShopMindInventoryReservation, ShopMindOrder, ShopMindOrderItem
 from app.outbox.contracts import build_order_cancelled_event, build_order_created_event
 from app.outbox.repository import enqueue_event
+from app.services.payment_safety import inspect_payment_history
+from app.services.reservation_release import (
+    ReservationReleaseError,
+    release_active_reservations,
+)
 from app.orders.state import (
     decode_order_cursor,
     encode_order_cursor,
@@ -98,6 +101,7 @@ def _order_view(order: ShopMindOrder) -> OrderView:
         version=order.version,
         created_at=order.created_at,
         updated_at=order.updated_at,
+        expires_at=ensure_utc(order.expires_at) if order.expires_at is not None else None,
     )
 
 
@@ -167,6 +171,7 @@ def create_order(
         version=1,
         created_at=now,
         updated_at=now,
+        expires_at=now + timedelta(seconds=settings.shopmind_order_payment_ttl_seconds),
     )
     try:
         with session.begin_nested():
@@ -376,52 +381,27 @@ def cancel_order(session: Session, *, user_id: str, order_id: UUID) -> CancelOrd
         return CancelOrderResponse(order=_order_view(order), idempotent_replay=True)
     if order.status == "paid":
         raise _error("order_not_cancellable", "A paid Order cannot be cancelled.", 409)
-    if has_active_payment_attempt(session, order_id=order.id):
+    if order.status == "expired":
+        raise _error("order_not_cancellable", "An expired Order cannot be cancelled.", 409)
+    if order.status != "pending_payment":
+        raise _error("order_not_cancellable", "The Order cannot be cancelled.", 409)
+    payment_safety = inspect_payment_history(session, order_id=order.id)
+    if payment_safety.status == "defer":
         raise _error("payment_in_progress", "Payment is still in progress for this Order.", 409)
-    rows = get_order_item_reservations_for_update(session, order_id=order.id)
-    if not rows or any(reservation is None for _, reservation in rows):
-        raise _error("reservation_inconsistent", "Order reservations are inconsistent.", 409)
-    reservations = [reservation for _, reservation in rows]
-    for item, reservation in rows:
-        if (
-            reservation.sku_id != item.sku_id
-            or reservation.quantity != item.quantity
-            or reservation.status != "active"
-        ):
-            raise _error("reservation_inconsistent", "Order reservations are inconsistent.", 409)
-    sku_ids = sorted({reservation.sku_id for reservation in reservations}, key=str)
-    inventories = list(
-        session.scalars(
-            select(CatalogInventory)
-            .where(CatalogInventory.sku_id.in_(sku_ids))
-            .order_by(CatalogInventory.sku_id.asc())
-            .with_for_update()
-        ).all()
-    )
-    inventory_by_sku = {inventory.sku_id: inventory for inventory in inventories}
-    if set(inventory_by_sku) != set(sku_ids):
-        raise _error("reservation_inconsistent", "Inventory is missing for an Order reservation.", 409)
-    for reservation in sorted(reservations, key=lambda row: str(row.sku_id)):
-        updated = session.execute(
-            update(CatalogInventory)
-            .where(
-                CatalogInventory.sku_id == reservation.sku_id,
-                CatalogInventory.reserved_quantity >= reservation.quantity,
-            )
-            .values(
-                reserved_quantity=CatalogInventory.reserved_quantity - reservation.quantity,
-                version=CatalogInventory.version + 1,
-                updated_at=func.now(),
-            )
-            .returning(CatalogInventory.sku_id)
-        ).scalar_one_or_none()
-        if updated is None:
-            raise _error("reservation_inconsistent", "Inventory reservation state is inconsistent.", 409)
-    for reservation in reservations:
-        mark_released(session, reservation)
+    if payment_safety.status == "inconsistent":
+        raise _error(
+            "payment_state_inconsistent",
+            "Payment state is inconsistent; the Order cannot be cancelled automatically.",
+            409,
+            reason=payment_safety.code,
+        )
+    now = datetime.now(timezone.utc)
+    try:
+        release_active_reservations(session, order_id=order.id, released_at=now)
+    except ReservationReleaseError as exc:
+        raise _error("reservation_inconsistent", "Order reservations are inconsistent.", 409) from exc
     order.status = "cancelled"
     order.version += 1
-    now = datetime.now(timezone.utc)
     order.updated_at = now
     session.flush()
     enqueue_event(session, build_order_cancelled_event(order, occurred_at=now))

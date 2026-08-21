@@ -65,8 +65,8 @@ async function requestJson<T>(path: string, init: RequestOptions = {}): Promise<
 }
 
 export const shopMindApi = {
-  chat: (request: ChatRequest, signal?: AbortSignal) => requestJson<ChatResponse>("/chat", {
-    method: "POST", body: JSON.stringify(request), signal,
+  chat: (request: ChatRequest, idempotencyKey?: string, signal?: AbortSignal) => requestJson<ChatResponse>("/chat", {
+    method: "POST", body: JSON.stringify(request), signal, idempotencyKey,
   }),
   confirm: (request: ConfirmChatRequest, signal?: AbortSignal) => requestJson<ChatResponse>("/chat/confirm", {
     method: "POST", body: JSON.stringify(request), signal,
@@ -94,10 +94,12 @@ export const shopMindApi = {
     if (response.ok || response.status === 503) return (await response.json()) as ReadinessResponse;
     throw await readApiError(response);
   },
-  streamChat: async function* (request: ChatRequest, signal?: AbortSignal) {
+  streamChat: async function* (request: ChatRequest, idempotencyKey?: string, signal?: AbortSignal) {
+    const headers = new Headers({ Accept: "text/event-stream", "Content-Type": "application/json" });
+    if (idempotencyKey) headers.set("Idempotency-Key", idempotencyKey);
     const response = await fetch(`${API_BASE}/chat/stream`, {
       method: "POST",
-      headers: { Accept: "text/event-stream", "Content-Type": "application/json", "Idempotency-Key": idempotencyKey() },
+      headers,
       body: JSON.stringify(request),
       signal,
     });

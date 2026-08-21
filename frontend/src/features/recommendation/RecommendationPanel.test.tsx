@@ -15,6 +15,21 @@ const result: RecommendationResult = {
 };
 
 describe("RecommendationPanel", () => {
+  it("renders Monitor category attributes through the shared recommendation UI", () => {
+    const monitorResult: RecommendationResult = {
+      ...result,
+      category: "monitor",
+      category_attributes: { size_min_inches: 27, resolution_min: "4k", refresh_rate_min_hz: 144, panel_type: "ips", use_case: "design" },
+      recommendation_request: { category: "monitor", budget_max: "4000.00", budget_currency: "CNY", availability_required: true, generic_preferences: ["design"], category_attributes: { size_min_inches: 27, resolution_min: "4k", refresh_rate_min_hz: 144, panel_type: "ips", use_case: "design" } },
+      recommendations: (result.recommendations ?? []).map((item) => ({ ...item, category: "monitor" })),
+    };
+    render(<RecommendationPanel recommendation={monitorResult} onFillPrompt={() => undefined} />);
+    expect(screen.getByText("推荐 1 · 显示器")).toBeInTheDocument();
+    expect(screen.getByText("尺寸至少：27 英寸")).toBeInTheDocument();
+    expect(screen.getByText("分辨率至少：4k")).toBeInTheDocument();
+    expect(screen.getByText("刷新率至少：144 Hz")).toBeInTheDocument();
+  });
+
   it("only enables SKU selection with the message recommendation context", () => {
     const onSelectSku = vi.fn();
     const view = render(<RecommendationPanel recommendation={result} recommendationContext={{ source_run_id: "run-1" }} onSelectSku={onSelectSku} onFillPrompt={() => undefined} />);

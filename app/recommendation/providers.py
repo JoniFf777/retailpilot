@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from typing import Protocol
 
 from app.db.session import SessionLocal
-from app.repositories.catalog import list_active_laptop_skus
+from app.repositories.catalog import list_active_laptop_skus, list_active_skus
 from app.repositories.preferences import get_user_preferences
 from app.schemas.catalog import CatalogSkuCandidate
 
@@ -14,11 +14,17 @@ from app.schemas.catalog import CatalogSkuCandidate
 class CatalogCandidateProvider(Protocol):
     """A narrow dependency boundary; callers never own its database session."""
 
+    def list_active_skus(self, category_code: str) -> list[CatalogSkuCandidate]: ...
+
     def list_active_laptop_skus(self) -> list[CatalogSkuCandidate]: ...
 
 
 class SqlAlchemyCatalogCandidateProvider:
     """Open one short-lived local session only for catalog candidate retrieval."""
+
+    def list_active_skus(self, category_code: str) -> list[CatalogSkuCandidate]:
+        with self._session() as session:
+            return list_active_skus(session, category_code=category_code)
 
     def list_active_laptop_skus(self) -> list[CatalogSkuCandidate]:
         with self._session() as session:
@@ -41,9 +47,12 @@ class FakeCatalogCandidateProvider:
         self.candidates = list(candidates)
         self.calls = 0
 
-    def list_active_laptop_skus(self) -> list[CatalogSkuCandidate]:
+    def list_active_skus(self, category_code: str) -> list[CatalogSkuCandidate]:
         self.calls += 1
         return list(self.candidates)
+
+    def list_active_laptop_skus(self) -> list[CatalogSkuCandidate]:
+        return self.list_active_skus("laptop")
 
 
 class RecommendationPreferenceProvider(Protocol):

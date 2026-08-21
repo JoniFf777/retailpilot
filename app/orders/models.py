@@ -18,8 +18,12 @@ class ShopMindOrder(Base):
     __tablename__ = "shopmind_orders"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('pending_payment', 'cancelled', 'paid')",
+            "status IN ('pending_payment', 'cancelled', 'paid', 'expired')",
             name="ck_shopmind_orders_status",
+        ),
+        CheckConstraint(
+            "status IN ('paid', 'cancelled') OR expires_at IS NOT NULL",
+            name="ck_shopmind_orders_expiration_deadline",
         ),
         CheckConstraint("length(currency) = 3", name="ck_shopmind_orders_currency_length"),
         CheckConstraint("currency = upper(currency)", name="ck_shopmind_orders_currency_upper"),
@@ -32,6 +36,7 @@ class ShopMindOrder(Base):
         UniqueConstraint("user_id", "idempotency_key", name="uq_shopmind_orders_user_idempotency"),
         Index("idx_shopmind_orders_user_created_at_id", "user_id", "created_at", "id"),
         Index("idx_shopmind_orders_user_status_created_at", "user_id", "status", "created_at"),
+        Index("idx_shopmind_orders_expiration", "status", "expires_at", "id"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -46,6 +51,7 @@ class ShopMindOrder(Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     items: Mapped[list["ShopMindOrderItem"]] = relationship(
         back_populates="order", cascade="all, delete-orphan", order_by="ShopMindOrderItem.id"
     )

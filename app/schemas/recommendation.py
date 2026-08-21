@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator, model_validator
@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, Strict
 
 Currency = str
 SpecificationValueType = Literal["string", "integer", "decimal", "boolean", "string_list"]
+RecommendationCategory = Literal["laptop", "monitor", "unknown"]
 RecommendationOutcome = Literal["recommended", "no_match", "clarification_required"]
 CatalogSaleStatus = Literal["draft", "active", "inactive"]
 
@@ -70,6 +71,30 @@ class LaptopConstraints(BaseModel):
 
     @model_validator(mode="after")
     def default_budget_currency(self) -> "LaptopConstraints":
+        if self.budget_max is not None and self.budget_currency is None:
+            self.budget_currency = "CNY"
+        return self
+
+
+class RecommendationRequest(BaseModel):
+    """Shared request envelope with bounded category-owned attributes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    category: RecommendationCategory
+    budget_max: Decimal | None = Field(default=None, gt=0)
+    budget_currency: Currency | None = None
+    availability_required: bool = True
+    generic_preferences: list[str] = Field(default_factory=list)
+    category_attributes: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("budget_currency")
+    @classmethod
+    def normalize_budget_currency(cls, value: str | None) -> str | None:
+        return _currency(value) if value else None
+
+    @model_validator(mode="after")
+    def default_budget_currency(self) -> "RecommendationRequest":
         if self.budget_max is not None and self.budget_currency is None:
             self.budget_currency = "CNY"
         return self
@@ -146,6 +171,7 @@ class AlternativeSkuView(BaseModel):
 
 
 class Recommendation(BaseModel):
+    category: RecommendationCategory | None = None
     product_id: UUID
     sku_id: UUID
     product_name: str
@@ -168,10 +194,14 @@ class RecommendationResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: Literal["shopmind.recommendation.v1"] = "shopmind.recommendation.v1"
+    category: RecommendationCategory | None = None
     outcome: RecommendationOutcome
     ranking_policy_version: str
     request_summary: str
     structured_constraints: LaptopConstraints
+    recommendation_request: RecommendationRequest | None = None
+    category_attributes: dict[str, Any] = Field(default_factory=dict)
+    error_code: str | None = None
     no_match_reason: str | None = None
     missing_fields: list[str] = Field(default_factory=list)
     clarification_question: str | None = None

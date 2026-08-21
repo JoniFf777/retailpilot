@@ -4,6 +4,7 @@ from httpx import ASGITransport, AsyncClient
 from app.dependencies import agent as agent_dependency
 from app.main import app
 from app.runtime import ToolCallRecord, ToolSideEffectClass
+from app.schemas.pending_actions import CartActionOutcome
 
 
 def resolve_add_to_cart(**_kwargs) -> dict:
@@ -172,6 +173,42 @@ async def test_chat_confirm_forwards_optional_server_validated_edits(monkeypatch
 
 
 @pytest.mark.anyio
+async def test_chat_confirm_forwards_client_expected_version(monkeypatch) -> None:
+    def fake_confirm_pending_action(
+        pending_action_id: str,
+        user_id: str,
+        confirmed: bool,
+        thread_id: str | None = None,
+        *,
+        expected_version: int | None = None,
+    ) -> dict:
+        assert pending_action_id == "pending-version-1"
+        assert expected_version == 7
+        return {
+            "answer": "ok",
+            "status": "completed",
+            "tool_calls": ["confirm_add_to_cart"],
+            "pending_action_id": pending_action_id,
+        }
+
+    monkeypatch.setattr(agent_dependency, "confirm_pending_action", fake_confirm_pending_action)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/api/chat/confirm",
+            json={
+                "user_id": "user-001",
+                "pending_action_id": "pending-version-1",
+                "confirmed": True,
+                "expected_version": 7,
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+
+
+@pytest.mark.anyio
 async def test_chat_confirm_returns_chinese_error_answer(monkeypatch) -> None:
     def fake_confirm_pending_action(
         pending_action_id: str,
@@ -200,7 +237,7 @@ async def test_chat_confirm_returns_chinese_error_answer(monkeypatch) -> None:
         )
 
     assert response.status_code == 200
-    assert response.json()["answer"] == "无法确认加入购物车：用户不匹配。"
+    assert response.json()["answer"] == "请求暂时无法完成，请稍后重试。"
     assert response.json()["status"] == "failed"
 
 
@@ -212,7 +249,9 @@ def test_confirm_pending_action_adds_confirmation_debug(monkeypatch) -> None:
 
         @staticmethod
         def invoke(payload: dict) -> str:
-            return "已确认加入购物车。"
+            return CartActionOutcome(
+                status="confirmed", pending_action_id="pending-debug-confirm"
+            ).model_dump_json()
 
     monkeypatch.setattr(agent_dependency, "confirm_add_to_cart", FakeConfirmTool())
 
@@ -241,7 +280,9 @@ def test_confirm_pending_action_adds_cancellation_debug(monkeypatch) -> None:
 
         @staticmethod
         def invoke(payload: dict) -> str:
-            return "已取消待确认动作。"
+            return CartActionOutcome(
+                status="cancelled", pending_action_id="pending-debug-cancel"
+            ).model_dump_json()
 
     monkeypatch.setattr(agent_dependency, "cancel_pending_action", FakeCancelTool())
 
@@ -249,6 +290,7 @@ def test_confirm_pending_action_adds_cancellation_debug(monkeypatch) -> None:
         pending_action_id="pending-debug-cancel",
         user_id="user-001",
         confirmed=False,
+        expected_version=1,
     )
     event = result["debug"]["confirmation"]["events"][0]
 
@@ -271,7 +313,9 @@ def test_confirm_boundary_routes_sensitive_call_through_gateway(monkeypatch) -> 
             assert tool.name == "confirm_add_to_cart"
             assert arguments["user_id"] == "user-001"
             assert context.policy.allow_sensitive_tools is True
-            return "已确认加入购物车。", ToolCallRecord(
+            return CartActionOutcome(
+                status="confirmed", pending_action_id="pending-gateway-confirm"
+            ).model_dump_json(), ToolCallRecord(
                 tool_name=tool.name,
                 caller=agent_name,
                 capability=tool.name,
@@ -300,7 +344,9 @@ def test_confirm_boundary_dispatches_registered_preference_handler(monkeypatch) 
             assert agent_name == "confirmation_boundary"
             assert tool.name == "confirm_save_preference"
             assert arguments["pending_action_id"] == "pending-preference"
-            return "已确认保存购物偏好。", ToolCallRecord(
+            return CartActionOutcome(
+                status="confirmed", pending_action_id="pending-preference"
+            ).model_dump_json(), ToolCallRecord(
                 tool_name=tool.name,
                 caller=agent_name,
                 capability=tool.name,
@@ -329,6 +375,7 @@ def test_confirm_boundary_dispatches_registered_preference_handler(monkeypatch) 
         user_id="user-001",
         thread_id="thread-001",
         confirmed=True,
+        expected_version=1,
         event_sink=events.append,
     )
 
@@ -353,7 +400,9 @@ def test_confirm_boundary_orders_resumed_edited_and_confirmed_events(monkeypatch
             assert arguments["updated_arguments"] == {
                 "preference_value": "silent switches"
             }
-            return "saved", ToolCallRecord(
+            return CartActionOutcome(
+                status="confirmed", pending_action_id="pending-edit"
+            ).model_dump_json(), ToolCallRecord(
                 tool_name=tool.name,
                 caller=agent_name,
                 capability=tool.name,
@@ -382,6 +431,7 @@ def test_confirm_boundary_orders_resumed_edited_and_confirmed_events(monkeypatch
         pending_action_id="pending-edit",
         user_id="user-001",
         confirmed=True,
+        expected_version=1,
         updated_arguments={"preference_value": " silent switches "},
         event_sink=events.append,
     )

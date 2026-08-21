@@ -1,4 +1,4 @@
-import re
+import json
 from contextlib import contextmanager
 
 import pytest
@@ -6,7 +6,10 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
+from app.cart.models import ShopMindCartItem
+from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
 from app.db.models import CartItem, PendingAction, Product
+from app.schemas.pending_actions import CartActionOutcome
 import tools.cart as cart_tools
 from tools.cart import (
     cancel_pending_action,
@@ -38,6 +41,31 @@ def cart_repository_session(monkeypatch):
             in_stock=True,
         )
     )
+    category = CatalogCategory(code="keyboards", name="Keyboards", status="active")
+    catalog_product = CatalogProduct(
+        product_code="LP-LEGACY-010",
+        legacy_product_id=TEST_PRODUCT_ID,
+        category=category,
+        brand="ShopMind",
+        name="Apple Magic Keyboard",
+        sale_status="active",
+        attributes_json={},
+    )
+    catalog_sku = CatalogSku(
+        product=catalog_product,
+        sku_code=TEST_PRODUCT_ID,
+        name="Standard",
+        money_amount=99,
+        currency="USD",
+        sale_status="active",
+        variant_attributes_json={},
+    )
+    session.add_all([
+        category,
+        catalog_product,
+        catalog_sku,
+        CatalogInventory(sku=catalog_sku, on_hand_quantity=20, reserved_quantity=0, version=0),
+    ])
     session.commit()
 
     @contextmanager
@@ -49,10 +77,15 @@ def cart_repository_session(monkeypatch):
     session.close()
 
 
+def _outcome(result: str) -> CartActionOutcome:
+    return CartActionOutcome.model_validate(json.loads(result))
+
+
 def _extract_pending_action_id(result: str) -> str:
-    match = re.search(r"pending_action_id：([0-9a-f-]+)", result)
-    assert match is not None, result
-    return match.group(1)
+    outcome = _outcome(result)
+    assert outcome.status == "prepared", outcome
+    assert outcome.pending_action_id
+    return outcome.pending_action_id
 
 
 def _count_cart_items(user_id: str) -> int:
@@ -68,6 +101,13 @@ def _count_pending_actions(user_id: str) -> int:
             select(func.count())
             .select_from(PendingAction)
             .where(PendingAction.user_id == user_id)
+        )
+
+
+def _count_shopmind_cart_items(user_id: str) -> int:
+    with cart_tools._get_cart_session() as session:
+        return session.scalar(
+            select(func.count()).select_from(ShopMindCartItem).where(ShopMindCartItem.user_id == user_id)
         )
 
 
@@ -91,8 +131,7 @@ def test_prepare_add_to_cart_does_not_insert_cart_item() -> None:
         }
     )
 
-    assert "已生成待确认的加入购物车动作" in result
-    assert "当前尚未写入购物车" in result
+    assert _outcome(result).status == "prepared"
     assert _count_cart_items(TEST_USER_ID) == 0
 
 
@@ -123,11 +162,12 @@ def test_confirm_add_to_cart_inserts_cart_item() -> None:
     pending_action_id = _extract_pending_action_id(prepare_result)
 
     confirm_result = confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": TEST_USER_ID}
+        {"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1}
     )
 
-    assert "已确认加入购物车" in confirm_result
-    assert _count_cart_items(TEST_USER_ID) == 1
+    assert _outcome(confirm_result).status == "confirmed"
+    assert _count_cart_items(TEST_USER_ID) == 0
+    assert _count_shopmind_cart_items(TEST_USER_ID) == 1
 
 
 def test_confirm_add_to_cart_sets_pending_action_status_confirmed() -> None:
@@ -140,7 +180,7 @@ def test_confirm_add_to_cart_sets_pending_action_status_confirmed() -> None:
     )
     pending_action_id = _extract_pending_action_id(prepare_result)
 
-    confirm_add_to_cart.invoke({"pending_action_id": pending_action_id, "user_id": TEST_USER_ID})
+    confirm_add_to_cart.invoke({"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1})
 
     assert _get_pending_action_status(pending_action_id) == "confirmed"
 
@@ -173,7 +213,7 @@ def test_prepare_add_to_cart_returns_chinese_error_for_missing_product() -> None
         }
     )
 
-    assert "商品 NO-SUCH-PRODUCT 不存在" in result
+    assert _outcome(result).code == "catalog_not_found"
     assert _count_pending_actions(TEST_USER_ID) == 0
 
 
@@ -188,10 +228,10 @@ def test_confirm_add_to_cart_rejects_user_mismatch() -> None:
     pending_action_id = _extract_pending_action_id(prepare_result)
 
     confirm_result = confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": OTHER_USER_ID}
+        {"pending_action_id": pending_action_id, "user_id": OTHER_USER_ID, "expected_version": 1}
     )
 
-    assert "用户不匹配" in confirm_result
+    assert _outcome(confirm_result).code == "pending_action_not_found"
     assert _get_pending_action_status(pending_action_id) == "pending"
     assert _count_cart_items(OTHER_USER_ID) == 0
 
@@ -207,15 +247,16 @@ def test_confirm_add_to_cart_rejects_duplicate_confirmation() -> None:
     pending_action_id = _extract_pending_action_id(prepare_result)
 
     first_result = confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": TEST_USER_ID}
+        {"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1}
     )
     second_result = confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": TEST_USER_ID}
+        {"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1}
     )
 
-    assert "已确认加入购物车" in first_result
-    assert "不能重复确认" in second_result
-    assert _count_cart_items(TEST_USER_ID) == 1
+    assert _outcome(first_result).status == "confirmed"
+    assert _outcome(second_result).idempotent_replay is True
+    assert _count_cart_items(TEST_USER_ID) == 0
+    assert _count_shopmind_cart_items(TEST_USER_ID) == 1
 
 
 def test_get_cart_items_returns_cart_products() -> None:
@@ -227,7 +268,7 @@ def test_get_cart_items_returns_cart_products() -> None:
         }
     )
     pending_action_id = _extract_pending_action_id(prepare_result)
-    confirm_add_to_cart.invoke({"pending_action_id": pending_action_id, "user_id": TEST_USER_ID})
+    confirm_add_to_cart.invoke({"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1})
 
     result = get_cart_items.invoke({"user_id": TEST_USER_ID})
 
@@ -247,7 +288,7 @@ def test_clear_cart_items_cleans_test_data() -> None:
         }
     )
     pending_action_id = _extract_pending_action_id(prepare_result)
-    confirm_add_to_cart.invoke({"pending_action_id": pending_action_id, "user_id": TEST_USER_ID})
+    confirm_add_to_cart.invoke({"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1})
 
     clear_result = clear_cart_items.invoke({"user_id": TEST_USER_ID})
     cart_result = get_cart_items.invoke({"user_id": TEST_USER_ID})

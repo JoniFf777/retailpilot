@@ -9,6 +9,9 @@ import sys
 from dataclasses import dataclass
 from typing import Callable
 
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
+
 from app.core.settings import get_settings
 from scripts.smoke_postgres import _mask_database_url
 
@@ -39,7 +42,90 @@ class BootstrapSafetyError(RuntimeError):
     """Raised when a destructive bootstrap plan lacks explicit confirmation."""
 
 
+def _database_identity(database_url: str) -> tuple[str, int, str, str]:
+    """Return the non-secret target identity used to bind admin provisioning."""
+
+    parsed = make_url(database_url)
+    scheme = parsed.drivername.split("+", 1)[0].lower()
+    if scheme != "postgresql":
+        raise BootstrapSafetyError("ShopMind bootstrap requires a PostgreSQL database URL.")
+    return (
+        (parsed.host or "").lower(),
+        (parsed.port or 5432),
+        (parsed.database or ""),
+        scheme,
+    )
+
+
+def _has_vector_extension(database_url: str) -> bool:
+    engine = create_engine(database_url, pool_pre_ping=True)
+    try:
+        with engine.connect() as connection:
+            return bool(
+                connection.execute(
+                    text(
+                        "SELECT EXISTS ("
+                        "SELECT 1 FROM pg_extension WHERE extname = 'vector'"
+                        ")"
+                    )
+                ).scalar_one()
+            )
+    finally:
+        engine.dispose()
+
+
+def ensure_pgvector_prerequisite(database_url: str) -> None:
+    """Ensure pgvector through an explicit operator connection, fail closed."""
+
+    try:
+        if _has_vector_extension(database_url):
+            return
+    except Exception as exc:  # pragma: no cover - depends on database state
+        raise BootstrapSafetyError(
+            "无法检查 pgvector prerequisite；请确认应用数据库可连接。"
+        ) from exc
+
+    admin_url = os.getenv("POSTGRES_ADMIN_URL", "").strip()
+    if not admin_url:
+        raise BootstrapSafetyError(
+            "pgvector extension prerequisite missing；请设置 POSTGRES_ADMIN_URL，"
+            "由管理员为同一数据库 provision vector 后重试。"
+        )
+    try:
+        if _database_identity(admin_url) != _database_identity(database_url):
+            raise BootstrapSafetyError(
+                "POSTGRES_ADMIN_URL 必须与 DATABASE_URL 指向同一 PostgreSQL 数据库。"
+            )
+        engine = create_engine(admin_url, pool_pre_ping=True)
+        try:
+            with engine.begin() as connection:
+                connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        finally:
+            engine.dispose()
+    except BootstrapSafetyError:
+        raise
+    except Exception as exc:  # pragma: no cover - depends on admin privileges
+        raise BootstrapSafetyError(
+            "无法由 POSTGRES_ADMIN_URL provision pgvector；请检查管理员权限和目标数据库。"
+        ) from exc
+
+    try:
+        if not _has_vector_extension(database_url):
+            raise BootstrapSafetyError(
+                "pgvector extension provision 后仍无法由应用连接验证。"
+            )
+    except BootstrapSafetyError:
+        raise
+    except Exception as exc:  # pragma: no cover - depends on database state
+        raise BootstrapSafetyError(
+            "无法验证 pgvector prerequisite；bootstrap 已 fail closed。"
+        ) from exc
+
+
 class BootstrapRunner:
+    def provision_prerequisites(self) -> None:
+        ensure_pgvector_prerequisite(get_settings().database_url)
+
     def alembic_upgrade(self) -> None:
         from alembic import command
         from alembic.config import Config
@@ -51,15 +137,28 @@ class BootstrapRunner:
 
         run_seed(clear=True)
 
+    def seed_shopmind_catalog(self) -> None:
+        from scripts.seed_shopmind_catalog import run_seed
+
+        run_seed(replace_managed_seed=False, dry_run=False)
+
     def index_documents(self) -> None:
         from scripts.index_documents_pgvector import run_index
 
         run_index(clear=True)
 
-    def smoke_check(self, *, include_tools: bool = False) -> None:
+    def smoke_check(
+        self,
+        *,
+        include_tools: bool = False,
+        require_documents: bool = True,
+    ) -> None:
         from scripts.smoke_postgres import run_smoke
 
-        run_smoke(include_tools=include_tools)
+        run_smoke(
+            include_tools=include_tools,
+            require_documents=require_documents,
+        )
 
     def integration_tests(self) -> None:
         env = dict(os.environ)
@@ -77,6 +176,12 @@ def build_steps(
 ) -> list[BootstrapStep]:
     steps = [
         BootstrapStep(
+            name="prerequisites",
+            description="通过明确的管理员连接确保同一数据库存在 pgvector extension",
+            destructive=False,
+            action=runner.provision_prerequisites,
+        ),
+        BootstrapStep(
             name="alembic",
             description="运行 Alembic upgrade head，创建或升级 PostgreSQL schema",
             destructive=False,
@@ -91,6 +196,14 @@ def build_steps(
                 description="清空并重新导入 customers/products/orders/order_items",
                 destructive=True,
                 action=runner.seed_postgres,
+            )
+        )
+        steps.append(
+            BootstrapStep(
+                name="shopmind-catalog",
+                description="幂等导入 ShopMind categories/products/SKUs/inventory",
+                destructive=True,
+                action=runner.seed_shopmind_catalog,
             )
         )
 
@@ -111,7 +224,8 @@ def build_steps(
                 description="运行只读 PostgreSQL smoke check",
                 destructive=False,
                 action=lambda: runner.smoke_check(
-                    include_tools=options.include_tool_smoke
+                    include_tools=options.include_tool_smoke,
+                    require_documents=not options.skip_documents,
                 ),
             )
         )
@@ -171,7 +285,10 @@ def run_bootstrap(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Bootstrap and verify the ShopMind V2 PostgreSQL database."
+        description=(
+            "Bootstrap and verify the ShopMind PostgreSQL database. "
+            "Set POSTGRES_ADMIN_URL when the vector extension is absent."
+        )
     )
     parser.add_argument(
         "--execute",

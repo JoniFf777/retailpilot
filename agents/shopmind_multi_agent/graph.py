@@ -52,6 +52,7 @@ from .recommendation_nodes import (
     recommendation_evidence_node,
     recommendation_gate_node,
     recommendation_preference_node,
+    recommendation_resolution_node,
 )
 from app.recommendation.providers import (
     CatalogCandidateProvider,
@@ -375,22 +376,33 @@ def create_shopmind_multi_agent_graph(
     recommendation_evidence_provider: RecommendationEvidenceProvider | None = None,
 ):
     runtime_settings = adapter_settings or get_settings()
+    local_rag_disabled = (
+        runtime_settings.shopmind_deployment_profile == "development"
+        and not runtime_settings.shopmind_recommendation_evidence_enabled
+    )
     if runtime_context is not None:
         product_tools = product_tools or guard_tools(
             "product_agent",
             PRODUCT_AGENT_TOOLS,
             runtime_context=runtime_context,
         )
-        rag_tools = rag_tools or guard_tools(
-            "rag_agent",
-            RAG_AGENT_TOOLS,
-            runtime_context=runtime_context,
-        )
+        if rag_tools is None:
+            rag_tools = (
+                {}
+                if local_rag_disabled
+                else guard_tools(
+                    "rag_agent",
+                    RAG_AGENT_TOOLS,
+                    runtime_context=runtime_context,
+                )
+            )
         preference_tools = preference_tools or guard_tools(
             "preference_agent",
             PREFERENCE_AGENT_TOOLS,
             runtime_context=runtime_context,
         )
+    elif rag_tools is None:
+        rag_tools = {} if local_rag_disabled else guard_tools("rag_agent", RAG_AGENT_TOOLS)
 
     graph = StateGraph(ShopMindMultiAgentState)
     delegation_guard = DelegationBudgetGuard(
@@ -431,13 +443,14 @@ def create_shopmind_multi_agent_graph(
     recommendation_preference_provider = (
         recommendation_preference_provider or SqlAlchemyRecommendationPreferenceProvider()
     )
-    recommendation_evidence_provider = (
-        recommendation_evidence_provider
+    recommendation_evidence_provider = recommendation_evidence_provider or (
+        OfflineDemoRecommendationEvidenceProvider()
+        if runtime_settings.shopmind_deployment_profile == "offline-demo"
         or (
-            OfflineDemoRecommendationEvidenceProvider()
-            if runtime_settings.shopmind_deployment_profile == "offline-demo"
-            else SqlAlchemyRecommendationEvidenceProvider()
+            runtime_settings.shopmind_deployment_profile == "development"
+            and not runtime_settings.shopmind_recommendation_evidence_enabled
         )
+        else SqlAlchemyRecommendationEvidenceProvider()
     )
 
     graph.add_node(
@@ -463,6 +476,7 @@ def create_shopmind_multi_agent_graph(
         ),
     )
     graph.add_node("recommendation_decision", recommendation_decision_node)
+    graph.add_node("recommendation_resolution", recommendation_resolution_node)
     graph.add_node("route_dispatcher", route_dispatcher_node)
     graph.add_node("product_agent", product_node)
     graph.add_node("rag_agent", rag_node)
@@ -486,6 +500,7 @@ def create_shopmind_multi_agent_graph(
             "route_dispatcher": "route_dispatcher",
             "parallel_read_executor": "parallel_read_executor",
             "catalog_candidates": "catalog_candidates",
+            "recommendation_resolution": "recommendation_resolution",
         },
     )
     graph.add_conditional_edges(
@@ -507,6 +522,7 @@ def create_shopmind_multi_agent_graph(
     graph.add_edge("recommendation_evidence", "recommendation_decision")
     graph.add_edge("decision_agent", END)
     graph.add_edge("recommendation_decision", END)
+    graph.add_edge("recommendation_resolution", END)
 
     return graph.compile()
 

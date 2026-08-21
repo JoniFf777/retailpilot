@@ -246,7 +246,7 @@ def phase4a_factory():
         # the same transaction, so the regression fixture must use the current
         # migration head while keeping the Phase 4 transaction scenarios
         # unchanged.
-        command.upgrade(_alembic(connection), "0014_shopmind_outbox_events")
+        command.upgrade(_alembic(connection), "0015_shopmind_order_expiration")
     with engine.begin() as connection:
         ConversationThread.__table__.create(connection, checkfirst=True)
         AgentRun.__table__.create(connection, checkfirst=True)

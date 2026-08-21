@@ -13,7 +13,10 @@ from agents.shopmind_multi_agent.observability import (
     append_confirmation_event,
     build_confirmation_debug,
 )
-from agents.shopmind_multi_agent.write_handoff import invoke_write_handoff
+from agents.shopmind_multi_agent.write_handoff import (
+    invoke_write_handoff,
+    is_preference_write_intent,
+)
 from agents.shopmind_agent import invoke_shopmind_agent
 from app.core.settings import get_settings
 from app.runtime import (
@@ -36,10 +39,13 @@ from app.runtime import (
     run_result_to_legacy_response,
 )
 from agents.shopmind_multi_agent.permissions import AGENT_TOOL_ALLOWLIST
+from app.schemas.pending_actions import CartActionOutcome
 from tools.cart import (
     cancel_pending_action,
     confirm_add_to_cart,
     confirm_save_preference,
+    format_cart_action_outcome,
+    format_preference_action_outcome,
     resolve_pending_action,
 )
 
@@ -139,6 +145,15 @@ def _tool_answer_failed(answer: str) -> bool:
     return answer.startswith("鏃犳硶") or "error" in lowered or "failed" in lowered
 
 
+def _parse_cart_action_outcome(answer: Any) -> CartActionOutcome | None:
+    if not isinstance(answer, str):
+        return None
+    try:
+        return CartActionOutcome.model_validate_json(answer)
+    except (TypeError, ValueError):
+        return None
+
+
 def _attach_multi_agent_handoff_debug(
     handoff_result: dict[str, Any],
     multi_agent_result: dict[str, Any],
@@ -229,6 +244,13 @@ def execute_shopmind_agent_run(
 
             return multi_agent_result
 
+        if is_preference_write_intent(message):
+            return _invoke_write_handoff_with_context(
+                message=message,
+                user_id=user_id,
+                thread_id=thread_id,
+                runtime_context=context,
+            )
         return invoke_shopmind_agent(
             message=message,
             user_id=user_id,
@@ -274,6 +296,7 @@ def confirm_pending_action(
     idempotency_key: str | None = None,
     event_sink: EventSink | None = None,
     updated_arguments: dict[str, Any] | None = None,
+    expected_version: int | None = None,
 ) -> dict[str, Any]:
     """Confirm or cancel a pending action behind the API boundary."""
 
@@ -286,6 +309,11 @@ def confirm_pending_action(
             "pending_action_id": pending_action_id,
             "confirmed": confirmed,
             "thread_id": thread_id,
+            **(
+                {"expected_version": expected_version}
+                if expected_version is not None
+                else {}
+            ),
             **(
                 {"updated_arguments": updated_arguments}
                 if updated_arguments is not None
@@ -326,6 +354,7 @@ def confirm_pending_action(
                 "status": "failed",
                 "tool_calls": [],
                 "pending_action_id": pending_action_id,
+                "runtime_error_code": "pending_action_not_found",
             }
         action_type = str(resolved.get("action_type") or "")
         context.emit_event(
@@ -369,6 +398,7 @@ def confirm_pending_action(
                     "status": "failed",
                     "tool_calls": [],
                     "pending_action_id": pending_action_id,
+                    "runtime_error_code": "invalid_updated_fields",
                 }
         transition_request = ActionTransitionRequest(
             action_type=action_type,
@@ -396,8 +426,32 @@ def confirm_pending_action(
                 "status": "failed",
                 "tool_calls": [],
                 "pending_action_id": pending_action_id,
+                "runtime_error_code": "unsupported_action_schema",
             }
         tool_call = ACTION_REGISTRY.transition_tool(transition_request)
+        if (
+            tool_call == "cancel_pending_action"
+            and action_type in {"add_to_cart", "save_preference"}
+            and expected_version is None
+        ):
+            context.emit_event(
+                "action.failed",
+                visibility=EventVisibility.CLIENT,
+                agent_name="confirmation_boundary",
+                payload={
+                    "action_id": pending_action_id,
+                    "action_type": action_type,
+                    "status": "failed",
+                    "reason": "expected_version_required",
+                },
+            )
+            return {
+                "answer": "待确认动作缺少客户端版本，请重新加载后再取消。",
+                "status": "failed",
+                "tool_calls": [],
+                "pending_action_id": pending_action_id,
+                "runtime_error_code": "expected_version_required",
+            }
         transition_tools = {
             "confirm_add_to_cart": confirm_add_to_cart,
             "confirm_save_preference": confirm_save_preference,
@@ -421,6 +475,7 @@ def confirm_pending_action(
                 "status": "failed",
                 "tool_calls": [],
                 "pending_action_id": pending_action_id,
+                "runtime_error_code": "runtime.internal_error",
             }
         try:
             answer, tool_record = tool_gateway.invoke(
@@ -430,6 +485,15 @@ def confirm_pending_action(
                     "pending_action_id": pending_action_id,
                     "user_id": user_id,
                     "thread_id": thread_id,
+                    **(
+                        {"expected_version": expected_version}
+                        if tool_call in {
+                            "confirm_add_to_cart",
+                            "confirm_save_preference",
+                            "cancel_pending_action",
+                        }
+                        else {}
+                    ),
                     **(
                         {"updated_arguments": validated_updated_arguments}
                         if confirmed and validated_updated_arguments is not None
@@ -453,12 +517,47 @@ def confirm_pending_action(
             raise
 
         if confirmed:
-            status = "failed" if _tool_answer_failed(answer) else "completed"
-            lifecycle = (
-                "expired"
-                if "expired" in answer.lower() or "过期" in answer
-                else ("confirmed" if status == "completed" else "failed")
+            typed_outcome = (
+                _parse_cart_action_outcome(answer)
+                if action_type in {"add_to_cart", "save_preference"}
+                else None
             )
+            if action_type == "add_to_cart":
+                if typed_outcome is None:
+                    status = "failed"
+                    answer = "无法处理加购动作：确认边界未收到有效的 typed outcome。"
+                    outcome_code = "invalid_action_payload"
+                else:
+                    status = "completed" if typed_outcome.status == "confirmed" else "failed"
+                    answer = format_cart_action_outcome(typed_outcome)
+                    outcome_code = typed_outcome.code
+                lifecycle = (
+                    "expired"
+                    if outcome_code == "action_expired"
+                    else ("confirmed" if status == "completed" else "failed")
+                )
+            elif action_type == "save_preference":
+                if typed_outcome is None:
+                    status = "failed"
+                    answer = "无法处理保存偏好动作：确认边界未收到有效的 typed outcome。"
+                    outcome_code = "invalid_action_payload"
+                else:
+                    status = "completed" if typed_outcome.status == "confirmed" else "failed"
+                    answer = format_preference_action_outcome(typed_outcome)
+                    outcome_code = typed_outcome.code
+                lifecycle = (
+                    "expired"
+                    if outcome_code == "action_expired"
+                    else ("confirmed" if status == "completed" else "failed")
+                )
+            else:
+                status = "failed" if _tool_answer_failed(answer) else "completed"
+                outcome_code = None
+                lifecycle = (
+                    "expired"
+                    if "expired" in answer.lower() or "过期" in answer
+                    else ("confirmed" if status == "completed" else "failed")
+                )
             if status == "completed" and validated_updated_arguments is not None:
                 context.emit_event(
                     "action.edited",
@@ -493,6 +592,7 @@ def confirm_pending_action(
                 "tool_calls": [tool_call],
                 "tool_call_records": [tool_record.model_dump(mode="json")],
                 "pending_action_id": pending_action_id,
+                "runtime_error_code": outcome_code if status == "failed" else None,
                 "debug": build_confirmation_debug(
                     append_confirmation_event(
                         None,
@@ -505,10 +605,27 @@ def confirm_pending_action(
                 ),
             }
 
-        status = "failed" if _tool_answer_failed(answer) else "cancelled"
+        typed_cancel = (
+            _parse_cart_action_outcome(answer)
+            if action_type in {"add_to_cart", "save_preference"}
+            else None
+        )
+        if typed_cancel is not None:
+            status = "cancelled" if typed_cancel.status == "cancelled" else "failed"
+            outcome_code = typed_cancel.code
+            answer = (
+                format_preference_action_outcome(typed_cancel)
+                if action_type == "save_preference"
+                else format_cart_action_outcome(typed_cancel)
+            )
+        else:
+            status = "failed" if _tool_answer_failed(answer) else "cancelled"
+            outcome_code = None
         lifecycle = (
             "expired"
-            if "expired" in answer.lower() or "过期" in answer
+            if outcome_code == "action_expired"
+            or "expired" in answer.lower()
+            or "过期" in answer
             else ("cancelled" if status == "cancelled" else "failed")
         )
         context.emit_event(
@@ -533,6 +650,7 @@ def confirm_pending_action(
             "tool_calls": [tool_call],
             "tool_call_records": [tool_record.model_dump(mode="json")],
             "pending_action_id": pending_action_id,
+            "runtime_error_code": outcome_code if status == "failed" else None,
             "debug": build_confirmation_debug(
                 append_confirmation_event(
                     None,

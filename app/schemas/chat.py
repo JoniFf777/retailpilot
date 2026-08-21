@@ -12,6 +12,7 @@ STATUS_DESCRIPTION = (
 )
 STATUS_EXAMPLES = ["completed", "confirmation_required", "cancelled", "failed"]
 ChatStatus = Literal["completed", "confirmation_required", "cancelled", "failed"]
+RetryState = Literal["none", "in_progress", "terminal"]
 ProjectionErrorCode = Literal["recommendation_projection_corrupt"]
 
 
@@ -116,6 +117,18 @@ class ChatResponse(BaseModel):
         default=None,
         description="Stable public projection error for a corrupt persisted recommendation; run state is unchanged.",
     )
+    retry_state: RetryState = Field(
+        default="none",
+        description="Machine-readable transport/retry state. In-progress is recoverable and is not terminal failure.",
+    )
+    runtime_error_code: str | None = Field(
+        default=None,
+        description="Machine-readable runtime error code when a retry/recovery state is present.",
+    )
+    authoritative_run_id: str | None = Field(
+        default=None,
+        description="Winner Run identity for an in-progress idempotency recovery response.",
+    )
     run_id: Optional[str] = Field(
         default=None,
         description=(
@@ -183,6 +196,15 @@ class ConfirmChatRequest(BaseModel):
         ...,
         description="Whether the user confirmed the pending action.",
         examples=[True],
+    )
+    expected_version: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Client-held PendingAction version. Required when confirming or "
+            "cancelling a canonical SKU add-to-cart action."
+        ),
+        examples=[1],
     )
     thread_id: Optional[str] = Field(
         default=None,

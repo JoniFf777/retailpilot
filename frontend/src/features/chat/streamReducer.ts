@@ -6,9 +6,11 @@ export type StreamStatus =
   | "connecting"
   | "running"
   | "awaiting_confirmation"
+  | "in_progress"
   | "succeeded"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "detached";
 
 export interface StreamProgress {
   sequence: number;
@@ -36,7 +38,7 @@ type StreamAction =
   | { type: "start" }
   | { type: "event"; event: AgentEvent }
   | { type: "eof" }
-  | { type: "cancel" }
+  | { type: "detach" }
   | { type: "error"; message: string };
 
 function progressLabel(event: AgentEvent): string {
@@ -54,6 +56,7 @@ function progressLabel(event: AgentEvent): string {
 }
 
 function terminalStatus(response: ChatResponse): StreamStatus {
+  if (response.retry_state === "in_progress") return "in_progress";
   if (response.status === "confirmation_required") return "awaiting_confirmation";
   if (response.status === "failed") return "failed";
   if (response.status === "cancelled") return "cancelled";
@@ -62,7 +65,7 @@ function terminalStatus(response: ChatResponse): StreamStatus {
 
 export function streamReducer(state: StreamState, action: StreamAction): StreamState {
   if (action.type === "start") return { ...initialStreamState, status: "connecting" };
-  if (action.type === "cancel") return { ...state, status: "cancelled", response: null, error: null };
+  if (action.type === "detach") return { ...state, status: "detached", response: null, error: null };
   if (action.type === "error") return { ...state, status: "failed", response: null, error: action.message };
   if (action.type === "eof") {
     return state.status === "connecting" || state.status === "running"

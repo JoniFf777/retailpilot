@@ -2,6 +2,8 @@ from decimal import Decimal
 from uuid import uuid4
 
 from agents.shopmind_multi_agent.graph import invoke_shopmind_multi_agent
+from agents.shopmind_multi_agent.rag_agent import rag_agent_node
+from agents.shopmind_multi_agent.preference_agent import preference_agent_node
 from app.recommendation.providers import (
     FakeCatalogCandidateProvider,
     FakeRecommendationPreferenceProvider,
@@ -66,3 +68,55 @@ def test_incomplete_laptop_request_returns_structured_clarification_without_rag(
     recommendation = RecommendationResult.model_validate(result["recommendation"])
     assert recommendation.outcome == "clarification_required"
     assert evidence.calls == []
+
+
+def test_recommendation_evidence_failure_keeps_catalog_result() -> None:
+    class BrokenEvidenceProvider:
+        def retrieve(self, *, message, top_k):
+            raise RuntimeError("embedding model unavailable")
+
+    result = invoke_shopmind_multi_agent(
+        "预算 6000 元以内，推荐一台用于 Java 开发的笔记本，内存至少 16GB",
+        catalog_candidate_provider=FakeCatalogCandidateProvider(
+            [_candidate("LAP-A", price="4999", use_cases=["java_development"])]
+        ),
+        recommendation_preference_provider=FakeRecommendationPreferenceProvider(),
+        recommendation_evidence_provider=BrokenEvidenceProvider(),
+    )
+
+    recommendation = RecommendationResult.model_validate(result["recommendation"])
+    assert recommendation.outcome == "recommended"
+    assert recommendation.recommendations[0].evidence == []
+    assert result["raw_result"]["recommendation_diagnostics"]["evidence_unavailable"] is True
+
+
+def test_rag_agent_without_local_tools_returns_safe_summary() -> None:
+    result = rag_agent_node(
+        {"messages": [{"role": "user", "content": "查询退货政策"}]},
+        tools={},
+    )
+
+    assert result["rag_summary"]["confidence"] == "medium"
+    assert result["rag_summary"]["citations"] == []
+    assert result["rag_summary"]["status"] == "degraded"
+    assert result["rag_summary"]["reason_code"] == "rag_tool_not_configured"
+    assert result["tool_calls"] == []
+    assert "跳过 embedding" in result["rag_summary"]["summary"]
+
+
+def test_preference_agent_accepts_guarded_tool_iterable() -> None:
+    class FakePreferenceTool:
+        name = "get_user_preferences"
+
+        def invoke(self, _arguments):
+            return "暂无已记录偏好。"
+
+    result = preference_agent_node(
+        {
+            "messages": [{"role": "user", "content": "预算 6000"}],
+            "user_id": "test-user",
+        },
+        tools=[FakePreferenceTool()],
+    )
+
+    assert result["preference_summary"]["preference_count"] == 0

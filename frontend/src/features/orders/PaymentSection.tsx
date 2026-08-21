@@ -95,11 +95,11 @@ export function PaymentSection({ order, identity, backendUserId, paymentQuery }:
       else if (code === "idempotency_conflict" || code === "payment_in_progress") {
         clearPaymentSubmission(currentSubmission.identity, currentSubmission.orderId);
       }
-      else if (code === "order_already_paid" || code === "order_not_payable" || code === "order_not_found") {
+      else if (code === "order_already_paid" || code === "order_not_payable" || code === "order_not_found" || code === "order_expired" || code === "payment_state_inconsistent") {
         clearPaymentSubmission(currentSubmission.identity, currentSubmission.orderId);
       } else if (error instanceof ApiError) state = "ready";
 
-      const isDiscardedSubmission = code === "idempotency_conflict" || code === "payment_in_progress" || code === "order_already_paid" || code === "order_not_payable" || code === "order_not_found";
+      const isDiscardedSubmission = code === "idempotency_conflict" || code === "payment_in_progress" || code === "order_already_paid" || code === "order_not_payable" || code === "order_not_found" || code === "order_expired" || code === "payment_state_inconsistent";
       const isCurrentView = currentSubmission.identity === identity && currentSubmission.orderId === order.order_id;
       if (!isCurrentView) return;
       submittingAttemptIdRef.current = null;
@@ -149,7 +149,7 @@ export function PaymentSection({ order, identity, backendUserId, paymentQuery }:
   const localState = submission?.submissionState;
   const displayedStatus = statusForSubmission(submission, paymentQuery);
   const canStartNew = order.status === "pending_payment" && !activeAttempt && (localState === undefined || localState === "failed");
-  const canRetry = Boolean(submission && isRetryableSubmissionState(localState));
+  const canRetry = order.status === "pending_payment" && Boolean(submission && isRetryableSubmissionState(localState));
   const providerUnavailable = localState === "provider_unavailable";
 
   return <section className="payment-section" aria-labelledby="payment-section-title" data-testid="payment-section">
@@ -169,6 +169,7 @@ export function PaymentSection({ order, identity, backendUserId, paymentQuery }:
     {message && !providerUnavailable && <p className="error-copy" role="alert">{message}</p>}
     {order.status === "paid" && <div className="payment-paid" data-testid="payment-paid"><strong>支付成功</strong><span>Order is paid. Payment and Cancel are no longer available.</span></div>}
     {order.status === "cancelled" && <div className="payment-cancelled" data-testid="payment-cancelled">This Order is cancelled and cannot be paid.</div>}
+    {order.status === "expired" && <div className="payment-cancelled" data-testid="payment-expired"><strong>Payment deadline expired</strong><span>This Order can still be viewed, but it cannot be paid or cancelled.</span></div>}
     {order.status === "pending_payment" && !paymentQuery.isLoading && !paymentQuery.error && !activeAttempt && !displayedStatus && !providerUnavailable && <div className="payment-action-card">
       {localState === "failed" && <><p>Payment failed. Start a new Mock Payment attempt when you are ready.</p><button className="primary-button" disabled={!canStartNew || paymentMutation.isPending} onClick={startPayment} type="button">再次支付</button></>}
       {localState !== "failed" && <><p>Use the fixed Mock Payment reference. No card or real payment data is collected.</p><button className="primary-button" disabled={!canStartNew || paymentMutation.isPending} onClick={startPayment} type="button">{paymentMutation.isPending ? "支付处理中…" : "Mock Payment"}</button></>}

@@ -2,15 +2,27 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import AgentRun, AgentRunEvent, ConversationThread, IdempotencyRecord
 from app.schemas.recommendation import RecommendationResult
+
+
+class RuntimeIdempotencyPersistenceError(RuntimeError):
+    """The runtime could not establish or read an authoritative claim."""
+
+
+@dataclass(frozen=True)
+class IdempotencyClaim:
+    claimed: bool
+    record: dict[str, Any]
 
 
 def _now() -> datetime:
@@ -454,3 +466,78 @@ def get_idempotency_record(
         )
     )
     return None if record is None else _idempotency_to_dict(record)
+
+
+def claim_idempotency_record(
+    session: Session,
+    *,
+    user_id: str,
+    operation: str,
+    idempotency_key: str,
+    request_hash: str,
+    run_id: str,
+    thread_id: str | None = None,
+    now: datetime | None = None,
+    expires_at: datetime | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> IdempotencyClaim:
+    """Atomically claim one runtime execution identity.
+
+    The nested transaction is essential for PostgreSQL: a concurrent unique
+    insert conflict must be rolled back to a savepoint before the winner can
+    be read from the outer transaction.
+    """
+
+    normalized_user_id = user_id.strip()
+    normalized_key = idempotency_key.strip()
+    existing = session.scalar(
+        select(IdempotencyRecord)
+        .where(
+            IdempotencyRecord.user_id == normalized_user_id,
+            IdempotencyRecord.operation == operation,
+            IdempotencyRecord.idempotency_key == normalized_key,
+        )
+        .with_for_update()
+    )
+    if existing is not None:
+        return IdempotencyClaim(claimed=False, record=_idempotency_to_dict(existing))
+
+    current_time = now or _now()
+    record = IdempotencyRecord(
+        id=str(uuid4()),
+        user_id=normalized_user_id,
+        thread_id=thread_id,
+        # IdempotencyRecord.run_id has an FK to AgentRun.  The claim must be
+        # committed atomically with creation of that run, so leave this
+        # nullable during the claim and bind the authoritative run below in
+        # the same outer transaction.
+        run_id=None,
+        operation=operation,
+        idempotency_key=normalized_key,
+        request_hash=request_hash,
+        status="started",
+        metadata_json=metadata or {},
+        expires_at=expires_at,
+        created_at=current_time,
+        updated_at=current_time,
+    )
+    try:
+        with session.begin_nested():
+            session.add(record)
+            session.flush()
+    except IntegrityError as exc:
+        winner = session.scalar(
+            select(IdempotencyRecord)
+            .where(
+                IdempotencyRecord.user_id == normalized_user_id,
+                IdempotencyRecord.operation == operation,
+                IdempotencyRecord.idempotency_key == normalized_key,
+            )
+            .with_for_update()
+        )
+        if winner is None:
+            raise RuntimeIdempotencyPersistenceError(
+                "Runtime idempotency claim could not be resolved after a unique conflict."
+            ) from exc
+        return IdempotencyClaim(claimed=False, record=_idempotency_to_dict(winner))
+    return IdempotencyClaim(claimed=True, record=_idempotency_to_dict(record))

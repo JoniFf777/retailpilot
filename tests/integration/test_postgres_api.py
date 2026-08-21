@@ -1,5 +1,6 @@
 import os
 import uuid
+from urllib.parse import urlsplit
 
 import pytest
 from sqlalchemy import select
@@ -12,6 +13,7 @@ if os.getenv("RUN_POSTGRES_INTEGRATION") != "1":
 
 from httpx import ASGITransport, AsyncClient
 
+from app.core.settings import get_settings
 from app.db.session import SessionLocal
 from app.db.models import AgentRun
 from app.main import app
@@ -19,6 +21,11 @@ from app.repositories import cart as cart_repository
 from app.repositories import products as product_repository
 from app.repositories import preferences as preference_repository
 from app.repositories.runtime_runs import list_agent_run_events
+from app.repositories.shopmind_cart import clear_cart, get_cart_response
+from app.services.pending_actions import (
+    prepare_legacy_add_to_cart,
+    prepare_save_preference_pending_action,
+)
 from scripts.smoke_postgres import EXPECTED_ALEMBIC_VERSION
 
 
@@ -51,6 +58,7 @@ def smoke_user_id():
 def _clear_user_state(user_id: str) -> None:
     def clear(session):
         cart_repository.clear_cart_items(session, user_id)
+        clear_cart(session, user_id=user_id)
         preference_repository.clear_user_preferences(session, user_id)
         session.commit()
 
@@ -68,33 +76,37 @@ def _get_smoke_product_id() -> str:
     return _with_session(get_product)
 
 
-def _prepare_pending_action(user_id: str, quantity: int = 1) -> str:
-    product_id = _get_smoke_product_id()
+def _configured_database_identity() -> tuple[str, str]:
+    parsed = urlsplit(get_settings().database_url)
+    return (
+        (parsed.path or "").lstrip("/").split("?", 1)[0],
+        parsed.username or "",
+    )
 
+
+def _prepare_pending_action(user_id: str, quantity: int = 1) -> str:
     def prepare(session):
-        result = cart_repository.prepare_add_to_cart(
+        result = prepare_legacy_add_to_cart(
             session,
             user_id=user_id,
-            product_id=product_id,
+            identifier="TECH-LAP-001",
             quantity=quantity,
             thread_id="integration-api-thread",
         )
+        assert result.status == "prepared"
         session.commit()
-        assert result["status"] == cart_repository.PENDING_STATUS
-        return result["pending_action_id"]
+        return result.pending_action_id
 
     return _with_session(prepare)
 
 
 def _get_cart_item_count(user_id: str) -> int:
-    return _with_session(
-        lambda session: len(cart_repository.get_cart_items(session, user_id))
-    )
+    return _with_session(lambda session: get_cart_response(session, user_id=user_id).item_count)
 
 
 def _prepare_preference_action(user_id: str) -> str:
     def prepare(session):
-        result = cart_repository.prepare_save_preference(
+        result = prepare_save_preference_pending_action(
             session,
             user_id=user_id,
             preference_type="style",
@@ -102,7 +114,7 @@ def _prepare_preference_action(user_id: str) -> str:
             thread_id="integration-api-thread",
         )
         session.commit()
-        return result["pending_action_id"]
+        return result.pending_action_id
 
     return _with_session(prepare)
 
@@ -116,6 +128,12 @@ def _get_pending_action_status(pending_action_id: str) -> str:
     return _with_session(get_status)
 
 
+def _get_pending_action_version(pending_action_id: str) -> int:
+    return _with_session(
+        lambda session: session.get(cart_repository.PendingAction, pending_action_id).version
+    )
+
+
 async def test_postgres_health_endpoint_against_configured_database():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -123,8 +141,9 @@ async def test_postgres_health_endpoint_against_configured_database():
 
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
-    assert response.json()["database"] == "retailpilot_v2_smoke"
-    assert response.json()["user"] == "postgres"
+    database, user = _configured_database_identity()
+    assert response.json()["database"] == database
+    assert response.json()["user"] == user
     assert response.json()["alembic_version"] == EXPECTED_ALEMBIC_VERSION
 
 
@@ -160,6 +179,7 @@ async def test_service_metrics_endpoint_exposes_closed_process_snapshot():
 
 async def test_chat_confirm_endpoint_confirms_pending_action(smoke_user_id):
     pending_action_id = _prepare_pending_action(smoke_user_id, quantity=2)
+    expected_version = _get_pending_action_version(pending_action_id)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -170,6 +190,7 @@ async def test_chat_confirm_endpoint_confirms_pending_action(smoke_user_id):
                 "pending_action_id": pending_action_id,
                 "confirmed": True,
                 "thread_id": "integration-api-thread",
+                "expected_version": expected_version,
             },
         )
 
@@ -184,6 +205,7 @@ async def test_chat_confirm_endpoint_confirms_pending_action(smoke_user_id):
 
 async def test_chat_confirm_endpoint_cancels_pending_action(smoke_user_id):
     pending_action_id = _prepare_pending_action(smoke_user_id, quantity=1)
+    expected_version = _get_pending_action_version(pending_action_id)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -193,6 +215,8 @@ async def test_chat_confirm_endpoint_cancels_pending_action(smoke_user_id):
                 "user_id": smoke_user_id,
                 "pending_action_id": pending_action_id,
                 "confirmed": False,
+                "thread_id": "integration-api-thread",
+                "expected_version": expected_version,
             },
         )
 
@@ -218,6 +242,7 @@ async def test_chat_confirm_endpoint_dispatches_preference_action(smoke_user_id)
                 "confirmed": True,
                 "thread_id": "integration-api-thread",
                 "include_debug": True,
+                "expected_version": _get_pending_action_version(pending_action_id),
             },
         )
         body = response.json()
@@ -282,6 +307,7 @@ async def test_chat_confirm_edit_is_persisted_and_idempotently_replayed(
         "pending_action_id": pending_action_id,
         "confirmed": True,
         "thread_id": "integration-api-thread",
+        "expected_version": 1,
         "updated_arguments": {"preference_value": "silent switches"},
     }
 
