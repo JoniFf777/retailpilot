@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, Strict
 
 Currency = str
 SpecificationValueType = Literal["string", "integer", "decimal", "boolean", "string_list"]
-RecommendationCategory = Literal["laptop", "monitor", "unknown"]
+RecommendationCategory = str
 RecommendationOutcome = Literal["recommended", "no_match", "clarification_required"]
 CatalogSaleStatus = Literal["draft", "active", "inactive"]
 
@@ -100,6 +100,31 @@ class RecommendationRequest(BaseModel):
         return self
 
 
+class CategoryAttributeConstraint(BaseModel):
+    """A normalized, registry-validated request attribute."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    value: Any
+    operator: Literal["eq", "gte", "lte", "contains", "match", "enum_match"]
+    role: Literal["hard", "soft", "hard_or_soft", "display_only"] | None = None
+
+
+class ComparisonField(BaseModel):
+    """Category-independent display projection for one catalog fact."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    key: str
+    label: str
+    value: StrictStr | StrictInt | StrictBool | list[StrictStr]
+    value_type: Literal["number", "string", "enum", "boolean", "string_list"]
+    unit: str | None = None
+    display_order: int = 0
+    comparable: bool = False
+    format_hint: str | None = None
+
+
 class ProductSpecificationView(BaseModel):
     code: str
     name: str
@@ -172,6 +197,7 @@ class AlternativeSkuView(BaseModel):
 
 class Recommendation(BaseModel):
     category: RecommendationCategory | None = None
+    category_display_name: str | None = None
     product_id: UUID
     sku_id: UUID
     product_name: str
@@ -188,6 +214,7 @@ class Recommendation(BaseModel):
     reason: str
     availability: AvailabilityView
     alternative_skus: list[AlternativeSkuView] = Field(default_factory=list)
+    comparison_fields: list[ComparisonField] = Field(default_factory=list)
 
 
 class RecommendationResult(BaseModel):
@@ -195,12 +222,16 @@ class RecommendationResult(BaseModel):
 
     schema_version: Literal["shopmind.recommendation.v1"] = "shopmind.recommendation.v1"
     category: RecommendationCategory | None = None
+    category_display_name: str | None = None
     outcome: RecommendationOutcome
     ranking_policy_version: str
     request_summary: str
     structured_constraints: LaptopConstraints
     recommendation_request: RecommendationRequest | None = None
     category_attributes: dict[str, Any] = Field(default_factory=dict)
+    recognized_constraints: dict[str, CategoryAttributeConstraint] = Field(default_factory=dict)
+    constraint_fields: list[ComparisonField] = Field(default_factory=list)
+    comparison_fields: list[ComparisonField] = Field(default_factory=list)
     error_code: str | None = None
     no_match_reason: str | None = None
     missing_fields: list[str] = Field(default_factory=list)

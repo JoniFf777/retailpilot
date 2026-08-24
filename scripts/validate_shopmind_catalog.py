@@ -1,44 +1,24 @@
-"""Validate managed Laptop/Monitor recommendation seed data deterministically."""
+"""Validate managed Catalog data against the trusted CategoryRegistry."""
 
 from __future__ import annotations
 
 import argparse
 import json
-import math
 import re
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Iterable
 
+from app.recommendation.categories import default_category_registry
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SEEDS = (
-    PROJECT_ROOT / "data" / "catalog" / "laptop_catalog.json",
-    PROJECT_ROOT / "data" / "catalog" / "monitor_catalog.json",
+DEFAULT_SEEDS = tuple(
+    sorted((PROJECT_ROOT / "data" / "catalog").glob("*_catalog.json"), key=lambda path: path.name)
 )
 DEFAULT_DOCS = PROJECT_ROOT / "data" / "documents" / "products"
 _CURRENCY = re.compile(r"^[A-Z]{3}$")
-
-REQUIRED_ATTRIBUTES: dict[str, dict[str, type | tuple[type, ...]]] = {
-    "laptop": {
-        "cpu_tier": str,
-        "gpu_tier": str,
-        "memory_gb": int,
-        "storage_gb": int,
-        "weight_kg": (int, float),
-        "screen_inches": (int, float),
-        "use_cases": list,
-    },
-    "monitor": {
-        "size_inches": (int, float),
-        "resolution": str,
-        "refresh_rate_hz": int,
-        "panel_type": str,
-        "use_cases": list,
-    },
-}
 VALID_STATUS = {"draft", "active", "inactive"}
-VALID_MONITOR_RESOLUTIONS = {"1080p", "1440p", "4k"}
 
 
 def _issue(code: str, path: str, detail: str) -> dict[str, str]:
@@ -53,14 +33,6 @@ def _money(value: Any) -> Decimal | None:
     return amount if amount.is_finite() and amount > 0 else None
 
 
-def _matches_type(value: Any, expected: type | tuple[type, ...]) -> bool:
-    if expected is int and isinstance(value, bool):
-        return False
-    if isinstance(expected, tuple) and int in expected and isinstance(value, bool):
-        return False
-    return isinstance(value, expected)
-
-
 def validate_catalog_files(
     seed_paths: Iterable[Path] = DEFAULT_SEEDS,
     *,
@@ -68,6 +40,7 @@ def validate_catalog_files(
 ) -> dict[str, Any]:
     """Return a stable JSON-compatible validation report without writing data."""
 
+    registry = default_category_registry()
     issues: list[dict[str, str]] = []
     categories: dict[str, dict[str, Any]] = {}
     category_codes: set[str] = set()
@@ -93,15 +66,23 @@ def validate_catalog_files(
             issues.append(_issue("duplicate_category", f"{path_label}:category.code", str(category_code)))
         if category_code:
             category_codes.add(category_code)
-        if category_code not in REQUIRED_ATTRIBUTES:
+        try:
+            definition = registry.schema_for(str(category_code))
+        except KeyError:
             issues.append(_issue("unsupported_category", f"{path_label}:category.code", str(category_code)))
-            required = {}
-        else:
-            required = REQUIRED_ATTRIBUTES[category_code]
+            definition = None
         bucket = categories.setdefault(
             str(category_code),
             {"products": 0, "skus": 0, "attributes": len(seed.get("attribute_definitions") or []), "docs": 0, "in_stock": 0, "out_of_stock": 0, "prices": []},
         )
+        if definition is not None:
+            expected_catalog_keys = {attribute.canonical_catalog_key for attribute in definition.attributes}
+            supplied_definitions = seed.get("attribute_definitions") or []
+            supplied_keys = {item.get("code") for item in supplied_definitions if isinstance(item, dict)}
+            for key in sorted(supplied_keys - expected_catalog_keys):
+                issues.append(_issue("unknown_attribute_definition", f"{path_label}:attribute_definitions.{key}", str(category_code)))
+            for key in sorted(expected_catalog_keys - supplied_keys):
+                issues.append(_issue("attribute_definition_missing", f"{path_label}:attribute_definitions.{key}", str(category_code)))
         for product_index, product in enumerate(seed.get("products") or []):
             product_path = f"{path_label}:products[{product_index}]"
             bucket["products"] += 1
@@ -125,14 +106,13 @@ def validate_catalog_files(
             if not isinstance(attributes, dict):
                 issues.append(_issue("product_attributes_invalid", product_path, "attributes must be an object"))
                 attributes = {}
-            for code, expected in required.items():
-                value = attributes.get(code)
-                if value is None:
-                    issues.append(_issue("required_attribute_missing", f"{product_path}:attributes.{code}", category_code or ""))
-                elif not _matches_type(value, expected):
-                    issues.append(_issue("attribute_type_invalid", f"{product_path}:attributes.{code}", type(value).__name__))
-            if category_code == "monitor" and attributes.get("resolution") not in VALID_MONITOR_RESOLUTIONS:
-                issues.append(_issue("monitor_resolution_invalid", f"{product_path}:attributes.resolution", str(attributes.get("resolution"))))
+            if definition is not None:
+                for problem in registry.validate_catalog_attributes(
+                    str(category_code),
+                    attributes,
+                    path=f"{product_path}:attributes",
+                ):
+                    issues.append(problem.model_dump())
             sku = product.get("sku") or {}
             sku_path = f"{product_path}:sku"
             bucket["skus"] += 1
@@ -166,9 +146,6 @@ def validate_catalog_files(
                     issues.append(_issue("document_missing", str(doc_path), legacy_id))
                 else:
                     bucket["docs"] += 1
-                    # Existing corpus documents use the canonical legacy ID as
-                    # their filename; the file identity is authoritative for
-                    # alignment, while document prose remains evidence only.
                     if doc_path.stem != legacy_id:
                         issues.append(_issue("document_identity_mismatch", str(doc_path), legacy_id))
 

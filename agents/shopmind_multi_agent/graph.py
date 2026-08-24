@@ -30,6 +30,7 @@ from app.runtime import (
     RunUsage,
 )
 from app.core.settings import Settings, get_settings
+from app.recommendation.categories import CategoryRegistry
 
 from .decision_agent import decision_agent_node
 from .observability import append_agent_step
@@ -374,6 +375,7 @@ def create_shopmind_multi_agent_graph(
     catalog_candidate_provider: CatalogCandidateProvider | None = None,
     recommendation_preference_provider: RecommendationPreferenceProvider | None = None,
     recommendation_evidence_provider: RecommendationEvidenceProvider | None = None,
+    recommendation_registry: CategoryRegistry | None = None,
 ):
     runtime_settings = adapter_settings or get_settings()
     local_rag_disabled = (
@@ -457,7 +459,10 @@ def create_shopmind_multi_agent_graph(
         "supervisor",
         _bind_supervisor_node(supervisor_router, agent_planner, runtime_context),
     )
-    graph.add_node("recommendation_gate", recommendation_gate_node)
+    graph.add_node(
+        "recommendation_gate",
+        lambda state: recommendation_gate_node(state, registry=recommendation_registry),
+    )
     graph.add_node(
         "catalog_candidates",
         lambda state: catalog_candidates_node(state, provider=catalog_candidate_provider),
@@ -468,7 +473,10 @@ def create_shopmind_multi_agent_graph(
             state, provider=recommendation_preference_provider
         ),
     )
-    graph.add_node("deterministic_ranking", deterministic_ranking_node)
+    graph.add_node(
+        "deterministic_ranking",
+        lambda state: deterministic_ranking_node(state, registry=recommendation_registry),
+    )
     graph.add_node(
         "recommendation_evidence",
         lambda state: recommendation_evidence_node(
@@ -537,6 +545,7 @@ def invoke_shopmind_multi_agent(
     catalog_candidate_provider: CatalogCandidateProvider | None = None,
     recommendation_preference_provider: RecommendationPreferenceProvider | None = None,
     recommendation_evidence_provider: RecommendationEvidenceProvider | None = None,
+    recommendation_registry: CategoryRegistry | None = None,
 ) -> dict[str, Any]:
     graph = create_shopmind_multi_agent_graph(
         supervisor_router=supervisor_router,
@@ -545,6 +554,7 @@ def invoke_shopmind_multi_agent(
         catalog_candidate_provider=catalog_candidate_provider,
         recommendation_preference_provider=recommendation_preference_provider,
         recommendation_evidence_provider=recommendation_evidence_provider,
+        recommendation_registry=recommendation_registry,
     )
     raw_result = graph.invoke(
         {

@@ -1,0 +1,16 @@
+{
+  "code": "monitor",
+  "display_name": "显示器",
+  "aliases": ["monitor", "display", "显示器", "电竞屏", "曲面屏"],
+  "definition_version": "2026.08.24",
+  "request_requires_any": ["size_min_inches", "resolution_min", "refresh_rate_min_hz", "panel_type", "use_case"],
+  "clarification_question": "请补充显示器预算、尺寸、分辨率或刷新率要求。",
+  "display_fields": ["size_min_inches", "resolution_min", "refresh_rate_min_hz", "panel_type", "use_case"],
+  "attributes": [
+    {"key": "size_min_inches", "catalog_key": "size_inches", "label": "尺寸", "type": "number", "unit": "英寸", "aliases": ["尺寸", "英寸", "寸", "inch"], "allowed_operators": ["gte", "eq"], "default_operator": "gte", "role": "hard", "ranking": "higher_is_better", "missing": "reject_if_hard", "required": true, "weight": 10, "bounds": {"minimum": 18, "maximum": 55}, "display_order": 10, "comparable": true, "format_hint": "decimal"},
+    {"key": "resolution_min", "catalog_key": "resolution", "label": "分辨率", "type": "enum", "aliases": ["分辨率", "resolution"], "enum_values": ["1080p", "1440p", "4k"], "enum_aliases": {"全高清": "1080p", "2k": "1440p", "2560": "1440p", "2160": "4k"}, "allowed_operators": ["gte", "eq", "enum_match"], "default_operator": "gte", "role": "hard", "ranking": "higher_is_better", "missing": "reject_if_hard", "required": true, "weight": 15, "display_order": 20, "comparable": true},
+    {"key": "refresh_rate_min_hz", "catalog_key": "refresh_rate_hz", "label": "刷新率", "type": "number", "unit": "Hz", "aliases": ["刷新率", "hz", "refresh rate"], "allowed_operators": ["gte", "eq"], "default_operator": "gte", "role": "hard", "ranking": "higher_is_better", "missing": "reject_if_hard", "required": true, "weight": 15, "bounds": {"minimum": 30, "maximum": 360}, "display_order": 30, "comparable": true, "format_hint": "integer"},
+    {"key": "panel_type", "catalog_key": "panel_type", "label": "面板", "type": "enum", "aliases": ["面板", "panel"], "enum_values": ["ips", "va", "oled"], "enum_aliases": {"IPS": "ips", "VA": "va", "OLED": "oled"}, "allowed_operators": ["eq", "enum_match"], "role": "soft", "ranking": "exact_match", "missing": "neutral", "weight": 10, "display_order": 40, "comparable": true},
+    {"key": "use_case", "catalog_key": "use_cases", "label": "用途", "type": "enum", "aliases": ["用途", "办公", "游戏", "电竞", "设计", "修图", "office", "gaming", "design"], "enum_values": ["office", "gaming", "design"], "enum_aliases": {"办公": "office", "游戏": "gaming", "电竞": "gaming", "设计": "design", "修图": "design"}, "allowed_operators": ["enum_match"], "role": "soft", "ranking": "preference_match", "missing": "neutral", "multi_valued": false, "weight": 15, "display_order": 50, "comparable": true}
+  ]
+}

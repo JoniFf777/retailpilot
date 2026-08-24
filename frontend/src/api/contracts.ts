@@ -8,8 +8,10 @@ import type { components, operations } from "./openapi.generated";
 
 export type AlternativeSkuView = components["schemas"]["AlternativeSkuView"];
 export type AvailabilityView = components["schemas"]["AvailabilityView"];
+export type CategoryAttributeConstraint = components["schemas"]["CategoryAttributeConstraint"];
 export type ChatRequest = components["schemas"]["ChatRequest"];
 export type ChatResponse = components["schemas"]["ChatResponse"];
+export type ComparisonField = components["schemas"]["ComparisonField"];
 export type ConfirmChatRequest = components["schemas"]["ConfirmChatRequest"];
 export type EvidenceView = components["schemas"]["EvidenceView"];
 export type LaptopConstraints = components["schemas"]["LaptopConstraints"];

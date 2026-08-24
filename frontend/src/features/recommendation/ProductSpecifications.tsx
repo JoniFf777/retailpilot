@@ -1,8 +1,10 @@
-import type { ProductSpecificationView } from "../../api/contracts";
+import type { ComparisonField, ProductSpecificationView } from "../../api/contracts";
 import { formatSpecificationValue } from "./recommendationFormatters";
+import { comparisonFieldToSpecification } from "./recommendationTypes";
 
-export function ProductSpecifications({ specifications, compact = false }: { specifications: ProductSpecificationView[]; compact?: boolean }) {
-  const visible = [...specifications].sort((left, right) => left.display_order - right.display_order).slice(0, compact ? 4 : undefined);
+export function ProductSpecifications({ specifications, comparisonFields = [], compact = false }: { specifications?: ProductSpecificationView[]; comparisonFields?: ComparisonField[]; compact?: boolean }) {
+  const source = specifications?.length ? specifications : comparisonFields.map(comparisonFieldToSpecification);
+  const visible = [...source].sort((left, right) => left.display_order - right.display_order).slice(0, compact ? 4 : undefined);
   if (visible.length === 0) return null;
   return <dl className={`product-specifications ${compact ? "product-specifications-compact" : ""}`}>
     {visible.map((specification) => {

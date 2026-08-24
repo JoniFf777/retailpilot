@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This capability defines the deterministic release and local bootstrap boundaries needed to prove that ShopMind's current persisted contracts can be started, built, and exercised without hidden environment steps or stale validation assumptions.
+This capability defines the deterministic release and local bootstrap boundaries needed to prove that ShopMind's persisted contracts, registry configuration, frontend, and recommendation path can be started, built, and exercised without hidden environment steps or stale validation assumptions.
 
 ## Requirements
 
@@ -48,15 +48,19 @@ The application runtime SHALL use only its application database role. Any privil
 - **THEN** bootstrap fails closed without modifying the unrelated database
 
 ### Requirement: Production frontend build integrity
-The first-party frontend SHALL pass strict TypeScript compilation and generate the production bundle without unsafe casts, disabled checks, or category fallbacks that change recommendation semantics.
+The first-party frontend SHALL pass strict TypeScript compilation and generate the production bundle without unsafe casts, disabled checks, category-specific fallback branches, or generated contract assumptions that change recommendation semantics. Recommendation rendering SHALL consume generic declared fields and unresolved categories SHALL remain unresolved rather than becoming Laptop.
+
+#### Scenario: Generic category result compiles and renders
+- **WHEN** a registered category result contains valid generic comparison fields
+- **THEN** frontend typecheck/build SHALL succeed and the shared recommendation UI SHALL render those fields by metadata iteration
 
 #### Scenario: Typed action errors compile
 - **WHEN** the generated public action error union contains a supported typed code
 - **THEN** the frontend maps it to a bounded user message and production compilation succeeds
 
 #### Scenario: Unresolved recommendation category is safe
-- **WHEN** a recommendation category is null or unresolved
-- **THEN** the frontend uses generic/unresolved rendering or safely omits category-specific controls and does not substitute Laptop
+- **WHEN** a recommendation category is null, unknown, unsupported, or malformed
+- **THEN** the frontend SHALL show generic/clarification or projection-error UI and shall not substitute Laptop
 
 ### Requirement: Current HITL browser path
 The critical local browser path SHALL use the current PendingAction contract: an add-to-cart intent produces a visible confirmation surface before mutation, and confirm/cancel requests use the existing owner/thread/version boundary.
@@ -89,7 +93,15 @@ PostgreSQL integration tests SHALL derive database identity and current migratio
 - **THEN** it uses machine-readable action and resolution fields rather than matching presentation text
 
 ### Requirement: Active release documentation consistency
-Active setup documentation and environment examples SHALL describe the actual canonical migration, explicit pgvector prerequisite, application/admin role boundary, frontend build/start commands, seed/validation flow, expiry worker, and optional services without embedding temporary audit database names or credentials.
+Active setup documentation and environment examples SHALL describe the actual canonical migration, explicit pgvector prerequisite, application/admin role boundary, frontend build/start commands, seed/validation flow, expiry worker, optional services, and the trusted CategoryRegistry/fail-fast definition validation boundary without embedding temporary audit database names or credentials. Historical `v3.1.0` artifacts and tags SHALL not be modified or used as mutable configuration.
+
+#### Scenario: Registry validation is part of readiness
+- **WHEN** a registry definition has a duplicate alias, invalid type/operator, or dangling ranking/display reference
+- **THEN** readiness SHALL be non-ready with a bounded validation reason before serving recommendation traffic
+
+#### Scenario: Released tag remains immutable
+- **WHEN** this Change is planned or later implemented
+- **THEN** `v3.1.0` SHALL remain at its existing commit and release verification SHALL report tag/status without moving it
 
 #### Scenario: New operator follows active setup documentation
 - **WHEN** a new operator follows the documented local setup on an empty isolated database

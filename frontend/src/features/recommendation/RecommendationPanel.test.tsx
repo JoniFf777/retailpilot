@@ -19,15 +19,41 @@ describe("RecommendationPanel", () => {
     const monitorResult: RecommendationResult = {
       ...result,
       category: "monitor",
+      category_display_name: "显示器",
+      constraint_fields: [
+        { key: "size_min_inches", label: "尺寸至少", value: 27, value_type: "number", unit: " 英寸", display_order: 1, comparable: false },
+        { key: "resolution_min", label: "分辨率至少", value: "4k", value_type: "enum", display_order: 2, comparable: false },
+        { key: "refresh_rate_min_hz", label: "刷新率至少", value: 144, value_type: "number", unit: " Hz", display_order: 3, comparable: false },
+      ],
       category_attributes: { size_min_inches: 27, resolution_min: "4k", refresh_rate_min_hz: 144, panel_type: "ips", use_case: "design" },
       recommendation_request: { category: "monitor", budget_max: "4000.00", budget_currency: "CNY", availability_required: true, generic_preferences: ["design"], category_attributes: { size_min_inches: 27, resolution_min: "4k", refresh_rate_min_hz: 144, panel_type: "ips", use_case: "design" } },
-      recommendations: (result.recommendations ?? []).map((item) => ({ ...item, category: "monitor" })),
+      recommendations: (result.recommendations ?? []).map((item) => ({ ...item, category: "monitor", category_display_name: "显示器" })),
     };
     render(<RecommendationPanel recommendation={monitorResult} onFillPrompt={() => undefined} />);
     expect(screen.getByText("推荐 1 · 显示器")).toBeInTheDocument();
     expect(screen.getByText("尺寸至少：27 英寸")).toBeInTheDocument();
     expect(screen.getByText("分辨率至少：4k")).toBeInTheDocument();
     expect(screen.getByText("刷新率至少：144 Hz")).toBeInTheDocument();
+  });
+
+  it("renders a test accessory through generic metadata without a category branch", () => {
+    const accessoryResult: RecommendationResult = {
+      ...result,
+      category: "test_accessory",
+      category_display_name: "测试配件",
+      constraint_fields: [{ key: "battery_wh", label: "电池容量", value: 40, value_type: "number", unit: "Wh", display_order: 1, comparable: true }],
+      recommendations: [{
+        ...result.recommendations![0]!,
+        category: "test_accessory",
+        category_display_name: "测试配件",
+        specifications: [],
+        comparison_fields: [{ key: "battery_wh", label: "电池容量", value: 48, value_type: "number", unit: "Wh", display_order: 1, comparable: true }],
+      }],
+    };
+    render(<RecommendationPanel recommendation={accessoryResult} onFillPrompt={() => undefined} />);
+    expect(screen.getByText("推荐 1 · 测试配件")).toBeInTheDocument();
+    expect(screen.getByText("电池容量：40Wh")).toBeInTheDocument();
+    expect(screen.getByText("48Wh")).toBeInTheDocument();
   });
 
   it("only enables SKU selection with the message recommendation context", () => {

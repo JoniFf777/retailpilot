@@ -663,6 +663,50 @@
         "title": "CartWarning",
         "type": "object"
       },
+      "CategoryAttributeConstraint": {
+        "additionalProperties": false,
+        "description": "A normalized, registry-validated request attribute.",
+        "properties": {
+          "operator": {
+            "enum": [
+              "eq",
+              "gte",
+              "lte",
+              "contains",
+              "match",
+              "enum_match"
+            ],
+            "title": "Operator",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "hard",
+                  "soft",
+                  "hard_or_soft",
+                  "display_only"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "operator"
+        ],
+        "title": "CategoryAttributeConstraint",
+        "type": "object"
+      },
       "ChatRequest": {
         "examples": [
           {
@@ -1209,6 +1253,91 @@
           "message"
         ],
         "title": "CheckoutWarning",
+        "type": "object"
+      },
+      "ComparisonField": {
+        "additionalProperties": false,
+        "description": "Category-independent display projection for one catalog fact.",
+        "properties": {
+          "comparable": {
+            "default": false,
+            "title": "Comparable",
+            "type": "boolean"
+          },
+          "display_order": {
+            "default": 0,
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "format_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format Hint"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Value"
+          },
+          "value_type": {
+            "enum": [
+              "number",
+              "string",
+              "enum",
+              "boolean",
+              "string_list"
+            ],
+            "title": "Value Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "value_type"
+        ],
+        "title": "ComparisonField",
         "type": "object"
       },
       "ConfirmChatRequest": {
@@ -3231,11 +3360,6 @@
           "category": {
             "anyOf": [
               {
-                "enum": [
-                  "laptop",
-                  "monitor",
-                  "unknown"
-                ],
                 "type": "string"
               },
               {
@@ -3243,6 +3367,24 @@
               }
             ],
             "title": "Category"
+          },
+          "category_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Display Name"
+          },
+          "comparison_fields": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonField"
+            },
+            "title": "Comparison Fields",
+            "type": "array"
           },
           "evidence": {
             "items": {
@@ -3387,11 +3529,6 @@
             "title": "Budget Max"
           },
           "category": {
-            "enum": [
-              "laptop",
-              "monitor",
-              "unknown"
-            ],
             "title": "Category",
             "type": "string"
           },
@@ -3420,11 +3557,6 @@
           "category": {
             "anyOf": [
               {
-                "enum": [
-                  "laptop",
-                  "monitor",
-                  "unknown"
-                ],
                 "type": "string"
               },
               {
@@ -3438,6 +3570,17 @@
             "title": "Category Attributes",
             "type": "object"
           },
+          "category_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Display Name"
+          },
           "clarification_question": {
             "anyOf": [
               {
@@ -3448,6 +3591,20 @@
               }
             ],
             "title": "Clarification Question"
+          },
+          "comparison_fields": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonField"
+            },
+            "title": "Comparison Fields",
+            "type": "array"
+          },
+          "constraint_fields": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonField"
+            },
+            "title": "Constraint Fields",
+            "type": "array"
           },
           "error_code": {
             "anyOf": [
@@ -3490,6 +3647,13 @@
           "ranking_policy_version": {
             "title": "Ranking Policy Version",
             "type": "string"
+          },
+          "recognized_constraints": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CategoryAttributeConstraint"
+            },
+            "title": "Recognized Constraints",
+            "type": "object"
           },
           "recommendation_request": {
             "anyOf": [

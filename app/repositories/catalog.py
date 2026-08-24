@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.catalog.models import AttributeDefinition, CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.recommendation.categories import default_category_registry
 from app.db.models import Product
 from app.schemas.catalog import (
     CatalogAttributeDefinition,
@@ -34,10 +35,23 @@ def list_active_skus(
     )
     rows = session.execute(statement).all()
     definitions = list_catalog_attribute_definitions(session, category_code=category_code)
-    return [
+    candidates = [
         _candidate(sku, product, inventory, definitions=definitions)
         for sku, product, inventory in rows
     ]
+    registry = default_category_registry()
+    invalid = [
+        issue
+        for candidate in candidates
+        for issue in registry.validate_catalog_attributes(
+            category_code,
+            candidate.product_attributes,
+            path=f"{candidate.product_code}.attributes",
+        )
+    ]
+    if invalid:
+        raise ValueError("invalid catalog candidate attributes: " + "; ".join(issue.detail for issue in invalid))
+    return candidates
 
 
 def list_active_laptop_skus(session: Session) -> list[CatalogSkuCandidate]:
@@ -217,7 +231,7 @@ def list_alternative_skus(session: Session, product_id: UUID, exclude_sku_id: UU
         .order_by(CatalogSku.money_amount.asc(), CatalogSku.sku_code.asc())
     )
     product = session.get(CatalogProduct, product_id)
-    category_code = product.category.code if product is not None and product.category else "laptop"
+    category_code = product.category.code if product is not None and product.category else ""
     definitions = list_catalog_attribute_definitions(session, category_code=category_code)
     return [
         _candidate(sku, product, inventory, definitions=definitions)

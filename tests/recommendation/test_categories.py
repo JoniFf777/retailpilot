@@ -59,7 +59,7 @@ def test_category_gate_resolves_monitor_and_rejects_unsupported_or_ambiguous() -
     unsupported = classify_recommendation_request("推荐一部手机")
     ambiguous = classify_recommendation_request("推荐一个商品")
 
-    assert monitor.mode == "structured_monitor_recommendation"
+    assert monitor.mode == "structured_recommendation"
     assert monitor.category == "monitor"
     assert unsupported.mode == "unsupported_category"
     assert unsupported.code == "unsupported_category"
@@ -75,10 +75,10 @@ def test_monitor_request_parser_keeps_category_attributes_out_of_global_laptop_f
 
     assert request.category == "monitor"
     assert request.budget_max == Decimal("4000")
-    assert request.category_attributes == {
+    assert {key: value.value for key, value in request.category_attributes.items()} == {
         "size_min_inches": Decimal("27"),
         "resolution_min": "4k",
-        "refresh_rate_min_hz": 144,
+        "refresh_rate_min_hz": Decimal("144"),
         "panel_type": "ips",
         "use_case": "design",
     }
@@ -102,6 +102,7 @@ def test_monitor_policy_filters_hard_constraints_and_ranks_soft_preferences() ->
     assert result.outcome == "recommended"
     assert [item.sku_name for item in result.recommendations] == ["Standard"]
     assert result.recommendations[0].category == "monitor"
+    assert result.recommendations[0].category_display_name == "显示器"
     assert {item.code for item in result.recommendations[0].specifications} == {
         "size_inches", "resolution", "refresh_rate_hz", "panel_type", "use_cases"
     }

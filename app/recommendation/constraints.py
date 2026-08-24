@@ -1,51 +1,184 @@
-"""Small deterministic parser for the Phase 1A Laptop constraint vocabulary."""
+"""Name-agnostic typed constraint primitives for recommendation categories."""
 
 from __future__ import annotations
 
 import re
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from typing import Any
 
-from app.schemas.recommendation import LaptopConstraints
-
-
-_AMOUNT_AFTER_CURRENCY = re.compile(r"(?:预算\s*)?(?:JPY|CNY|RMB|人民币|元|￥|¥)\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
-_AMOUNT_BEFORE_CURRENCY = re.compile(r"(?:预算\s*)?(\d+(?:\.\d+)?)\s*(JPY|CNY|RMB|人民币|元|￥|¥)", re.IGNORECASE)
-_MEMORY = re.compile(r"内存\s*(?:至少|不低于|不少于|>=)?\s*(\d+)\s*GB", re.IGNORECASE)
+from app.recommendation.categories.models import CategoryAttributeDefinition
+from app.schemas.recommendation import CategoryAttributeConstraint
 
 
-def parse_laptop_constraints(message: str) -> LaptopConstraints:
-    """Parse only the closed Phase 1A Chinese/English demo vocabulary.
+def _decimal(value: Any) -> Decimal:
+    if isinstance(value, bool):
+        raise ValueError("boolean is not a number")
+    try:
+        result = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError("value must be numeric") from exc
+    if not result.is_finite():
+        raise ValueError("value must be finite")
+    return result
 
-    Vague phrases such as ``尽量轻`` deliberately do not become a fabricated
-    numeric hard constraint; a future extractor may turn them into a declared
-    soft preference without changing this deterministic baseline.
-    """
-    text = message.strip()
-    values: dict[str, object] = {}
-    match = _AMOUNT_BEFORE_CURRENCY.search(text)
-    if match is None:
-        match = _AMOUNT_AFTER_CURRENCY.search(text)
-        if match is not None:
-            currency_match = re.search(r"JPY|CNY|RMB|人民币|元|￥|¥", match.group(0), re.IGNORECASE)
-            values["budget_currency"] = currency_match.group(0) if currency_match else None
-            values["budget_max"] = Decimal(match.group(1))
+
+def _normalize_text(value: Any) -> str:
+    return " ".join(str(value).strip().casefold().split())
+
+
+def normalize_constraint(
+    definition: CategoryAttributeDefinition,
+    raw: Any,
+) -> CategoryAttributeConstraint:
+    if isinstance(raw, CategoryAttributeConstraint):
+        constraint = raw
+    elif isinstance(raw, dict) and "value" in raw:
+        constraint = CategoryAttributeConstraint.model_validate(raw)
     else:
-        values["budget_max"] = Decimal(match.group(1))
-        values["budget_currency"] = match.group(2)
-    memory = _MEMORY.search(text)
-    if memory is not None:
-        values["memory_min_gb"] = int(memory.group(1))
-    primary: list[str] = []
-    secondary: list[str] = []
-    lowered = text.lower()
-    if "java" in lowered:
-        primary.append("java_development")
-    if "gaming" in lowered or "游戏" in text or "电竞" in text:
-        primary.append("gaming")
-    if any(term in text for term in ("轻薄", "便携", "出差")) or "portable" in lowered or "travel" in lowered:
-        primary.append("travel")
-    if "剪视频" in text or "video" in lowered:
-        secondary.append("video_editing")
-    values["primary_use_cases"] = primary
-    values["secondary_use_cases"] = secondary
-    return LaptopConstraints.model_validate(values)
+        operator = definition.default_operator or definition.allowed_operators[0]
+        constraint = CategoryAttributeConstraint(value=raw, operator=operator)
+    role = constraint.role or definition.role
+    if definition.role == "hard_or_soft" and constraint.role is None:
+        raise ValueError(f"attribute {definition.key} requires an explicit constraint role")
+    if role == "hard_or_soft":
+        raise ValueError(f"attribute {definition.key} cannot use unresolved hard_or_soft role")
+    if constraint.operator not in definition.allowed_operators:
+        raise ValueError(f"operator {constraint.operator} is not allowed for {definition.key}")
+    value = constraint.value
+    if definition.type == "number":
+        value = _decimal(value)
+    elif definition.type == "string":
+        if not isinstance(value, str):
+            raise ValueError(f"{definition.key} must be a string")
+        value = value.strip()
+    elif definition.type == "boolean":
+        if not isinstance(value, bool):
+            raise ValueError(f"{definition.key} must be a boolean")
+    elif definition.type == "enum":
+        values = value if definition.multi_valued else [value]
+        if not isinstance(values, (list, tuple, set)):
+            values = [values]
+        canonical = tuple(definition.canonicalize_enum(item) for item in values)
+        value = list(dict.fromkeys(canonical)) if definition.multi_valued else canonical[0]
+    return CategoryAttributeConstraint(value=value, operator=constraint.operator, role=role)
+
+
+def validate_catalog_value(definition: CategoryAttributeDefinition, value: Any) -> None:
+    values = value if definition.multi_valued else [value]
+    if definition.multi_valued and not isinstance(value, (list, tuple, set)):
+        raise ValueError(f"{definition.key} must be a list")
+    if definition.type == "number":
+        for item in values:
+            _decimal(item)
+    elif definition.type == "string":
+        if not isinstance(value, str):
+            raise ValueError(f"{definition.key} must be a string")
+    elif definition.type == "boolean":
+        if not isinstance(value, bool):
+            raise ValueError(f"{definition.key} must be a boolean")
+    elif definition.type == "enum":
+        catalog_values = value if isinstance(value, (list, tuple, set)) else values
+        for item in catalog_values:
+            definition.canonicalize_enum(item)
+
+
+def candidate_value(
+    definition: CategoryAttributeDefinition,
+    attributes: dict[str, Any],
+) -> Any:
+    return attributes.get(definition.canonical_catalog_key)
+
+
+def _ordered_enum_value(definition: CategoryAttributeDefinition, value: Any) -> int:
+    canonical = definition.canonicalize_enum(value)
+    return definition.enum_values.index(canonical)
+
+
+def _enum_match(definition: CategoryAttributeDefinition, candidate: Any, requested: Any) -> bool:
+    candidate_values = set(candidate if isinstance(candidate, (list, tuple, set)) else [candidate])
+    requested_values = set(requested if isinstance(requested, (list, tuple, set)) else [requested])
+    candidate_canonical = {definition.canonicalize_enum(item) for item in candidate_values}
+    requested_canonical = {definition.canonicalize_enum(item) for item in requested_values}
+    return requested_canonical <= candidate_canonical
+
+
+def evaluate_constraint(
+    definition: CategoryAttributeDefinition,
+    constraint: CategoryAttributeConstraint,
+    candidate: Any,
+) -> bool:
+    if candidate is None:
+        return False
+    operator = constraint.operator
+    requested = constraint.value
+    try:
+        if definition.type == "number":
+            actual = _decimal(candidate)
+            expected = _decimal(requested)
+            if operator == "eq":
+                return actual == expected
+            if operator == "gte":
+                return actual >= expected
+            if operator == "lte":
+                return actual <= expected
+        if definition.type == "string":
+            actual_text = _normalize_text(candidate)
+            expected_text = _normalize_text(requested)
+            if operator == "eq":
+                return actual_text == expected_text
+            if operator == "contains":
+                return expected_text in actual_text
+            if operator == "match":
+                return bool(re.search(re.escape(expected_text), actual_text))
+        if definition.type == "boolean" and operator == "eq":
+            return candidate is requested
+        if definition.type == "enum":
+            if operator == "enum_match":
+                return _enum_match(definition, candidate, requested)
+            if operator == "eq":
+                candidate_values = candidate if isinstance(candidate, (list, tuple, set)) else [candidate]
+                return any(
+                    definition.canonicalize_enum(item) == definition.canonicalize_enum(requested)
+                    for item in candidate_values
+                )
+            candidate_values = candidate if isinstance(candidate, (list, tuple, set)) else [candidate]
+            actual_orders = [_ordered_enum_value(definition, item) for item in candidate_values]
+            expected_order = _ordered_enum_value(definition, requested)
+            if operator == "gte":
+                return any(actual_order >= expected_order for actual_order in actual_orders)
+            if operator == "lte":
+                return any(actual_order <= expected_order for actual_order in actual_orders)
+    except (ValueError, TypeError, InvalidOperation):
+        return False
+    return False
+
+
+def preference_signal(
+    definition: CategoryAttributeDefinition,
+    constraint: CategoryAttributeConstraint,
+    candidate: Any,
+) -> Decimal:
+    if candidate is None:
+        return Decimal("0")
+    if definition.type == "enum" and constraint.operator == "enum_match":
+        candidate_values = {
+            definition.canonicalize_enum(item)
+            for item in (candidate if isinstance(candidate, (list, tuple, set)) else [candidate])
+        }
+        requested_values = {
+            definition.canonicalize_enum(item)
+            for item in (constraint.value if isinstance(constraint.value, (list, tuple, set)) else [constraint.value])
+        }
+        if not requested_values:
+            return Decimal("0.5")
+        return Decimal(len(candidate_values & requested_values)) / Decimal(len(requested_values))
+    return Decimal("1") if evaluate_constraint(definition, constraint, candidate) else Decimal("0")
+
+
+def parse_laptop_constraints(message: str):
+    """Deprecated released-test adapter; extraction remains schema-guided."""
+
+    from app.recommendation.compatibility import laptop_constraints_from_request
+    from app.recommendation.request import parse_recommendation_request
+
+    return laptop_constraints_from_request(parse_recommendation_request(message, "laptop"))

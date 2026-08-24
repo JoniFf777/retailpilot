@@ -21,7 +21,7 @@ def _candidate(code: str, *, price: str, use_cases: list[str]) -> CatalogSkuCand
         product_id=uuid4(), product_code=f"P-{code}", product_name=f"Laptop {code}",
         brand="Test", sku_id=uuid4(), sku_code=code, sku_name=code,
         money_amount=Decimal(price), currency="CNY", available_quantity=4,
-        product_attributes={"memory_gb": 16, "storage_gb": 512, "use_cases": use_cases, "internal": "hidden"},
+        product_attributes={"cpu_tier": "i7", "gpu_tier": "entry", "memory_gb": 16, "storage_gb": 512, "weight_kg": 1.3, "screen_inches": 14, "use_cases": use_cases, "internal": "hidden"},
         attribute_definitions=[
             CatalogAttributeDefinition(code="memory_gb", name="Memory", scope="spu", data_type="integer", unit="GB", comparable=True, display_order=10),
             CatalogAttributeDefinition(code="storage_gb", name="Storage", scope="spu", data_type="integer", unit="GB", comparable=True, display_order=20),

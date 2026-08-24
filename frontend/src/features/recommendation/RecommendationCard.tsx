@@ -17,11 +17,11 @@ type Props = {
 export function RecommendationCard({ item, rank, inComparison, selectedSkuIds, onSelectSku, onAddToCompare, onAddAlternative }: Props) {
   const alternatives = item.alternative_skus ?? [];
   return <article className="recommendation-card" aria-label={`推荐 ${rank}：${item.product_name}`}>
-    <header><span className="recommendation-rank">推荐 {rank} · {item.category === "monitor" ? "显示器" : "笔记本"}</span><span className={`availability availability-${availabilityTone(item.availability)}`}>{formatAvailability(item.availability)}</span></header>
+    <header><span className="recommendation-rank">推荐 {rank} · {item.category_display_name ?? "推荐商品"}</span><span className={`availability availability-${availabilityTone(item.availability)}`}>{formatAvailability(item.availability)}</span></header>
     <div className="recommendation-title"><div><h3>{item.product_name}</h3><p>{item.sku_name}</p></div><strong className="recommendation-price">{formatMoney(item.money)}</strong></div>
     <div className="recommendation-score"><span>综合匹配</span><strong>{item.score}<small>/100</small></strong></div>
     <p className="recommendation-reason">{item.reason}</p>
-    <ProductSpecifications specifications={item.specifications} compact />
+    <ProductSpecifications specifications={item.specifications.length ? item.specifications : undefined} comparisonFields={item.comparison_fields} compact />
     {(item.matched_hard_constraints ?? []).length > 0 && <p className="constraint-copy"><strong>满足硬约束：</strong>{item.matched_hard_constraints?.join("、")}</p>}
     {(item.matched_soft_preferences ?? []).length > 0 && <p className="constraint-copy"><strong>匹配偏好：</strong>{item.matched_soft_preferences?.join("、")}</p>}
     {(item.soft_tradeoffs ?? []).length > 0 && <p className="tradeoff-copy"><strong>取舍：</strong>{item.soft_tradeoffs?.join("、")}</p>}

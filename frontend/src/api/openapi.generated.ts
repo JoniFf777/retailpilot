@@ -670,6 +670,21 @@ export interface components {
             /** Sku Id */
             sku_id?: string | null;
         };
+        /**
+         * CategoryAttributeConstraint
+         * @description A normalized, registry-validated request attribute.
+         */
+        CategoryAttributeConstraint: {
+            /**
+             * Operator
+             * @enum {string}
+             */
+            operator: "eq" | "gte" | "lte" | "contains" | "match" | "enum_match";
+            /** Role */
+            role?: ("hard" | "soft" | "hard_or_soft" | "display_only") | null;
+            /** Value */
+            value: unknown;
+        };
         /** ChatRequest */
         ChatRequest: {
             /**
@@ -857,6 +872,37 @@ export interface components {
             message: string;
             /** Sku Id */
             sku_id?: string | null;
+        };
+        /**
+         * ComparisonField
+         * @description Category-independent display projection for one catalog fact.
+         */
+        ComparisonField: {
+            /**
+             * Comparable
+             * @default false
+             */
+            comparable: boolean;
+            /**
+             * Display Order
+             * @default 0
+             */
+            display_order: number;
+            /** Format Hint */
+            format_hint?: string | null;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Unit */
+            unit?: string | null;
+            /** Value */
+            value: string | number | boolean | string[];
+            /**
+             * Value Type
+             * @enum {string}
+             */
+            value_type: "number" | "string" | "enum" | "boolean" | "string_list";
         };
         /** ConfirmChatRequest */
         ConfirmChatRequest: {
@@ -1579,7 +1625,11 @@ export interface components {
             alternative_skus?: components["schemas"]["AlternativeSkuView"][];
             availability: components["schemas"]["AvailabilityView"];
             /** Category */
-            category?: ("laptop" | "monitor" | "unknown") | null;
+            category?: string | null;
+            /** Category Display Name */
+            category_display_name?: string | null;
+            /** Comparison Fields */
+            comparison_fields?: components["schemas"]["ComparisonField"][];
             /** Evidence */
             evidence?: components["schemas"]["EvidenceView"][];
             /** Matched Hard Constraints */
@@ -1633,11 +1683,8 @@ export interface components {
             budget_currency?: string | null;
             /** Budget Max */
             budget_max?: string | null;
-            /**
-             * Category
-             * @enum {string}
-             */
-            category: "laptop" | "monitor" | "unknown";
+            /** Category */
+            category: string;
             /** Category Attributes */
             category_attributes?: {
                 [key: string]: unknown;
@@ -1648,13 +1695,19 @@ export interface components {
         /** RecommendationResult */
         RecommendationResult: {
             /** Category */
-            category?: ("laptop" | "monitor" | "unknown") | null;
+            category?: string | null;
             /** Category Attributes */
             category_attributes?: {
                 [key: string]: unknown;
             };
+            /** Category Display Name */
+            category_display_name?: string | null;
             /** Clarification Question */
             clarification_question?: string | null;
+            /** Comparison Fields */
+            comparison_fields?: components["schemas"]["ComparisonField"][];
+            /** Constraint Fields */
+            constraint_fields?: components["schemas"]["ComparisonField"][];
             /** Error Code */
             error_code?: string | null;
             /** Missing Fields */
@@ -1668,6 +1721,10 @@ export interface components {
             outcome: "recommended" | "no_match" | "clarification_required";
             /** Ranking Policy Version */
             ranking_policy_version: string;
+            /** Recognized Constraints */
+            recognized_constraints?: {
+                [key: string]: components["schemas"]["CategoryAttributeConstraint"];
+            };
             recommendation_request?: components["schemas"]["RecommendationRequest"] | null;
             /** Recommendations */
             recommendations?: components["schemas"]["Recommendation"][];
