@@ -1,0 +1,15 @@
+{
+  "code": "headphones",
+  "display_name": "耳机",
+  "aliases": ["headphones", "headset", "耳机", "头戴耳机"],
+  "definition_version": "2026.08.24",
+  "display_fields": ["connectivity", "noise_cancelling", "battery_hours", "form_factor", "microphone", "use_case"],
+  "attributes": [
+    {"key":"connectivity","label":"连接","type":"enum","enum_values":["wired","bluetooth"],"enum_aliases":{"有线":"wired","蓝牙":"bluetooth"},"aliases":["连接","connectivity"],"allowed_operators":["eq","enum_match"],"role":"hard","ranking":"exact_match","missing":"reject_if_hard","required":true,"weight":15,"display_order":10,"comparable":true},
+    {"key":"noise_cancelling","label":"主动降噪","type":"boolean","aliases":["降噪","ANC","noise cancelling"],"allowed_operators":["eq"],"role":"soft","ranking":"exact_match","missing":"neutral","weight":20,"display_order":20,"comparable":true},
+    {"key":"battery_hours","label":"续航","type":"number","unit":"小时","aliases":["续航","电池","battery"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":15,"bounds":{"minimum":5,"maximum":80},"display_order":30,"comparable":true,"format_hint":"decimal"},
+    {"key":"form_factor","label":"形态","type":"enum","enum_values":["over_ear","on_ear","in_ear"],"enum_aliases":{"头戴":"over_ear","入耳":"in_ear","耳罩":"over_ear"},"aliases":["形态","头戴","入耳","form factor"],"allowed_operators":["eq","enum_match"],"role":"soft","ranking":"exact_match","missing":"neutral","weight":10,"display_order":40,"comparable":true},
+    {"key":"microphone","label":"麦克风","type":"boolean","aliases":["麦克风","话筒","microphone"],"allowed_operators":["eq"],"role":"soft","ranking":"exact_match","missing":"deterministic_penalty","missing_penalty":"0.25","weight":10,"display_order":50,"comparable":true},
+    {"key":"use_case","catalog_key":"use_cases","label":"用途","type":"enum","enum_values":["music","gaming","calls","travel"],"enum_aliases":{"音乐":"music","游戏":"gaming","通话":"calls","出差":"travel"},"aliases":["用途","音乐","游戏","通话","出差"],"allowed_operators":["enum_match"],"role":"soft","ranking":"preference_match","missing":"neutral","multi_valued":true,"weight":15,"display_order":60,"comparable":true}
+  ]
+}

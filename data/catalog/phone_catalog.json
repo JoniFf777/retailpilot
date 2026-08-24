@@ -1,0 +1,349 @@
+{
+    "seed_source":  "shopmind-phone-catalog",
+    "seed_version":  "2026.08.24",
+    "category":  {
+                     "code":  "phone",
+                     "name":  "Phone",
+                     "status":  "active"
+                 },
+    "attribute_definitions":  [
+                                  {
+                                      "code":  "memory_gb",
+                                      "name":  "Memory",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "GB",
+                                      "comparable":  true,
+                                      "display_order":  10
+                                  },
+                                  {
+                                      "code":  "storage_gb",
+                                      "name":  "Storage",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "GB",
+                                      "comparable":  true,
+                                      "display_order":  20
+                                  },
+                                  {
+                                      "code":  "battery_mah",
+                                      "name":  "Battery",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "mAh",
+                                      "comparable":  true,
+                                      "display_order":  30
+                                  },
+                                  {
+                                      "code":  "screen_inches",
+                                      "name":  "Screen",
+                                      "scope":  "spu",
+                                      "data_type":  "decimal",
+                                      "unit":  "in",
+                                      "comparable":  true,
+                                      "display_order":  40
+                                  },
+                                  {
+                                      "code":  "connectivity",
+                                      "name":  "Connectivity",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  50
+                                  },
+                                  {
+                                      "code":  "use_cases",
+                                      "name":  "Use cases",
+                                      "scope":  "spu",
+                                      "data_type":  "string_list",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  60
+                                  },
+                                  {
+                                      "code":  "camera_mp",
+                                      "name":  "Camera",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "MP",
+                                      "comparable":  true,
+                                      "display_order":  70
+                                  }
+                              ],
+    "products":  [
+                     {
+                         "product_code":  "PHN-NOVA-01",
+                         "legacy_product_id":  "TECH-PHN-001",
+                         "brand":  "Nova",
+                         "name":  "Nova Lite 5G",
+                         "description":  "Affordable 5G phone for everyday communication and study.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "storage_gb":  128,
+                                            "use_cases":  [
+                                                              "everyday",
+                                                              "study"
+                                                          ],
+                                            "camera_mp":  50,
+                                            "connectivity":  "5g",
+                                            "memory_gb":  8,
+                                            "screen_inches":  6.5,
+                                            "battery_mah":  5000
+                                        },
+                         "sku":  {
+                                     "sku_code":  "PHN-NOVA-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1599.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  24
+                                 }
+                     },
+                     {
+                         "product_code":  "PHN-NOVA-02",
+                         "legacy_product_id":  "TECH-PHN-002",
+                         "brand":  "Nova",
+                         "name":  "Nova Pro 5G",
+                         "description":  "Balanced 5G phone with more memory and a brighter display.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "storage_gb":  256,
+                                            "use_cases":  [
+                                                              "everyday",
+                                                              "business"
+                                                          ],
+                                            "camera_mp":  64,
+                                            "connectivity":  "5g",
+                                            "memory_gb":  12,
+                                            "screen_inches":  6.7,
+                                            "battery_mah":  5100
+                                        },
+                         "sku":  {
+                                     "sku_code":  "PHN-NOVA-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "2499.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  18
+                                 }
+                     },
+                     {
+                         "product_code":  "PHN-ORBIT-01",
+                         "legacy_product_id":  "TECH-PHN-003",
+                         "brand":  "Orbit",
+                         "name":  "Orbit Max",
+                         "description":  "Large-battery phone for travel and media.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "storage_gb":  256,
+                                            "use_cases":  [
+                                                              "everyday"
+                                                          ],
+                                            "camera_mp":  48,
+                                            "connectivity":  "4g",
+                                            "memory_gb":  8,
+                                            "screen_inches":  6.8,
+                                            "battery_mah":  6000
+                                        },
+                         "sku":  {
+                                     "sku_code":  "PHN-ORBIT-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1899.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  12
+                                 }
+                     },
+                     {
+                         "product_code":  "PHN-PIXEL-01",
+                         "legacy_product_id":  "TECH-PHN-004",
+                         "brand":  "Pixelia",
+                         "name":  "Pixelia Photo",
+                         "description":  "Photo-focused phone with a high-resolution main camera.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "storage_gb":  256,
+                                            "use_cases":  [
+                                                              "photo",
+                                                              "everyday"
+                                                          ],
+                                            "camera_mp":  108,
+                                            "connectivity":  "5g",
+                                            "memory_gb":  12,
+                                            "screen_inches":  6.3,
+                                            "battery_mah":  4800
+                                        },
+                         "sku":  {
+                                     "sku_code":  "PHN-PIXEL-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "3299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  9
+                                 }
+                     },
+                     {
+                         "product_code":  "PHN-AXIS-01",
+                         "legacy_product_id":  "TECH-PHN-005",
+                         "brand":  "Axis",
+                         "name":  "Axis Game X",
+                         "description":  "High-performance phone tuned for mobile gaming.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "storage_gb":  512,
+                                            "use_cases":  [
+                                                              "gaming"
+                                                          ],
+                                            "camera_mp":  50,
+                                            "connectivity":  "5g",
+                                            "memory_gb":  16,
+                                            "screen_inches":  6.78,
+                                            "battery_mah":  5500
+                                        },
+                         "sku":  {
+                                     "sku_code":  "PHN-AXIS-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "4599.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  7
+                                 }
+                     },
+                     {
+                         "product_code":  "PHN-AXIS-02",
+                         "legacy_product_id":  "TECH-PHN-006",
+                         "brand":  "Axis",
+                         "name":  "Axis Game X Pro",
+                         "description":  "Premium gaming phone with expanded storage.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "storage_gb":  1024,
+                                            "use_cases":  [
+                                                              "gaming",
+                                                              "photo"
+                                                          ],
+                                            "camera_mp":  64,
+                                            "connectivity":  "5g",
+                                            "memory_gb":  16,
+                                            "screen_inches":  6.8,
+                                            "battery_mah":  6000
+                                        },
+                         "sku":  {
+                                     "sku_code":  "PHN-AXIS-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "6299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  4
+                                 }
+                     },
+                     {
+                         "product_code":  "PHN-METRO-01",
+                         "legacy_product_id":  "TECH-PHN-007",
+                         "brand":  "Metro",
+                         "name":  "Metro Business",
+                         "description":  "Reliable business phone with generous storage.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "storage_gb":  512,
+                                            "use_cases":  [
+                                                              "business"
+                                                          ],
+                                            "camera_mp":  50,
+                                            "connectivity":  "5g",
+                                            "memory_gb":  12,
+                                            "screen_inches":  6.6,
+                                            "battery_mah":  5200
+                                        },
+                         "sku":  {
+                                     "sku_code":  "PHN-METRO-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "3899.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  6
+                                 }
+                     },
+                     {
+                         "product_code":  "PHN-METRO-02",
+                         "legacy_product_id":  "TECH-PHN-008",
+                         "brand":  "Metro",
+                         "name":  "Metro Basic",
+                         "description":  "Entry phone for simple everyday use.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "storage_gb":  128,
+                                            "use_cases":  [
+                                                              "everyday"
+                                                          ],
+                                            "camera_mp":  24,
+                                            "connectivity":  "4g",
+                                            "memory_gb":  6,
+                                            "screen_inches":  6.4,
+                                            "battery_mah":  4500
+                                        },
+                         "sku":  {
+                                     "sku_code":  "PHN-METRO-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  0
+                                 }
+                     },
+                     {
+                         "product_code":  "PHN-TRAVEL-01",
+                         "legacy_product_id":  "TECH-PHN-009",
+                         "brand":  "Trail",
+                         "name":  "Trail Compact",
+                         "description":  "Compact travel phone with strong battery life.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "everyday",
+                                                              "photo"
+                                                          ],
+                                            "screen_inches":  6.1,
+                                            "memory_gb":  8,
+                                            "battery_mah":  5200,
+                                            "storage_gb":  256
+                                        },
+                         "sku":  {
+                                     "sku_code":  "PHN-TRAVEL-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "2199.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  11
+                                 }
+                     }
+                 ]
+}

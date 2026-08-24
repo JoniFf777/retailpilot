@@ -137,7 +137,7 @@ def test_multi_agent_debug_metadata_keeps_stable_trace_fields() -> None:
 
 
 def test_product_search_question_routes_to_product_agent() -> None:
-    result = _invoke("推荐一个键盘")
+    result = _invoke("查找一个键盘")
 
     assert result["supervisor_decision"]["intent"] == "read_path"
     assert result["routes"] == ["product_agent"]
@@ -182,7 +182,7 @@ def test_preference_question_routes_to_preference_agent() -> None:
 
 
 def test_mixed_question_runs_read_agents_in_order() -> None:
-    result = _invoke("结合我的偏好推荐键盘，并看看退货政策")
+    result = _invoke("结合我的偏好查找键盘，并看看退货政策")
 
     assert result["routes"] == ["product_agent", "rag_agent", "preference_agent"]
     assert result["executed_routes"] == [
@@ -229,7 +229,7 @@ def test_mixed_question_runs_read_agents_in_order() -> None:
 
 
 def test_decision_agent_runs_once_after_all_routes() -> None:
-    result = _invoke("结合我的偏好推荐键盘，并看看退货政策")
+    result = _invoke("结合我的偏好查找键盘，并看看退货政策")
 
     assert result["decision"]["used_routes"] == result["executed_routes"]
     assert result["decision"]["answer_type"] == "combined_read_summary"
@@ -344,7 +344,7 @@ def test_decision_agent_keeps_matching_product_document_evidence() -> None:
 
 
 def test_routes_do_not_include_decision_agent() -> None:
-    routes = determine_routes("结合我的偏好推荐键盘，并看看退货政策", user_id="USER-001")
+    routes = determine_routes("结合我的偏好查找键盘，并看看退货政策", user_id="USER-001")
 
     assert "decision_agent" not in routes
 
@@ -428,7 +428,7 @@ def test_graph_can_use_injected_supervisor_router() -> None:
 
     result = graph.invoke(
         {
-            "messages": [{"role": "user", "content": "推荐一个键盘"}],
+            "messages": [{"role": "user", "content": "商品资料是什么"}],
             "user_id": "USER-001",
             "thread_id": "THREAD-001",
             "tool_calls": [],
@@ -646,7 +646,7 @@ def test_graph_records_llm_router_observability_metadata() -> None:
 
     result = graph.invoke(
         {
-            "messages": [{"role": "user", "content": "推荐一个键盘"}],
+            "messages": [{"role": "user", "content": "退货政策是什么"}],
             "user_id": "USER-001",
             "thread_id": "THREAD-001",
             "tool_calls": [],

@@ -1,0 +1,15 @@
+{
+  "code": "camera",
+  "display_name": "相机",
+  "aliases": ["camera", "相机", "微单", "单反"],
+  "definition_version": "2026.08.24",
+  "display_fields": ["sensor", "resolution_mp", "video_resolution", "stabilization", "lens_type", "use_case"],
+  "attributes": [
+    {"key":"sensor","label":"传感器","type":"enum","enum_values":["micro_four_thirds","aps_c","full_frame"],"enum_aliases":{"M43":"micro_four_thirds","APS-C":"aps_c","全画幅":"full_frame"},"aliases":["传感器","sensor"],"allowed_operators":["eq","gte","enum_match"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":20,"display_order":10,"comparable":true},
+    {"key":"resolution_mp","label":"分辨率","type":"number","unit":"MP","aliases":["分辨率","像素","resolution"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":15,"bounds":{"minimum":12,"maximum":60},"display_order":20,"comparable":true,"format_hint":"integer"},
+    {"key":"video_resolution","label":"视频能力","type":"enum","enum_values":["1080p","4k","8k"],"enum_aliases":{"全高清":"1080p","8K":"8k"},"aliases":["视频","video","录像"],"allowed_operators":["gte","eq","enum_match"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":15,"display_order":30,"comparable":true},
+    {"key":"stabilization","label":"防抖","type":"boolean","aliases":["防抖","stabilization"],"allowed_operators":["eq"],"role":"soft","ranking":"exact_match","missing":"neutral","weight":10,"display_order":40,"comparable":true},
+    {"key":"lens_type","label":"镜头接口","type":"enum","enum_values":["fixed","e_mount","rf_mount","z_mount"],"enum_aliases":{"固定镜头":"fixed","E卡口":"e_mount","RF卡口":"rf_mount","Z卡口":"z_mount"},"aliases":["镜头","卡口","lens"],"allowed_operators":["eq","enum_match"],"role":"soft","ranking":"exact_match","missing":"neutral","weight":10,"display_order":50,"comparable":true},
+    {"key":"use_case","catalog_key":"use_cases","label":"用途","type":"enum","enum_values":["travel","portrait","video","wildlife"],"enum_aliases":{"旅行":"travel","人像":"portrait","视频":"video","野生动物":"wildlife"},"aliases":["用途","旅行","人像","视频","野生动物"],"allowed_operators":["enum_match"],"role":"soft","ranking":"preference_match","missing":"neutral","multi_valued":true,"weight":15,"display_order":60,"comparable":true}
+  ]
+}

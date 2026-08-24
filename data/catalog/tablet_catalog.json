@@ -1,0 +1,333 @@
+{
+    "seed_source":  "shopmind-tablet-catalog",
+    "seed_version":  "2026.08.24",
+    "category":  {
+                     "code":  "tablet",
+                     "name":  "Tablet",
+                     "status":  "active"
+                 },
+    "attribute_definitions":  [
+                                  {
+                                      "code":  "memory_gb",
+                                      "name":  "Memory",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "GB",
+                                      "comparable":  true,
+                                      "display_order":  10
+                                  },
+                                  {
+                                      "code":  "storage_gb",
+                                      "name":  "Storage",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "GB",
+                                      "comparable":  true,
+                                      "display_order":  20
+                                  },
+                                  {
+                                      "code":  "screen_inches",
+                                      "name":  "Screen",
+                                      "scope":  "spu",
+                                      "data_type":  "decimal",
+                                      "unit":  "in",
+                                      "comparable":  true,
+                                      "display_order":  30
+                                  },
+                                  {
+                                      "code":  "connectivity",
+                                      "name":  "Connectivity",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  40
+                                  },
+                                  {
+                                      "code":  "portability_kg",
+                                      "name":  "Weight",
+                                      "scope":  "spu",
+                                      "data_type":  "decimal",
+                                      "unit":  "kg",
+                                      "comparable":  true,
+                                      "display_order":  50
+                                  },
+                                  {
+                                      "code":  "use_cases",
+                                      "name":  "Use cases",
+                                      "scope":  "spu",
+                                      "data_type":  "string_list",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  60
+                                  }
+                              ],
+    "products":  [
+                     {
+                         "product_code":  "TAB-SLATE-01",
+                         "legacy_product_id":  "TECH-TAB-001",
+                         "brand":  "Slate",
+                         "name":  "Slate Go 10",
+                         "description":  "Portable tablet for study and streaming.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portability_kg":  0.48,
+                                            "storage_gb":  128,
+                                            "use_cases":  [
+                                                              "study",
+                                                              "entertainment"
+                                                          ],
+                                            "connectivity":  "wifi",
+                                            "memory_gb":  6,
+                                            "screen_inches":  10.1
+                                        },
+                         "sku":  {
+                                     "sku_code":  "TAB-SLATE-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  20
+                                 }
+                     },
+                     {
+                         "product_code":  "TAB-SLATE-02",
+                         "legacy_product_id":  "TECH-TAB-002",
+                         "brand":  "Slate",
+                         "name":  "Slate Go 11",
+                         "description":  "Larger everyday tablet with comfortable reading display.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portability_kg":  0.52,
+                                            "storage_gb":  256,
+                                            "use_cases":  [
+                                                              "study",
+                                                              "office"
+                                                          ],
+                                            "connectivity":  "wifi",
+                                            "memory_gb":  8,
+                                            "screen_inches":  11
+                                        },
+                         "sku":  {
+                                     "sku_code":  "TAB-SLATE-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  15
+                                 }
+                     },
+                     {
+                         "product_code":  "TAB-ART-01",
+                         "legacy_product_id":  "TECH-TAB-003",
+                         "brand":  "Canvas",
+                         "name":  "Canvas Artist",
+                         "description":  "Tablet designed for drawing and creative work.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portability_kg":  0.68,
+                                            "storage_gb":  256,
+                                            "use_cases":  [
+                                                              "drawing"
+                                                          ],
+                                            "connectivity":  "wifi",
+                                            "memory_gb":  12,
+                                            "screen_inches":  12.9
+                                        },
+                         "sku":  {
+                                     "sku_code":  "TAB-ART-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "3599.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  8
+                                 }
+                     },
+                     {
+                         "product_code":  "TAB-ART-02",
+                         "legacy_product_id":  "TECH-TAB-004",
+                         "brand":  "Canvas",
+                         "name":  "Canvas Artist 5G",
+                         "description":  "Cellular creative tablet for work on the move.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portability_kg":  0.7,
+                                            "storage_gb":  512,
+                                            "use_cases":  [
+                                                              "drawing",
+                                                              "office"
+                                                          ],
+                                            "connectivity":  "cellular",
+                                            "memory_gb":  12,
+                                            "screen_inches":  12.9
+                                        },
+                         "sku":  {
+                                     "sku_code":  "TAB-ART-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "4999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  5
+                                 }
+                     },
+                     {
+                         "product_code":  "TAB-OFFICE-01",
+                         "legacy_product_id":  "TECH-TAB-005",
+                         "brand":  "WorkPad",
+                         "name":  "WorkPad Air",
+                         "description":  "Light business tablet for notes and office tasks.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portability_kg":  0.5,
+                                            "storage_gb":  256,
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "connectivity":  "cellular",
+                                            "memory_gb":  8,
+                                            "screen_inches":  11
+                                        },
+                         "sku":  {
+                                     "sku_code":  "TAB-OFFICE-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "2899.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  10
+                                 }
+                     },
+                     {
+                         "product_code":  "TAB-MINI-01",
+                         "legacy_product_id":  "TECH-TAB-006",
+                         "brand":  "MiniTab",
+                         "name":  "MiniTab Reader",
+                         "description":  "Small lightweight tablet for travel reading.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portability_kg":  0.31,
+                                            "storage_gb":  64,
+                                            "use_cases":  [
+                                                              "study",
+                                                              "entertainment"
+                                                          ],
+                                            "connectivity":  "wifi",
+                                            "memory_gb":  4,
+                                            "screen_inches":  8.3
+                                        },
+                         "sku":  {
+                                     "sku_code":  "TAB-MINI-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "899.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  22
+                                 }
+                     },
+                     {
+                         "product_code":  "TAB-MINI-02",
+                         "legacy_product_id":  "TECH-TAB-007",
+                         "brand":  "MiniTab",
+                         "name":  "MiniTab Reader LTE",
+                         "description":  "Compact cellular tablet with travel connectivity.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portability_kg":  0.36,
+                                            "storage_gb":  128,
+                                            "use_cases":  [
+                                                              "travel"
+                                                          ],
+                                            "connectivity":  "cellular",
+                                            "memory_gb":  6,
+                                            "screen_inches":  8.7
+                                        },
+                         "sku":  {
+                                     "sku_code":  "TAB-MINI-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1499.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  0
+                                 }
+                     },
+                     {
+                         "product_code":  "TAB-PRO-01",
+                         "legacy_product_id":  "TECH-TAB-008",
+                         "brand":  "ProView",
+                         "name":  "ProView 13",
+                         "description":  "Large premium tablet for work and entertainment.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portability_kg":  0.72,
+                                            "storage_gb":  512,
+                                            "use_cases":  [
+                                                              "office",
+                                                              "entertainment"
+                                                          ],
+                                            "connectivity":  "wifi",
+                                            "memory_gb":  16,
+                                            "screen_inches":  13
+                                        },
+                         "sku":  {
+                                     "sku_code":  "TAB-PRO-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "5299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  4
+                                 }
+                     },
+                     {
+                         "product_code":  "TAB-PRO-02",
+                         "legacy_product_id":  "TECH-TAB-009",
+                         "brand":  "ProView",
+                         "name":  "ProView 13 LTE",
+                         "description":  "Premium cellular tablet for field work.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portability_kg":  0.74,
+                                            "storage_gb":  1024,
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "connectivity":  "cellular",
+                                            "memory_gb":  16,
+                                            "screen_inches":  13
+                                        },
+                         "sku":  {
+                                     "sku_code":  "TAB-PRO-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "6999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  3
+                                 }
+                     }
+                 ]
+}

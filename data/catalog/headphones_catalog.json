@@ -1,0 +1,332 @@
+{
+    "seed_source":  "shopmind-headphones-catalog",
+    "seed_version":  "2026.08.24",
+    "category":  {
+                     "code":  "headphones",
+                     "name":  "Headphones",
+                     "status":  "active"
+                 },
+    "attribute_definitions":  [
+                                  {
+                                      "code":  "connectivity",
+                                      "name":  "Connectivity",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  10
+                                  },
+                                  {
+                                      "code":  "noise_cancelling",
+                                      "name":  "Noise cancelling",
+                                      "scope":  "spu",
+                                      "data_type":  "boolean",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  20
+                                  },
+                                  {
+                                      "code":  "battery_hours",
+                                      "name":  "Battery",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "hours",
+                                      "comparable":  true,
+                                      "display_order":  30
+                                  },
+                                  {
+                                      "code":  "form_factor",
+                                      "name":  "Form factor",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  40
+                                  },
+                                  {
+                                      "code":  "microphone",
+                                      "name":  "Microphone",
+                                      "scope":  "spu",
+                                      "data_type":  "boolean",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  50
+                                  },
+                                  {
+                                      "code":  "use_cases",
+                                      "name":  "Use cases",
+                                      "scope":  "spu",
+                                      "data_type":  "string_list",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  60
+                                  }
+                              ],
+    "products":  [
+                     {
+                         "product_code":  "HED-DAILY-01",
+                         "legacy_product_id":  "TECH-HED-001",
+                         "brand":  "Sonic",
+                         "name":  "Sonic Daily",
+                         "description":  "Affordable wireless headphones for daily listening.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "microphone":  true,
+                                            "battery_hours":  30,
+                                            "form_factor":  "over_ear",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "music",
+                                                              "calls"
+                                                          ],
+                                            "noise_cancelling":  false
+                                        },
+                         "sku":  {
+                                     "sku_code":  "HED-DAILY-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  22
+                                 }
+                     },
+                     {
+                         "product_code":  "HED-DAILY-02",
+                         "legacy_product_id":  "TECH-HED-002",
+                         "brand":  "Sonic",
+                         "name":  "Sonic Daily ANC",
+                         "description":  "Comfortable ANC headphones for commuting.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "microphone":  true,
+                                            "battery_hours":  35,
+                                            "form_factor":  "over_ear",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "music",
+                                                              "travel"
+                                                          ],
+                                            "noise_cancelling":  true
+                                        },
+                         "sku":  {
+                                     "sku_code":  "HED-DAILY-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "599.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  15
+                                 }
+                     },
+                     {
+                         "product_code":  "HED-GAME-01",
+                         "legacy_product_id":  "TECH-HED-003",
+                         "brand":  "ArenaSound",
+                         "name":  "ArenaSound Wireless",
+                         "description":  "Low-latency wireless headset for gaming.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "microphone":  true,
+                                            "battery_hours":  25,
+                                            "form_factor":  "over_ear",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "gaming"
+                                                          ],
+                                            "noise_cancelling":  false
+                                        },
+                         "sku":  {
+                                     "sku_code":  "HED-GAME-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "499.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  18
+                                 }
+                     },
+                     {
+                         "product_code":  "HED-GAME-02",
+                         "legacy_product_id":  "TECH-HED-004",
+                         "brand":  "ArenaSound",
+                         "name":  "ArenaSound Pro",
+                         "description":  "Premium gaming headset with long battery life.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "microphone":  true,
+                                            "battery_hours":  50,
+                                            "form_factor":  "over_ear",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "gaming",
+                                                              "calls"
+                                                          ],
+                                            "noise_cancelling":  true
+                                        },
+                         "sku":  {
+                                     "sku_code":  "HED-GAME-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "899.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  7
+                                 }
+                     },
+                     {
+                         "product_code":  "HED-STUDIO-01",
+                         "legacy_product_id":  "TECH-HED-005",
+                         "brand":  "StudioEar",
+                         "name":  "StudioEar Wired",
+                         "description":  "Wired over-ear headphones for monitoring.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "microphone":  false,
+                                            "battery_hours":  8,
+                                            "form_factor":  "over_ear",
+                                            "connectivity":  "wired",
+                                            "use_cases":  [
+                                                              "music"
+                                                          ],
+                                            "noise_cancelling":  false
+                                        },
+                         "sku":  {
+                                     "sku_code":  "HED-STUDIO-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "699.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  9
+                                 }
+                     },
+                     {
+                         "product_code":  "HED-BUD-01",
+                         "legacy_product_id":  "TECH-HED-006",
+                         "brand":  "AirTone",
+                         "name":  "AirTone Buds",
+                         "description":  "Small in-ear headphones for commuting.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "microphone":  true,
+                                            "battery_hours":  24,
+                                            "form_factor":  "in_ear",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "travel",
+                                                              "calls"
+                                                          ],
+                                            "noise_cancelling":  true
+                                        },
+                         "sku":  {
+                                     "sku_code":  "HED-BUD-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "399.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  20
+                                 }
+                     },
+                     {
+                         "product_code":  "HED-BUD-02",
+                         "legacy_product_id":  "TECH-HED-007",
+                         "brand":  "AirTone",
+                         "name":  "AirTone Buds Lite",
+                         "description":  "Light in-ear headphones for casual use.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "microphone":  true,
+                                            "battery_hours":  20,
+                                            "form_factor":  "in_ear",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "music"
+                                                          ],
+                                            "noise_cancelling":  false
+                                        },
+                         "sku":  {
+                                     "sku_code":  "HED-BUD-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "199.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  30
+                                 }
+                     },
+                     {
+                         "product_code":  "HED-SPORT-01",
+                         "legacy_product_id":  "TECH-HED-008",
+                         "brand":  "MoveBeat",
+                         "name":  "MoveBeat Sport",
+                         "description":  "Secure in-ear headphones for travel and movement.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "microphone":  true,
+                                            "battery_hours":  18,
+                                            "form_factor":  "in_ear",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "travel"
+                                                          ],
+                                            "noise_cancelling":  false
+                                        },
+                         "sku":  {
+                                     "sku_code":  "HED-SPORT-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "279.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  0
+                                 }
+                     },
+                     {
+                         "product_code":  "HED-PRO-01",
+                         "legacy_product_id":  "TECH-HED-009",
+                         "brand":  "QuietLab",
+                         "name":  "QuietLab Studio",
+                         "description":  "Premium ANC headphones for focused listening.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "battery_hours":  60,
+                                            "noise_cancelling":  true,
+                                            "form_factor":  "over_ear",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "music",
+                                                              "travel"
+                                                          ]
+                                        },
+                         "sku":  {
+                                     "sku_code":  "HED-PRO-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  4
+                                 }
+                     }
+                 ]
+}

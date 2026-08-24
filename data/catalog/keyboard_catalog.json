@@ -1,0 +1,332 @@
+{
+    "seed_source":  "shopmind-keyboard-catalog",
+    "seed_version":  "2026.08.24",
+    "category":  {
+                     "code":  "keyboard",
+                     "name":  "Keyboard",
+                     "status":  "active"
+                 },
+    "attribute_definitions":  [
+                                  {
+                                      "code":  "layout",
+                                      "name":  "Layout",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  10
+                                  },
+                                  {
+                                      "code":  "switch_type",
+                                      "name":  "Switch type",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  20
+                                  },
+                                  {
+                                      "code":  "connectivity",
+                                      "name":  "Connectivity",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  30
+                                  },
+                                  {
+                                      "code":  "form_factor",
+                                      "name":  "Form factor",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  40
+                                  },
+                                  {
+                                      "code":  "backlight",
+                                      "name":  "Backlight",
+                                      "scope":  "spu",
+                                      "data_type":  "boolean",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  50
+                                  },
+                                  {
+                                      "code":  "use_cases",
+                                      "name":  "Use cases",
+                                      "scope":  "spu",
+                                      "data_type":  "string_list",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  60
+                                  }
+                              ],
+    "products":  [
+                     {
+                         "product_code":  "KBD-OFFICE-01",
+                         "legacy_product_id":  "TECH-KBD-001",
+                         "brand":  "Keycraft",
+                         "name":  "Keycraft Office 104",
+                         "description":  "Full-size wired keyboard for office work.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "form_factor":  "full",
+                                            "layout":  "us",
+                                            "connectivity":  "wired",
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "switch_type":  "scissor",
+                                            "backlight":  false
+                                        },
+                         "sku":  {
+                                     "sku_code":  "KBD-OFFICE-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "199.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  30
+                                 }
+                     },
+                     {
+                         "product_code":  "KBD-MECH-01",
+                         "legacy_product_id":  "TECH-KBD-002",
+                         "brand":  "Keycraft",
+                         "name":  "Keycraft Red TKL",
+                         "description":  "Tenkeyless linear mechanical keyboard for gaming.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "form_factor":  "tkl",
+                                            "layout":  "us",
+                                            "connectivity":  "wired",
+                                            "use_cases":  [
+                                                              "gaming"
+                                                          ],
+                                            "switch_type":  "linear",
+                                            "backlight":  true
+                                        },
+                         "sku":  {
+                                     "sku_code":  "KBD-MECH-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "399.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  18
+                                 }
+                     },
+                     {
+                         "product_code":  "KBD-MECH-02",
+                         "legacy_product_id":  "TECH-KBD-003",
+                         "brand":  "Keycraft",
+                         "name":  "Keycraft Brown TKL",
+                         "description":  "Tactile tenkeyless keyboard for office and gaming.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "form_factor":  "tkl",
+                                            "layout":  "us",
+                                            "connectivity":  "wired",
+                                            "use_cases":  [
+                                                              "office",
+                                                              "gaming"
+                                                          ],
+                                            "switch_type":  "tactile",
+                                            "backlight":  true
+                                        },
+                         "sku":  {
+                                     "sku_code":  "KBD-MECH-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "449.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  12
+                                 }
+                     },
+                     {
+                         "product_code":  "KBD-AIR-01",
+                         "legacy_product_id":  "TECH-KBD-004",
+                         "brand":  "TypeAir",
+                         "name":  "TypeAir Bluetooth",
+                         "description":  "Wireless compact keyboard for travel and office.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "form_factor":  "75",
+                                            "layout":  "uk",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "office",
+                                                              "travel"
+                                                          ],
+                                            "switch_type":  "scissor",
+                                            "backlight":  false
+                                        },
+                         "sku":  {
+                                     "sku_code":  "KBD-AIR-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "329.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  14
+                                 }
+                     },
+                     {
+                         "product_code":  "KBD-AIR-02",
+                         "legacy_product_id":  "TECH-KBD-005",
+                         "brand":  "TypeAir",
+                         "name":  "TypeAir 60",
+                         "description":  "Small wireless keyboard for portable setups.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "form_factor":  "60",
+                                            "layout":  "us",
+                                            "connectivity":  "2.4g",
+                                            "use_cases":  [
+                                                              "travel",
+                                                              "gaming"
+                                                          ],
+                                            "switch_type":  "linear",
+                                            "backlight":  true
+                                        },
+                         "sku":  {
+                                     "sku_code":  "KBD-AIR-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "529.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  9
+                                 }
+                     },
+                     {
+                         "product_code":  "KBD-JP-01",
+                         "legacy_product_id":  "TECH-KBD-006",
+                         "brand":  "NihonKeys",
+                         "name":  "NihonKeys JP",
+                         "description":  "Japanese-layout keyboard for specialist workflows.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "form_factor":  "full",
+                                            "layout":  "jp",
+                                            "connectivity":  "wired",
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "switch_type":  "tactile",
+                                            "backlight":  false
+                                        },
+                         "sku":  {
+                                     "sku_code":  "KBD-JP-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "699.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  5
+                                 }
+                     },
+                     {
+                         "product_code":  "KBD-PRO-01",
+                         "legacy_product_id":  "TECH-KBD-007",
+                         "brand":  "StudioType",
+                         "name":  "StudioType 75",
+                         "description":  "Premium hot-swap keyboard for creators.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "form_factor":  "75",
+                                            "layout":  "us",
+                                            "connectivity":  "bluetooth",
+                                            "use_cases":  [
+                                                              "office",
+                                                              "travel"
+                                                          ],
+                                            "switch_type":  "linear",
+                                            "backlight":  true
+                                        },
+                         "sku":  {
+                                     "sku_code":  "KBD-PRO-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "899.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  6
+                                 }
+                     },
+                     {
+                         "product_code":  "KBD-PRO-02",
+                         "legacy_product_id":  "TECH-KBD-008",
+                         "brand":  "StudioType",
+                         "name":  "StudioType Silent",
+                         "description":  "Quiet tactile keyboard for shared offices.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "form_factor":  "tkl",
+                                            "layout":  "uk",
+                                            "connectivity":  "2.4g",
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "switch_type":  "tactile",
+                                            "backlight":  true
+                                        },
+                         "sku":  {
+                                     "sku_code":  "KBD-PRO-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "799.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  0
+                                 }
+                     },
+                     {
+                         "product_code":  "KBD-GAME-01",
+                         "legacy_product_id":  "TECH-KBD-009",
+                         "brand":  "ArenaKeys",
+                         "name":  "ArenaKeys Clicky",
+                         "description":  "Clicky gaming keyboard with full backlight.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "form_factor":  "full",
+                                            "layout":  "us",
+                                            "connectivity":  "wired",
+                                            "use_cases":  [
+                                                              "gaming"
+                                                          ],
+                                            "switch_type":  "clicky",
+                                            "backlight":  true
+                                        },
+                         "sku":  {
+                                     "sku_code":  "KBD-GAME-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "599.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  11
+                                 }
+                     }
+                 ]
+}

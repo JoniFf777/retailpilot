@@ -1,0 +1,348 @@
+{
+    "seed_source":  "shopmind-router-catalog",
+    "seed_version":  "2026.08.24",
+    "category":  {
+                     "code":  "router",
+                     "name":  "Router",
+                     "status":  "active"
+                 },
+    "attribute_definitions":  [
+                                  {
+                                      "code":  "wifi_generation",
+                                      "name":  "Wi-Fi generation",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  10
+                                  },
+                                  {
+                                      "code":  "bands",
+                                      "name":  "Bands",
+                                      "scope":  "spu",
+                                      "data_type":  "string_list",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  20
+                                  },
+                                  {
+                                      "code":  "speed_mbps",
+                                      "name":  "Speed",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "Mbps",
+                                      "comparable":  true,
+                                      "display_order":  30
+                                  },
+                                  {
+                                      "code":  "ports",
+                                      "name":  "Ports",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "count",
+                                      "comparable":  true,
+                                      "display_order":  40
+                                  },
+                                  {
+                                      "code":  "coverage_sqm",
+                                      "name":  "Coverage",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "sqm",
+                                      "comparable":  true,
+                                      "display_order":  50
+                                  },
+                                  {
+                                      "code":  "use_cases",
+                                      "name":  "Use cases",
+                                      "scope":  "spu",
+                                      "data_type":  "string_list",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  60
+                                  }
+                              ],
+    "products":  [
+                     {
+                         "product_code":  "ROU-HOME-01",
+                         "legacy_product_id":  "TECH-ROU-001",
+                         "brand":  "NetHome",
+                         "name":  "NetHome Wi-Fi 5",
+                         "description":  "Affordable router for small apartments.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "home"
+                                                          ],
+                                            "speed_mbps":  867,
+                                            "bands":  [
+                                                          "dual"
+                                                      ],
+                                            "coverage_sqm":  80,
+                                            "ports":  3,
+                                            "wifi_generation":  "wifi5"
+                                        },
+                         "sku":  {
+                                     "sku_code":  "ROU-HOME-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "199.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  30
+                                 }
+                     },
+                     {
+                         "product_code":  "ROU-HOME-02",
+                         "legacy_product_id":  "TECH-ROU-002",
+                         "brand":  "NetHome",
+                         "name":  "NetHome Wi-Fi 6",
+                         "description":  "Balanced Wi-Fi 6 router for home use.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "home",
+                                                              "office"
+                                                          ],
+                                            "speed_mbps":  1800,
+                                            "bands":  [
+                                                          "dual"
+                                                      ],
+                                            "coverage_sqm":  120,
+                                            "ports":  4,
+                                            "wifi_generation":  "wifi6"
+                                        },
+                         "sku":  {
+                                     "sku_code":  "ROU-HOME-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "399.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  18
+                                 }
+                     },
+                     {
+                         "product_code":  "ROU-GAME-01",
+                         "legacy_product_id":  "TECH-ROU-003",
+                         "brand":  "GameNet",
+                         "name":  "GameNet AX6000",
+                         "description":  "High-speed router for gaming rooms.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "gaming"
+                                                          ],
+                                            "speed_mbps":  6000,
+                                            "bands":  [
+                                                          "dual"
+                                                      ],
+                                            "coverage_sqm":  150,
+                                            "ports":  5,
+                                            "wifi_generation":  "wifi6"
+                                        },
+                         "sku":  {
+                                     "sku_code":  "ROU-GAME-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "899.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  9
+                                 }
+                     },
+                     {
+                         "product_code":  "ROU-GAME-02",
+                         "legacy_product_id":  "TECH-ROU-004",
+                         "brand":  "GameNet",
+                         "name":  "GameNet Wi-Fi 7",
+                         "description":  "Premium low-latency router for gaming.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "gaming"
+                                                          ],
+                                            "speed_mbps":  10000,
+                                            "bands":  [
+                                                          "tri"
+                                                      ],
+                                            "coverage_sqm":  180,
+                                            "ports":  6,
+                                            "wifi_generation":  "wifi7"
+                                        },
+                         "sku":  {
+                                     "sku_code":  "ROU-GAME-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1699.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  4
+                                 }
+                     },
+                     {
+                         "product_code":  "ROU-LARGE-01",
+                         "legacy_product_id":  "TECH-ROU-005",
+                         "brand":  "MeshWorks",
+                         "name":  "MeshWorks 6E",
+                         "description":  "Wide-coverage tri-band router for larger homes.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "large_home"
+                                                          ],
+                                            "speed_mbps":  7200,
+                                            "bands":  [
+                                                          "tri"
+                                                      ],
+                                            "coverage_sqm":  260,
+                                            "ports":  5,
+                                            "wifi_generation":  "wifi6e"
+                                        },
+                         "sku":  {
+                                     "sku_code":  "ROU-LARGE-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  6
+                                 }
+                     },
+                     {
+                         "product_code":  "ROU-LARGE-02",
+                         "legacy_product_id":  "TECH-ROU-006",
+                         "brand":  "MeshWorks",
+                         "name":  "MeshWorks 7",
+                         "description":  "Future-ready wide-coverage router.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "large_home",
+                                                              "home"
+                                                          ],
+                                            "speed_mbps":  9600,
+                                            "bands":  [
+                                                          "tri"
+                                                      ],
+                                            "coverage_sqm":  300,
+                                            "ports":  6,
+                                            "wifi_generation":  "wifi7"
+                                        },
+                         "sku":  {
+                                     "sku_code":  "ROU-LARGE-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "2299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  2
+                                 }
+                     },
+                     {
+                         "product_code":  "ROU-OFFICE-01",
+                         "legacy_product_id":  "TECH-ROU-007",
+                         "brand":  "OfficeLink",
+                         "name":  "OfficeLink Pro",
+                         "description":  "Stable router for small offices.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "speed_mbps":  3600,
+                                            "bands":  [
+                                                          "dual"
+                                                      ],
+                                            "coverage_sqm":  200,
+                                            "ports":  8,
+                                            "wifi_generation":  "wifi6"
+                                        },
+                         "sku":  {
+                                     "sku_code":  "ROU-OFFICE-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "799.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  8
+                                 }
+                     },
+                     {
+                         "product_code":  "ROU-OFFICE-02",
+                         "legacy_product_id":  "TECH-ROU-008",
+                         "brand":  "OfficeLink",
+                         "name":  "OfficeLink Basic",
+                         "description":  "Entry office router.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "speed_mbps":  1200,
+                                            "bands":  [
+                                                          "dual"
+                                                      ],
+                                            "coverage_sqm":  100,
+                                            "ports":  4,
+                                            "wifi_generation":  "wifi5"
+                                        },
+                         "sku":  {
+                                     "sku_code":  "ROU-OFFICE-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  0
+                                 }
+                     },
+                     {
+                         "product_code":  "ROU-HOME-03",
+                         "legacy_product_id":  "TECH-ROU-009",
+                         "brand":  "NetHome",
+                         "name":  "NetHome Compact 6",
+                         "description":  "Compact Wi-Fi 6 router for small homes.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "use_cases":  [
+                                                              "home"
+                                                          ],
+                                            "speed_mbps":  2400,
+                                            "bands":  [
+                                                          "dual"
+                                                      ],
+                                            "coverage_sqm":  100,
+                                            "ports":  3,
+                                            "wifi_generation":  "wifi6"
+                                        },
+                         "sku":  {
+                                     "sku_code":  "ROU-HOME-03-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "499.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  16
+                                 }
+                     }
+                 ]
+}

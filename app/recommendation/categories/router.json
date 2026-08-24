@@ -1,0 +1,15 @@
+{
+  "code": "router",
+  "display_name": "路由器",
+  "aliases": ["router", "路由器", "无线路由器"],
+  "definition_version": "2026.08.24",
+  "display_fields": ["wifi_generation", "bands", "speed_mbps", "ports", "coverage_sqm", "use_case"],
+  "attributes": [
+    {"key":"wifi_generation","label":"Wi-Fi代际","type":"enum","enum_values":["wifi5","wifi6","wifi6e","wifi7"],"enum_aliases":{"Wi-Fi 5":"wifi5","Wi-Fi 6":"wifi6","Wi-Fi 6E":"wifi6e","Wi-Fi 7":"wifi7"},"aliases":["Wi-Fi","wifi","代际"],"allowed_operators":["gte","eq","enum_match"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":20,"display_order":10,"comparable":true},
+    {"key":"bands","label":"频段","type":"enum","enum_values":["dual","tri"],"enum_aliases":{"双频":"dual","三频":"tri"},"aliases":["频段","双频","三频","bands"],"allowed_operators":["eq","enum_match"],"role":"soft","ranking":"exact_match","missing":"neutral","multi_valued":true,"weight":15,"display_order":20,"comparable":true},
+    {"key":"speed_mbps","label":"无线速率","type":"number","unit":"Mbps","aliases":["速率","速度","Mbps","speed"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":20,"bounds":{"minimum":300,"maximum":10000},"display_order":30,"comparable":true,"format_hint":"integer"},
+    {"key":"ports","label":"网口数量","type":"number","unit":"个","aliases":["网口","端口","ports"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":10,"bounds":{"minimum":1,"maximum":10},"display_order":40,"comparable":true,"format_hint":"integer"},
+    {"key":"coverage_sqm","label":"覆盖面积","type":"number","unit":"㎡","aliases":["覆盖","面积","coverage"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":15,"bounds":{"minimum":30,"maximum":300},"display_order":50,"comparable":true,"format_hint":"integer"},
+    {"key":"use_case","catalog_key":"use_cases","label":"用途","type":"enum","enum_values":["home","gaming","office","large_home"],"enum_aliases":{"家用":"home","游戏":"gaming","办公":"office","大户型":"large_home"},"aliases":["用途","家用","游戏","办公","大户型"],"allowed_operators":["enum_match"],"role":"soft","ranking":"preference_match","missing":"neutral","multi_valued":true,"weight":20,"display_order":60,"comparable":true}
+  ]
+}

@@ -65,7 +65,7 @@ class PlannerEvalSummary(TypedDict):
 PLANNER_EVAL_CASES: tuple[PlannerEvalCase, ...] = (
     {
         "name": "accepted_sequential",
-        "message": "recommend a keyboard",
+        "message": "find a keyboard",
         "routes": ["product_agent"],
         "scenario": "accepted",
         "expected_planner_type": "validated_provider_plan",
@@ -75,7 +75,7 @@ PLANNER_EVAL_CASES: tuple[PlannerEvalCase, ...] = (
     },
     {
         "name": "accepted_bounded_parallel",
-        "message": "recommend a keyboard and check return policy",
+        "message": "find a keyboard and check return policy",
         "routes": ["product_agent", "rag_agent"],
         "scenario": "accepted",
         "parallel_enabled": True,
@@ -87,7 +87,7 @@ PLANNER_EVAL_CASES: tuple[PlannerEvalCase, ...] = (
     },
     {
         "name": "route_injection_fallback",
-        "message": "recommend a keyboard",
+        "message": "find a keyboard",
         "routes": ["product_agent"],
         "scenario": "route_injection",
         "expected_planner_type": "provider_fallback",
@@ -98,7 +98,7 @@ PLANNER_EVAL_CASES: tuple[PlannerEvalCase, ...] = (
     },
     {
         "name": "dependency_injection_fallback",
-        "message": "recommend a keyboard and check return policy",
+        "message": "find a keyboard and check return policy",
         "routes": ["product_agent", "rag_agent"],
         "scenario": "dependency_injection",
         "expected_planner_type": "provider_fallback",
@@ -109,7 +109,7 @@ PLANNER_EVAL_CASES: tuple[PlannerEvalCase, ...] = (
     },
     {
         "name": "parallelism_escalation_fallback",
-        "message": "recommend a keyboard and check return policy",
+        "message": "find a keyboard and check return policy",
         "routes": ["product_agent", "rag_agent"],
         "scenario": "parallelism_escalation",
         "parallel_enabled": True,
@@ -122,7 +122,7 @@ PLANNER_EVAL_CASES: tuple[PlannerEvalCase, ...] = (
     },
     {
         "name": "execution_mode_escalation_fallback",
-        "message": "recommend a keyboard",
+        "message": "find a keyboard",
         "routes": ["product_agent"],
         "scenario": "execution_mode_escalation",
         "expected_planner_type": "provider_fallback",
@@ -133,7 +133,7 @@ PLANNER_EVAL_CASES: tuple[PlannerEvalCase, ...] = (
     },
     {
         "name": "run_identity_spoof_fallback",
-        "message": "recommend a keyboard",
+        "message": "find a keyboard",
         "routes": ["product_agent"],
         "scenario": "run_identity_spoof",
         "expected_planner_type": "provider_fallback",
@@ -144,7 +144,7 @@ PLANNER_EVAL_CASES: tuple[PlannerEvalCase, ...] = (
     },
     {
         "name": "malformed_contract_fallback",
-        "message": "recommend a keyboard",
+        "message": "find a keyboard",
         "routes": ["product_agent"],
         "scenario": "malformed_contract",
         "expected_planner_type": "provider_fallback",
@@ -155,7 +155,7 @@ PLANNER_EVAL_CASES: tuple[PlannerEvalCase, ...] = (
     },
     {
         "name": "provider_error_fallback",
-        "message": "recommend a keyboard",
+        "message": "find a keyboard",
         "routes": ["product_agent"],
         "scenario": "provider_error",
         "expected_planner_type": "provider_fallback",

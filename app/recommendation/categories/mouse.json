@@ -1,0 +1,14 @@
+{
+  "code": "mouse",
+  "display_name": "鼠标",
+  "aliases": ["mouse", "鼠标", "游戏鼠标"],
+  "definition_version": "2026.08.24",
+  "display_fields": ["connectivity", "sensor_dpi", "buttons", "weight_g", "use_case"],
+  "attributes": [
+    {"key":"connectivity","label":"连接","type":"enum","enum_values":["wired","bluetooth","2.4g"],"enum_aliases":{"有线":"wired","蓝牙":"bluetooth","无线":"2.4g"},"aliases":["连接","connectivity"],"allowed_operators":["eq","enum_match"],"role":"hard","ranking":"exact_match","missing":"reject_if_hard","required":true,"weight":15,"display_order":10,"comparable":true},
+    {"key":"sensor_dpi","label":"DPI","type":"number","unit":"DPI","aliases":["DPI","dpi","传感器"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":20,"bounds":{"minimum":800,"maximum":30000},"display_order":20,"comparable":true,"format_hint":"integer"},
+    {"key":"buttons","label":"按键数","type":"number","unit":"个","aliases":["按键","buttons"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":10,"bounds":{"minimum":2,"maximum":20},"display_order":30,"comparable":true,"format_hint":"integer"},
+    {"key":"weight_g","label":"重量","type":"number","unit":"g","aliases":["重量","轻量","weight"],"allowed_operators":["lte","eq"],"default_operator":"lte","role":"soft","ranking":"lower_is_better","missing":"neutral","weight":20,"bounds":{"minimum":40,"maximum":180},"display_order":40,"comparable":true,"format_hint":"integer"},
+    {"key":"use_case","catalog_key":"use_cases","label":"用途","type":"enum","enum_values":["office","gaming","travel"],"enum_aliases":{"办公":"office","游戏":"gaming","出差":"travel"},"aliases":["用途","办公","游戏","出差"],"allowed_operators":["enum_match"],"role":"soft","ranking":"preference_match","missing":"neutral","multi_valued":true,"weight":15,"display_order":50,"comparable":true}
+  ]
+}

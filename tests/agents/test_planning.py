@@ -117,7 +117,7 @@ def test_validated_provider_planner_recompiles_accepted_proposal() -> None:
     )
     plan = planner.build_plan(
         ["product_agent", "rag_agent"],
-        message="recommend a keyboard and check return policy",
+        message="find a keyboard and check return policy",
         routing_reasons={"rag_agent": "matched_policy"},
         run_id="run-1",
         parallel_enabled=True,
@@ -180,7 +180,7 @@ def test_provider_planner_falls_back_when_proposal_exceeds_policy(
 
     plan = ValidatedProviderPlanner(provider).build_plan(
         ["product_agent", "rag_agent"],
-        message="recommend a keyboard and check return policy",
+        message="find a keyboard and check return policy",
         run_id="run-1",
         parallel_enabled=True,
         max_parallelism=2,
@@ -203,7 +203,7 @@ def test_provider_planner_falls_back_without_leaking_provider_error() -> None:
 
     plan = ValidatedProviderPlanner(failing_provider).build_plan(
         ["product_agent"],
-        message="recommend a keyboard",
+        message="find a keyboard",
     )
 
     assert plan.planner_type == "provider_fallback"
@@ -226,7 +226,7 @@ def test_supervisor_records_validated_planner_fallback_metadata() -> None:
 
     result = supervisor_node(
         {
-            "messages": [{"role": "user", "content": "recommend a keyboard"}],
+            "messages": [{"role": "user", "content": "find a keyboard"}],
             "user_id": "USER-001",
             "agent_steps": [],
             "safety_flags": [],
@@ -271,7 +271,7 @@ def test_langchain_planner_provider_uses_structured_plan_contract() -> None:
 
     proposal = provider(
         {
-            "message": "recommend a keyboard and check return policy",
+            "message": "find a keyboard and check return policy",
             "routes": ["product_agent", "rag_agent"],
             "routing_reasons": {},
             "baseline_plan": baseline.model_dump(mode="json"),
@@ -295,7 +295,7 @@ def test_llm_planner_factory_is_lazy_and_records_model_metadata() -> None:
     assert fake_model.structured_model is None
     plan = planner.build_plan(
         ["product_agent"],
-        message="recommend a keyboard",
+        message="find a keyboard",
         run_id="run-1",
     )
 

@@ -17,9 +17,8 @@ from app.db.models import Product
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CATALOG_PATH = PROJECT_ROOT / "data" / "catalog" / "laptop_catalog.json"
-DEFAULT_CATALOG_PATHS = (
-    DEFAULT_CATALOG_PATH,
-    PROJECT_ROOT / "data" / "catalog" / "monitor_catalog.json",
+DEFAULT_CATALOG_PATHS = tuple(
+    sorted((PROJECT_ROOT / "data" / "catalog").glob("*_catalog.json"), key=lambda path: path.name)
 )
 
 

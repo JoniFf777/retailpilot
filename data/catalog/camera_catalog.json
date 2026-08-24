@@ -1,0 +1,328 @@
+{
+    "seed_source":  "shopmind-camera-catalog",
+    "seed_version":  "2026.08.24",
+    "category":  {
+                     "code":  "camera",
+                     "name":  "Camera",
+                     "status":  "active"
+                 },
+    "attribute_definitions":  [
+                                  {
+                                      "code":  "sensor",
+                                      "name":  "Sensor",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  10
+                                  },
+                                  {
+                                      "code":  "resolution_mp",
+                                      "name":  "Resolution",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "MP",
+                                      "comparable":  true,
+                                      "display_order":  20
+                                  },
+                                  {
+                                      "code":  "video_resolution",
+                                      "name":  "Video",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  30
+                                  },
+                                  {
+                                      "code":  "stabilization",
+                                      "name":  "Stabilization",
+                                      "scope":  "spu",
+                                      "data_type":  "boolean",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  40
+                                  },
+                                  {
+                                      "code":  "lens_type",
+                                      "name":  "Lens",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  50
+                                  },
+                                  {
+                                      "code":  "use_cases",
+                                      "name":  "Use cases",
+                                      "scope":  "spu",
+                                      "data_type":  "string_list",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  60
+                                  }
+                              ],
+    "products":  [
+                     {
+                         "product_code":  "CAM-TRAVEL-01",
+                         "legacy_product_id":  "TECH-CAM-001",
+                         "brand":  "Vista",
+                         "name":  "Vista Travel M43",
+                         "description":  "Compact interchangeable-lens camera for travel.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "sensor":  "micro_four_thirds",
+                                            "lens_type":  "fixed",
+                                            "video_resolution":  "4k",
+                                            "stabilization":  true,
+                                            "use_cases":  [
+                                                              "travel"
+                                                          ],
+                                            "resolution_mp":  20
+                                        },
+                         "sku":  {
+                                     "sku_code":  "CAM-TRAVEL-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "2999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  10
+                                 }
+                     },
+                     {
+                         "product_code":  "CAM-TRAVEL-02",
+                         "legacy_product_id":  "TECH-CAM-002",
+                         "brand":  "Vista",
+                         "name":  "Vista Travel APS",
+                         "description":  "Light APS-C camera for travel photography.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "sensor":  "aps_c",
+                                            "lens_type":  "e_mount",
+                                            "video_resolution":  "4k",
+                                            "stabilization":  true,
+                                            "use_cases":  [
+                                                              "travel",
+                                                              "portrait"
+                                                          ],
+                                            "resolution_mp":  24
+                                        },
+                         "sku":  {
+                                     "sku_code":  "CAM-TRAVEL-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "4599.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  7
+                                 }
+                     },
+                     {
+                         "product_code":  "CAM-PORTRAIT-01",
+                         "legacy_product_id":  "TECH-CAM-003",
+                         "brand":  "Lumina",
+                         "name":  "Lumina Portrait",
+                         "description":  "Full-frame camera for portrait work.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "sensor":  "full_frame",
+                                            "lens_type":  "rf_mount",
+                                            "video_resolution":  "4k",
+                                            "stabilization":  true,
+                                            "use_cases":  [
+                                                              "portrait"
+                                                          ],
+                                            "resolution_mp":  33
+                                        },
+                         "sku":  {
+                                     "sku_code":  "CAM-PORTRAIT-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "8999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  5
+                                 }
+                     },
+                     {
+                         "product_code":  "CAM-PORTRAIT-02",
+                         "legacy_product_id":  "TECH-CAM-004",
+                         "brand":  "Lumina",
+                         "name":  "Lumina Portrait Pro",
+                         "description":  "High-resolution full-frame portrait camera.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "sensor":  "full_frame",
+                                            "lens_type":  "rf_mount",
+                                            "video_resolution":  "8k",
+                                            "stabilization":  true,
+                                            "use_cases":  [
+                                                              "portrait"
+                                                          ],
+                                            "resolution_mp":  60
+                                        },
+                         "sku":  {
+                                     "sku_code":  "CAM-PORTRAIT-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "14999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  2
+                                 }
+                     },
+                     {
+                         "product_code":  "CAM-VIDEO-01",
+                         "legacy_product_id":  "TECH-CAM-005",
+                         "brand":  "Motion",
+                         "name":  "Motion Cinema 4K",
+                         "description":  "Video-focused APS-C camera with stabilization.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "sensor":  "aps_c",
+                                            "lens_type":  "e_mount",
+                                            "video_resolution":  "4k",
+                                            "stabilization":  true,
+                                            "use_cases":  [
+                                                              "video"
+                                                          ],
+                                            "resolution_mp":  26
+                                        },
+                         "sku":  {
+                                     "sku_code":  "CAM-VIDEO-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "6299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  6
+                                 }
+                     },
+                     {
+                         "product_code":  "CAM-VIDEO-02",
+                         "legacy_product_id":  "TECH-CAM-006",
+                         "brand":  "Motion",
+                         "name":  "Motion Cinema 8K",
+                         "description":  "Premium video camera for production work.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "sensor":  "full_frame",
+                                            "lens_type":  "rf_mount",
+                                            "video_resolution":  "8k",
+                                            "stabilization":  true,
+                                            "use_cases":  [
+                                                              "video"
+                                                          ],
+                                            "resolution_mp":  45
+                                        },
+                         "sku":  {
+                                     "sku_code":  "CAM-VIDEO-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "11999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  3
+                                 }
+                     },
+                     {
+                         "product_code":  "CAM-WILD-01",
+                         "legacy_product_id":  "TECH-CAM-007",
+                         "brand":  "FieldView",
+                         "name":  "FieldView Wildlife",
+                         "description":  "Fast APS-C camera for wildlife photography.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "sensor":  "aps_c",
+                                            "lens_type":  "z_mount",
+                                            "video_resolution":  "4k",
+                                            "stabilization":  true,
+                                            "use_cases":  [
+                                                              "wildlife"
+                                                          ],
+                                            "resolution_mp":  32
+                                        },
+                         "sku":  {
+                                     "sku_code":  "CAM-WILD-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "7299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  4
+                                 }
+                     },
+                     {
+                         "product_code":  "CAM-ENTRY-01",
+                         "legacy_product_id":  "TECH-CAM-008",
+                         "brand":  "FieldView",
+                         "name":  "FieldView Entry",
+                         "description":  "Entry camera for learning photography.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "sensor":  "micro_four_thirds",
+                                            "lens_type":  "fixed",
+                                            "video_resolution":  "1080p",
+                                            "stabilization":  false,
+                                            "use_cases":  [
+                                                              "travel"
+                                                          ],
+                                            "resolution_mp":  16
+                                        },
+                         "sku":  {
+                                     "sku_code":  "CAM-ENTRY-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1599.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  0
+                                 }
+                     },
+                     {
+                         "product_code":  "CAM-ENTRY-02",
+                         "legacy_product_id":  "TECH-CAM-009",
+                         "brand":  "SnapLab",
+                         "name":  "SnapLab Compact",
+                         "description":  "Small fixed-lens camera for casual travel.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "resolution_mp":  20,
+                                            "video_resolution":  "1080p",
+                                            "sensor":  "micro_four_thirds",
+                                            "use_cases":  [
+                                                              "travel"
+                                                          ],
+                                            "stabilization":  false
+                                        },
+                         "sku":  {
+                                     "sku_code":  "CAM-ENTRY-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  13
+                                 }
+                     }
+                 ]
+}

@@ -46,7 +46,7 @@ class RouterEvalSummary(TypedDict):
 ROUTER_EVAL_CASES: tuple[RouterEvalCase, ...] = (
     {
         "name": "product_recommendation",
-        "message": "推荐一个适合办公的键盘",
+        "message": "查找一个适合办公的键盘",
         "user_id": "USER-001",
         "expected_routes": ["product_agent"],
     },
@@ -58,7 +58,7 @@ ROUTER_EVAL_CASES: tuple[RouterEvalCase, ...] = (
     },
     {
         "name": "preference_with_user",
-        "message": "根据我的偏好推荐一个显示器",
+        "message": "根据我的偏好查找一个显示器",
         "user_id": "USER-001",
         "expected_routes": ["product_agent", "preference_agent"],
     },
@@ -70,7 +70,7 @@ ROUTER_EVAL_CASES: tuple[RouterEvalCase, ...] = (
     },
     {
         "name": "mixed_product_policy_preference",
-        "message": "结合我的偏好推荐键盘，并看看退货政策",
+        "message": "结合我的偏好查找键盘，并看看退货政策",
         "user_id": "USER-001",
         "expected_routes": ["product_agent", "rag_agent", "preference_agent"],
     },

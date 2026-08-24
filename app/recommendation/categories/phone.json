@@ -1,0 +1,16 @@
+{
+  "code": "phone",
+  "display_name": "手机",
+  "aliases": ["phone", "smartphone", "手机", "智能手机"],
+  "definition_version": "2026.08.24",
+  "display_fields": ["memory_min_gb", "storage_min_gb", "battery_min_mah", "screen_min_inches", "connectivity", "use_case", "camera_mp"],
+  "attributes": [
+    {"key":"memory_min_gb","catalog_key":"memory_gb","label":"内存","type":"number","unit":"GB","aliases":["内存","ram","memory"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":15,"bounds":{"minimum":4,"maximum":32},"display_order":10,"comparable":true,"format_hint":"integer"},
+    {"key":"storage_min_gb","catalog_key":"storage_gb","label":"存储","type":"number","unit":"GB","aliases":["存储","storage"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":15,"bounds":{"minimum":64,"maximum":1024},"display_order":20,"comparable":true,"format_hint":"integer"},
+    {"key":"battery_min_mah","catalog_key":"battery_mah","label":"电池","type":"number","unit":"mAh","aliases":["电池","battery"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":10,"bounds":{"minimum":2500,"maximum":7000},"display_order":30,"comparable":true,"format_hint":"integer"},
+    {"key":"screen_min_inches","catalog_key":"screen_inches","label":"屏幕","type":"number","unit":"英寸","aliases":["屏幕","英寸","寸","screen"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":10,"bounds":{"minimum":5,"maximum":8},"display_order":40,"comparable":true,"format_hint":"decimal"},
+    {"key":"connectivity","label":"网络连接","type":"enum","enum_values":["4g","5g"],"enum_aliases":{"4G":"4g","5G":"5g"},"aliases":["网络","连接","connectivity"],"allowed_operators":["eq","enum_match"],"role":"soft","ranking":"exact_match","missing":"neutral","weight":10,"display_order":50,"comparable":true},
+    {"key":"use_case","catalog_key":"use_cases","label":"用途","type":"enum","enum_values":["everyday","gaming","photo","business","study"],"enum_aliases":{"日常":"everyday","游戏":"gaming","拍照":"photo","商务":"business","学习":"study"},"aliases":["用途","日常","游戏","拍照","商务","学习","use case"],"allowed_operators":["enum_match"],"role":"soft","ranking":"preference_match","missing":"neutral","multi_valued":true,"weight":20,"display_order":60,"comparable":true},
+    {"key":"camera_mp","label":"主摄像素","type":"number","unit":"MP","aliases":["像素","摄像头","camera"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":10,"bounds":{"minimum":8,"maximum":200},"display_order":70,"comparable":true,"format_hint":"integer"}
+  ]
+}

@@ -70,7 +70,7 @@ def test_monitor_seed_contains_real_second_category_attributes() -> None:
     assert monitor.attributes_json["resolution"] == "4k"
 
 
-def test_default_laptop_monitor_seed_is_idempotent_and_preserves_inventory() -> None:
+def test_default_electronics_seed_is_idempotent_and_preserves_inventory() -> None:
     session = make_session()
 
     first = run_seed(session_factory=lambda: session)
@@ -82,10 +82,10 @@ def test_default_laptop_monitor_seed_is_idempotent_and_preserves_inventory() -> 
 
     second = run_seed(session_factory=lambda: session)
 
-    assert first.inserted["products"] == 16
-    assert first.inserted["skus"] == 16
+    assert first.inserted["products"] == 88
+    assert first.inserted["skus"] == 88
     assert second.inserted["products"] == 0
     assert second.inserted["skus"] == 0
-    assert len(session.scalars(select(CatalogProduct)).all()) == 16
-    assert len(session.scalars(select(CatalogSku)).all()) == 16
+    assert len(session.scalars(select(CatalogProduct)).all()) == 88
+    assert len(session.scalars(select(CatalogSku)).all()) == 88
     assert session.get(CatalogInventory, inventory_sku_id).on_hand_quantity == 2

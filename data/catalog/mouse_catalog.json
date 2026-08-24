@@ -1,0 +1,311 @@
+{
+    "seed_source":  "shopmind-mouse-catalog",
+    "seed_version":  "2026.08.24",
+    "category":  {
+                     "code":  "mouse",
+                     "name":  "Mouse",
+                     "status":  "active"
+                 },
+    "attribute_definitions":  [
+                                  {
+                                      "code":  "connectivity",
+                                      "name":  "Connectivity",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  10
+                                  },
+                                  {
+                                      "code":  "sensor_dpi",
+                                      "name":  "Sensor DPI",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "DPI",
+                                      "comparable":  true,
+                                      "display_order":  20
+                                  },
+                                  {
+                                      "code":  "buttons",
+                                      "name":  "Buttons",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "count",
+                                      "comparable":  true,
+                                      "display_order":  30
+                                  },
+                                  {
+                                      "code":  "weight_g",
+                                      "name":  "Weight",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "g",
+                                      "comparable":  true,
+                                      "display_order":  40
+                                  },
+                                  {
+                                      "code":  "use_cases",
+                                      "name":  "Use cases",
+                                      "scope":  "spu",
+                                      "data_type":  "string_list",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  50
+                                  }
+                              ],
+    "products":  [
+                     {
+                         "product_code":  "MOU-OFFICE-01",
+                         "legacy_product_id":  "TECH-MOU-001",
+                         "brand":  "Point",
+                         "name":  "Point Office Wired",
+                         "description":  "Light wired mouse for office work.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "weight_g":  88,
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "connectivity":  "wired",
+                                            "buttons":  5,
+                                            "sensor_dpi":  1600
+                                        },
+                         "sku":  {
+                                     "sku_code":  "MOU-OFFICE-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "99.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  35
+                                 }
+                     },
+                     {
+                         "product_code":  "MOU-OFFICE-02",
+                         "legacy_product_id":  "TECH-MOU-002",
+                         "brand":  "Point",
+                         "name":  "Point Silent",
+                         "description":  "Quiet wireless mouse for shared offices.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "weight_g":  76,
+                                            "use_cases":  [
+                                                              "office",
+                                                              "travel"
+                                                          ],
+                                            "connectivity":  "bluetooth",
+                                            "buttons":  5,
+                                            "sensor_dpi":  2400
+                                        },
+                         "sku":  {
+                                     "sku_code":  "MOU-OFFICE-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "179.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  20
+                                 }
+                     },
+                     {
+                         "product_code":  "MOU-GAME-01",
+                         "legacy_product_id":  "TECH-MOU-003",
+                         "brand":  "Swift",
+                         "name":  "Swift 8K",
+                         "description":  "High-DPI wired gaming mouse.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "weight_g":  72,
+                                            "use_cases":  [
+                                                              "gaming"
+                                                          ],
+                                            "connectivity":  "wired",
+                                            "buttons":  8,
+                                            "sensor_dpi":  8000
+                                        },
+                         "sku":  {
+                                     "sku_code":  "MOU-GAME-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "299.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  16
+                                 }
+                     },
+                     {
+                         "product_code":  "MOU-GAME-02",
+                         "legacy_product_id":  "TECH-MOU-004",
+                         "brand":  "Swift",
+                         "name":  "Swift UltraLight",
+                         "description":  "Ultra-light wireless gaming mouse.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "weight_g":  55,
+                                            "use_cases":  [
+                                                              "gaming"
+                                                          ],
+                                            "connectivity":  "2.4g",
+                                            "buttons":  6,
+                                            "sensor_dpi":  26000
+                                        },
+                         "sku":  {
+                                     "sku_code":  "MOU-GAME-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "699.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  8
+                                 }
+                     },
+                     {
+                         "product_code":  "MOU-PRO-01",
+                         "legacy_product_id":  "TECH-MOU-005",
+                         "brand":  "Vector",
+                         "name":  "Vector Pro",
+                         "description":  "Premium ergonomic mouse for office and creative work.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "weight_g":  105,
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "connectivity":  "bluetooth",
+                                            "buttons":  7,
+                                            "sensor_dpi":  4000
+                                        },
+                         "sku":  {
+                                     "sku_code":  "MOU-PRO-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "499.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  10
+                                 }
+                     },
+                     {
+                         "product_code":  "MOU-TRAVEL-01",
+                         "legacy_product_id":  "TECH-MOU-006",
+                         "brand":  "PocketPoint",
+                         "name":  "PocketPoint",
+                         "description":  "Compact travel mouse.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "weight_g":  62,
+                                            "use_cases":  [
+                                                              "travel"
+                                                          ],
+                                            "connectivity":  "bluetooth",
+                                            "buttons":  4,
+                                            "sensor_dpi":  1600
+                                        },
+                         "sku":  {
+                                     "sku_code":  "MOU-TRAVEL-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "129.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  24
+                                 }
+                     },
+                     {
+                         "product_code":  "MOU-TRAVEL-02",
+                         "legacy_product_id":  "TECH-MOU-007",
+                         "brand":  "PocketPoint",
+                         "name":  "PocketPoint 2.4G",
+                         "description":  "Compact receiver-based travel mouse.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "weight_g":  68,
+                                            "use_cases":  [
+                                                              "travel"
+                                                          ],
+                                            "connectivity":  "2.4g",
+                                            "buttons":  5,
+                                            "sensor_dpi":  2000
+                                        },
+                         "sku":  {
+                                     "sku_code":  "MOU-TRAVEL-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "149.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  0
+                                 }
+                     },
+                     {
+                         "product_code":  "MOU-MAC-01",
+                         "legacy_product_id":  "TECH-MOU-008",
+                         "brand":  "Glass",
+                         "name":  "Glass Track Mouse",
+                         "description":  "Smooth Bluetooth mouse for design desks.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "weight_g":  92,
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "connectivity":  "bluetooth",
+                                            "buttons":  4,
+                                            "sensor_dpi":  3200
+                                        },
+                         "sku":  {
+                                     "sku_code":  "MOU-MAC-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "399.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  7
+                                 }
+                     },
+                     {
+                         "product_code":  "MOU-GAME-03",
+                         "legacy_product_id":  "TECH-MOU-009",
+                         "brand":  "Arena",
+                         "name":  "Arena MMO",
+                         "description":  "Button-rich mouse for MMO gaming.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "weight_g":  98,
+                                            "use_cases":  [
+                                                              "gaming"
+                                                          ],
+                                            "connectivity":  "2.4g",
+                                            "buttons":  12,
+                                            "sensor_dpi":  18000
+                                        },
+                         "sku":  {
+                                     "sku_code":  "MOU-GAME-03-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "549.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  5
+                                 }
+                     }
+                 ]
+}

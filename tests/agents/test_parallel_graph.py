@@ -25,7 +25,7 @@ from app.runtime import (
 )
 
 
-MESSAGE = "recommend a keyboard with return policy based on my preference"
+MESSAGE = "find a keyboard with return policy based on my preference"
 
 
 @tool("get_user_preferences")
@@ -388,7 +388,7 @@ def test_parallel_graph_honors_pre_execution_cancellation() -> None:
 def test_parallel_opt_in_keeps_single_route_on_sequential_path() -> None:
     context = _context(parallel_enabled=True, max_workers=3)
 
-    result = _invoke(context, message="recommend a keyboard")
+    result = _invoke(context, message="find a keyboard")
 
     assert result["routes"] == ["product_agent"]
     assert result["execution_plan"]["execution_mode"] == "sequential"
@@ -441,7 +441,7 @@ def test_compiled_graph_accepts_validated_planner_boundary() -> None:
 
     result = _invoke(
         context,
-        message="recommend a keyboard",
+        message="find a keyboard",
         agent_planner=planner,
     )
 

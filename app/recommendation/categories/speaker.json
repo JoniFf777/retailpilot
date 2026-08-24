@@ -1,0 +1,14 @@
+{
+  "code": "speaker",
+  "display_name": "音箱",
+  "aliases": ["speaker", "音箱", "蓝牙音箱"],
+  "definition_version": "2026.08.24",
+  "display_fields": ["connectivity", "power_w", "battery_hours", "portable", "use_case"],
+  "attributes": [
+    {"key":"connectivity","label":"连接","type":"enum","enum_values":["bluetooth","wifi","wired"],"enum_aliases":{"蓝牙":"bluetooth","WiFi":"wifi","有线":"wired"},"aliases":["连接","connectivity"],"allowed_operators":["eq","enum_match"],"role":"hard","ranking":"exact_match","missing":"reject_if_hard","required":true,"weight":15,"display_order":10,"comparable":true},
+    {"key":"power_w","label":"功率","type":"number","unit":"W","aliases":["功率","power"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":20,"bounds":{"minimum":3,"maximum":200},"display_order":20,"comparable":true,"format_hint":"integer"},
+    {"key":"battery_hours","label":"续航","type":"number","unit":"小时","aliases":["续航","电池","battery"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"soft","ranking":"higher_is_better","missing":"neutral","weight":15,"bounds":{"minimum":2,"maximum":40},"display_order":30,"comparable":true,"format_hint":"decimal"},
+    {"key":"portable","label":"便携","type":"boolean","aliases":["便携","portable"],"allowed_operators":["eq"],"role":"soft","ranking":"exact_match","missing":"neutral","weight":15,"display_order":40,"comparable":true},
+    {"key":"use_case","catalog_key":"use_cases","label":"用途","type":"enum","enum_values":["home","party","travel","office"],"enum_aliases":{"家用":"home","聚会":"party","出差":"travel","办公":"office"},"aliases":["用途","家用","聚会","出差","办公"],"allowed_operators":["enum_match"],"role":"soft","ranking":"preference_match","missing":"neutral","multi_valued":true,"weight":20,"display_order":50,"comparable":true}
+  ]
+}

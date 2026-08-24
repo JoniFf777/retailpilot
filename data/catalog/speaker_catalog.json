@@ -1,0 +1,311 @@
+{
+    "seed_source":  "shopmind-speaker-catalog",
+    "seed_version":  "2026.08.24",
+    "category":  {
+                     "code":  "speaker",
+                     "name":  "Speaker",
+                     "status":  "active"
+                 },
+    "attribute_definitions":  [
+                                  {
+                                      "code":  "connectivity",
+                                      "name":  "Connectivity",
+                                      "scope":  "spu",
+                                      "data_type":  "string",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  10
+                                  },
+                                  {
+                                      "code":  "power_w",
+                                      "name":  "Power",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "W",
+                                      "comparable":  true,
+                                      "display_order":  20
+                                  },
+                                  {
+                                      "code":  "battery_hours",
+                                      "name":  "Battery",
+                                      "scope":  "spu",
+                                      "data_type":  "integer",
+                                      "unit":  "hours",
+                                      "comparable":  true,
+                                      "display_order":  30
+                                  },
+                                  {
+                                      "code":  "portable",
+                                      "name":  "Portable",
+                                      "scope":  "spu",
+                                      "data_type":  "boolean",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  40
+                                  },
+                                  {
+                                      "code":  "use_cases",
+                                      "name":  "Use cases",
+                                      "scope":  "spu",
+                                      "data_type":  "string_list",
+                                      "unit":  null,
+                                      "comparable":  true,
+                                      "display_order":  50
+                                  }
+                              ],
+    "products":  [
+                     {
+                         "product_code":  "SPK-HOME-01",
+                         "legacy_product_id":  "TECH-SPK-001",
+                         "brand":  "EchoNest",
+                         "name":  "EchoNest Mini",
+                         "description":  "Compact wired speaker for home listening.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "battery_hours":  4,
+                                            "portable":  false,
+                                            "use_cases":  [
+                                                              "home"
+                                                          ],
+                                            "connectivity":  "wired",
+                                            "power_w":  10
+                                        },
+                         "sku":  {
+                                     "sku_code":  "SPK-HOME-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "199.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  25
+                                 }
+                     },
+                     {
+                         "product_code":  "SPK-HOME-02",
+                         "legacy_product_id":  "TECH-SPK-002",
+                         "brand":  "EchoNest",
+                         "name":  "EchoNest Room",
+                         "description":  "Balanced home speaker for everyday music.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "battery_hours":  8,
+                                            "portable":  false,
+                                            "use_cases":  [
+                                                              "home",
+                                                              "office"
+                                                          ],
+                                            "connectivity":  "wifi",
+                                            "power_w":  40
+                                        },
+                         "sku":  {
+                                     "sku_code":  "SPK-HOME-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "699.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  12
+                                 }
+                     },
+                     {
+                         "product_code":  "SPK-TRAVEL-01",
+                         "legacy_product_id":  "TECH-SPK-003",
+                         "brand":  "BoomGo",
+                         "name":  "BoomGo Pocket",
+                         "description":  "Portable Bluetooth speaker for travel.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "battery_hours":  12,
+                                            "portable":  true,
+                                            "use_cases":  [
+                                                              "travel"
+                                                          ],
+                                            "connectivity":  "bluetooth",
+                                            "power_w":  12
+                                        },
+                         "sku":  {
+                                     "sku_code":  "SPK-TRAVEL-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "249.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  20
+                                 }
+                     },
+                     {
+                         "product_code":  "SPK-TRAVEL-02",
+                         "legacy_product_id":  "TECH-SPK-004",
+                         "brand":  "BoomGo",
+                         "name":  "BoomGo Outdoor",
+                         "description":  "Rugged portable speaker for parties.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "battery_hours":  20,
+                                            "portable":  true,
+                                            "use_cases":  [
+                                                              "party",
+                                                              "travel"
+                                                          ],
+                                            "connectivity":  "bluetooth",
+                                            "power_w":  30
+                                        },
+                         "sku":  {
+                                     "sku_code":  "SPK-TRAVEL-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "499.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  14
+                                 }
+                     },
+                     {
+                         "product_code":  "SPK-PARTY-01",
+                         "legacy_product_id":  "TECH-SPK-005",
+                         "brand":  "BassBox",
+                         "name":  "BassBox 100",
+                         "description":  "High-power speaker for parties.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "battery_hours":  10,
+                                            "portable":  true,
+                                            "use_cases":  [
+                                                              "party"
+                                                          ],
+                                            "connectivity":  "bluetooth",
+                                            "power_w":  100
+                                        },
+                         "sku":  {
+                                     "sku_code":  "SPK-PARTY-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  6
+                                 }
+                     },
+                     {
+                         "product_code":  "SPK-PARTY-02",
+                         "legacy_product_id":  "TECH-SPK-006",
+                         "brand":  "BassBox",
+                         "name":  "BassBox 200",
+                         "description":  "Large high-power speaker for events.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "battery_hours":  8,
+                                            "portable":  false,
+                                            "use_cases":  [
+                                                              "party"
+                                                          ],
+                                            "connectivity":  "bluetooth",
+                                            "power_w":  200
+                                        },
+                         "sku":  {
+                                     "sku_code":  "SPK-PARTY-02-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1599.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  3
+                                 }
+                     },
+                     {
+                         "product_code":  "SPK-OFFICE-01",
+                         "legacy_product_id":  "TECH-SPK-007",
+                         "brand":  "DeskTone",
+                         "name":  "DeskTone",
+                         "description":  "Small desk speaker for office calls.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "battery_hours":  6,
+                                            "portable":  false,
+                                            "use_cases":  [
+                                                              "office"
+                                                          ],
+                                            "connectivity":  "wifi",
+                                            "power_w":  20
+                                        },
+                         "sku":  {
+                                     "sku_code":  "SPK-OFFICE-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "399.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  9
+                                 }
+                     },
+                     {
+                         "product_code":  "SPK-MINI-01",
+                         "legacy_product_id":  "TECH-SPK-008",
+                         "brand":  "MiniBoom",
+                         "name":  "MiniBoom",
+                         "description":  "Entry portable speaker.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "portable":  true,
+                                            "use_cases":  [
+                                                              "travel"
+                                                          ],
+                                            "connectivity":  "bluetooth",
+                                            "power_w":  5
+                                        },
+                         "sku":  {
+                                     "sku_code":  "SPK-MINI-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "99.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  0
+                                 }
+                     },
+                     {
+                         "product_code":  "SPK-HIFI-01",
+                         "legacy_product_id":  "TECH-SPK-009",
+                         "brand":  "RoomLab",
+                         "name":  "RoomLab Stereo",
+                         "description":  "Premium Wi-Fi speaker for home listening.",
+                         "sale_status":  "active",
+                         "attributes":  {
+                                            "battery_hours":  0,
+                                            "portable":  false,
+                                            "use_cases":  [
+                                                              "home"
+                                                          ],
+                                            "connectivity":  "wifi",
+                                            "power_w":  80
+                                        },
+                         "sku":  {
+                                     "sku_code":  "SPK-HIFI-01-SKU",
+                                     "name":  "Standard",
+                                     "money_amount":  "1999.00",
+                                     "currency":  "CNY",
+                                     "sale_status":  "active",
+                                     "variant_attributes":  {
+
+                                                            },
+                                     "inventory":  5
+                                 }
+                     }
+                 ]
+}

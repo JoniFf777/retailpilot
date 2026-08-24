@@ -56,7 +56,7 @@ def monitor_candidate(
 
 def test_category_gate_resolves_monitor_and_rejects_unsupported_or_ambiguous() -> None:
     monitor = classify_recommendation_request("推荐一台 27 英寸 4K 显示器")
-    unsupported = classify_recommendation_request("推荐一部手机")
+    unsupported = classify_recommendation_request("推荐一台打印机")
     ambiguous = classify_recommendation_request("推荐一个商品")
 
     assert monitor.mode == "structured_recommendation"

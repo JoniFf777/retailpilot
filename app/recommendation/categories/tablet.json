@@ -1,0 +1,15 @@
+{
+  "code": "tablet",
+  "display_name": "平板电脑",
+  "aliases": ["tablet", "平板", "平板电脑"],
+  "definition_version": "2026.08.24",
+  "display_fields": ["memory_min_gb", "storage_min_gb", "screen_min_inches", "connectivity", "portability_kg", "use_case"],
+  "attributes": [
+    {"key":"memory_min_gb","catalog_key":"memory_gb","label":"内存","type":"number","unit":"GB","aliases":["内存","ram","memory"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":15,"bounds":{"minimum":4,"maximum":24},"display_order":10,"comparable":true,"format_hint":"integer"},
+    {"key":"storage_min_gb","catalog_key":"storage_gb","label":"存储","type":"number","unit":"GB","aliases":["存储","storage"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":15,"bounds":{"minimum":64,"maximum":1024},"display_order":20,"comparable":true,"format_hint":"integer"},
+    {"key":"screen_min_inches","catalog_key":"screen_inches","label":"屏幕","type":"number","unit":"英寸","aliases":["屏幕","英寸","寸","screen"],"allowed_operators":["gte","eq"],"default_operator":"gte","role":"hard","ranking":"higher_is_better","missing":"reject_if_hard","required":true,"weight":10,"bounds":{"minimum":8,"maximum":15},"display_order":30,"comparable":true,"format_hint":"decimal"},
+    {"key":"connectivity","label":"连接方式","type":"enum","enum_values":["wifi","cellular"],"enum_aliases":{"WiFi":"wifi","蜂窝":"cellular","5G":"cellular"},"aliases":["连接","网络","wifi","蜂窝"],"allowed_operators":["eq","enum_match"],"role":"soft","ranking":"exact_match","missing":"neutral","weight":10,"display_order":40,"comparable":true},
+    {"key":"portability_kg","label":"重量","type":"number","unit":"kg","aliases":["重量","便携","轻薄","weight"],"allowed_operators":["lte","eq"],"default_operator":"lte","role":"soft","ranking":"lower_is_better","missing":"neutral","weight":15,"bounds":{"minimum":0.3,"maximum":1.2},"display_order":50,"comparable":true,"format_hint":"decimal"},
+    {"key":"use_case","catalog_key":"use_cases","label":"用途","type":"enum","enum_values":["study","office","drawing","entertainment","travel"],"enum_aliases":{"学习":"study","办公":"office","绘画":"drawing","娱乐":"entertainment","出差":"travel"},"aliases":["用途","学习","办公","绘画","娱乐","出差"],"allowed_operators":["enum_match"],"role":"soft","ranking":"preference_match","missing":"neutral","multi_valued":true,"weight":20,"display_order":60,"comparable":true}
+  ]
+}

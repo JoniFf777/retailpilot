@@ -34,7 +34,7 @@ def test_product_adapter_invokes_existing_specialist_through_typed_task() -> Non
         recipient="product_agent",
         intent="product_read",
         input_data=ProductAgentTaskInput(
-            message="recommend a keyboard",
+            message="find a keyboard",
             tool_calls=[],
             executed_routes=[],
             agent_steps=[],
@@ -73,7 +73,7 @@ def test_product_graph_bridge_accepts_transport_neutral_adapter() -> None:
     adapter = ProtocolProductAdapter()
     output = product_agent_adapter_node(
         {
-            "messages": [{"role": "user", "content": "recommend a keyboard"}],
+            "messages": [{"role": "user", "content": "find a keyboard"}],
             "user_id": "user-1",
             "thread_id": "thread-1",
             "tool_calls": [],

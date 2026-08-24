@@ -1,0 +1,15 @@
+{
+  "code": "keyboard",
+  "display_name": "键盘",
+  "aliases": ["keyboard", "键盘", "机械键盘"],
+  "definition_version": "2026.08.24",
+  "display_fields": ["layout", "switch_type", "connectivity", "form_factor", "backlight", "use_case"],
+  "attributes": [
+    {"key":"layout","label":"布局","type":"enum","enum_values":["us","uk","jp"],"enum_aliases":{"美式":"us","英式":"uk","日式":"jp"},"aliases":["布局","layout"],"allowed_operators":["eq","enum_match"],"role":"hard","ranking":"exact_match","missing":"reject_if_hard","required":true,"weight":15,"display_order":10,"comparable":true},
+    {"key":"switch_type","label":"轴体","type":"enum","enum_values":["linear","tactile","clicky","scissor"],"enum_aliases":{"线性":"linear","段落":"tactile","点击":"clicky","剪刀脚":"scissor"},"aliases":["轴体","switch"],"allowed_operators":["eq","enum_match"],"role":"soft","ranking":"exact_match","missing":"neutral","weight":20,"display_order":20,"comparable":true},
+    {"key":"connectivity","label":"连接","type":"enum","enum_values":["wired","bluetooth","2.4g"],"enum_aliases":{"有线":"wired","蓝牙":"bluetooth","无线":"2.4g"},"aliases":["连接","connectivity"],"allowed_operators":["eq","enum_match"],"role":"hard","ranking":"exact_match","missing":"reject_if_hard","required":true,"weight":15,"display_order":30,"comparable":true},
+    {"key":"form_factor","label":"配列","type":"enum","enum_values":["full","tkl","75","60"],"enum_aliases":{"全尺寸":"full","87键":"tkl","75%":"75","60%":"60"},"aliases":["配列","尺寸","form factor"],"allowed_operators":["eq","enum_match"],"role":"soft","ranking":"exact_match","missing":"neutral","weight":15,"display_order":40,"comparable":true},
+    {"key":"backlight","label":"背光","type":"boolean","aliases":["背光","backlight"],"allowed_operators":["eq"],"role":"soft","ranking":"exact_match","missing":"deterministic_penalty","missing_penalty":"0.25","weight":10,"display_order":50,"comparable":true},
+    {"key":"use_case","catalog_key":"use_cases","label":"用途","type":"enum","enum_values":["office","gaming","travel"],"enum_aliases":{"办公":"office","游戏":"gaming","出差":"travel"},"aliases":["用途","办公","游戏","出差"],"allowed_operators":["enum_match"],"role":"soft","ranking":"preference_match","missing":"neutral","multi_valued":true,"weight":15,"display_order":60,"comparable":true}
+  ]
+}

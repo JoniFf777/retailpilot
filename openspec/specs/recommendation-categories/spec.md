@@ -22,6 +22,10 @@ The structured recommendation gate SHALL resolve category intent through the ser
 - **WHEN** a recommendation request explicitly names a monitor/display and contains recommendation intent
 - **THEN** the gate SHALL return a machine-readable Monitor structured recommendation decision and SHALL not route the request through Laptop semantics
 
+#### Scenario: Each new electronics category resolves
+- **WHEN** a request explicitly identifies Phone, Tablet, Keyboard, Mouse, Headphones, Speaker, Camera, or Router through a registered alias/code
+- **THEN** the gate SHALL return the canonical Registry code and the generic structured recommendation path
+
 #### Scenario: Ambiguous category requests clarification
 - **WHEN** a request contains no reliable category or conflicting registered category signals
 - **THEN** the structured result SHALL be `clarification_required` with `category_ambiguous`, no catalog retrieval, and no Laptop fallback

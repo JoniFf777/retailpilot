@@ -30,7 +30,7 @@ from app.runtime import (
 from app.runtime.contracts import utc_now
 
 
-EVAL_MESSAGE = "recommend a keyboard with return policy based on my preference"
+EVAL_MESSAGE = "find a keyboard with return policy based on my preference"
 
 TrajectoryScenario = Literal[
     "completed",

@@ -54,6 +54,14 @@ Every active managed recommendation candidate SHALL provide attributes required 
 - **WHEN** an active recommendation candidate omits a category hard-required attribute or uses the wrong declared type
 - **THEN** the validator SHALL fail with the category and attribute code, and recommendation code SHALL not guess a replacement value
 
+#### Scenario: All ten categories pass definition validation
+- **WHEN** managed Laptop, Monitor, Phone, Tablet, Keyboard, Mouse, Headphones, Speaker, Camera, and Router seed rows are validated
+- **THEN** every hard-required field SHALL have the declared type and every enum value SHALL be valid
+
+#### Scenario: Missing optional soft field is allowed deterministically
+- **WHEN** an active candidate omits a definition-declared optional soft field
+- **THEN** validation SHALL allow it and recommendation ranking SHALL use the definition's missing semantics
+
 ### Requirement: Managed Catalog data SHALL cover deterministic recommendation scenarios
 
 The managed fixtures SHALL provide multiple meaningful price bands and use cases for currently managed Laptop and Monitor data, multiple eligible candidates, no-match conditions, unavailable candidates, and close-score cases for deterministic ranking tests. Exact item counts SHALL remain data/report facts rather than permanent capability requirements.
@@ -69,6 +77,10 @@ The managed fixtures SHALL provide multiple meaningful price bands and use cases
 #### Scenario: Close candidates remain deterministically ordered
 - **WHEN** multiple eligible candidates have equal or near-equal generic scores
 - **THEN** the deterministic ranking and stable tie-break SHALL produce the same result order on repeated evaluation
+
+#### Scenario: New category coverage is meaningful
+- **WHEN** a new category fixture set is evaluated
+- **THEN** it SHALL expose multiple deterministic recommendation outcomes including recommended, no-match, unavailable filtering, soft preference ordering, and stable ties
 
 ### Requirement: Seed execution SHALL be idempotent and non-destructive
 
