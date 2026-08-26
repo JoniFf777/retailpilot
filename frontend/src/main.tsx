@@ -7,6 +7,7 @@ import "./styles/cart.css";
 import "./styles/checkout.css";
 import "./styles/orders.css";
 import "./styles/global.css";
+import "./styles/catalog.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode><AppProviders><RouterProvider router={router} /></AppProviders></StrictMode>,

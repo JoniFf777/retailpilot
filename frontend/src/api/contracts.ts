@@ -83,3 +83,12 @@ export type ApiErrorBody = components["schemas"]["HTTPValidationError"];
 
 export type HealthResponse = operations["health_check_api_health_get"]["responses"][200]["content"]["application/json"];
 export type ReadinessResponse = operations["deployment_readiness_health_check_api_health_readiness_get"]["responses"][200]["content"]["application/json"];
+export type CatalogCategoryView = components["schemas"]["CatalogCategoryView"];
+export type CatalogCategoryListResponse = components["schemas"]["CatalogCategoryListResponse"];
+export type CatalogSpecificationView = components["schemas"]["CatalogSpecificationView"];
+export type CatalogSkuView = components["schemas"]["CatalogSkuView"];
+export type CatalogProductSummary = components["schemas"]["CatalogProductSummary"];
+export type CatalogProductDetail = components["schemas"]["CatalogProductDetail"];
+export type CatalogProductListResponse = components["schemas"]["CatalogProductListResponse"];
+export type CatalogErrorResponse = components["schemas"]["CatalogErrorResponse"];
+export type CatalogBrowseAddToCartPendingActionRequest = components["schemas"]["CatalogBrowseAddToCartPendingActionRequest"];

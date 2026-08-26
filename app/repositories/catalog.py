@@ -54,6 +54,55 @@ def list_active_skus(
     return candidates
 
 
+def list_catalog_product_rows(
+    session: Session,
+    *,
+    category_code: str | None = None,
+    product_code: str | None = None,
+) -> list[tuple[CatalogProduct, CatalogSku, CatalogInventory | None]]:
+    """Return active Catalog rows for read-only browse projections.
+
+    Unlike recommendation retrieval this deliberately keeps active SKUs with
+    zero or missing inventory so the browse surface can truthfully show them
+    as unavailable.  Callers must project the rows through Registry metadata.
+    """
+
+    statement = (
+        select(CatalogProduct, CatalogSku, CatalogInventory)
+        .join(CatalogProduct.category)
+        .join(CatalogSku, CatalogSku.product_id == CatalogProduct.id)
+        .outerjoin(CatalogInventory, CatalogInventory.sku_id == CatalogSku.id)
+        .where(
+            CatalogProduct.sale_status == "active",
+            CatalogSku.sale_status == "active",
+            CatalogCategory.status == "active",
+        )
+        .order_by(CatalogProduct.product_code.asc(), CatalogSku.sku_code.asc())
+    )
+    if category_code is not None:
+        statement = statement.where(CatalogCategory.code == category_code)
+    if product_code is not None:
+        statement = statement.where(CatalogProduct.product_code == product_code)
+    return list(session.execute(statement).all())
+
+
+def catalog_product_counts(session: Session) -> dict[str, tuple[int, int]]:
+    """Return deterministic ``category -> (products, in-stock products)`` counts."""
+
+    rows = list_catalog_product_rows(session)
+    products: dict[str, set[UUID]] = {}
+    available: dict[str, set[UUID]] = {}
+    for product, _sku, inventory in rows:
+        code = product.category.code
+        products.setdefault(code, set()).add(product.id)
+        if inventory is not None and inventory.on_hand_quantity > inventory.reserved_quantity:
+            available.setdefault(code, set()).add(product.id)
+    return {
+        code: (len(products.get(code, set())), len(available.get(code, set())))
+        for code in sorted(products)
+    }
+
+
 def list_active_laptop_skus(session: Session) -> list[CatalogSkuCandidate]:
     """Backward-compatible Laptop retrieval wrapper."""
 

@@ -663,6 +663,391 @@
         "title": "CartWarning",
         "type": "object"
       },
+      "CatalogBrowseAddToCartPendingActionRequest": {
+        "additionalProperties": false,
+        "description": "Prepare a canonical SKU action from the read-only Catalog browse flow.",
+        "properties": {
+          "quantity": {
+            "default": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "sku_id": {
+            "format": "uuid",
+            "title": "Sku Id",
+            "type": "string"
+          },
+          "thread_id": {
+            "minLength": 1,
+            "title": "Thread Id",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "thread_id",
+          "sku_id"
+        ],
+        "title": "CatalogBrowseAddToCartPendingActionRequest",
+        "type": "object"
+      },
+      "CatalogCategoryListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogCategoryView"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "CatalogCategoryListResponse",
+        "type": "object"
+      },
+      "CatalogCategoryView": {
+        "additionalProperties": false,
+        "properties": {
+          "available_product_count": {
+            "minimum": 0.0,
+            "title": "Available Product Count",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "product_count": {
+            "minimum": 0.0,
+            "title": "Product Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "display_name",
+          "product_count",
+          "available_product_count"
+        ],
+        "title": "CatalogCategoryView",
+        "type": "object"
+      },
+      "CatalogErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "unsupported_category",
+              "catalog_not_found",
+              "catalog_unavailable",
+              "catalog_data_invalid"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "CatalogErrorResponse",
+        "type": "object"
+      },
+      "CatalogProductDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "title": "Brand",
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CatalogCategoryView"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_code": {
+            "title": "Product Code",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "skus": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogSkuView"
+            },
+            "minItems": 1,
+            "title": "Skus",
+            "type": "array"
+          },
+          "specifications": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogSpecificationView"
+            },
+            "title": "Specifications",
+            "type": "array"
+          }
+        },
+        "required": [
+          "product_id",
+          "product_code",
+          "brand",
+          "name",
+          "category",
+          "skus"
+        ],
+        "title": "CatalogProductDetail",
+        "type": "object"
+      },
+      "CatalogProductListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/CatalogCategoryView"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogProductSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "CatalogProductListResponse",
+        "type": "object"
+      },
+      "CatalogProductSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "title": "Brand",
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CatalogCategoryView"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_code": {
+            "title": "Product Code",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "skus": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogSkuView"
+            },
+            "minItems": 1,
+            "title": "Skus",
+            "type": "array"
+          },
+          "specifications": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogSpecificationView"
+            },
+            "title": "Specifications",
+            "type": "array"
+          }
+        },
+        "required": [
+          "product_id",
+          "product_code",
+          "brand",
+          "name",
+          "category",
+          "skus"
+        ],
+        "title": "CatalogProductSummary",
+        "type": "object"
+      },
+      "CatalogSkuView": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "$ref": "#/components/schemas/AvailabilityView"
+          },
+          "money": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "sku_code": {
+            "title": "Sku Code",
+            "type": "string"
+          },
+          "sku_id": {
+            "format": "uuid",
+            "title": "Sku Id",
+            "type": "string"
+          },
+          "sku_name": {
+            "title": "Sku Name",
+            "type": "string"
+          },
+          "variant_specifications": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogSpecificationView"
+            },
+            "title": "Variant Specifications",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sku_id",
+          "sku_code",
+          "sku_name",
+          "money",
+          "availability"
+        ],
+        "title": "CatalogSkuView",
+        "type": "object"
+      },
+      "CatalogSpecificationView": {
+        "additionalProperties": false,
+        "description": "Registry-labelled Catalog fact safe for generic browser rendering.",
+        "properties": {
+          "comparable": {
+            "default": false,
+            "title": "Comparable",
+            "type": "boolean"
+          },
+          "display_order": {
+            "default": 0,
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "format_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format Hint"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Value"
+          },
+          "value_type": {
+            "enum": [
+              "number",
+              "string",
+              "enum",
+              "boolean",
+              "string_list"
+            ],
+            "title": "Value Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "value_type"
+        ],
+        "title": "CatalogSpecificationView",
+        "type": "object"
+      },
       "CategoryAttributeConstraint": {
         "additionalProperties": false,
         "description": "A normalized, registry-validated request attribute.",
@@ -4378,6 +4763,176 @@
         ]
       }
     },
+    "/api/catalog/categories": {
+      "get": {
+        "operationId": "list_catalog_categories_api_catalog_categories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogCategoryListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Catalog Categories",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/catalog/products": {
+      "get": {
+        "operationId": "list_catalog_products_api_catalog_products_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Category",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogProductListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List Catalog Products",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/catalog/products/{product_code}": {
+      "get": {
+        "operationId": "get_catalog_product_api_catalog_products__product_code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_code",
+            "required": true,
+            "schema": {
+              "title": "Product Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogProductDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Catalog Product",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/chat": {
       "post": {
         "operationId": "chat_api_chat_post",
@@ -6661,6 +7216,143 @@
           }
         },
         "summary": "Create Pending Action",
+        "tags": [
+          "pending-actions"
+        ]
+      }
+    },
+    "/api/pending-actions/catalog-add-to-cart": {
+      "post": {
+        "operationId": "create_catalog_browse_pending_action_endpoint_api_pending_actions_catalog_add_to_cart_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-ShopMind-Authenticated-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Shopmind-Authenticated-User"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-ShopMind-Identity-Timestamp",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Shopmind-Identity-Timestamp"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-ShopMind-Identity-Nonce",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Shopmind-Identity-Nonce"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-ShopMind-Identity-Signature",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Shopmind-Identity-Signature"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogBrowseAddToCartPendingActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionErrorResponse"
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Catalog Browse Pending Action Endpoint",
         "tags": [
           "pending-actions"
         ]

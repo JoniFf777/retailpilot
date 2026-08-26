@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 
-from app.api.routes import cart, checkout, chat, chat_confirm, chat_stream, health, orders, owner_data, payments, pending_actions
+from app.api.routes import cart, catalog, checkout, chat, chat_confirm, chat_stream, health, orders, owner_data, payments, pending_actions
 
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(catalog.router, tags=["catalog"])
 api_router.include_router(chat.router, tags=["chat"])
 api_router.include_router(chat_confirm.router, tags=["chat"])
 api_router.include_router(chat_stream.router, tags=["chat", "streaming"])

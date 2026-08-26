@@ -145,6 +145,17 @@ class AddToCartPendingActionRequest(BaseModel):
     quantity: StrictInt = Field(default=1, ge=1, le=MAX_CART_ITEM_QUANTITY)
 
 
+class CatalogBrowseAddToCartPendingActionRequest(BaseModel):
+    """Prepare a canonical SKU action from the read-only Catalog browse flow."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: StrictStr | None = None
+    thread_id: StrictStr = Field(min_length=1)
+    sku_id: UUID
+    quantity: StrictInt = Field(default=1, ge=1, le=MAX_CART_ITEM_QUANTITY)
+
+
 class QuantityEditFields(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -7,6 +7,7 @@ import { CheckoutPage } from "../features/checkout/CheckoutPage";
 import { OrderDetailPage } from "../features/orders/OrderDetailPage";
 import { OrdersPage } from "../features/orders/OrdersPage";
 import { App } from "./App";
+import { CatalogCategoryPage, CatalogHomePage, CatalogProductDetailPage } from "../features/catalog/CatalogPages";
 
 export const router = createBrowserRouter([
   {
@@ -14,6 +15,9 @@ export const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <ChatPage /> },
+      { path: "catalog", element: <CatalogHomePage /> },
+      { path: "catalog/:category", element: <CatalogCategoryPage /> },
+      { path: "catalog/:category/:product", element: <CatalogProductDetailPage /> },
       { path: "privacy", element: <PrivacyPage /> },
       { path: "runs", element: <RunsPage /> },
       { path: "status", element: <StatusPage /> },

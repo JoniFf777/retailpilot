@@ -11,6 +11,7 @@ from app.dependencies.security import bind_request_user, get_identity_boundary
 from app.schemas.pending_actions import (
     AddToCartPendingActionRequest,
     ActionErrorResponse,
+    CatalogBrowseAddToCartPendingActionRequest,
     PendingActionCancelRequest,
     PendingActionTransitionRequest,
     PendingActionTransitionResponse,
@@ -21,6 +22,7 @@ from app.services.pending_actions import (
     PendingActionServiceError,
     cancel_pending_action,
     confirm_add_to_cart,
+    create_catalog_browse_pending_action,
     create_add_to_cart_pending_action,
     get_pending_action_view,
 )
@@ -32,6 +34,41 @@ ACTION_ERROR_RESPONSES = {
     409: {"model": ActionErrorResponse},
     410: {"model": ActionErrorResponse},
 }
+
+
+@router.post(
+    "/pending-actions/catalog-add-to-cart",
+    response_model=PendingActionView,
+    status_code=status.HTTP_201_CREATED,
+    responses=ACTION_ERROR_RESPONSES,
+)
+async def create_catalog_browse_pending_action_endpoint(
+    request: CatalogBrowseAddToCartPendingActionRequest,
+    identity_boundary: IdentityBoundary = Depends(get_identity_boundary),
+    session: Session = Depends(get_db_session),
+):
+    identity = bind_request_user(
+        identity_boundary,
+        request.user_id,
+        require_user=True,
+        request_operation=AuditRequestOperation.CONFIRM_PENDING_ACTION,
+    )
+    try:
+        view = create_catalog_browse_pending_action(
+            session,
+            user_id=identity.effective_user_id or "",
+            thread_id=request.thread_id,
+            sku_id=request.sku_id,
+            quantity=request.quantity,
+        )
+        session.commit()
+        return view
+    except PendingActionServiceError as exc:
+        session.rollback()
+        return service_error_response(exc)
+    except Exception:
+        session.rollback()
+        raise
 
 
 @router.post(

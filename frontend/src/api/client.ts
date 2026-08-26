@@ -27,6 +27,10 @@ import type {
   PaymentAttemptResponse,
   ReadinessResponse,
   UpdateCartItemRequest,
+  CatalogCategoryListResponse,
+  CatalogProductListResponse,
+  CatalogProductDetail,
+  CatalogBrowseAddToCartPendingActionRequest,
 } from "./contracts";
 import { readSseStream } from "./sse";
 
@@ -65,6 +69,12 @@ async function requestJson<T>(path: string, init: RequestOptions = {}): Promise<
 }
 
 export const shopMindApi = {
+  listCatalogCategories: (signal?: AbortSignal) => requestJson<CatalogCategoryListResponse>("/catalog/categories", { signal, idempotency: "disabled" }),
+  listCatalogProducts: (category: string, limit = 24, offset = 0, signal?: AbortSignal) => {
+    const query = new URLSearchParams({ category, limit: String(limit), offset: String(offset) });
+    return requestJson<CatalogProductListResponse>(`/catalog/products?${query.toString()}`, { signal, idempotency: "disabled" });
+  },
+  getCatalogProduct: (productCode: string, signal?: AbortSignal) => requestJson<CatalogProductDetail>(`/catalog/products/${encodeURIComponent(productCode)}`, { signal, idempotency: "disabled" }),
   chat: (request: ChatRequest, idempotencyKey?: string, signal?: AbortSignal) => requestJson<ChatResponse>("/chat", {
     method: "POST", body: JSON.stringify(request), signal, idempotencyKey,
   }),
@@ -108,6 +118,9 @@ export const shopMindApi = {
     yield* readSseStream(response.body);
   },
   createAddToCartPendingAction: (request: AddToCartPendingActionRequest, signal?: AbortSignal) => requestJson<PendingActionView>("/pending-actions/add-to-cart", {
+    method: "POST", body: JSON.stringify(request), signal, idempotency: "disabled",
+  }),
+  createCatalogBrowsePendingAction: (request: CatalogBrowseAddToCartPendingActionRequest, signal?: AbortSignal) => requestJson<PendingActionView>("/pending-actions/catalog-add-to-cart", {
     method: "POST", body: JSON.stringify(request), signal, idempotency: "disabled",
   }),
   getPendingAction: (pendingActionId: string, threadId: string, userId?: string, signal?: AbortSignal) => {

@@ -131,6 +131,37 @@ def create_add_to_cart_pending_action(
     )
 
 
+def create_catalog_browse_pending_action(
+    session: Session,
+    *,
+    user_id: str,
+    thread_id: str,
+    sku_id: UUID,
+    quantity: int,
+) -> PendingActionView:
+    """Prepare the same canonical action for a concrete browse-page SKU."""
+
+    _validate_quantity(quantity)
+    product, sku, inventory = _load_catalog(session, sku_id)
+    _require_sellable(product, sku, inventory)
+    available = _available(inventory)
+    if quantity > available:
+        raise PendingActionServiceError(
+            "insufficient_inventory",
+            "Requested quantity is not currently available.",
+            details={"available_quantity": available},
+        )
+    return _create_catalog_pending_action(
+        session,
+        user_id=user_id,
+        thread_id=thread_id,
+        product=product,
+        sku=sku,
+        inventory=inventory,
+        quantity=quantity,
+    )
+
+
 def prepare_save_preference_pending_action(
     session: Session,
     *,

@@ -1,9 +1,10 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 
-type IconName = "chat" | "privacy" | "runs" | "status" | "orders";
+type IconName = "chat" | "catalog" | "privacy" | "runs" | "status" | "orders";
 
 const NAV_ITEMS: Array<{ to: string; label: string; caption: string; icon: IconName; end?: boolean }> = [
   { to: "/", label: "决策工作台", caption: "Shopping desk", icon: "chat", end: true },
+  { to: "/catalog", label: "浏览商品", caption: "Catalog browse", icon: "catalog" },
   { to: "/privacy", label: "隐私中心", caption: "Owner data", icon: "privacy" },
   { to: "/runs", label: "运行记录", caption: "Run inspector", icon: "runs" },
   { to: "/status", label: "服务状态", caption: "System health", icon: "status" },
@@ -14,6 +15,7 @@ const NAV_ITEMS_WITH_ORDERS = [...NAV_ITEMS, { to: "/orders", label: "Orders", c
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, string> = {
     chat: "M4 5.75A2.75 2.75 0 0 1 6.75 3h10.5A2.75 2.75 0 0 1 20 5.75v6.5A2.75 2.75 0 0 1 17.25 15H11l-4.75 4v-4h-.5A2.75 2.75 0 0 1 3 12.25v-6.5h1Zm4.5 3.5h5m-5 3h7",
+    catalog: "M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Zm0 4h16M8 7.5h.01M11 7.5h.01",
     privacy: "M12 3.25 19 6v5.25c0 4.4-2.8 7.78-7 9.5-4.2-1.72-7-5.1-7-9.5V6l7-2.75Zm-2.75 8.5 1.8 1.8 3.9-4",
     runs: "M5 4.25h14A1.75 1.75 0 0 1 20.75 6v12A1.75 1.75 0 0 1 19 19.75H5A1.75 1.75 0 0 1 3.25 18V6A1.75 1.75 0 0 1 5 4.25Zm2.25 4h9.5M7.25 12h5.5m-5.5 3h7.5",
     status: "M12 3.5a8.5 8.5 0 1 0 8.5 8.5A8.5 8.5 0 0 0 12 3.5Zm0 4v5l3.25 2",
