@@ -9,6 +9,7 @@ from app.schemas.recommendation import CategoryAttributeConstraint, LaptopConstr
 
 def laptop_constraints_from_request(request: RecommendationRequest) -> LaptopConstraints:
     values: dict[str, object] = {
+        "budget_min": request.budget_min,
         "budget_max": request.budget_max,
         "budget_currency": request.budget_currency,
     }

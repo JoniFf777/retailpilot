@@ -10,7 +10,7 @@ from app.recommendation.constraints import evaluate_constraint, normalize_constr
 from app.recommendation.gate import classify_recommendation_request
 from app.recommendation.providers import FakeCatalogCandidateProvider, FakeRecommendationPreferenceProvider
 from app.recommendation.rag import FakeRecommendationEvidenceProvider
-from app.recommendation.request import parse_structured_extraction
+from app.recommendation.request import parse_recommendation_request, parse_structured_extraction
 from app.recommendation.service import build_recommendation
 from app.schemas.catalog import CatalogAttributeDefinition, CatalogSkuCandidate
 from app.schemas.recommendation import CategoryAttributeConstraint, RecommendationRequest
@@ -213,3 +213,62 @@ def test_generic_operator_matrix_and_missing_semantics() -> None:
     assert evaluate_constraint(enum, normalize_constraint(enum, {"value": "high", "operator": "gte", "role": "soft"}), "high")
     assert evaluate_constraint(enum, normalize_constraint(enum, {"value": "high", "operator": "enum_match", "role": "soft"}), ["low", "high"])
     assert evaluate_constraint(boolean, normalize_constraint(boolean, {"value": True, "operator": "eq", "role": "soft"}), True)
+
+
+@pytest.mark.parametrize(
+    ("message", "budget", "memory", "weight"),
+    [
+        ("推荐笔记本，预算6000元，内存至少16GB，重量不超过1.5kg", Decimal("6000"), Decimal("16"), Decimal("1.5")),
+        ("推荐笔记本，预算六千元，内存16GB，重量1.2kg", Decimal("6000"), Decimal("16"), Decimal("1.2")),
+        ("推荐笔记本，预算6k，内存至少32GB，重量不超过1.5kg", Decimal("6000"), Decimal("32"), Decimal("1.5")),
+        ("推荐笔记本，预算1.2w，内存至少16GB，重量不超过1.5kg", Decimal("12000"), Decimal("16"), Decimal("1.5")),
+        ("推荐笔记本，预算六点五千元，内存16GB，重量1.2kg", Decimal("6500"), Decimal("16"), Decimal("1.2")),
+        ("推荐笔记本，预算6000到7000元，内存至少16GB，重量不超过1.5kg", Decimal("7000"), Decimal("16"), Decimal("1.5")),
+    ],
+)
+def test_recommendation_request_binds_local_numbers_and_budget_units(
+    message: str, budget: Decimal, memory: Decimal, weight: Decimal
+) -> None:
+    request = parse_recommendation_request(message, "laptop")
+    assert request.budget_max == budget
+    assert request.budget_currency == "CNY"
+    assert request.category_attributes["memory_min_gb"].value == memory
+    assert request.category_attributes["weight_max_kg"].value == weight
+    assert request.category_attributes["memory_min_gb"].normalized_value == memory
+    assert request.category_attributes["memory_min_gb"].source_text
+    assert request.category_attributes["memory_min_gb"].source_span is not None
+    assert request.budget_source_text
+
+
+def test_recommendation_request_does_not_cross_clause_for_qualitative_alias() -> None:
+    request = parse_recommendation_request("推荐轻薄便携的笔记本，内存16GB", "laptop")
+    assert "weight_max_kg" not in request.category_attributes
+    assert request.category_attributes["memory_min_gb"].value == Decimal("16")
+
+
+def test_recommendation_request_converts_storage_tb_to_catalog_gb() -> None:
+    request = parse_recommendation_request("推荐一台笔记本，1TB存储", "laptop")
+    assert request.category_attributes["storage_min_gb"].value == Decimal("1024")
+
+
+def test_recommendation_request_preserves_exclusion_polarity() -> None:
+    request = parse_recommendation_request(
+        "预算6000元以内，推荐一台笔记本，不要独显", "laptop"
+    )
+    constraint = request.category_attributes["gpu_tier_min"]
+    assert constraint.value == "rtx4050"
+    assert constraint.polarity == "exclude"
+
+
+def test_excluded_boolean_constraint_does_not_match_supported_value() -> None:
+    registry = accessory_registry()
+    request = parse_recommendation_request(
+        "不支持防水", "test_accessory", registry=registry
+    )
+    constraint = request.category_attributes["waterproof"]
+    assert constraint.value is True
+    assert constraint.polarity == "exclude"
+    definition = registry.schema_for("test_accessory").attribute_for("waterproof")
+    assert definition is not None
+    assert evaluate_constraint(definition, constraint, True) is False
+    assert evaluate_constraint(definition, constraint, False) is True

@@ -53,6 +53,7 @@ class Money(BaseModel):
 
 
 class LaptopConstraints(BaseModel):
+    budget_min: Decimal | None = Field(default=None, gt=0)
     budget_max: Decimal | None = Field(default=None, gt=0)
     budget_currency: Currency | None = None
     memory_min_gb: int | None = Field(default=None, ge=1)
@@ -71,6 +72,8 @@ class LaptopConstraints(BaseModel):
 
     @model_validator(mode="after")
     def default_budget_currency(self) -> "LaptopConstraints":
+        if self.budget_min is not None and self.budget_max is not None and self.budget_min > self.budget_max:
+            raise ValueError("budget_min must not exceed budget_max")
         if self.budget_max is not None and self.budget_currency is None:
             self.budget_currency = "CNY"
         return self
@@ -82,8 +85,11 @@ class RecommendationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     category: RecommendationCategory
+    budget_min: Decimal | None = Field(default=None, gt=0)
     budget_max: Decimal | None = Field(default=None, gt=0)
     budget_currency: Currency | None = None
+    budget_source_text: str | None = Field(default=None, max_length=240)
+    budget_source_span: tuple[int, int] | None = None
     availability_required: bool = True
     generic_preferences: list[str] = Field(default_factory=list)
     category_attributes: dict[str, Any] = Field(default_factory=dict)
@@ -95,6 +101,8 @@ class RecommendationRequest(BaseModel):
 
     @model_validator(mode="after")
     def default_budget_currency(self) -> "RecommendationRequest":
+        if self.budget_min is not None and self.budget_max is not None and self.budget_min > self.budget_max:
+            raise ValueError("budget_min must not exceed budget_max")
         if self.budget_max is not None and self.budget_currency is None:
             self.budget_currency = "CNY"
         return self
@@ -108,6 +116,10 @@ class CategoryAttributeConstraint(BaseModel):
     value: Any
     operator: Literal["eq", "gte", "lte", "contains", "match", "enum_match"]
     role: Literal["hard", "soft", "hard_or_soft", "display_only"] | None = None
+    polarity: Literal["include", "exclude"] = "include"
+    source_text: str | None = Field(default=None, max_length=240)
+    source_span: tuple[int, int] | None = None
+    normalized_value: Any | None = None
 
 
 class ComparisonField(BaseModel):
@@ -184,6 +196,8 @@ class EvidenceView(BaseModel):
     field: str
     value: str
     ref: str | None = None
+    document_version: str | None = None
+    section: str | None = None
 
 
 class AlternativeSkuView(BaseModel):
@@ -236,6 +250,8 @@ class RecommendationResult(BaseModel):
     no_match_reason: str | None = None
     missing_fields: list[str] = Field(default_factory=list)
     clarification_question: str | None = None
+    evidence_status: Literal["available", "unknown", "unavailable", "degraded"] | None = None
+    policy_evidence: list[EvidenceView] = Field(default_factory=list)
     recommendations: list[Recommendation] = Field(default_factory=list, max_length=3)
 
     @model_validator(mode="after")

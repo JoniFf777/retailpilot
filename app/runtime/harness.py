@@ -22,6 +22,7 @@ from app.repositories.runtime_conversations import (
     append_conversation_message,
     get_or_create_conversation_thread,
 )
+from app.repositories.runtime_shopping_state import persist_shopping_session_state
 from app.repositories.runtime_runs import (
     append_agent_run_event,
     claim_idempotency_record,
@@ -991,6 +992,7 @@ class ShopMindRuntimeHarness:
                 "recommendation_result",
                 "top_k_product_evidence",
                 "policy_evidence",
+                "recommendation_task",
             }
         }
         error = None
@@ -1476,6 +1478,14 @@ class ShopMindRuntimeHarness:
                         content_json=result.output_data,
                         now=result.completed_at,
                         expires_at=thread_expires_at,
+                    )
+                shopping_state = result.output_data.get("shopping_session_state")
+                if isinstance(shopping_state, dict):
+                    persist_shopping_session_state(
+                        session,
+                        runtime_thread_id=result.runtime_thread_id,
+                        user_id=result.user_id,
+                        state=shopping_state,
                     )
                 finalize_agent_run(
                     session,

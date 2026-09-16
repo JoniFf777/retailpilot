@@ -91,10 +91,11 @@ ignored by Git. Never copy API keys or private passwords into tracked files.
   `D:\python\retailpilot\frontend`. Keep frontend files there and use the
   committed Vite scripts for build, mocked browser tests, and live demo checks.
 
-Current validation: `668 passed, 6 skipped`; PostgreSQL integration `23/23`;
+Current validation after the recommendation quality patch: `896 passed, 63 skipped`;
+PostgreSQL integration `23/23`;
 reference-client/API/docs focused `58/58`; runtime coordination focused `12/12`;
 combined PostgreSQL/Redis integration `25/25`;
-PostgreSQL smoke passed at migration `0007_governance_audit`; V3 API
+PostgreSQL smoke passed at migration `0015_shopmind_order_expiration`; V3 API
 handoff passed `3/3`; the latest offline resilience gate passed `6/6` cases and
 `72/72` checks; coordination equivalence passed `5/5` cases and `18/18` checks;
 governance lifecycle passed `5/5` cases and `42/42` checks; V6 catalog
@@ -103,6 +104,16 @@ regression passed `8/8` suites, `61/61` cases, `488/488` suite checks, and
 checks. Historical V3 validation
 remains `227 passed, 4 skipped` with LangSmith evaluator scores `6/6` at `1.0`.
 The post-completion project/frontend documentation tests pass `10/10`.
+
+The latest follow-up also adds bounded state patch history/CAS, candidate
+expiry, RAG subquestion/channel budgets, policy applicability/version checks,
+public evidence status/citations, and `evaluation/run_simulated_eval.py` (20
+synthetic request cases plus 12 synthetic retrieval cases). These synthetic
+scores are regression evidence only; real model/PostgreSQL quality capture and
+live browser acceptance remain environment-dependent. The structured path now
+also uses `RecommendationTaskPlan/Result`, `evaluation/run_retrieval_capture.py`
+and `evaluation/run_ablation_eval.py`; local live catalog/order/payment browser
+acceptance passed 2/2 with the configured Conda interpreter.
 
 ## First Five Minutes
 
@@ -204,7 +215,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smo
 
 Bootstrap is plan-only unless `--execute` is given. Seed/index clear data and
 require `--execute --confirm-clear`; use them only against an isolated database.
-Current migration head: `0007_governance_audit`.
+Current migration head: `0015_shopmind_order_expiration`.
 
 ## Runtime Modes
 

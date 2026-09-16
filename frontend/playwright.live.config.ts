@@ -4,7 +4,7 @@ const liveUrl = process.env.SHOPMIND_FRONTEND_URL ?? "http://127.0.0.1:5173";
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "live-critical-path.spec.ts",
+  testMatch: /(?:live-critical-path|catalog-browse\.live)\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,

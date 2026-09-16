@@ -39,12 +39,11 @@ an explicitly authorized workflow versions, tags, and publishes a newer release.
 
 ## Post-V6 Productization
 
-The repository currently contains the completed backend and a compact
-public-API command-line reference client, but no Web frontend. A proposed
-React/TypeScript implementation, covering POST SSE, guarded action confirmation,
-owner-data privacy flows, production identity boundaries and phased delivery,
-is documented in `docs/frontend_implementation_plan.md`. This optional frontend
-work does not reopen V6 or change its completed exit criteria.
+The repository contains the completed backend, a compact public-API command-line
+reference client, and the isolated React/TypeScript Web frontend. The frontend
+covers POST SSE, guarded action confirmation, owner-data privacy flows,
+production identity boundaries, catalog browsing and checkout demo paths. Its
+implementation does not reopen V6 or change its completed exit criteria.
 
 ## V4: Agent Runtime Foundation
 

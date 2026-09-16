@@ -27,8 +27,9 @@ PLANNER_SYSTEM_PROMPT = """You review a server-compiled ShopMind read plan.
 
 Return one structured AgentExecutionPlan proposal. Do not add, remove, reorder,
 or rename routes or steps. Do not change run identity, intents, dependencies,
-execution mode, max parallelism, or retry policy. Do not add tools or write
-capabilities.
+execution mode, max parallelism, or retry policy. You may add a bounded
+metadata.query_focus string to a read step when it makes that specialist's
+query more precise. Do not add tools or write capabilities.
 When no policy-compliant change is possible, reproduce the baseline plan."""
 
 
@@ -272,9 +273,24 @@ class ValidatedProviderPlanner:
         if invalid_reason is not None:
             return self._fallback(baseline, invalid_reason)
 
+        proposal_metadata_by_step = {
+            step.step_id: dict(step.metadata) for step in proposal.steps
+        }
+        merged_steps = [
+            step.model_copy(
+                update={
+                    "metadata": {
+                        **step.metadata,
+                        **proposal_metadata_by_step.get(step.step_id, {}),
+                    }
+                }
+            )
+            for step in baseline.steps
+        ]
         return baseline.model_copy(
             update={
                 "planner_type": "validated_provider_plan",
+                "steps": merged_steps,
                 "metadata": {
                     **baseline.metadata,
                     "planner_provider": self.provider_type,
@@ -340,6 +356,15 @@ class ValidatedProviderPlanner:
             return "routes_outside_supervisor_decision"
         if proposed_steps != baseline_steps:
             return "step_contract_outside_policy"
+        for step in proposal.steps:
+            unexpected = set(step.metadata).difference({"routing_reason", "query_focus"})
+            if unexpected:
+                return "step_metadata_outside_policy"
+            query_focus = step.metadata.get("query_focus")
+            if query_focus is not None and (
+                not isinstance(query_focus, str) or not query_focus.strip() or len(query_focus) > 240
+            ):
+                return "query_focus_outside_policy"
         return None
 
 

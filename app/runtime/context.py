@@ -124,6 +124,25 @@ class RuntimeContextManager:
             return []
         thread_id = thread["thread_id"]
         items: list[MemoryItem] = []
+        shopping_state = (thread.get("metadata") or {}).get("shopping_session_state")
+        if isinstance(shopping_state, dict):
+            items.append(
+                MemoryItem(
+                    memory_id=f"shopping-state:{thread_id}",
+                    kind=MemoryKind.WORKING,
+                    scope=MemoryScope.THREAD,
+                    user_id=context.user_id,
+                    thread_id=thread_id,
+                    content="已恢复结构化购物状态。",
+                    priority=95,
+                    token_estimate=estimate_tokens("已恢复结构化购物状态。"),
+                    provenance={
+                        "source": "thread_shopping_state",
+                        "recommendation_state": shopping_state,
+                    },
+                    metadata={"state_version": shopping_state.get("version")},
+                )
+            )
         for message in list_conversation_messages(
             session,
             thread_id=thread_id,
@@ -132,6 +151,30 @@ class RuntimeContextManager:
         ):
             if not message["content_text"]:
                 continue
+            message_metadata = {
+                "source": "conversation_message",
+                "sequence": message["sequence"],
+                "role": message["role"],
+            }
+            # The assistant response already contains the public, validated
+            # recommendation projection. Keep only the bounded request state
+            # so follow-up turns do not have to reconstruct it from prose.
+            if message["role"] == "assistant":
+                content_json = message.get("content_json") or {}
+                shopping_state = content_json.get("shopping_session_state")
+                if isinstance(shopping_state, dict):
+                    message_metadata["recommendation_state"] = shopping_state
+                recommendation = content_json.get("recommendation")
+                if isinstance(recommendation, dict) and "recommendation_state" not in message_metadata:
+                    request = recommendation.get("recommendation_request") or {}
+                    if isinstance(request, dict):
+                        message_metadata["recommendation_state"] = {
+                            "category": recommendation.get("category") or request.get("category"),
+                            "budget_min": request.get("budget_min"),
+                            "budget_max": request.get("budget_max"),
+                            "budget_currency": request.get("budget_currency"),
+                            "category_attributes": request.get("category_attributes") or {},
+                        }
             items.append(
                 MemoryItem(
                     memory_id=message["message_id"],
@@ -142,7 +185,7 @@ class RuntimeContextManager:
                     content=message["content_text"],
                     priority=80 if message["role"] == "user" else 60,
                     token_estimate=estimate_tokens(message["content_text"]),
-                    provenance={"source": "conversation_message", "sequence": message["sequence"]},
+                    provenance=message_metadata,
                     created_at=self._as_utc(message["created_at"]),
                     expires_at=message["expires_at"],
                 )

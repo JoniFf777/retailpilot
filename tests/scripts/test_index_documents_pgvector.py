@@ -29,6 +29,9 @@ def test_split_documents_creates_chunks_with_metadata():
     assert counts["product"] == 0
     assert counts["total"] == len(chunks)
     assert "chunk_index" in chunks[0].metadata
+    assert len(chunks[0].metadata["source_hash"]) == 64
+    assert chunks[0].metadata["document_version"]
+    assert "chunk_start_index" in chunks[0].metadata
     assert chunks[0].content
 
 

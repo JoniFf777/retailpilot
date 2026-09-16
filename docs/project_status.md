@@ -1,6 +1,6 @@
 # ShopMind Project Status
 
-Snapshot date: 2026-08-11
+Snapshot date: 2026-09-14
 
 Current closure state: Phase 1-6B-2 accepted/closed; Project Closure
 implementation in progress; Inbox/Consumer deferred.
@@ -92,8 +92,23 @@ All V6 implementation exit criteria are satisfied.
   with structured argument, ownership, sensitive-policy, output-limit, and
   per-run budget checks.
 - pgvector stores product and policy document chunks.
+- Recommendation quality now uses clause-local numeric parsing, bounded
+  Chinese/`k`/`万` budget parsing, same-thread follow-up context, and confirmed
+  preference soft constraints. Category constraints now carry explicit
+  `include`/`exclude` polarity for supported negative requests.
+- The latest validated shopping request is represented by a JSON-safe,
+  owner-scoped `ShoppingSessionState` with monotonic thread metadata
+  persistence; budget edits, clears, and bounded candidate exclusion can resume
+  from prior recommendation state.
+- Recommendation evidence combines vector and bounded lexical BM25-style
+  recall with RRF and query-selected policy retrieval; vector and lexical
+  failures are reported independently, document-dependent recommendations do
+  not claim unknown evidence, and excerpts are sentence-focused where possible.
+  Server-owned `SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER=lexical|semantic`
+  options enable bounded rerankers; the semantic option lazy-loads a configured
+  CrossEncoder and has no measured quality improvement claimed yet.
 - SQLAlchemy repositories isolate persistence from tools.
-- The ShopMind Alembic head is `0014_shopmind_outbox_events` (`0007_governance_audit`
+- The ShopMind Alembic head is `0015_shopmind_order_expiration` (`0007_governance_audit`
   remains the pre-ShopMind baseline revision).
 - Bootstrap, seed, index, PostgreSQL smoke, and combined V3 smoke scripts exist.
 
@@ -140,14 +155,15 @@ All V6 implementation exit criteria are satisfied.
   candidate-context cleanup script.
 - Default local tests cover the new contracts, repositories, Harness, and V3
   backward-compatibility path.
-- Current V4.1-V6 Slice 5 validation is `668 passed, 6 skipped`;
+- Current explicit backend validation after the recommendation quality patch is
+  `892 passed, 63 skipped`;
   reference-client/API/docs focused coverage is `58/58`. The two
   real Redis integration cases remain explicit opt-ins in
   the default suite.
 - PostgreSQL integration passes `23/23`, including fresh-store restart,
   repository isolation and Harness governance emission assertions; combined
   PostgreSQL/Redis integration passes `25/25`. PostgreSQL smoke passed at
-  migration `0014_shopmind_outbox_events`, and V3 API handoff smoke passed `3/3`.
+  migration `0015_shopmind_order_expiration`, and V3 API handoff smoke passed `3/3`.
 - The exact immutable implementation commit `908b918` passed that matrix from a
   fresh detached worktree. Production preflight passed `6/6`, the V6 catalog
   passed `8/8` suites with `488/488` checks and `48/48` comparisons, release
@@ -725,8 +741,9 @@ Historical files explain how V3 was built; the active roadmap is `PLAN.md`.
 ## Frontend Status (2026-07-26)
 
 The ShopMind Web frontend has started in the isolated `frontend/` directory;
-no frontend package, source, Vite configuration, or dependency directory was
-added at the repository root. F0 is complete: the pinned React + TypeScript +
+No frontend package, source, Vite configuration, or dependency directory was
+added at the repository root; the active frontend remains isolated under
+`frontend/`. F0 is complete: the pinned React + TypeScript +
 Vite scaffold has lint, typecheck, Vitest, build, and API contract verification
 commands; a local `/api` proxy; browser-safe typed chat/confirm, owner-data,
 health, run-inspection, and POST-SSE clients; and the first responsive route
@@ -811,3 +828,51 @@ structured outcomes, fixed projection-error copy, strict SSE terminal guards,
 literal OpenAPI enums, and budget/currency display are covered by the current
 tests. `npm run e2e:list` lists seven mocked scenarios, and `npm run e2e`
 passes all seven browser scenarios.
+
+## Recommendation Quality Patch (2026-09-13)
+
+The recommendation path now binds numeric values to the local attribute clause,
+accepts bounded Chinese/`k`/`万` budget forms, and preserves the existing
+schema validation boundary. Runtime conversation items carry role provenance so
+structured follow-up requests can inherit the last same-thread recommendation
+and apply a current-turn budget/constraint patch. Confirmed category-applicable
+preferences are passed as soft ranking constraints; the current request wins.
+
+Recommendation evidence now combines vector and bounded lexical BM25-style
+recall with RRF, avoids policy retrieval for product-only requests, allocates
+product evidence to every matching SKU, and selects a relevant sentence for
+the public excerpt when possible. These changes are covered by recommendation
+and document repository regression tests. A full empirical single-Agent versus
+multi-Agent/RAG quality comparison remains an evaluation task; no quality
+uplift or production SLA is claimed yet.
+
+## Recommendation Quality Follow-up (2026-09-14)
+
+The follow-up now persists an owner-scoped, versioned `ShoppingSessionState`
+with a bounded PII-free patch log and optimistic compare-and-swap update. It
+records field provenance, expires ordinal candidate references after 30 minutes,
+and prevents stale or cross-owner writes. Preference reads are bounded to 50
+complete records/8,000 characters, newest-first, and avoid preferences take
+precedence over positive soft signals.
+
+RAG retrieval now keeps the original request while creating at most three
+bounded product/policy subquestions and enforcing one shared channel-call
+budget. Policy documents are filtered by explicit product scope and latest
+document version; public recommendation results carry evidence status and
+policy citations. The frontend renders degraded/unknown evidence states and
+versioned policy references. `evaluation/run_simulated_eval.py` provides a
+20-task deterministic parser contract smoke and a 12-case retrieval metric
+smoke; its artifacts are explicitly labelled simulated and do not claim human
+quality or PostgreSQL production performance.
+
+The structured recommendation path now also runs through a typed
+`RecommendationTaskPlan`/`RecommendationTaskResult` executor. Its default
+five-stage plan is validated and bounded, while a server-owned short plan can
+change dependencies; cancellation and stage events use the same observable
+contract. Constraint extraction exposes source text, character spans and
+normalized values. Retrieval capture records code/model/prompt/config
+versions, evidence IDs, diagnostics, latency and sanitized failures without
+persisting document bodies. A synthetic ablation compares deterministic
+single, bounded multi, hybrid RRF and semantic variants with disclosed cost
+tradeoffs. Local live catalog and core order/payment browser paths passed 2/2;
+offline Playwright passed 35/35.

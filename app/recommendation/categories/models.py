@@ -212,6 +212,13 @@ class StructuredRecommendationExtraction(BaseModel):
 
     category_candidates: tuple[CategoryIntentCandidate, ...] = ()
     attributes: dict[str, Any] = Field(default_factory=dict)
+    budget_min: Decimal | None = Field(default=None, gt=0)
     budget_max: Decimal | None = Field(default=None, gt=0)
     budget_currency: str | None = None
     availability_required: bool = True
+
+    @model_validator(mode="after")
+    def validate_budget_range(self) -> "StructuredRecommendationExtraction":
+        if self.budget_min is not None and self.budget_max is not None and self.budget_min > self.budget_max:
+            raise ValueError("budget_min must not exceed budget_max")
+        return self

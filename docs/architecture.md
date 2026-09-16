@@ -10,9 +10,29 @@ PendingAction / HITL -> Cart -> Checkout Preview -> Order and Inventory
 Reservation -> Mock Payment -> Transactional Outbox -> optional RocketMQ FIFO
 publisher. PostgreSQL is the source of truth for commerce state.
 
-The current Alembic head is `0014_shopmind_outbox_events`.
+The current Alembic head is `0015_shopmind_order_expiration`.
 `0007_governance_audit` is the pre-commerce / pre-ShopMind-commerce baseline,
 not the current migration head.
+
+## Recommendation Evidence Path
+
+Structured recommendations keep PostgreSQL Catalog facts authoritative for
+price, inventory, and hard constraints. Runtime conversation items carry a
+bounded role provenance, allowing a same-thread follow-up to patch the previous
+request. Confirmed preferences are optional soft signals and never override a
+current-turn constraint.
+
+When documentation is needed, the server binds one retrieval scope to the
+question and candidate set. Product and policy evidence are queried separately;
+vector and lexical BM25-style results are deduplicated and fused with reciprocal
+rank fusion before an optional bounded reranker. Evidence is then checked per
+question and applicable SKU. Missing evidence is reported as unknown, rather
+than treated as proof that a requirement is met or rejected. Product-only
+queries skip policy retrieval, and no evidence path can expand owner or write
+permissions. The server-owned
+`SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER=lexical` setting enables the
+deterministic experiment reranker; its default is disabled until held-out
+quality and latency justify a different policy.
 
 
 ## Current Commerce Architecture
@@ -261,9 +281,11 @@ Invariants:
 
 #### Working State
 
-`ShopMindMultiAgentState` carries request identity, routing fields, specialist
-summaries, final decision, safety flags, tool names, and Agent-step events. It is
-working memory for one invocation, not durable conversation memory.
+`ShopMindMultiAgentState` carries request identity, bounded context items,
+routing fields, specialist summaries, final decision, safety flags, tool names,
+and Agent-step events. Durable conversation memory is loaded by the Harness and
+passed into the graph as role-tagged context; graph state itself remains scoped
+to one invocation.
 
 #### PostgreSQL And pgvector
 
@@ -278,7 +300,7 @@ PostgreSQL is the ShopMind persistence path:
   thread, run and resource fingerprints plus closed allowlisted metadata;
 - product and policy document chunks with pgvector embeddings;
 - Alembic migrations through the historical `0007_governance_audit` baseline;
-  current commerce migrations continue through `0014_shopmind_outbox_events`.
+  current commerce migrations continue through `0015_shopmind_order_expiration`.
 
 Inherited SQLite/vectorstore paths remain for workshop/legacy compatibility.
 New ShopMind runtime persistence should use PostgreSQL.
@@ -684,6 +706,27 @@ status, usage, timestamps, pending-action correlation and bounded
 client-visible event metadata. Raw request/result/input/output/debug/error/
 metadata/tool-call/idempotency fields, event payloads and internal/audit events
 never cross this API boundary.
+
+### Recommendation State and Evidence Boundary
+
+Structured recommendation turns persist a JSON-safe `ShoppingSessionState` in
+the owner-scoped conversation thread metadata. Versions advance through an
+optimistic compare-and-swap update; a bounded patch log records changed and
+cleared field names without transcript text. Candidate SKU order is a short
+lived reference for ordinal follow-ups, not a durable product fact. Once it
+expires, a request to exclude an ordinal is clarified and a new catalog read is
+required. A category change starts a fresh attribute map while retaining only
+the new category's explicit budget and constraints.
+
+The evidence provider keeps the original request and creates at most three
+product/policy subquestions. Every vector or lexical call consumes one shared
+bounded channel budget. RRF fusion is followed by an optional lexical or lazy
+CrossEncoder reranker that may return only fused document IDs; failures keep
+the trusted fused set and mark the run degraded. Policy evidence is filtered by
+explicit product scope and latest document version before it reaches the
+public `RecommendationResult`, which includes evidence status and versioned
+policy citations. Catalog price, inventory, and SKU identity remain outside
+the document evidence boundary.
 
 ### Retained Runtime Decisions
 

@@ -888,13 +888,28 @@ export interface components {
          * @description A normalized, registry-validated request attribute.
          */
         CategoryAttributeConstraint: {
+            /** Normalized Value */
+            normalized_value?: unknown | null;
             /**
              * Operator
              * @enum {string}
              */
             operator: "eq" | "gte" | "lte" | "contains" | "match" | "enum_match";
+            /**
+             * Polarity
+             * @default include
+             * @enum {string}
+             */
+            polarity: "include" | "exclude";
             /** Role */
             role?: ("hard" | "soft" | "hard_or_soft" | "display_only") | null;
+            /** Source Span */
+            source_span?: [
+                number,
+                number
+            ] | null;
+            /** Source Text */
+            source_text?: string | null;
             /** Value */
             value: unknown;
         };
@@ -1200,10 +1215,14 @@ export interface components {
         EventVisibility: "client" | "internal" | "audit";
         /** EvidenceView */
         EvidenceView: {
+            /** Document Version */
+            document_version?: string | null;
             /** Field */
             field: string;
             /** Ref */
             ref?: string | null;
+            /** Section */
+            section?: string | null;
             /** Source */
             source: string;
             /** Type */
@@ -1254,6 +1273,8 @@ export interface components {
             budget_currency?: string | null;
             /** Budget Max */
             budget_max?: string | null;
+            /** Budget Min */
+            budget_min?: string | null;
             /** Cpu Tier Min */
             cpu_tier_min?: string | null;
             /** Gpu Tier Min */
@@ -1896,6 +1917,15 @@ export interface components {
             budget_currency?: string | null;
             /** Budget Max */
             budget_max?: string | null;
+            /** Budget Min */
+            budget_min?: string | null;
+            /** Budget Source Span */
+            budget_source_span?: [
+                number,
+                number
+            ] | null;
+            /** Budget Source Text */
+            budget_source_text?: string | null;
             /** Category */
             category: string;
             /** Category Attributes */
@@ -1923,6 +1953,8 @@ export interface components {
             constraint_fields?: components["schemas"]["ComparisonField"][];
             /** Error Code */
             error_code?: string | null;
+            /** Evidence Status */
+            evidence_status?: ("available" | "unknown" | "unavailable" | "degraded") | null;
             /** Missing Fields */
             missing_fields?: string[];
             /** No Match Reason */
@@ -1932,6 +1964,8 @@ export interface components {
              * @enum {string}
              */
             outcome: "recommended" | "no_match" | "clarification_required";
+            /** Policy Evidence */
+            policy_evidence?: components["schemas"]["EvidenceView"][];
             /** Ranking Policy Version */
             ranking_policy_version: string;
             /** Recognized Constraints */

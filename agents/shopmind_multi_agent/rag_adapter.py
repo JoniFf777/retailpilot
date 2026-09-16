@@ -27,6 +27,7 @@ from .supervisor import get_last_user_message
 
 class RagAgentTaskInput(BaseModel):
     message: str
+    query_override: str | None = None
     tool_calls: list[str] = Field(default_factory=list)
     executed_routes: list[str] = Field(default_factory=list)
     safety_flags: list[str] = Field(default_factory=list)
@@ -76,7 +77,7 @@ def create_rag_agent_adapter(
         task_input = RagAgentTaskInput.model_validate(task.input_data)
         node_result = rag_agent_node(
             {
-                "messages": [{"role": "user", "content": task_input.message}],
+                "messages": [{"role": "user", "content": task_input.query_override or task_input.message}],
                 "user_id": task.user_id or "",
                 "thread_id": task.thread_id,
                 "tool_calls": task_input.tool_calls,
@@ -126,6 +127,7 @@ def rag_agent_adapter_node(
         intent="document_retrieval",
         input_data=RagAgentTaskInput(
             message=get_last_user_message(state),
+            query_override=(state.get("plan_step_metadata") or {}).get("query_focus"),
             tool_calls=list(state.get("tool_calls", [])),
             executed_routes=list(state.get("executed_routes", [])),
             safety_flags=list(state.get("safety_flags", [])),

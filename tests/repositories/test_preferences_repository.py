@@ -50,3 +50,14 @@ def test_invalid_preference_type_is_saved_as_other():
 
     assert created["preference_type"] == "other"
     assert created["was_invalid_type"] is True
+
+
+def test_preference_reads_are_newest_first_and_bounded() -> None:
+    session = make_session()
+    add_user_preference(session, "user-1", "style", "old")
+    add_user_preference(session, "user-1", "style", "new")
+    add_user_preference(session, "user-1", "brand", "x" * 20)
+    session.commit()
+    values = get_user_preferences(session, "user-1", max_total_chars=7)
+    assert [item["preference_value"] for item in values] == ["new", "old"]
+    assert all(item["source"] == "confirmed_user_preference" for item in values)

@@ -99,6 +99,36 @@ The live config connects only to `SHOPMIND_FRONTEND_URL` and `SHOPMIND_BACKEND_U
 
 ## Tests and acceptance
 
+Retrieval-only evaluation is independent from answer generation. Given a JSON
+capture with `cases`, `retrieved_ids`, and `relevant_ids`, run:
+
+```powershell
+python evaluation/run_retrieval_eval.py retrieval-cases.json --json
+```
+
+The report contains Hit@K, Recall@K, and MRR without calling a model.
+
+For a no-database regression smoke over the new request/evidence contracts,
+run the explicitly synthetic suite:
+
+```powershell
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_simulated_eval.py --output-dir artifacts\simulated-eval --json
+```
+
+Its 20 request cases and 12 retrieval cases are synthetic and must not be
+presented as human quality or production latency measurements.
+
+The structured recommendation and retrieval contracts can also be exercised
+directly:
+
+```powershell
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_ablation_eval.py --output-json artifacts\synthetic-ablation\summary.json
+conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe evaluation\run_retrieval_capture.py retrieval-capture.json --output-json artifacts\retrieval-capture\summary.json --code-version workspace
+```
+
+The capture input contains server-selected `top_k` candidates; only evidence
+IDs and sanitized diagnostics are written to the artifact.
+
 ```powershell
 python -m pytest tests -p no:cacheprovider
 $env:RUN_POSTGRES_INTEGRATION = "1"
@@ -145,7 +175,7 @@ The project deliberately uses PostgreSQL locks for commerce invariants rather th
 
 ## Known limitations
 
-The project does not implement real payments or card collection, refunds, chargebacks, webhooks, automatic payment reconciliation, automatic Order expiration, shipping/address/tax, fulfillment, a RocketMQ consumer, Inbox, consumer deduplication, or Redis-backed commerce state. Inbox/Consumer remains a future extension.
+The project does not implement real payments or card collection, refunds, chargebacks, webhooks, automatic payment reconciliation, shipping/address/tax, fulfillment, a RocketMQ consumer, Inbox, consumer deduplication, or Redis-backed commerce state. Inbox/Consumer remains a future extension.
 
 ## Documentation and release history
 

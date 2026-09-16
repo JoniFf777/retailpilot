@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, Literal
@@ -43,6 +45,15 @@ def _extract_title(content: str) -> str | None:
     return None
 
 
+def _document_version(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
+
+
+def _section_title(content: str, start_index: int) -> str | None:
+    headings = re.findall(r"(?m)^#{1,6}\s+(.+?)\s*$", content[: max(0, start_index) + 1])
+    return headings[-1].strip() if headings else None
+
+
 def _load_product_documents(documents_dir: Path) -> list[SourceDocument]:
     product_docs: list[SourceDocument] = []
     products_dir = documents_dir / "products"
@@ -59,6 +70,8 @@ def _load_product_documents(documents_dir: Path) -> list[SourceDocument]:
                     "product_id": product_id,
                     "product_name": _extract_title(content),
                     "policy_name": None,
+                    "document_version": _document_version(content),
+                    "source_hash": hashlib.sha256(content.encode("utf-8")).hexdigest(),
                 },
             )
         )
@@ -80,6 +93,8 @@ def _load_policy_documents(documents_dir: Path) -> list[SourceDocument]:
                     "product_id": None,
                     "product_name": None,
                     "policy_name": md_file.stem,
+                    "document_version": _document_version(content),
+                    "source_hash": hashlib.sha256(content.encode("utf-8")).hexdigest(),
                 },
             )
         )
@@ -119,6 +134,11 @@ def split_documents(
         for chunk_index, split_text in enumerate(split_texts):
             metadata = dict(split_text.metadata)
             metadata["chunk_index"] = chunk_index
+            metadata["chunk_start_index"] = split_text.metadata.get("start_index", 0)
+            metadata["section_title"] = _section_title(
+                source_document.content,
+                int(metadata["chunk_start_index"] or 0),
+            )
             chunks.append(
                 DocumentChunk(
                     content=split_text.page_content,
@@ -166,6 +186,12 @@ def index_chunks(
 ) -> int:
     """Create embeddings and write document chunks into PostgreSQL."""
     vectors = embeddings.embed_documents([chunk.content for chunk in chunks])
+    source_paths = sorted({str(chunk.metadata["source_path"]) for chunk in chunks})
+    if source_paths:
+        # Replace the complete source set in one transaction. If embedding or
+        # insertion fails, the caller rolls back and the previous version stays
+        # active; successful reruns are idempotent instead of duplicating rows.
+        session.execute(delete(Document).where(Document.source_path.in_(source_paths)))
     for chunk, vector in zip(chunks, vectors):
         metadata = chunk.metadata
         session.add(

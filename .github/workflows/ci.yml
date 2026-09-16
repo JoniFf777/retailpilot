@@ -42,7 +42,7 @@ jobs:
 
       - name: Run default tests
         run: |
-          python -m pytest tests/config tests/db tests/repositories tests/scripts tests/tools tests/api tests/agents tests/runtime tests/security tests/governance tests/operations tests/docs tests/evaluation tests/integration
+          python -m pytest tests/config tests/db tests/repositories tests/cart tests/catalog tests/unit tests/scripts tests/tools tests/api tests/agents tests/runtime tests/security tests/governance tests/operations tests/docs tests/evaluation tests/recommendation tests/integration
 
       - name: Gate V6 production configuration preflight
         env:
@@ -316,3 +316,40 @@ jobs:
           name: v3-event-artifacts
           path: artifacts/v3-events
           if-no-files-found: error
+
+  frontend-tests:
+    name: Frontend contract and build checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Lint frontend
+        run: npm run lint --prefix frontend
+
+      - name: Typecheck frontend
+        run: npm run typecheck --prefix frontend
+
+      - name: Run frontend tests
+        run: npm run test --prefix frontend
+
+      - name: Build frontend
+        run: npm run build --prefix frontend
+
+      - name: Check frontend bundle budget
+        run: npm run check:budget --prefix frontend
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run mocked frontend browser paths
+        run: npm run e2e --prefix frontend

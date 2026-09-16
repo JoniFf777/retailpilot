@@ -109,7 +109,12 @@ def _score_candidate(
         role = constraint.role if constraint is not None and constraint.role is not None else attribute.role
         if role == "display_only":
             continue
-        if value is None:
+        if value is None and constraint is not None and role == "soft":
+            # A missing field cannot prove an exclusion or inclusion. Keep a
+            # neutral signal and let evidence diagnostics expose the unknown.
+            signal = Decimal("0.5")
+            reason = "缺少该字段，软约束保持未知。"
+        elif value is None:
             signal = _missing_signal(attribute)
             if signal is None:
                 continue
@@ -161,6 +166,7 @@ def filter_candidates(
     definition: CategoryDefinition,
     constraints: dict[str, CategoryAttributeConstraint],
     *,
+    budget_min: Decimal | None = None,
     budget_max: Decimal | None,
     budget_currency: str | None,
     availability_required: bool,
@@ -172,6 +178,8 @@ def filter_candidates(
         if availability_required and candidate.available_quantity <= 0:
             continue
         if budget_max is not None and candidate.money_amount > budget_max:
+            continue
+        if budget_min is not None and candidate.money_amount < budget_min:
             continue
         candidate_attributes = candidate.attributes
         rejected = False
@@ -196,6 +204,7 @@ def rank_candidates(
     definition: CategoryDefinition,
     constraints: dict[str, CategoryAttributeConstraint],
     *,
+    budget_min: Decimal | None = None,
     budget_max: Decimal | None,
     budget_currency: str | None,
     availability_required: bool,
@@ -204,6 +213,7 @@ def rank_candidates(
         candidates,
         definition,
         constraints,
+        budget_min=budget_min,
         budget_max=budget_max,
         budget_currency=budget_currency,
         availability_required=availability_required,

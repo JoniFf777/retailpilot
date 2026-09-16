@@ -2,12 +2,34 @@
 
 from __future__ import annotations
 
+import math
+import re
 from typing import Any, Sequence
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.db.models import Document
+
+
+MAX_KEYWORD_CORPUS_DOCUMENTS = 2_000
+MAX_KEYWORD_DOCUMENT_CHARS = 12_000
+
+
+def _keyword_tokens(value: str) -> list[str]:
+    """Return stable Latin/SKU terms and Chinese phrase bigrams.
+
+    This intentionally small in-process index is suitable for the bounded
+    ShopMind catalog.  It is a lexical recall channel, not a claim that
+    PostgreSQL's vector distance or a substring match is BM25.
+    """
+
+    tokens: list[str] = []
+    for part in re.findall(r"[a-z0-9][a-z0-9_-]*|[\u4e00-\u9fff]+", value.casefold()):
+        tokens.append(part)
+        if re.fullmatch(r"[\u4e00-\u9fff]+", part) and len(part) > 2:
+            tokens.extend(part[index : index + 2] for index in range(len(part) - 1))
+    return tokens
 
 
 def _format_pgvector(values: Sequence[float]) -> str:
@@ -192,3 +214,68 @@ def search_policy_documents(
     return search_documents(
         session, query_embedding, doc_type="policy", k=k
     )
+
+
+def search_keyword_documents(
+    session: Session,
+    query: str,
+    *,
+    doc_type: str,
+    product_ids: Sequence[str] | None = None,
+    k: int = 10,
+) -> list[dict[str, Any]]:
+    """Run a bounded BM25-style lexical search over the active document rows.
+
+    The corpus is deliberately loaded through the same owner/category filters
+    as vector search.  This keeps exact SKU/model terms recoverable without
+    introducing a second search service or allowing lexical search to widen
+    the trusted scope.
+    """
+
+    if k <= 0:
+        return []
+    statement = select(Document).where(Document.doc_type == doc_type)
+    normalized_ids = sorted({str(value) for value in (product_ids or []) if value})
+    if product_ids is not None and not normalized_ids:
+        return []
+    if normalized_ids:
+        statement = statement.where(Document.product_id.in_(normalized_ids))
+    documents = list(
+        session.scalars(statement.limit(MAX_KEYWORD_CORPUS_DOCUMENTS)).all()
+    )
+    query_terms = _keyword_tokens(query)
+    if not documents or not query_terms:
+        return []
+
+    tokenized = [
+        _keyword_tokens((document.content or "")[:MAX_KEYWORD_DOCUMENT_CHARS])
+        for document in documents
+    ]
+    document_frequency: dict[str, int] = {}
+    for terms in tokenized:
+        for term in set(terms):
+            document_frequency[term] = document_frequency.get(term, 0) + 1
+    average_length = sum(len(terms) for terms in tokenized) / max(1, len(tokenized))
+    query_frequency: dict[str, int] = {}
+    for term in query_terms:
+        query_frequency[term] = query_frequency.get(term, 0) + 1
+
+    scored: list[tuple[float, Document]] = []
+    for document, terms in zip(documents, tokenized):
+        term_frequency: dict[str, int] = {}
+        for term in terms:
+            term_frequency[term] = term_frequency.get(term, 0) + 1
+        length = len(terms)
+        score = 0.0
+        for term, query_count in query_frequency.items():
+            frequency = term_frequency.get(term, 0)
+            if not frequency:
+                continue
+            document_count = document_frequency.get(term, 0)
+            idf = math.log(1 + (len(documents) - document_count + 0.5) / (document_count + 0.5))
+            denominator = frequency + 1.2 * (1 - 0.75 + 0.75 * length / max(1.0, average_length))
+            score += idf * (frequency * 2.2 / denominator) * min(query_count, 2)
+        if score > 0:
+            scored.append((score, document))
+    scored.sort(key=lambda item: (-item[0], item[1].id))
+    return [document_to_dict(document, score=score) for score, document in scored[:k]]

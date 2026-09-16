@@ -11,6 +11,13 @@ deterministic constraints and ranking, and returns structured SKU candidates.
 Read agents cannot perform writes. A user must explicitly confirm a typed
 PendingAction before the selected SKU enters the owner-scoped Cart.
 
+Recommendation follow-ups use a versioned owner/thread shopping state. Budget
+and attribute patches are merged explicitly, cleared fields stay cleared, and
+candidate ordinals expire instead of silently pointing at a new result set.
+The evidence path keeps product and policy subquestions bounded, fuses vector
+and lexical recall with RRF, reports unavailable/degraded evidence, and exposes
+only validated document references in the public result.
+
 The commerce path continues through Cart versioning, Checkout Preview, signed
 snapshot token, idempotent Order creation, Inventory Reservation, Mock Payment,
 paid inventory consumption, and a transactional Outbox. The React frontend
@@ -46,6 +53,11 @@ Outbox crash windows. Vitest and mocked Playwright cover browser state; live
 Playwright verifies real React, FastAPI, PostgreSQL, Reservation, Inventory,
 Payment, and Outbox facts.
 
+`evaluation/run_simulated_eval.py` is a deterministic local contract smoke with
+20 synthetic request cases and 12 synthetic retrieval cases. Its scores are
+explicitly labelled simulated; they do not replace human labels, real model
+runs, or PostgreSQL retrieval capture.
+
 ## Run the project
 
 Activate a Python environment or set `SHOPMIND_PYTHON`, then follow:
@@ -62,5 +74,5 @@ No active onboarding path requires a developer-specific absolute path.
 
 The Core Demo does not require LangSmith credentials or RocketMQ. RocketMQ is
 an optional publisher reliability demo. Real payment/card handling, webhook,
-refund, automatic reconciliation/expiration, shipping/tax/fulfillment, Redis
+refund, automatic reconciliation, shipping/tax/fulfillment, Redis
 commerce state, consumer, Inbox, and consumer deduplication are not implemented.

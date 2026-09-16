@@ -72,6 +72,32 @@ def test_no_match_clarification_and_stable_tie_break() -> None:
     assert [item.sku_name for item in tie.recommendations] == ["A", "Z"]
 
 
+def test_budget_range_filters_below_lower_bound() -> None:
+    product_id = uuid4()
+    result = build_laptop_recommendation(
+        [
+            candidate(product_id, "LOW", price="5000"),
+            candidate(uuid4(), "IN-RANGE", price="7000"),
+            candidate(uuid4(), "HIGH", price="9000"),
+        ],
+        LaptopConstraints(
+            budget_min=Decimal("6000"),
+            budget_max=Decimal("8000"),
+            budget_currency="CNY",
+        ),
+    )
+    assert result.outcome == "recommended"
+    assert [item.sku_name for item in result.recommendations] == ["IN-RANGE"]
+
+
 def test_evidence_sanitizer_whitelists_public_fields() -> None:
     evidence = sanitize_evidence([{"source": "catalog", "type": "product", "field": "brand", "value": "Test", "ref": "x", "raw_payload": "secret"}])
-    assert evidence[0].model_dump() == {"source": "catalog", "type": "product", "field": "brand", "value": "Test", "ref": "x"}
+    assert evidence[0].model_dump() == {
+        "source": "catalog",
+        "type": "product",
+        "field": "brand",
+        "value": "Test",
+        "ref": "x",
+        "document_version": None,
+        "section": None,
+    }

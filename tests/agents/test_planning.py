@@ -132,6 +132,23 @@ def test_validated_provider_planner_recompiles_accepted_proposal() -> None:
     assert "untrusted" not in plan.metadata
 
 
+def test_validated_provider_planner_accepts_bounded_query_focus_metadata() -> None:
+    def provider(payload):
+        proposal = dict(payload["baseline_plan"])
+        proposal["steps"] = [dict(step) for step in proposal["steps"]]
+        proposal["steps"][0]["metadata"] = {
+            **proposal["steps"][0].get("metadata", {}),
+            "query_focus": "机械键盘 静音 红轴",
+        }
+        return proposal
+
+    plan = ValidatedProviderPlanner(provider).build_plan(
+        ["product_agent"], message="推荐一款安静的机械键盘", run_id="run-1"
+    )
+    assert plan.planner_type == "validated_provider_plan"
+    assert plan.steps[0].metadata["query_focus"] == "机械键盘 静音 红轴"
+
+
 @pytest.mark.parametrize(
     ("mutate", "reason"),
     [

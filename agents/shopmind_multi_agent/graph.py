@@ -51,6 +51,7 @@ from .recommendation_nodes import (
     next_graph_path_after_recommendation_gate,
     recommendation_decision_node,
     recommendation_evidence_node,
+    recommendation_task_executor_node,
     recommendation_gate_node,
     recommendation_preference_node,
     recommendation_resolution_node,
@@ -63,6 +64,8 @@ from app.recommendation.providers import (
 )
 from app.recommendation.rag import (
     OfflineDemoRecommendationEvidenceProvider,
+    LexicalEvidenceReranker,
+    SemanticEvidenceReranker,
     RecommendationEvidenceProvider,
     SqlAlchemyRecommendationEvidenceProvider,
 )
@@ -87,11 +90,19 @@ DEBUG_METADATA_KEYS = (
 
 def build_multi_agent_debug_metadata(raw_result: dict[str, Any]) -> dict[str, Any]:
     """Return stable, non-raw metadata for API debug/evaluation consumers."""
-    return {
+    metadata = {
         key: raw_result[key]
         for key in DEBUG_METADATA_KEYS
         if raw_result.get(key) is not None
     }
+    task = raw_result.get("recommendation_task")
+    if isinstance(task, dict):
+        metadata["recommendation_task"] = {
+            key: task.get(key)
+            for key in ("schema_version", "plan_id", "status", "stage_events", "errors")
+            if task.get(key) is not None
+        }
+    return metadata
 
 
 def route_dispatcher_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
@@ -445,15 +456,31 @@ def create_shopmind_multi_agent_graph(
     recommendation_preference_provider = (
         recommendation_preference_provider or SqlAlchemyRecommendationPreferenceProvider()
     )
-    recommendation_evidence_provider = recommendation_evidence_provider or (
-        OfflineDemoRecommendationEvidenceProvider()
-        if runtime_settings.shopmind_deployment_profile == "offline-demo"
-        or (
-            runtime_settings.shopmind_deployment_profile == "development"
-            and not runtime_settings.shopmind_recommendation_evidence_enabled
+    if recommendation_evidence_provider is None:
+        offline_evidence = (
+            runtime_settings.shopmind_deployment_profile == "offline-demo"
+            or (
+                runtime_settings.shopmind_deployment_profile == "development"
+                and not runtime_settings.shopmind_recommendation_evidence_enabled
+            )
         )
-        else SqlAlchemyRecommendationEvidenceProvider()
-    )
+        if offline_evidence:
+            recommendation_evidence_provider = OfflineDemoRecommendationEvidenceProvider()
+        else:
+            reranker = (
+                LexicalEvidenceReranker()
+                if runtime_settings.shopmind_recommendation_evidence_reranker == "lexical"
+                else (
+                    SemanticEvidenceReranker(
+                        runtime_settings.shopmind_recommendation_evidence_reranker_model
+                    )
+                    if runtime_settings.shopmind_recommendation_evidence_reranker == "semantic"
+                    else None
+                )
+            )
+            recommendation_evidence_provider = SqlAlchemyRecommendationEvidenceProvider(
+                reranker=reranker
+            )
 
     graph.add_node(
         "supervisor",
@@ -483,6 +510,21 @@ def create_shopmind_multi_agent_graph(
             state, provider=recommendation_evidence_provider
         ),
     )
+    graph.add_node(
+        "recommendation_task_executor",
+        lambda state: recommendation_task_executor_node(
+            state,
+            catalog_provider=catalog_candidate_provider,
+            preference_provider=recommendation_preference_provider,
+            evidence_provider=recommendation_evidence_provider,
+            registry=recommendation_registry,
+            cancellation_check=(
+                None
+                if runtime_context is None
+                else runtime_context.refresh_cancellation
+            ),
+        ),
+    )
     graph.add_node("recommendation_decision", recommendation_decision_node)
     graph.add_node("recommendation_resolution", recommendation_resolution_node)
     graph.add_node("route_dispatcher", route_dispatcher_node)
@@ -508,6 +550,7 @@ def create_shopmind_multi_agent_graph(
             "route_dispatcher": "route_dispatcher",
             "parallel_read_executor": "parallel_read_executor",
             "catalog_candidates": "catalog_candidates",
+            "recommendation_task_executor": "recommendation_task_executor",
             "recommendation_resolution": "recommendation_resolution",
         },
     )
@@ -531,6 +574,7 @@ def create_shopmind_multi_agent_graph(
     graph.add_edge("decision_agent", END)
     graph.add_edge("recommendation_decision", END)
     graph.add_edge("recommendation_resolution", END)
+    graph.add_edge("recommendation_task_executor", END)
 
     return graph.compile()
 
@@ -546,6 +590,8 @@ def invoke_shopmind_multi_agent(
     recommendation_preference_provider: RecommendationPreferenceProvider | None = None,
     recommendation_evidence_provider: RecommendationEvidenceProvider | None = None,
     recommendation_registry: CategoryRegistry | None = None,
+    context_items: list[dict[str, Any]] | None = None,
+    recommendation_task_plan: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     graph = create_shopmind_multi_agent_graph(
         supervisor_router=supervisor_router,
@@ -561,6 +607,8 @@ def invoke_shopmind_multi_agent(
             "messages": [{"role": "user", "content": message}],
             "user_id": user_id or "",
             "thread_id": thread_id,
+            "context_items": context_items or [],
+            "recommendation_task_plan": recommendation_task_plan,
             "safety_flags": [],
             "tool_calls": [],
             "agent_steps": [],
@@ -580,5 +628,6 @@ def invoke_shopmind_multi_agent(
         ),
         "debug": build_multi_agent_debug_metadata(raw_result),
         "recommendation": raw_result.get("recommendation"),
+        "shopping_session_state": raw_result.get("shopping_session_state"),
         "raw_result": raw_result,
     }

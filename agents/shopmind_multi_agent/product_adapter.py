@@ -28,6 +28,7 @@ from .supervisor import get_last_user_message
 
 class ProductAgentTaskInput(BaseModel):
     message: str
+    query_override: str | None = None
     tool_calls: list[str] = Field(default_factory=list)
     executed_routes: list[str] = Field(default_factory=list)
     agent_steps: list[dict[str, Any]] = Field(default_factory=list)
@@ -51,7 +52,7 @@ def create_product_agent_adapter(
         task_input = ProductAgentTaskInput.model_validate(task.input_data)
         node_result = product_agent_node(
             {
-                "messages": [{"role": "user", "content": task_input.message}],
+                "messages": [{"role": "user", "content": task_input.query_override or task_input.message}],
                 "user_id": task.user_id or "",
                 "thread_id": task.thread_id,
                 "tool_calls": task_input.tool_calls,
@@ -99,6 +100,7 @@ def product_agent_adapter_node(
         intent="product_read",
         input_data=ProductAgentTaskInput(
             message=get_last_user_message(state),
+            query_override=(state.get("plan_step_metadata") or {}).get("query_focus"),
             tool_calls=list(state.get("tool_calls", [])),
             executed_routes=list(state.get("executed_routes", [])),
             agent_steps=list(state.get("agent_steps", [])),

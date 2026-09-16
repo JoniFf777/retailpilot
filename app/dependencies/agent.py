@@ -108,6 +108,17 @@ def _invoke_multi_agent_with_context(
     )
     if accepts_planner:
         kwargs["agent_planner"] = agent_planner
+    accepts_context_items = "context_items" in parameters or any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters.values()
+    )
+    if accepts_context_items:
+        context_slice = getattr(runtime_context, "context_slice", None)
+        kwargs["context_items"] = (
+            [item.model_dump(mode="json") for item in context_slice.items]
+            if context_slice is not None
+            else []
+        )
     return invoke_shopmind_multi_agent(**kwargs)
 
 

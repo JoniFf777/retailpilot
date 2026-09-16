@@ -73,6 +73,8 @@ DEFAULT_SHOPMIND_AGENT_TASK_MAX_ATTEMPTS = 1
 MAX_SHOPMIND_AGENT_TASK_MAX_ATTEMPTS = 3
 DEFAULT_SHOPMIND_RAG_AGENT_TRANSPORT = "in_process"
 DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED = False
+DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER = "none"
+DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 DEFAULT_SHOPMIND_RAG_AGENT_HTTP_TIMEOUT_SECONDS = 10.0
 DEFAULT_SHOPMIND_RAG_AGENT_HTTP_MAX_RESPONSE_BYTES = 1_048_576
 DEFAULT_SHOPMIND_PARALLEL_READ_ENABLED = False
@@ -106,6 +108,11 @@ def _get_bool_env(name: str, default: bool) -> bool:
     if normalized in {"0", "false", "no", "n", "off"}:
         return False
     return default
+
+
+def _get_choice_env(name: str, default: str, choices: set[str]) -> str:
+    value = os.getenv(name, default).strip().lower()
+    return value if value in choices else default
 
 
 def _get_int_env(name: str, default: int) -> int:
@@ -220,6 +227,14 @@ class Settings(BaseModel):
     shopmind_agent_planner: str = Field(default=DEFAULT_SHOPMIND_AGENT_PLANNER)
     shopmind_recommendation_evidence_enabled: bool = Field(
         default=DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED
+    )
+    shopmind_recommendation_evidence_reranker: Literal["none", "lexical", "semantic"] = Field(
+        default=DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER
+    )
+    shopmind_recommendation_evidence_reranker_model: str = Field(
+        default=DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL,
+        min_length=1,
+        max_length=256,
     )
     shopmind_deployment_profile: DeploymentProfile = Field(
         default=DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE
@@ -487,6 +502,18 @@ class Settings(BaseModel):
             shopmind_recommendation_evidence_enabled=_get_bool_env(
                 "SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED",
                 DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED,
+            ),
+            shopmind_recommendation_evidence_reranker=_get_choice_env(
+                "SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER",
+                DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER,
+                {"none", "lexical", "semantic"},
+            ),
+            shopmind_recommendation_evidence_reranker_model=(
+                os.getenv(
+                    "SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL",
+                    DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL,
+                ).strip()[:256]
+                or DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL
             ),
             shopmind_deployment_profile=langsmith_runtime.profile,
             shopmind_deployment_replicas=_get_bounded_positive_int_env(

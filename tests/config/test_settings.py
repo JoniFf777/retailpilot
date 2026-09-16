@@ -151,6 +151,24 @@ def test_settings_reads_bounded_service_slo_policy(monkeypatch) -> None:
     )
 
 
+def test_settings_reads_evidence_reranker_choice_fail_closed(monkeypatch) -> None:
+    monkeypatch.setattr("app.core.settings.load_dotenv", None)
+    monkeypatch.delenv("SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER", raising=False)
+    assert Settings.from_env().shopmind_recommendation_evidence_reranker == "none"
+
+    monkeypatch.setenv("SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER", "LEXICAL")
+    assert Settings.from_env().shopmind_recommendation_evidence_reranker == "lexical"
+
+    monkeypatch.setenv("SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER", "SEMANTIC")
+    monkeypatch.setenv("SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL", "local-cross-encoder")
+    semantic = Settings.from_env()
+    assert semantic.shopmind_recommendation_evidence_reranker == "semantic"
+    assert semantic.shopmind_recommendation_evidence_reranker_model == "local-cross-encoder"
+
+    monkeypatch.setenv("SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER", "remote-model")
+    assert Settings.from_env().shopmind_recommendation_evidence_reranker == "none"
+
+
 def test_settings_uses_default_database_urls(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("TEST_DATABASE_URL", raising=False)

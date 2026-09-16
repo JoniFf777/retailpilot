@@ -79,6 +79,7 @@ def test_product_graph_bridge_accepts_transport_neutral_adapter() -> None:
             "tool_calls": [],
             "executed_routes": [],
             "agent_steps": [],
+            "plan_step_metadata": {"query_focus": "静音机械键盘"},
         },
         adapter=adapter,
     )
@@ -94,3 +95,4 @@ def test_product_graph_bridge_accepts_transport_neutral_adapter() -> None:
     )
     assert task.retry_policy.owner == "disabled"
     assert task.retry_policy.max_attempts == 1
+    assert task.input_data["query_override"] == "静音机械键盘"

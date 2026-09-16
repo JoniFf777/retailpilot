@@ -77,6 +77,29 @@ describe("RecommendationPanel", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("renders an excluded structured condition explicitly", () => {
+    const excluded: RecommendationResult = {
+      ...result,
+      category: "laptop",
+      category_display_name: "笔记本",
+      category_attributes: { panel_type: { value: "ips", polarity: "exclude" } },
+      constraint_fields: [{ key: "panel_type", label: "面板", value: "ips", value_type: "enum", display_order: 1, comparable: false }],
+    };
+    render(<RecommendationPanel recommendation={excluded} onFillPrompt={() => undefined} />);
+    expect(screen.getByText("面板：不包括ips")).toBeInTheDocument();
+  });
+
+  it("shows degraded evidence status and policy citations without exposing internals", () => {
+    const evidenceResult: RecommendationResult = {
+      ...result,
+      evidence_status: "degraded",
+      policy_evidence: [{ source: "policy_rag", type: "policy_document", field: "document_excerpt", value: "退货期限为七天", ref: "policy-1", document_version: "2026.09", section: "退货" }],
+    };
+    render(<RecommendationPanel recommendation={evidenceResult} onFillPrompt={() => undefined} />);
+    expect(screen.getByText("证据状态：部分通道降级")).toBeInTheDocument();
+    expect(screen.getByText("退货：退货期限为七天（版本 2026.09）")).toBeInTheDocument();
+  });
+
   it("does not infer cards for a no-match response and fills without sending", () => {
     const fill = (prompt: string) => { expect(prompt).toContain("调整"); };
     render(<RecommendationPanel recommendation={{ ...result, outcome: "no_match", recommendations: [], no_match_reason: "预算过低" }} onFillPrompt={fill} />);

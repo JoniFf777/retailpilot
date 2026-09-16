@@ -1,28 +1,20 @@
-"""Export ShopMind's FastAPI OpenAPI document without starting any services."""
+"""Export the runtime FastAPI OpenAPI schema for the generated frontend types."""
 
 from __future__ import annotations
 
-import argparse
 import json
 from pathlib import Path
 
+from app.main import app
+
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", required=True, help="UTF-8 JSON output path")
-    args = parser.parse_args()
-
-    from app.main import app
-
-    output = Path(args.output).resolve()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    schema = app.openapi()
+    output = Path("frontend/openapi.json")
     output.write_text(
-        json.dumps(schema, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(app.openapi(), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    components = schema.get("components", {}).get("schemas", {})
-    print(f"OpenAPI exported: {output} ({len(components)} schemas)")
+    print(output)
     return 0
 
 

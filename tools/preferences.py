@@ -27,7 +27,7 @@ class AddUserPreferenceInput(BaseModel):
         min_length=1,
         description="偏好类型。允许 budget、brand、avoid、usage、style、other；其他类型会自动归为 other。",
     )
-    preference_value: str = Field(..., min_length=1, description="偏好内容，例如预算 1000 美元以内、偏好 Apple、避免缺货商品。")
+    preference_value: str = Field(..., min_length=1, max_length=2000, description="偏好内容，例如预算 1000 美元以内、偏好 Apple、避免缺货商品。")
 
 
 class ClearUserPreferencesInput(BaseModel):
@@ -56,7 +56,7 @@ def _normalize_preference_type(preference_type: str) -> tuple[str, bool]:
 
 def _fetch_user_preferences(user_id: str) -> List[Dict[str, Any]]:
     with _get_preference_session() as session:
-        return preference_repository.get_user_preferences(session, user_id)
+        return preference_repository.get_user_preferences(session, user_id, limit=50)
 
 
 def _format_preference_type(preference_type: str) -> str:

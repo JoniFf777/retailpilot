@@ -100,7 +100,50 @@ no `.git`, `.env`, node_modules, build output, caches, or local artifacts.
 ## Current limitations and next step
 
 There is no real payment provider, card collection, refund, webhook, automatic
-reconciliation/expiration, fulfillment, shipping/tax, Redis commerce state,
+reconciliation, fulfillment, shipping/tax, Redis commerce state,
 RocketMQ consumer, or Inbox. The next reliability extension would define a
 consumer-owned Inbox/deduplication contract after the producer facts and event
 schema are independently accepted.
+
+## Recommendation quality discussion
+
+Catalog owns price, stock, SKU identity, and hard constraints. A model can
+understand a request, rewrite a follow-up, choose bounded read tasks, or explain
+evidence, but every model result is validated against the category schema before
+it affects ranking or a write. The deterministic path remains a reproducible
+baseline for comparing single-Agent and bounded multi-Agent variants.
+
+The evidence path separates product and policy questions, binds one
+server-owned scope, recalls through vector and lexical channels, fuses by
+reciprocal rank, then applies an optional bounded reranker and applicability
+check. Retrieval evaluation reports document and necessary-fact Recall@K; the
+end-to-end evaluation separately reports constraint accuracy, hard-constraint
+violations, evidence support/coverage, task success, p95 latency, token/cost,
+and safe side effects. A component becomes the default only when its held-out
+quality gain justifies its latency and cost; unknown evidence is not treated as
+negative evidence.
+
+### How are multi-turn changes made safe?
+
+Each recommendation writes an owner-scoped `ShoppingSessionState` with a
+monotonic version and a bounded PII-free patch log. A follow-up changes only
+fields present in the new turn; explicit clears remove inherited fields, a
+category switch starts a fresh attribute map, and ordinal candidate references
+expire after 30 minutes. Persistence uses optimistic compare-and-swap, so a
+stale retry cannot overwrite a newer turn.
+
+### What is the RAG tradeoff?
+
+The system keeps the original request and adds at most three focused
+product/policy subquestions. Vector and lexical recall are fused with RRF, then
+an optional reranker is bounded to the fused document IDs. A shared call budget
+limits fan-out; policy scope and document version are checked before evidence
+is exposed. A reranker failure preserves trusted fused results but marks the run
+degraded. This costs more calls than a single vector query, but makes exact
+SKU/policy terms recoverable and makes missing evidence visible instead of
+silently turning it into a confident answer.
+
+The repository includes a 20-case synthetic parser smoke and 12-case synthetic
+retrieval smoke. These are regression contracts, not claims of model quality;
+human-labelled PostgreSQL captures are still the correct basis for choosing a
+production default reranker.

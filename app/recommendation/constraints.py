@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, Literal
 
 from app.recommendation.categories.models import CategoryAttributeDefinition
 from app.schemas.recommendation import CategoryAttributeConstraint
@@ -60,7 +60,15 @@ def normalize_constraint(
             values = [values]
         canonical = tuple(definition.canonicalize_enum(item) for item in values)
         value = list(dict.fromkeys(canonical)) if definition.multi_valued else canonical[0]
-    return CategoryAttributeConstraint(value=value, operator=constraint.operator, role=role)
+    return CategoryAttributeConstraint(
+        value=value,
+        operator=constraint.operator,
+        role=role,
+        polarity=constraint.polarity,
+        source_text=constraint.source_text,
+        source_span=constraint.source_span,
+        normalized_value=value,
+    )
 
 
 def validate_catalog_value(definition: CategoryAttributeDefinition, value: Any) -> None:
@@ -102,7 +110,7 @@ def _enum_match(definition: CategoryAttributeDefinition, candidate: Any, request
     return requested_canonical <= candidate_canonical
 
 
-def evaluate_constraint(
+def _evaluate_constraint_inclusion(
     definition: CategoryAttributeDefinition,
     constraint: CategoryAttributeConstraint,
     candidate: Any,
@@ -153,13 +161,47 @@ def evaluate_constraint(
     return False
 
 
+def evaluate_constraint_status(
+    definition: CategoryAttributeDefinition,
+    constraint: CategoryAttributeConstraint,
+    candidate: Any,
+) -> Literal["match", "mismatch", "unknown"]:
+    """Return tri-state evidence for a constraint.
+
+    Missing and malformed catalog values are unknown.  They must not be
+    mistaken for proof that an exclusion matched (or that an inclusion failed)
+    and are therefore kept visible to diagnostics and later evidence checks.
+    """
+
+    if candidate is None:
+        return "unknown"
+    try:
+        validate_catalog_value(definition, candidate)
+        matched = _evaluate_constraint_inclusion(definition, constraint, candidate)
+    except (ValueError, TypeError, InvalidOperation):
+        return "unknown"
+    if constraint.polarity == "exclude":
+        matched = not matched
+    return "match" if matched else "mismatch"
+
+
+def evaluate_constraint(
+    definition: CategoryAttributeDefinition,
+    constraint: CategoryAttributeConstraint,
+    candidate: Any,
+) -> bool:
+    """Evaluate an include or exclude constraint without changing old callers."""
+
+    return evaluate_constraint_status(definition, constraint, candidate) == "match"
+
+
 def preference_signal(
     definition: CategoryAttributeDefinition,
     constraint: CategoryAttributeConstraint,
     candidate: Any,
 ) -> Decimal:
     if candidate is None:
-        return Decimal("0")
+        return Decimal("0.5")
     if definition.type == "enum" and constraint.operator == "enum_match":
         candidate_values = {
             definition.canonicalize_enum(item)
@@ -171,7 +213,8 @@ def preference_signal(
         }
         if not requested_values:
             return Decimal("0.5")
-        return Decimal(len(candidate_values & requested_values)) / Decimal(len(requested_values))
+        overlap = Decimal(len(candidate_values & requested_values)) / Decimal(len(requested_values))
+        return Decimal("1") - overlap if constraint.polarity == "exclude" else overlap
     return Decimal("1") if evaluate_constraint(definition, constraint, candidate) else Decimal("0")
 
 

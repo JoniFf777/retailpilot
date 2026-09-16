@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
 from app.db.models import Document
+from app.repositories.documents import search_keyword_documents
 import tools.documents as document_tools
 from tools.documents import search_policy_docs, search_product_docs
 
@@ -100,3 +101,32 @@ def test_search_product_docs_returns_empty_message(document_session):
 
     assert content == "No relevant product documentation found."
     assert artifacts == []
+
+
+def test_keyword_document_search_is_bounded_and_returns_bm25_style_score(document_session):
+    seed_documents(document_session)
+
+    results = search_keyword_documents(
+        document_session,
+        "keyboard specs",
+        doc_type="product",
+        product_ids=["TECH-KEY-010"],
+        k=3,
+    )
+
+    assert len(results) == 1
+    assert results[0]["id"]
+    assert results[0]["product_id"] == "TECH-KEY-010"
+    assert results[0]["score"] > 0
+    assert search_keyword_documents(
+        document_session,
+        "keyboard specs",
+        doc_type="product",
+        product_ids=["OTHER-PRODUCT"],
+    ) == []
+    assert search_keyword_documents(
+        document_session,
+        "keyboard specs",
+        doc_type="product",
+        product_ids=[],
+    ) == []

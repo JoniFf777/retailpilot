@@ -102,6 +102,7 @@ def build_recommendation(
     if (
         enforce_request_minimum
         and definition.request_requires_any
+        and normalized_request.budget_min is None
         and normalized_request.budget_max is None
         and not normalized
     ):
@@ -113,7 +114,10 @@ def build_recommendation(
             clarification_question=definition.clarification_question,
             recognized=normalized,
         ).model_copy(update={"request_summary": request_summary})
-    if normalized_request.budget_max is not None and normalized_request.budget_currency != "CNY":
+    if (
+        (normalized_request.budget_min is not None or normalized_request.budget_max is not None)
+        and normalized_request.budget_currency != "CNY"
+    ):
         return _empty_result(
             normalized_request,
             definition=definition,
@@ -127,6 +131,7 @@ def build_recommendation(
         candidates,
         definition,
         normalized,
+        budget_min=normalized_request.budget_min,
         budget_max=normalized_request.budget_max,
         budget_currency=normalized_request.budget_currency,
         availability_required=normalized_request.availability_required,
@@ -185,6 +190,7 @@ def build_laptop_recommendation(
 
     request = RecommendationRequest(
         category="laptop",
+        budget_min=constraints.budget_min,
         budget_max=constraints.budget_max,
         budget_currency=constraints.budget_currency,
         category_attributes=request_attributes_from_laptop_constraints(constraints),

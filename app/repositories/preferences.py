@@ -9,6 +9,8 @@ from app.db.models import UserPreference
 
 
 ALLOWED_PREFERENCE_TYPES = {"budget", "brand", "avoid", "usage", "style", "other"}
+MAX_PREFERENCE_COUNT = 50
+MAX_PREFERENCE_TOTAL_CHARS = 8_000
 
 
 def _normalize_preference_type(preference_type: str) -> tuple[str, bool]:
@@ -29,16 +31,40 @@ def preference_to_dict(preference: UserPreference) -> dict[str, Any]:
     }
 
 
-def get_user_preferences(session: Session, user_id: str) -> list[dict[str, Any]]:
+def get_user_preferences(
+    session: Session,
+    user_id: str,
+    *,
+    limit: int = MAX_PREFERENCE_COUNT,
+    max_total_chars: int = MAX_PREFERENCE_TOTAL_CHARS,
+) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit), MAX_PREFERENCE_COUNT))
+    max_total_chars = max(1, min(int(max_total_chars), MAX_PREFERENCE_TOTAL_CHARS))
     statement = (
         select(UserPreference)
         .where(UserPreference.user_id == user_id)
-        .order_by(UserPreference.id.asc())
+        .order_by(UserPreference.id.desc())
+        .limit(limit)
     )
-    return [
-        preference_to_dict(preference)
-        for preference in session.scalars(statement).all()
-    ]
+    results: list[dict[str, Any]] = []
+    total_chars = 0
+    for preference in session.scalars(statement).all():
+        value = str(preference.preference_value or "").strip()
+        if not value:
+            continue
+        remaining = max_total_chars - total_chars
+        if remaining <= 0:
+            break
+        # Do not split one preference into a misleading fragment; keeping the
+        # last complete records makes the character bound predictable.
+        if len(value) > remaining:
+            continue
+        item = preference_to_dict(preference)
+        item["preference_value"] = value
+        item["source"] = "confirmed_user_preference"
+        results.append(item)
+        total_chars += len(value)
+    return results
 
 
 def add_user_preference(
