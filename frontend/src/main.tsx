@@ -3,11 +3,7 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./app/router";
 import { AppProviders } from "./app/providers";
-import "./styles/cart.css";
-import "./styles/checkout.css";
-import "./styles/orders.css";
-import "./styles/global.css";
-import "./styles/catalog.css";
+import "./styles/theme.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

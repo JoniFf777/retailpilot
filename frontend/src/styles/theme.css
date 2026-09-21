@@ -1,0 +1,76 @@
+/*
+ * Stylesheet entry point.
+ *
+ * Cascade layers, lowest to highest priority:
+ *   theme -> base -> legacy -> components -> utilities
+ *
+ * `legacy` holds the hand-written CSS that predates Tailwind. Unlayered CSS always beats
+ * layered CSS, so the old files are imported INTO a layer (below `utilities`); otherwise
+ * Tailwind classes on migrated pages would be silently overridden by old rules.
+ *
+ * Preflight (Tailwind's reset) is intentionally NOT imported yet: it would restyle every
+ * page that has not been migrated. It is added in P4.5 once the legacy layer is empty.
+ * Until then, utilities that rely on the reset (e.g. `border`) must set the style
+ * explicitly, e.g. `border border-solid`.
+ */
+@layer theme, base, legacy, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+/* Legacy CSS. Keep this order identical to the old imports in main.tsx. */
+@import "./cart.css" layer(legacy);
+@import "./checkout.css" layer(legacy);
+@import "./orders.css" layer(legacy);
+@import "./global.css" layer(legacy);
+@import "./catalog.css" layer(legacy);
+
+/*
+ * Class-name detection is an explicit allow-list, not "everything under src". Tailwind
+ * treats any word in scanned files as a possible class, so scanning legacy feature code
+ * would emit utilities such as `.visible` or `.fixed` from ordinary variable names and could
+ * override same-named legacy classes. Add a feature directory here in the same change that
+ * migrates it to Tailwind.
+ */
+@source "../components";
+@source not "../components/**/*.test.tsx";
+
+/*
+ * Design tokens. `static` keeps every variable in the output even when no utility uses it:
+ * legacy CSS reads them through var(--color-*) and Tailwind cannot see those references.
+ */
+@theme static {
+  --color-background: #f3f8f5;
+  --color-background-deep: #e9f3ee;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f8fbf9;
+  --color-surface-soft: #edf6f2;
+  --color-text-primary: #12241f;
+  --color-text-muted: #63756f;
+  --color-text-subtle: #8a9a95;
+  --color-brand: #087f68;
+  --color-brand-strong: #05624f;
+  --color-brand-soft: #dff3eb;
+  --color-success: #16845b;
+  --color-warning: #a7610a;
+  --color-warning-soft: #fff0d5;
+  --color-danger: #c23c46;
+  --color-danger-soft: #fff0ef;
+  --color-agent-product: #2b79b9;
+  --color-agent-rag: #7555ae;
+  --color-agent-preference: #b66a22;
+  --color-border: #dceae4;
+  --color-border-strong: #c9ddd5;
+  --color-ring: #0b9a7a;
+  --radius-sm: 0.65rem;
+  --radius-md: 0.95rem;
+  --radius-lg: 1.35rem;
+  --radius-xl: 1.75rem;
+  --shadow-surface: 0 16px 45px rgb(23 65 51 / 7%);
+  --shadow-soft: 0 12px 32px rgb(23 65 51 / 7%);
+  --shadow-overlay: 0 24px 64px rgb(18 36 31 / 18%);
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Class-based dark mode. Only the variant is defined for now; no toggle ships before P4.5. */
+@custom-variant dark (&:where(.dark, .dark *));
