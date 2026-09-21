@@ -16,7 +16,9 @@
     "test:e2e:live": "playwright test --config playwright.live.config.ts",
     "build": "tsc -b && vite build",
     "check:budget": "node scripts/check-bundle-budget.mjs",
-    "generate:api": "node scripts/generate-api-types.mjs"
+    "generate:api": "node scripts/generate-api-types.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@tanstack/react-query": "5.81.5",
@@ -41,6 +43,7 @@
     "globals": "16.2.0",
     "jsdom": "26.1.0",
     "openapi-typescript": "^7.8.0",
+    "prettier": "3.8.1",
     "typescript": "5.8.3",
     "typescript-eslint": "8.35.0",
     "vite": "7.0.0",
