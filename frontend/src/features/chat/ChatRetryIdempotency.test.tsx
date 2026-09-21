@@ -25,7 +25,11 @@ describe("Chat logical retry identity", () => {
   it("reuses the caller-owned key for repeated SSE transport attempts", async () => {
     const fetchMock = vi.fn().mockResolvedValue(streamResponse());
     vi.stubGlobal("fetch", fetchMock);
-    const request = { message: "recommend a keyboard", thread_id: "thread-1", include_debug: false };
+    const request = {
+      message: "recommend a keyboard",
+      thread_id: "thread-1",
+      include_debug: false,
+    };
     const consume = async () => {
       for await (const event of shopMindApi.streamChat(request, "chat-idem-1")) {
         expect(event.event_type).toBe("run.result");
@@ -34,7 +38,11 @@ describe("Chat logical retry identity", () => {
     await consume();
     await consume();
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Idempotency-Key")).toBe("chat-idem-1");
-    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("Idempotency-Key")).toBe("chat-idem-1");
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Idempotency-Key")).toBe(
+      "chat-idem-1",
+    );
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("Idempotency-Key")).toBe(
+      "chat-idem-1",
+    );
   });
 });

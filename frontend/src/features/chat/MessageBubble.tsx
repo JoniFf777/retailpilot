@@ -9,5 +9,22 @@ function responseLabel(status: string): string {
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
-  return <article className={`message-row ${isUser ? "message-row-user" : "message-row-assistant"}`}><div className="message-avatar" aria-hidden="true">{isUser ? "你" : "S"}</div><div className="message-bubble"><div className="message-meta">{isUser ? "你" : "ShopMind"}</div><p>{message.content}</p>{message.response && <div className={`response-status response-status-${message.response.status}`}><span aria-hidden="true">●</span>{responseLabel(message.response.status)}{message.response.pending_action_id && <span> · 已生成待确认操作</span>}</div>}</div></article>;
+  return (
+    <article className={`message-row ${isUser ? "message-row-user" : "message-row-assistant"}`}>
+      <div className="message-avatar" aria-hidden="true">
+        {isUser ? "你" : "S"}
+      </div>
+      <div className="message-bubble">
+        <div className="message-meta">{isUser ? "你" : "ShopMind"}</div>
+        <p>{message.content}</p>
+        {message.response && (
+          <div className={`response-status response-status-${message.response.status}`}>
+            <span aria-hidden="true">●</span>
+            {responseLabel(message.response.status)}
+            {message.response.pending_action_id && <span> · 已生成待确认操作</span>}
+          </div>
+        )}
+      </div>
+    </article>
+  );
 }

@@ -22,7 +22,12 @@ export function formatMoney(money: Money): string {
 
 export function formatBudget(value: string | number, currency?: string | null): string {
   const amount = String(value);
-  const normalized = /^\d+(?:\.\d+)?$/.test(amount) ? (() => { const [integer, fraction = ""] = amount.split("."); return `${integer}.${(fraction + "00").slice(0, 2)}`; })() : amount;
+  const normalized = /^\d+(?:\.\d+)?$/.test(amount)
+    ? (() => {
+        const [integer, fraction = ""] = amount.split(".");
+        return `${integer}.${(fraction + "00").slice(0, 2)}`;
+      })()
+    : amount;
   if (currency) return formatMoney({ amount: normalized, currency });
   return groupedAmount(normalized);
 }
@@ -38,16 +43,29 @@ export function formatAvailability(availability: AvailabilityView): string {
   return "有货";
 }
 
-export function availabilityTone(availability: AvailabilityView): "available" | "tight" | "unavailable" {
-  if (availability.sale_status !== "active" || !availability.in_stock || availability.available_quantity <= 0) return "unavailable";
+export function availabilityTone(
+  availability: AvailabilityView,
+): "available" | "tight" | "unavailable" {
+  if (
+    availability.sale_status !== "active" ||
+    !availability.in_stock ||
+    availability.available_quantity <= 0
+  )
+    return "unavailable";
   return availability.available_quantity <= 3 ? "tight" : "available";
 }
 
-export function formatSpecificationValue(specification: ProductSpecificationView): string | string[] {
+export function formatSpecificationValue(
+  specification: ProductSpecificationView,
+): string | string[] {
   const { value, value_type: valueType, unit } = specification;
   if (valueType === "string_list" && Array.isArray(value)) return value;
   if (valueType === "boolean" && typeof value === "boolean") return value ? "是" : "否";
   if (valueType === "decimal" && typeof value === "string") return `${value}${unit ?? ""}`;
-  if ((valueType === "integer" || valueType === "string") && (typeof value === "number" || typeof value === "string")) return `${value}${unit ?? ""}`;
+  if (
+    (valueType === "integer" || valueType === "string") &&
+    (typeof value === "number" || typeof value === "string")
+  )
+    return `${value}${unit ?? ""}`;
   return String(value);
 }

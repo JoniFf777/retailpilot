@@ -2,7 +2,12 @@ import type { AgentEvent, SseFrame } from "./sseTypes";
 
 function decodeData(data: string): AgentEvent {
   const parsed: unknown = JSON.parse(data);
-  if (!parsed || typeof parsed !== "object" || !("event_type" in parsed) || !("sequence" in parsed)) {
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    !("event_type" in parsed) ||
+    !("sequence" in parsed)
+  ) {
     throw new Error("Invalid ShopMind stream event.");
   }
   return parsed as AgentEvent;

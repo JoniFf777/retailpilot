@@ -22,7 +22,8 @@ function itemWarnings(warnings: CartWarning[], item: CartItemView): CartWarning[
 function mutationErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return "购物车操作失败，请稍后重试。";
   if (!error.cartError) return "购物车操作失败，请稍后重试。";
-  if (error.cartError.code === "insufficient_inventory") return insufficientInventoryMessage(error.cartError);
+  if (error.cartError.code === "insufficient_inventory")
+    return insufficientInventoryMessage(error.cartError);
   return cartErrorMessage(error.cartError);
 }
 
@@ -30,7 +31,13 @@ function cartError(error: unknown): ApiError["cartError"] {
   return error instanceof ApiError ? error.cartError : null;
 }
 
-export function CartPanel({ enabled = true, onCheckout }: { enabled?: boolean; onCheckout?: () => void }) {
+export function CartPanel({
+  enabled = true,
+  onCheckout,
+}: {
+  enabled?: boolean;
+  onCheckout?: () => void;
+}) {
   const { isDevelopment, userId } = useSession();
   const identity = isDevelopment ? userId.trim() : "trusted";
   const queryClient = useQueryClient();
@@ -78,30 +85,58 @@ export function CartPanel({ enabled = true, onCheckout }: { enabled?: boolean; o
     });
   }, [query.data?.items]);
 
-  const invalidateCart = useCallback(() => queryClient.invalidateQueries({ queryKey }), [queryClient, queryKey]);
+  const invalidateCart = useCallback(
+    () => queryClient.invalidateQueries({ queryKey }),
+    [queryClient, queryKey],
+  );
   const clearCheckoutState = useCallback(() => {
     clearCheckoutAttempt(identity);
     queryClient.removeQueries({ queryKey: checkoutPreviewQueryKey(identity) });
   }, [identity, queryClient]);
 
   const updateMutation = useMutation({
-    mutationFn: ({ item, quantity }: { item: CartItemView; quantity: number }) => shopMindApi.updateCartItem(item.cart_item_id, { expected_version: item.version, quantity }),
+    mutationFn: ({ item, quantity }: { item: CartItemView; quantity: number }) =>
+      shopMindApi.updateCartItem(item.cart_item_id, { expected_version: item.version, quantity }),
     retry: false,
     onMutate: clearCheckoutState,
     onSuccess: async (result, { item }) => {
-      setDraftQuantities((current) => ({ ...current, [item.cart_item_id]: String(result.item.quantity) }));
+      setDraftQuantities((current) => ({
+        ...current,
+        [item.cart_item_id]: String(result.item.quantity),
+      }));
       setItemErrors((current) => ({ ...current, [item.cart_item_id]: null }));
       queryClient.setQueryData(queryKey, result.cart);
       await invalidateCart();
     },
     onError: async (error, { item }) => {
       const typedError = cartError(error);
-      if (typedError && ["cart_version_conflict", "cart_item_not_found", "product_inactive", "sku_inactive", "catalog_not_found", "inventory_missing"].includes(typedError.code)) {
+      if (
+        typedError &&
+        [
+          "cart_version_conflict",
+          "cart_item_not_found",
+          "product_inactive",
+          "sku_inactive",
+          "catalog_not_found",
+          "inventory_missing",
+        ].includes(typedError.code)
+      ) {
         await queryClient.refetchQueries({ queryKey });
         const latest = queryClient.getQueryData<CartResponse>(queryKey);
-        if (latest) setDraftQuantities(Object.fromEntries((latest.items ?? []).map((latestItem) => [latestItem.cart_item_id, String(latestItem.quantity)])));
+        if (latest)
+          setDraftQuantities(
+            Object.fromEntries(
+              (latest.items ?? []).map((latestItem) => [
+                latestItem.cart_item_id,
+                String(latestItem.quantity),
+              ]),
+            ),
+          );
       }
-      setItemErrors((current) => ({ ...current, [item.cart_item_id]: mutationErrorMessage(error) }));
+      setItemErrors((current) => ({
+        ...current,
+        [item.cart_item_id]: mutationErrorMessage(error),
+      }));
     },
   });
 
@@ -110,11 +145,20 @@ export function CartPanel({ enabled = true, onCheckout }: { enabled?: boolean; o
     retry: false,
     onMutate: clearCheckoutState,
     onSuccess: async (_, cartItemId) => {
-      setDraftQuantities((current) => { const next = { ...current }; delete next[cartItemId]; return next; });
-      setItemErrors((current) => { const next = { ...current }; delete next[cartItemId]; return next; });
+      setDraftQuantities((current) => {
+        const next = { ...current };
+        delete next[cartItemId];
+        return next;
+      });
+      setItemErrors((current) => {
+        const next = { ...current };
+        delete next[cartItemId];
+        return next;
+      });
       await invalidateCart();
     },
-    onError: (error, cartItemId) => setItemErrors((current) => ({ ...current, [cartItemId]: mutationErrorMessage(error) })),
+    onError: (error, cartItemId) =>
+      setItemErrors((current) => ({ ...current, [cartItemId]: mutationErrorMessage(error) })),
   });
 
   const clearMutation = useMutation({
@@ -140,7 +184,11 @@ export function CartPanel({ enabled = true, onCheckout }: { enabled?: boolean; o
 
   function openDeleteConfirmation(item: CartItemView, trigger: HTMLElement) {
     restoreFocus.current = trigger;
-    setConfirmation({ kind: "delete", cartItemId: item.cart_item_id, productName: item.product_name });
+    setConfirmation({
+      kind: "delete",
+      cartItemId: item.cart_item_id,
+      productName: item.product_name,
+    });
   }
 
   function openClearConfirmation(trigger: HTMLElement) {
@@ -162,7 +210,9 @@ export function CartPanel({ enabled = true, onCheckout }: { enabled?: boolean; o
   }
 
   function stepDraft(item: CartItemView, delta: number) {
-    const current = validateCartQuantity(draftQuantities[item.cart_item_id] ?? String(item.quantity));
+    const current = validateCartQuantity(
+      draftQuantities[item.cart_item_id] ?? String(item.quantity),
+    );
     if (!current.valid) return;
     const next = Math.min(MAX_CART_QUANTITY, Math.max(MIN_CART_QUANTITY, current.quantity + delta));
     updateDraft(item.cart_item_id, String(next));
@@ -179,52 +229,115 @@ export function CartPanel({ enabled = true, onCheckout }: { enabled?: boolean; o
   const items = data?.items ?? [];
   const warnings = data?.warnings ?? [];
   const itemCount = data?.item_count ?? items.length;
-  const totalQuantity = data?.total_quantity ?? items.reduce((total, item) => total + item.quantity, 0);
+  const totalQuantity =
+    data?.total_quantity ?? items.reduce((total, item) => total + item.quantity, 0);
   const clearBusy = clearMutation.isPending;
   const mixedCurrency = warnings.some((warning) => warning.code === "mixed_currency");
 
-  return <section className="shopmind-cart-panel" aria-label="ShopMind 购物车">
-    <div className="panel-heading">
-      <h2 ref={titleRef} tabIndex={-1}>ShopMind 购物车</h2>
-      <span>{itemCount} 个 SKU</span>
-    </div>
-    {query.isLoading && <p className="cart-readonly-note" role="status">正在读取购物车…</p>}
-    {query.error && <p className="cart-error" role="alert">购物车暂时无法读取。</p>}
-    {data && <div className="cart-summary" aria-label="购物车摘要">
-      <div><span>商品种类</span><strong>{itemCount}</strong></div>
-      <div><span>总件数</span><strong>{totalQuantity}</strong></div>
-      <div><span>当前商品小计</span><strong>{data.subtotal ? formatMoney(data.subtotal) : "暂不可计算"}</strong></div>
-      <small>按当前商品价格计算</small>
-    </div>}
-    {mixedCurrency && <p className="cart-warning" role="status">{cartWarningMessage(warnings.find((warning) => warning.code === "mixed_currency")!)}</p>}
-    {data && items.length === 0 && <p className="cart-empty">购物车还是空的。</p>}
-    <div className="cart-items">
-      {items.map((item) => <CartItem
-        key={item.cart_item_id}
-        item={item}
-        warnings={itemWarnings(warnings, item)}
-        draftQuantity={draftQuantities[item.cart_item_id] ?? String(item.quantity)}
-        busy={clearBusy || (updateMutation.isPending && updateMutation.variables?.item.cart_item_id === item.cart_item_id) || (deleteMutation.isPending && deleteMutation.variables === item.cart_item_id)}
-        error={itemErrors[item.cart_item_id] ?? null}
-        onDraftChange={(value) => updateDraft(item.cart_item_id, value)}
-        onStep={(delta) => stepDraft(item, delta)}
-        onUpdate={() => updateItem(item)}
-        onDelete={(trigger) => openDeleteConfirmation(item, trigger)}
-      />)}
-    </div>
-    {data && items.length > 0 && <div className="cart-footer-actions">
-      {onCheckout && <button className="primary-button cart-checkout-button" disabled={clearBusy || deleteMutation.isPending || updateMutation.isPending} onClick={onCheckout} type="button">去结算</button>}
-      <button className="danger-button" disabled={clearBusy || deleteMutation.isPending || updateMutation.isPending} onClick={(event) => openClearConfirmation(event.currentTarget)} type="button">{clearBusy ? "清空中…" : "清空购物车"}</button>
-      <span>去结算会先生成 Checkout Preview，不会直接创建订单。</span>
-    </div>}
-    {clearError && <p className="cart-error" role="alert">{clearError}</p>}
-    {confirmation && <CartConfirmationDialog
-      title={confirmation.kind === "delete" ? "移除购物车商品" : "清空购物车"}
-      description={confirmation.kind === "delete" ? `从购物车移除“${confirmation.productName}”？` : "确定清空 ShopMind 购物车吗？"}
-      confirmLabel={confirmation.kind === "delete" ? "确认移除" : "确认清空"}
-      busy={confirmation.kind === "delete" ? deleteMutation.isPending : clearMutation.isPending}
-      onCancel={closeConfirmation}
-      onConfirm={confirmMutation}
-    />}
-  </section>;
+  return (
+    <section className="shopmind-cart-panel" aria-label="ShopMind 购物车">
+      <div className="panel-heading">
+        <h2 ref={titleRef} tabIndex={-1}>
+          ShopMind 购物车
+        </h2>
+        <span>{itemCount} 个 SKU</span>
+      </div>
+      {query.isLoading && (
+        <p className="cart-readonly-note" role="status">
+          正在读取购物车…
+        </p>
+      )}
+      {query.error && (
+        <p className="cart-error" role="alert">
+          购物车暂时无法读取。
+        </p>
+      )}
+      {data && (
+        <div className="cart-summary" aria-label="购物车摘要">
+          <div>
+            <span>商品种类</span>
+            <strong>{itemCount}</strong>
+          </div>
+          <div>
+            <span>总件数</span>
+            <strong>{totalQuantity}</strong>
+          </div>
+          <div>
+            <span>当前商品小计</span>
+            <strong>{data.subtotal ? formatMoney(data.subtotal) : "暂不可计算"}</strong>
+          </div>
+          <small>按当前商品价格计算</small>
+        </div>
+      )}
+      {mixedCurrency && (
+        <p className="cart-warning" role="status">
+          {cartWarningMessage(warnings.find((warning) => warning.code === "mixed_currency")!)}
+        </p>
+      )}
+      {data && items.length === 0 && <p className="cart-empty">购物车还是空的。</p>}
+      <div className="cart-items">
+        {items.map((item) => (
+          <CartItem
+            key={item.cart_item_id}
+            item={item}
+            warnings={itemWarnings(warnings, item)}
+            draftQuantity={draftQuantities[item.cart_item_id] ?? String(item.quantity)}
+            busy={
+              clearBusy ||
+              (updateMutation.isPending &&
+                updateMutation.variables?.item.cart_item_id === item.cart_item_id) ||
+              (deleteMutation.isPending && deleteMutation.variables === item.cart_item_id)
+            }
+            error={itemErrors[item.cart_item_id] ?? null}
+            onDraftChange={(value) => updateDraft(item.cart_item_id, value)}
+            onStep={(delta) => stepDraft(item, delta)}
+            onUpdate={() => updateItem(item)}
+            onDelete={(trigger) => openDeleteConfirmation(item, trigger)}
+          />
+        ))}
+      </div>
+      {data && items.length > 0 && (
+        <div className="cart-footer-actions">
+          {onCheckout && (
+            <button
+              className="primary-button cart-checkout-button"
+              disabled={clearBusy || deleteMutation.isPending || updateMutation.isPending}
+              onClick={onCheckout}
+              type="button"
+            >
+              去结算
+            </button>
+          )}
+          <button
+            className="danger-button"
+            disabled={clearBusy || deleteMutation.isPending || updateMutation.isPending}
+            onClick={(event) => openClearConfirmation(event.currentTarget)}
+            type="button"
+          >
+            {clearBusy ? "清空中…" : "清空购物车"}
+          </button>
+          <span>去结算会先生成 Checkout Preview，不会直接创建订单。</span>
+        </div>
+      )}
+      {clearError && (
+        <p className="cart-error" role="alert">
+          {clearError}
+        </p>
+      )}
+      {confirmation && (
+        <CartConfirmationDialog
+          title={confirmation.kind === "delete" ? "移除购物车商品" : "清空购物车"}
+          description={
+            confirmation.kind === "delete"
+              ? `从购物车移除“${confirmation.productName}”？`
+              : "确定清空 ShopMind 购物车吗？"
+          }
+          confirmLabel={confirmation.kind === "delete" ? "确认移除" : "确认清空"}
+          busy={confirmation.kind === "delete" ? deleteMutation.isPending : clearMutation.isPending}
+          onCancel={closeConfirmation}
+          onConfirm={confirmMutation}
+        />
+      )}
+    </section>
+  );
 }

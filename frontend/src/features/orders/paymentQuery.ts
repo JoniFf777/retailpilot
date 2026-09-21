@@ -1,1 +1,2 @@
-export const paymentAttemptsQueryKey = (identity: string, orderId: string) => ["shopmind-payments", identity, orderId] as const;
+export const paymentAttemptsQueryKey = (identity: string, orderId: string) =>
+  ["shopmind-payments", identity, orderId] as const;

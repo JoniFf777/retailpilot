@@ -10,13 +10,21 @@ test("browses categories and reaches canonical PendingAction confirmation", asyn
   await page.getByRole("link", { name: /手机/ }).click();
   await expect(page).toHaveURL(/\/catalog\/phone$/);
   await expect(page.locator("article.catalog-product-card").first()).toBeVisible();
-  await page.locator("article.catalog-product-card").first().getByRole("link", { name: "查看详情" }).click();
+  await page
+    .locator("article.catalog-product-card")
+    .first()
+    .getByRole("link", { name: "查看详情" })
+    .click();
   await expect(page).toHaveURL(/\/catalog\/phone\//);
   await expect(page.getByRole("heading", { name: "结构化规格" })).toBeVisible();
 
   await page.goto("/catalog");
   await page.getByRole("link", { name: /路由器/ }).click();
-  await page.locator("article.catalog-product-card").first().getByRole("link", { name: "查看详情" }).click();
+  await page
+    .locator("article.catalog-product-card")
+    .first()
+    .getByRole("link", { name: "查看详情" })
+    .click();
   await expect(page).toHaveURL(/\/catalog\/router\//);
   await expect(page.getByRole("heading", { name: "可选 SKU" })).toBeVisible();
   await page.getByRole("button", { name: "加入购物车" }).first().click();

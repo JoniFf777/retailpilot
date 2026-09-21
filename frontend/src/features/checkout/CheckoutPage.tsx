@@ -6,14 +6,27 @@ import type { CheckoutPreview, CheckoutWarning, OrderErrorCode } from "../../api
 import { shopMindApi } from "../../api/client";
 import { useSession } from "../../app/useSession";
 import { checkoutPreviewQueryKey } from "./checkoutQuery";
-import { clearCheckoutAttempt, newCheckoutAttempt, readCheckoutAttempt, updateCheckoutAttempt, type CheckoutAttempt } from "./checkoutAttempt";
+import {
+  clearCheckoutAttempt,
+  newCheckoutAttempt,
+  readCheckoutAttempt,
+  updateCheckoutAttempt,
+  type CheckoutAttempt,
+} from "./checkoutAttempt";
 import { orderQueryKey, ordersQueryKey } from "../orders/orderQuery";
 import { formatMoney } from "../cart/cartFormatters";
 import { cartQueryKey } from "../cart/cartQuery";
 
 const REPREVIEW_CODES = new Set<OrderErrorCode>([
-  "cart_changed", "price_changed", "checkout_expired", "checkout_invalid", "mixed_currency",
-  "product_inactive", "sku_inactive", "inventory_missing", "insufficient_inventory",
+  "cart_changed",
+  "price_changed",
+  "checkout_expired",
+  "checkout_invalid",
+  "mixed_currency",
+  "product_inactive",
+  "sku_inactive",
+  "inventory_missing",
+  "insufficient_inventory",
 ]);
 
 function errorCode(error: unknown): OrderErrorCode | null {
@@ -23,8 +36,10 @@ function errorCode(error: unknown): OrderErrorCode | null {
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.orderError?.code === "checkout_unavailable") return "Checkout service is temporarily unavailable. You can retry this submission.";
-    if (error.orderError?.code === "idempotency_conflict") return "This submission key was already used for a different request. Start a new Preview before trying again.";
+    if (error.orderError?.code === "checkout_unavailable")
+      return "Checkout service is temporarily unavailable. You can retry this submission.";
+    if (error.orderError?.code === "idempotency_conflict")
+      return "This submission key was already used for a different request. Start a new Preview before trying again.";
     return error.orderError?.message ?? error.checkoutError?.message ?? error.message;
   }
   return "The submission result is unknown. Retry with the same checkout attempt.";
@@ -35,10 +50,20 @@ function warningLabel(warning: CheckoutWarning): string {
 }
 
 function PreviewItem({ item }: { item: NonNullable<CheckoutPreview["items"]>[number] }) {
-  return <article className="checkout-item" data-testid="checkout-item">
-    <div><strong>{item.product_name}</strong><span>{item.sku_name}</span><small>SKU {item.sku_id}</small></div>
-    <div className="checkout-item-numbers"><span>Qty {item.quantity}</span><span>{formatMoney(item.unit_money)} each</span><strong>{formatMoney(item.subtotal_money)}</strong></div>
-  </article>;
+  return (
+    <article className="checkout-item" data-testid="checkout-item">
+      <div>
+        <strong>{item.product_name}</strong>
+        <span>{item.sku_name}</span>
+        <small>SKU {item.sku_id}</small>
+      </div>
+      <div className="checkout-item-numbers">
+        <span>Qty {item.quantity}</span>
+        <span>{formatMoney(item.unit_money)} each</span>
+        <strong>{formatMoney(item.subtotal_money)}</strong>
+      </div>
+    </article>
+  );
 }
 
 export function CheckoutPage() {
@@ -88,7 +113,12 @@ export function CheckoutPage() {
   }, [attempt, identity, previewQuery.data]);
 
   const orderMutation = useMutation({
-    mutationFn: ({ currentAttempt }: { currentAttempt: CheckoutAttempt }) => shopMindApi.createOrder({ checkout_token: currentAttempt.checkoutToken }, currentAttempt.idempotencyKey, backendUserId),
+    mutationFn: ({ currentAttempt }: { currentAttempt: CheckoutAttempt }) =>
+      shopMindApi.createOrder(
+        { checkout_token: currentAttempt.checkoutToken },
+        currentAttempt.idempotencyKey,
+        backendUserId,
+      ),
     retry: false,
     onSuccess: async (result, { currentAttempt }) => {
       updateCheckoutAttempt(currentAttempt, "succeeded");
@@ -156,35 +186,162 @@ export function CheckoutPage() {
   const canCreate = Boolean(data?.can_create_order && data.checkout_token && !needsRepreview);
   const recovering = attempt?.submissionState === "unknown";
 
-  return <section className="checkout-page" aria-labelledby="checkout-title">
-    <div className="page-heading">
-      <div><p className="eyebrow">CHECKOUT PREVIEW</p><h1 id="checkout-title">Review your order</h1><p className="page-lede">Prices and inventory will be checked again when the order is created.</p></div>
-      <Link className="secondary-button" to="/">Back to shopping</Link>
-    </div>
+  return (
+    <section className="checkout-page" aria-labelledby="checkout-title">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">CHECKOUT PREVIEW</p>
+          <h1 id="checkout-title">Review your order</h1>
+          <p className="page-lede">
+            Prices and inventory will be checked again when the order is created.
+          </p>
+        </div>
+        <Link className="secondary-button" to="/">
+          Back to shopping
+        </Link>
+      </div>
 
-    {recovering && <section className="checkout-recovery" data-testid="checkout-recovery" role="status">
-      <p className="eyebrow">RESULT UNKNOWN</p><h2>We did not receive the previous result.</h2><p>Retrying uses the same checkout token and Idempotency-Key, so it will not create a second logical order.</p>
-      <div className="checkout-actions"><button className="primary-button" disabled={orderMutation.isPending} onClick={retryOrder} type="button">{orderMutation.isPending ? "Retrying…" : "Retry submission"}</button><button className="secondary-button" disabled={orderMutation.isPending} onClick={startNewPreview} type="button">Start a new Preview</button></div>
-    </section>}
+      {recovering && (
+        <section className="checkout-recovery" data-testid="checkout-recovery" role="status">
+          <p className="eyebrow">RESULT UNKNOWN</p>
+          <h2>We did not receive the previous result.</h2>
+          <p>
+            Retrying uses the same checkout token and Idempotency-Key, so it will not create a
+            second logical order.
+          </p>
+          <div className="checkout-actions">
+            <button
+              className="primary-button"
+              disabled={orderMutation.isPending}
+              onClick={retryOrder}
+              type="button"
+            >
+              {orderMutation.isPending ? "Retrying…" : "Retry submission"}
+            </button>
+            <button
+              className="secondary-button"
+              disabled={orderMutation.isPending}
+              onClick={startNewPreview}
+              type="button"
+            >
+              Start a new Preview
+            </button>
+          </div>
+        </section>
+      )}
 
-    {!recovering && previewQuery.isLoading && <div className="loading-panel" role="status">Loading the latest Cart Preview…</div>}
-    {!recovering && previewQuery.error && <section className="error-state standalone" role="alert"><div><strong>Preview unavailable</strong><p>{errorMessage(previewQuery.error)}</p></div><button className="text-button" onClick={startNewPreview} type="button">Try Preview again</button></section>}
-    {!recovering && data && <>
-      <section className="checkout-preview-card" data-testid="checkout-preview" aria-labelledby="checkout-preview-title">
-        <div className="section-heading"><div><p className="eyebrow">SERVER PREVIEW</p><h2 id="checkout-preview-title">Order contents</h2></div><span>{data.item_count} SKU · {data.total_quantity} items</span></div>
-        {items.length === 0 && <p className="empty-panel">Your Cart is empty. Add a SKU before starting Checkout.</p>}
-        <div className="checkout-items">{items.map((item) => <PreviewItem item={item} key={item.cart_item_id} />)}</div>
-        {data.warnings?.length ? <div className="checkout-warnings" role="status"><strong>Review warnings</strong>{data.warnings.map((warning, index) => <span key={`${warning.code}-${warning.sku_id ?? index}`}>{warningLabel(warning)}</span>)}</div> : null}
-        <div className="checkout-total"><span>Subtotal</span><strong>{data.subtotal ? formatMoney(data.subtotal) : "Not available"}</strong><small>{data.currency ?? "Multiple currencies"}</small></div>
-        <p className="checkout-revalidation">The backend will re-check price, inventory, availability, Cart fingerprint, and total during order creation.</p>
-        {!canCreate && <p className="checkout-blocked" role="alert">Order creation is unavailable until the current Preview is valid.</p>}
-        {needsRepreview && <button className="secondary-button" onClick={startNewPreview} type="button">Get a new Preview</button>}
-      </section>
-      {canCreate && <section className="checkout-confirm-card" data-testid="checkout-confirm">
-        <div><p className="eyebrow">FINAL STEP</p><h2>Confirm your order</h2><p>This explicit action creates the pending-payment Order. “Back to shopping” only leaves this page.</p></div>
-        <button className="primary-button" disabled={orderMutation.isPending} onClick={submitOrder} type="button">{orderMutation.isPending ? "Creating order…" : "Confirm order"}</button>
-      </section>}
-      {submissionError && <section className="error-state standalone" role="alert"><div><strong>Order submission needs attention</strong><p>{submissionError}</p></div>{attempt && !needsRepreview && errorCode(orderMutation.error) !== "idempotency_conflict" && <button className="text-button" disabled={orderMutation.isPending} onClick={retryOrder} type="button">Retry submission</button>}</section>}
-    </>}
-  </section>;
+      {!recovering && previewQuery.isLoading && (
+        <div className="loading-panel" role="status">
+          Loading the latest Cart Preview…
+        </div>
+      )}
+      {!recovering && previewQuery.error && (
+        <section className="error-state standalone" role="alert">
+          <div>
+            <strong>Preview unavailable</strong>
+            <p>{errorMessage(previewQuery.error)}</p>
+          </div>
+          <button className="text-button" onClick={startNewPreview} type="button">
+            Try Preview again
+          </button>
+        </section>
+      )}
+      {!recovering && data && (
+        <>
+          <section
+            className="checkout-preview-card"
+            data-testid="checkout-preview"
+            aria-labelledby="checkout-preview-title"
+          >
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">SERVER PREVIEW</p>
+                <h2 id="checkout-preview-title">Order contents</h2>
+              </div>
+              <span>
+                {data.item_count} SKU · {data.total_quantity} items
+              </span>
+            </div>
+            {items.length === 0 && (
+              <p className="empty-panel">Your Cart is empty. Add a SKU before starting Checkout.</p>
+            )}
+            <div className="checkout-items">
+              {items.map((item) => (
+                <PreviewItem item={item} key={item.cart_item_id} />
+              ))}
+            </div>
+            {data.warnings?.length ? (
+              <div className="checkout-warnings" role="status">
+                <strong>Review warnings</strong>
+                {data.warnings.map((warning, index) => (
+                  <span key={`${warning.code}-${warning.sku_id ?? index}`}>
+                    {warningLabel(warning)}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="checkout-total">
+              <span>Subtotal</span>
+              <strong>{data.subtotal ? formatMoney(data.subtotal) : "Not available"}</strong>
+              <small>{data.currency ?? "Multiple currencies"}</small>
+            </div>
+            <p className="checkout-revalidation">
+              The backend will re-check price, inventory, availability, Cart fingerprint, and total
+              during order creation.
+            </p>
+            {!canCreate && (
+              <p className="checkout-blocked" role="alert">
+                Order creation is unavailable until the current Preview is valid.
+              </p>
+            )}
+            {needsRepreview && (
+              <button className="secondary-button" onClick={startNewPreview} type="button">
+                Get a new Preview
+              </button>
+            )}
+          </section>
+          {canCreate && (
+            <section className="checkout-confirm-card" data-testid="checkout-confirm">
+              <div>
+                <p className="eyebrow">FINAL STEP</p>
+                <h2>Confirm your order</h2>
+                <p>
+                  This explicit action creates the pending-payment Order. “Back to shopping” only
+                  leaves this page.
+                </p>
+              </div>
+              <button
+                className="primary-button"
+                disabled={orderMutation.isPending}
+                onClick={submitOrder}
+                type="button"
+              >
+                {orderMutation.isPending ? "Creating order…" : "Confirm order"}
+              </button>
+            </section>
+          )}
+          {submissionError && (
+            <section className="error-state standalone" role="alert">
+              <div>
+                <strong>Order submission needs attention</strong>
+                <p>{submissionError}</p>
+              </div>
+              {attempt &&
+                !needsRepreview &&
+                errorCode(orderMutation.error) !== "idempotency_conflict" && (
+                  <button
+                    className="text-button"
+                    disabled={orderMutation.isPending}
+                    onClick={retryOrder}
+                    type="button"
+                  >
+                    Retry submission
+                  </button>
+                )}
+            </section>
+          )}
+        </>
+      )}
+    </section>
+  );
 }

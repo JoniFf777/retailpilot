@@ -7,7 +7,11 @@ import { CheckoutPage } from "../features/checkout/CheckoutPage";
 import { OrderDetailPage } from "../features/orders/OrderDetailPage";
 import { OrdersPage } from "../features/orders/OrdersPage";
 import { App } from "./App";
-import { CatalogCategoryPage, CatalogHomePage, CatalogProductDetailPage } from "../features/catalog/CatalogPages";
+import {
+  CatalogCategoryPage,
+  CatalogHomePage,
+  CatalogProductDetailPage,
+} from "../features/catalog/CatalogPages";
 import { AdminAiPage } from "../features/admin-ai/AdminAiPage";
 import { TasksPage } from "../features/tasks/TasksPage";
 import { TaskDetailPage } from "../features/tasks/TaskDetailPage";

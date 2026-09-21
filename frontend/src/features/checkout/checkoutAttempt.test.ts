@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearAllCheckoutAttempts, clearCheckoutAttempt, newCheckoutAttempt, readCheckoutAttempt, updateCheckoutAttempt } from "./checkoutAttempt";
+import {
+  clearAllCheckoutAttempts,
+  clearCheckoutAttempt,
+  newCheckoutAttempt,
+  readCheckoutAttempt,
+  updateCheckoutAttempt,
+} from "./checkoutAttempt";
 
 describe("identity-scoped CheckoutAttempt", () => {
   beforeEach(() => sessionStorage.clear());

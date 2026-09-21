@@ -65,8 +65,10 @@ function terminalStatus(response: ChatResponse): StreamStatus {
 
 export function streamReducer(state: StreamState, action: StreamAction): StreamState {
   if (action.type === "start") return { ...initialStreamState, status: "connecting" };
-  if (action.type === "detach") return { ...state, status: "detached", response: null, error: null };
-  if (action.type === "error") return { ...state, status: "failed", response: null, error: action.message };
+  if (action.type === "detach")
+    return { ...state, status: "detached", response: null, error: null };
+  if (action.type === "error")
+    return { ...state, status: "failed", response: null, error: action.message };
   if (action.type === "eof") {
     return state.status === "connecting" || state.status === "running"
       ? { ...state, status: "failed", response: null, error: "流已结束，但后端没有返回最终结果。" }
@@ -78,7 +80,13 @@ export function streamReducer(state: StreamState, action: StreamAction): StreamS
   const event = action.event;
   if (event.event_type === "run.result") {
     if (!isTerminalChatResponsePayload(event.payload)) {
-      return { ...state, lastSequence: event.sequence, status: "failed", response: null, error: "后端返回的最终结果格式无法识别。" };
+      return {
+        ...state,
+        lastSequence: event.sequence,
+        status: "failed",
+        response: null,
+        error: "后端返回的最终结果格式无法识别。",
+      };
     }
     return {
       ...state,
@@ -89,15 +97,25 @@ export function streamReducer(state: StreamState, action: StreamAction): StreamS
     };
   }
   if (event.event_type === "run.failed") {
-    return { ...state, lastSequence: event.sequence, status: "failed", response: null, error: "后端运行失败，请重试。" };
+    return {
+      ...state,
+      lastSequence: event.sequence,
+      status: "failed",
+      response: null,
+      error: "后端运行失败，请重试。",
+    };
   }
 
-  const progress = event.event_type === "run.started"
-    ? state.progress
-    : [...state.progress, {
-      sequence: event.sequence,
-      label: progressLabel(event),
-      agentName: event.agent_name ?? null,
-    }].slice(-6);
+  const progress =
+    event.event_type === "run.started"
+      ? state.progress
+      : [
+          ...state.progress,
+          {
+            sequence: event.sequence,
+            label: progressLabel(event),
+            agentName: event.agent_name ?? null,
+          },
+        ].slice(-6);
   return { ...state, lastSequence: event.sequence, status: "running", progress, error: null };
 }

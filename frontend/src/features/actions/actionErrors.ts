@@ -24,7 +24,9 @@ const messages: Record<ActionErrorResponse["code"], string> = {
 
 export function actionErrorMessage(error: ActionErrorResponse): string {
   const details = error.details ?? {};
-  if (error.code === "insufficient_inventory" && details.available_quantity !== undefined) return `${messages[error.code]}当前可用 ${details.available_quantity} 件。`;
-  if (error.code === "cart_quantity_limit" && details.max_quantity !== undefined) return `${messages[error.code]}上限为 ${details.max_quantity} 件。`;
+  if (error.code === "insufficient_inventory" && details.available_quantity !== undefined)
+    return `${messages[error.code]}当前可用 ${details.available_quantity} 件。`;
+  if (error.code === "cart_quantity_limit" && details.max_quantity !== undefined)
+    return `${messages[error.code]}上限为 ${details.max_quantity} 件。`;
   return messages[error.code] ?? error.message;
 }

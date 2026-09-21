@@ -4,11 +4,44 @@ type OrderStatus = "pending_payment" | "cancelled" | "paid";
 type PaymentStatus = "processing" | "unknown" | "provider_succeeded" | "failed" | "succeeded";
 
 function orderFixture(status: OrderStatus = "pending_payment") {
-  return { order_id: "order-e2e-payment", status, currency: "CNY", subtotal: { amount: "5999.00", currency: "CNY" }, total: { amount: "5999.00", currency: "CNY" }, items: [{ item_id: "item-e2e-payment", sku_id: "sku-e2e-payment", product_code: "PAYMENT-1", product_name: "Payment Product", sku_code: "PAYMENT-SKU", sku_name: "Mock SKU", unit_money: { amount: "5999.00", currency: "CNY" }, quantity: 1, subtotal_money: { amount: "5999.00", currency: "CNY" } }], version: status === "paid" ? 2 : 1, created_at: "2026-08-08T00:00:00Z", updated_at: "2026-08-08T00:00:00Z" };
+  return {
+    order_id: "order-e2e-payment",
+    status,
+    currency: "CNY",
+    subtotal: { amount: "5999.00", currency: "CNY" },
+    total: { amount: "5999.00", currency: "CNY" },
+    items: [
+      {
+        item_id: "item-e2e-payment",
+        sku_id: "sku-e2e-payment",
+        product_code: "PAYMENT-1",
+        product_name: "Payment Product",
+        sku_code: "PAYMENT-SKU",
+        sku_name: "Mock SKU",
+        unit_money: { amount: "5999.00", currency: "CNY" },
+        quantity: 1,
+        subtotal_money: { amount: "5999.00", currency: "CNY" },
+      },
+    ],
+    version: status === "paid" ? 2 : 1,
+    created_at: "2026-08-08T00:00:00Z",
+    updated_at: "2026-08-08T00:00:00Z",
+  };
 }
 
 function paymentAttempt(status: PaymentStatus) {
-  return { attempt_id: `attempt-${status}`, order_id: "order-e2e-payment", provider: "mock", status, amount: { amount: "5999.00", currency: "CNY" }, failure_code: status === "failed" || status === "unknown" ? "payment_declined" : null, provider_result_at: "2026-08-08T00:00:00Z", created_at: "2026-08-08T00:00:00Z", updated_at: "2026-08-08T00:00:00Z", completed_at: status === "failed" || status === "succeeded" ? "2026-08-08T00:00:00Z" : null };
+  return {
+    attempt_id: `attempt-${status}`,
+    order_id: "order-e2e-payment",
+    provider: "mock",
+    status,
+    amount: { amount: "5999.00", currency: "CNY" },
+    failure_code: status === "failed" || status === "unknown" ? "payment_declined" : null,
+    provider_result_at: "2026-08-08T00:00:00Z",
+    created_at: "2026-08-08T00:00:00Z",
+    updated_at: "2026-08-08T00:00:00Z",
+    completed_at: status === "failed" || status === "succeeded" ? "2026-08-08T00:00:00Z" : null,
+  };
 }
 
 function json(body: unknown, status = 200) {
@@ -23,7 +56,8 @@ type PaymentState = {
 
 async function installOrderApi(page: Page, state: PaymentState, keys: string[] = []) {
   await page.route("**/api/orders?*", async (route) => {
-    if (route.request().method() === "GET") return route.fulfill(json({ items: [state.order], next_cursor: null }));
+    if (route.request().method() === "GET")
+      return route.fulfill(json({ items: [state.order], next_cursor: null }));
     return route.fallback();
   });
   await page.route("**/api/orders/order-e2e-payment?*", async (route) => {
@@ -41,7 +75,9 @@ async function installOrderApi(page: Page, state: PaymentState, keys: string[] =
     const succeeded = paymentAttempt("succeeded");
     state.attempts = [succeeded];
     state.order = orderFixture("paid");
-    return route.fulfill(json({ payment_attempt: succeeded, order: state.order, idempotent_replay: false }));
+    return route.fulfill(
+      json({ payment_attempt: succeeded, order: state.order, idempotent_replay: false }),
+    );
   });
 }
 
@@ -66,7 +102,36 @@ test("pending Order → Mock Payment → paid and paid persists after refresh", 
 
 test("Checkout/Create Order → Payment completes the full frontend path", async ({ page }) => {
   const state: PaymentState = { order: orderFixture(), attempts: [] };
-  await page.route("**/api/checkout/preview**", async (route) => await route.fulfill(json({ items: [{ cart_item_id: "cart-payment", sku_id: "sku-e2e-payment", product_name: "Payment Product", sku_name: "Mock SKU", quantity: 1, unit_money: { amount: "5999.00", currency: "CNY" }, subtotal_money: { amount: "5999.00", currency: "CNY" }, availability: { sale_status: "active", in_stock: true, available_quantity: 8 }, version: 1 }], item_count: 1, total_quantity: 1, subtotal: { amount: "5999.00", currency: "CNY" }, currency: "CNY", warnings: [], can_create_order: true, checkout_token: "payment-checkout-token", expires_at: "2026-08-08T00:10:00Z", revalidation_required: true })));
+  await page.route(
+    "**/api/checkout/preview**",
+    async (route) =>
+      await route.fulfill(
+        json({
+          items: [
+            {
+              cart_item_id: "cart-payment",
+              sku_id: "sku-e2e-payment",
+              product_name: "Payment Product",
+              sku_name: "Mock SKU",
+              quantity: 1,
+              unit_money: { amount: "5999.00", currency: "CNY" },
+              subtotal_money: { amount: "5999.00", currency: "CNY" },
+              availability: { sale_status: "active", in_stock: true, available_quantity: 8 },
+              version: 1,
+            },
+          ],
+          item_count: 1,
+          total_quantity: 1,
+          subtotal: { amount: "5999.00", currency: "CNY" },
+          currency: "CNY",
+          warnings: [],
+          can_create_order: true,
+          checkout_token: "payment-checkout-token",
+          expires_at: "2026-08-08T00:10:00Z",
+          revalidation_required: true,
+        }),
+      ),
+  );
   await page.route("**/api/orders?*", async (route) => {
     if (route.request().method() !== "POST") return route.fallback();
     return route.fulfill(json({ order: state.order, idempotent_replay: false }, 201));
@@ -95,12 +160,19 @@ test("declined payment permits a new attempt with a new key", async ({ page }) =
     if (seenKeys.length === 1) {
       const failed = paymentAttempt("failed");
       state.attempts = [failed];
-      return route.fulfill(json({ code: "payment_declined", message: "declined", details: {}, idempotent_replay: false }, 402));
+      return route.fulfill(
+        json(
+          { code: "payment_declined", message: "declined", details: {}, idempotent_replay: false },
+          402,
+        ),
+      );
     }
     const succeeded = paymentAttempt("succeeded");
     state.attempts = [succeeded, paymentAttempt("failed")];
     state.order = orderFixture("paid");
-    return route.fulfill(json({ payment_attempt: succeeded, order: state.order, idempotent_replay: false }));
+    return route.fulfill(
+      json({ payment_attempt: succeeded, order: state.order, idempotent_replay: false }),
+    );
   };
   await openOrder(page, state, keys);
   await page.getByRole("button", { name: "Mock Payment" }).click();
@@ -117,12 +189,23 @@ test("unknown payment reconciles with the same key", async ({ page }) => {
   state.onPost = async (route, seenKeys) => {
     if (seenKeys.length === 1) {
       state.attempts = [paymentAttempt("unknown")];
-      return route.fulfill(json({ payment_attempt: paymentAttempt("unknown"), order: state.order, idempotent_replay: false }, 202));
+      return route.fulfill(
+        json(
+          {
+            payment_attempt: paymentAttempt("unknown"),
+            order: state.order,
+            idempotent_replay: false,
+          },
+          202,
+        ),
+      );
     }
     const succeeded = paymentAttempt("succeeded");
     state.attempts = [succeeded];
     state.order = orderFixture("paid");
-    return route.fulfill(json({ payment_attempt: succeeded, order: state.order, idempotent_replay: true }));
+    return route.fulfill(
+      json({ payment_attempt: succeeded, order: state.order, idempotent_replay: true }),
+    );
   };
   await openOrder(page, state, keys);
   await page.getByRole("button", { name: "Mock Payment" }).click();
@@ -142,7 +225,9 @@ test("response lost retries the same key", async ({ page }) => {
     const succeeded = paymentAttempt("succeeded");
     state.attempts = [succeeded];
     state.order = orderFixture("paid");
-    return route.fulfill(json({ payment_attempt: succeeded, order: state.order, idempotent_replay: true }));
+    return route.fulfill(
+      json({ payment_attempt: succeeded, order: state.order, idempotent_replay: true }),
+    );
   };
   await openOrder(page, state, keys);
   await page.getByRole("button", { name: "Mock Payment" }).click();
@@ -152,18 +237,32 @@ test("response lost retries the same key", async ({ page }) => {
   expect(keys[0]).toBe(keys[1]);
 });
 
-test("provider_succeeded/finalization pending only offers recovery, never a new payment", async ({ page }) => {
+test("provider_succeeded/finalization pending only offers recovery, never a new payment", async ({
+  page,
+}) => {
   const state: PaymentState = { order: orderFixture(), attempts: [] };
   const keys: string[] = [];
   state.onPost = async (route, seenKeys) => {
     if (seenKeys.length === 1) {
       state.attempts = [paymentAttempt("provider_succeeded")];
-      return route.fulfill(json({ code: "payment_finalization_pending", message: "finalization pending", details: {}, idempotent_replay: true }, 503));
+      return route.fulfill(
+        json(
+          {
+            code: "payment_finalization_pending",
+            message: "finalization pending",
+            details: {},
+            idempotent_replay: true,
+          },
+          503,
+        ),
+      );
     }
     const succeeded = paymentAttempt("succeeded");
     state.attempts = [succeeded];
     state.order = orderFixture("paid");
-    return route.fulfill(json({ payment_attempt: succeeded, order: state.order, idempotent_replay: true }));
+    return route.fulfill(
+      json({ payment_attempt: succeeded, order: state.order, idempotent_replay: true }),
+    );
   };
   await openOrder(page, state, keys);
   await page.getByRole("button", { name: "Mock Payment" }).click();
@@ -186,7 +285,16 @@ test("identity switch does not expose or retry the previous user's Payment", asy
   const keys: string[] = [];
   state.onPost = async (route) => {
     state.attempts = [paymentAttempt("unknown")];
-    return route.fulfill(json({ payment_attempt: paymentAttempt("unknown"), order: state.order, idempotent_replay: false }, 202));
+    return route.fulfill(
+      json(
+        {
+          payment_attempt: paymentAttempt("unknown"),
+          order: state.order,
+          idempotent_replay: false,
+        },
+        202,
+      ),
+    );
   };
   await openOrder(page, state, keys);
   await page.getByRole("button", { name: "Mock Payment" }).click();
@@ -208,12 +316,23 @@ test("identity A to B to A preserves the original Payment recovery key", async (
   state.onPost = async (route, seenKeys) => {
     if (seenKeys.length === 1) {
       state.attempts = [paymentAttempt("unknown")];
-      return route.fulfill(json({ payment_attempt: paymentAttempt("unknown"), order: state.order, idempotent_replay: false }, 202));
+      return route.fulfill(
+        json(
+          {
+            payment_attempt: paymentAttempt("unknown"),
+            order: state.order,
+            idempotent_replay: false,
+          },
+          202,
+        ),
+      );
     }
     const succeeded = paymentAttempt("succeeded");
     state.attempts = [succeeded];
     state.order = orderFixture("paid");
-    return route.fulfill(json({ payment_attempt: succeeded, order: state.order, idempotent_replay: true }));
+    return route.fulfill(
+      json({ payment_attempt: succeeded, order: state.order, idempotent_replay: true }),
+    );
   };
   await openOrder(page, state, keys);
   await page.getByRole("button", { name: "Mock Payment" }).click();
@@ -237,18 +356,32 @@ test("identity A to B to A preserves the original Payment recovery key", async (
   expect(keys[0]).toBe(keys[1]);
 });
 
-test("payment_in_progress discards the rejected local attempt and allows a new attempt after failure", async ({ page }) => {
+test("payment_in_progress discards the rejected local attempt and allows a new attempt after failure", async ({
+  page,
+}) => {
   const state: PaymentState = { order: orderFixture(), attempts: [] };
   const keys: string[] = [];
   state.onPost = async (route, seenKeys) => {
     if (seenKeys.length === 1) {
       state.attempts = [paymentAttempt("processing")];
-      return route.fulfill(json({ code: "payment_in_progress", message: "Payment is already in progress", details: {}, idempotent_replay: false }, 409));
+      return route.fulfill(
+        json(
+          {
+            code: "payment_in_progress",
+            message: "Payment is already in progress",
+            details: {},
+            idempotent_replay: false,
+          },
+          409,
+        ),
+      );
     }
     const succeeded = paymentAttempt("succeeded");
     state.attempts = [succeeded, paymentAttempt("failed")];
     state.order = orderFixture("paid");
-    return route.fulfill(json({ payment_attempt: succeeded, order: state.order, idempotent_replay: false }));
+    return route.fulfill(
+      json({ payment_attempt: succeeded, order: state.order, idempotent_replay: false }),
+    );
   };
   await openOrder(page, state, keys);
   await page.getByRole("button", { name: "Mock Payment" }).click();
@@ -263,19 +396,36 @@ test("payment_in_progress discards the rejected local attempt and allows a new a
   expect(keys[0]).not.toBe(keys[1]);
 });
 
-test("idempotency conflict does not auto-retry and requires an explicit new Payment", async ({ page }) => {
+test("idempotency conflict does not auto-retry and requires an explicit new Payment", async ({
+  page,
+}) => {
   const state: PaymentState = { order: orderFixture(), attempts: [] };
   const keys: string[] = [];
   state.onPost = async (route, seenKeys) => {
-    if (seenKeys.length === 1) return route.fulfill(json({ code: "idempotency_conflict", message: "conflict", details: {}, idempotent_replay: false }, 409));
+    if (seenKeys.length === 1)
+      return route.fulfill(
+        json(
+          {
+            code: "idempotency_conflict",
+            message: "conflict",
+            details: {},
+            idempotent_replay: false,
+          },
+          409,
+        ),
+      );
     const succeeded = paymentAttempt("succeeded");
     state.attempts = [succeeded];
     state.order = orderFixture("paid");
-    return route.fulfill(json({ payment_attempt: succeeded, order: state.order, idempotent_replay: false }));
+    return route.fulfill(
+      json({ payment_attempt: succeeded, order: state.order, idempotent_replay: false }),
+    );
   };
   await openOrder(page, state, keys);
   await page.getByRole("button", { name: "Mock Payment" }).click();
-  await expect(page.getByTestId("payment-idempotency-conflict")).toContainText("Automatic retry stopped");
+  await expect(page.getByTestId("payment-idempotency-conflict")).toContainText(
+    "Automatic retry stopped",
+  );
   expect(keys).toHaveLength(1);
   await page.getByRole("button", { name: "Mock Payment" }).click();
   await expect(page.getByTestId("payment-paid")).toBeVisible();

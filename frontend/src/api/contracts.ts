@@ -30,9 +30,11 @@ export type EnumEditableField = components["schemas"]["EnumEditableField"];
 export type TextEditableField = components["schemas"]["TextEditableField"];
 export type EditableField = IntegerEditableField | EnumEditableField | TextEditableField;
 export type AddToCartPendingActionRequest = components["schemas"]["AddToCartPendingActionRequest"];
-export type PendingActionTransitionRequest = components["schemas"]["PendingActionTransitionRequest"];
+export type PendingActionTransitionRequest =
+  components["schemas"]["PendingActionTransitionRequest"];
 export type PendingActionCancelRequest = components["schemas"]["PendingActionCancelRequest"];
-export type PendingActionTransitionResponse = components["schemas"]["PendingActionTransitionResponse"];
+export type PendingActionTransitionResponse =
+  components["schemas"]["PendingActionTransitionResponse"];
 export type PendingActionErrorDetails = components["schemas"]["PendingActionErrorDetails"];
 export type ActionErrorResponse = components["schemas"]["ActionErrorResponse"];
 export type CartItemView = components["schemas"]["CartItemView"];
@@ -81,8 +83,10 @@ export type RunMode = components["schemas"]["RunMode"];
 export type RunStatus = components["schemas"]["RunStatus"];
 export type ApiErrorBody = components["schemas"]["HTTPValidationError"];
 
-export type HealthResponse = operations["health_check_api_health_get"]["responses"][200]["content"]["application/json"];
-export type ReadinessResponse = operations["deployment_readiness_health_check_api_health_readiness_get"]["responses"][200]["content"]["application/json"];
+export type HealthResponse =
+  operations["health_check_api_health_get"]["responses"][200]["content"]["application/json"];
+export type ReadinessResponse =
+  operations["deployment_readiness_health_check_api_health_readiness_get"]["responses"][200]["content"]["application/json"];
 export type CatalogCategoryView = components["schemas"]["CatalogCategoryView"];
 export type CatalogCategoryListResponse = components["schemas"]["CatalogCategoryListResponse"];
 export type CatalogSpecificationView = components["schemas"]["CatalogSpecificationView"];
@@ -91,4 +95,5 @@ export type CatalogProductSummary = components["schemas"]["CatalogProductSummary
 export type CatalogProductDetail = components["schemas"]["CatalogProductDetail"];
 export type CatalogProductListResponse = components["schemas"]["CatalogProductListResponse"];
 export type CatalogErrorResponse = components["schemas"]["CatalogErrorResponse"];
-export type CatalogBrowseAddToCartPendingActionRequest = components["schemas"]["CatalogBrowseAddToCartPendingActionRequest"];
+export type CatalogBrowseAddToCartPendingActionRequest =
+  components["schemas"]["CatalogBrowseAddToCartPendingActionRequest"];

@@ -3,7 +3,14 @@ import { type FormEvent, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../../api/errors";
 import { shopMindApi } from "../../api/client";
-import type { ActionErrorResponse, ChatRequest, ChatResponse, PendingActionTransitionRequest, PendingActionView, RecommendationContextView } from "../../api/contracts";
+import type {
+  ActionErrorResponse,
+  ChatRequest,
+  ChatResponse,
+  PendingActionTransitionRequest,
+  PendingActionView,
+  RecommendationContextView,
+} from "../../api/contracts";
 import { useSession } from "../../app/useSession";
 import { ActionDrawer } from "../actions/ActionDrawer";
 import { CartPanel } from "../cart/CartPanel";
@@ -17,13 +24,33 @@ import { createThreadId, readOrCreateThreadId } from "./chatStorage";
 import type { ChatMessage } from "./chatTypes";
 import { initialStreamState, streamReducer, type StreamState } from "./streamReducer";
 
-const QUICK_PROMPTS = ["预算 6000 元以内，主要用于 Java 开发，内存至少 16GB，希望尽量轻", "预算 12000 元以内，想买适合开发和出差的轻薄笔记本", "TECH-LAP-001 多少钱？"];
+const QUICK_PROMPTS = [
+  "预算 6000 元以内，主要用于 Java 开发，内存至少 16GB，希望尽量轻",
+  "预算 12000 元以内，想买适合开发和出差的轻薄笔记本",
+  "TECH-LAP-001 多少钱？",
+];
 type ActionMode = "structured_catalog" | "legacy_chat";
-type ActionSession = { mode: ActionMode; action: PendingActionView; sourceRunId?: string; serverBacked: boolean };
+type ActionSession = {
+  mode: ActionMode;
+  action: PendingActionView;
+  sourceRunId?: string;
+  serverBacked: boolean;
+};
 type RetryIdentityScope = { threadId: string; ownerScope: string };
-type LogicalUserMessage = ChatMessage & { role: "user"; idempotencyKey: string; retryState: "pending" | "interrupted" | "terminal"; retryScope: RetryIdentityScope };
+type LogicalUserMessage = ChatMessage & {
+  role: "user";
+  idempotencyKey: string;
+  retryState: "pending" | "interrupted" | "terminal";
+  retryScope: RetryIdentityScope;
+};
 
-function newId(prefix: string): string { const value = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : Math.random().toString(36).slice(2); return `${prefix}-${value}`; }
+function newId(prefix: string): string {
+  const value =
+    typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  return `${prefix}-${value}`;
+}
 
 export function ChatPage() {
   const [threadId, setThreadId] = useState(readOrCreateThreadId);
@@ -39,7 +66,12 @@ export function ChatPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [actionSession, setActionSession] = useState<ActionSession | null>(null);
   const [actionError, setActionError] = useState<ActionErrorResponse | null>(null);
-  const [resolution, setResolution] = useState<{ requested_quantity?: number | null; cart_quantity?: number | null; price_changed?: boolean; idempotent_replay?: boolean } | null>(null);
+  const [resolution, setResolution] = useState<{
+    requested_quantity?: number | null;
+    cart_quantity?: number | null;
+    price_changed?: boolean;
+    idempotent_replay?: boolean;
+  } | null>(null);
   const [cartEnabled, setCartEnabled] = useState(false);
   const { isDevelopment, userId, setUserId } = useSession();
   const navigate = useNavigate();
@@ -47,32 +79,110 @@ export function ChatPage() {
   const threadShortId = useMemo(() => threadId.slice(-12), [threadId]);
   const streamBusy = streamState.status === "connecting" || streamState.status === "running";
 
-  function currentRetryScope(): RetryIdentityScope { return { threadId, ownerScope: isDevelopment ? userId.trim() : "trusted" }; }
-  function requestFor(message: LogicalUserMessage): ChatRequest { return { message: message.content, include_debug: false, thread_id: message.retryScope.threadId, ...(isDevelopment && message.retryScope.ownerScope ? { user_id: message.retryScope.ownerScope } : {}) }; }
-  function appendAssistant(response: ChatResponse) { setMessages((current) => [...current, { id: newId("message"), role: "assistant", content: response.answer, response }]); }
-  function updateStream(action: Parameters<typeof streamReducer>[1]): StreamState { const next = streamReducer(streamStateRef.current, action); streamStateRef.current = next; setStreamState(next); return next; }
+  function currentRetryScope(): RetryIdentityScope {
+    return { threadId, ownerScope: isDevelopment ? userId.trim() : "trusted" };
+  }
+  function requestFor(message: LogicalUserMessage): ChatRequest {
+    return {
+      message: message.content,
+      include_debug: false,
+      thread_id: message.retryScope.threadId,
+      ...(isDevelopment && message.retryScope.ownerScope
+        ? { user_id: message.retryScope.ownerScope }
+        : {}),
+    };
+  }
+  function appendAssistant(response: ChatResponse) {
+    setMessages((current) => [
+      ...current,
+      { id: newId("message"), role: "assistant", content: response.answer, response },
+    ]);
+  }
+  function updateStream(action: Parameters<typeof streamReducer>[1]): StreamState {
+    const next = streamReducer(streamStateRef.current, action);
+    streamStateRef.current = next;
+    setStreamState(next);
+    return next;
+  }
 
   function compatibilityAction(response: ChatResponse): PendingActionView | null {
     if (!response.pending_action_id) return null;
     const savePreference = response.tool_calls?.includes("prepare_save_preference");
-    return { pending_action_id: response.pending_action_id, action_type: savePreference ? "save_preference" : "add_to_cart", risk_class: savePreference ? "medium" : "high", status: "pending", version: 1, expires_at: null, preview: response.answer, editable_fields: savePreference ? [{ field_type: "enum", field: "preference_type", label: "Preference type", current_value: "other", options: ["budget", "brand", "avoid", "usage", "style", "other"], required: true }, { field_type: "text", field: "preference_value", label: "Preference value", current_value: "", min_length: 1, max_length: 2000, required: true }] : [{ field_type: "integer", field: "quantity", label: "Quantity", current_value: 1, min_value: 1, max_value: 20, required: true }], confirm_label: "Confirm", cancel_label: "Cancel" };
+    return {
+      pending_action_id: response.pending_action_id,
+      action_type: savePreference ? "save_preference" : "add_to_cart",
+      risk_class: savePreference ? "medium" : "high",
+      status: "pending",
+      version: 1,
+      expires_at: null,
+      preview: response.answer,
+      editable_fields: savePreference
+        ? [
+            {
+              field_type: "enum",
+              field: "preference_type",
+              label: "Preference type",
+              current_value: "other",
+              options: ["budget", "brand", "avoid", "usage", "style", "other"],
+              required: true,
+            },
+            {
+              field_type: "text",
+              field: "preference_value",
+              label: "Preference value",
+              current_value: "",
+              min_length: 1,
+              max_length: 2000,
+              required: true,
+            },
+          ]
+        : [
+            {
+              field_type: "integer",
+              field: "quantity",
+              label: "Quantity",
+              current_value: 1,
+              min_value: 1,
+              max_value: 20,
+              required: true,
+            },
+          ],
+      confirm_label: "Confirm",
+      cancel_label: "Cancel",
+    };
   }
 
   async function loadLegacyAction(response: ChatResponse) {
     if (!response.pending_action_id) return;
     try {
-      const action = await shopMindApi.getPendingAction(response.pending_action_id, threadId, isDevelopment && userId.trim() ? userId.trim() : undefined);
-      setActionSession({ mode: "legacy_chat", action, serverBacked: true }); setActionError(null); setResolution(null);
+      const action = await shopMindApi.getPendingAction(
+        response.pending_action_id,
+        threadId,
+        isDevelopment && userId.trim() ? userId.trim() : undefined,
+      );
+      setActionSession({ mode: "legacy_chat", action, serverBacked: true });
+      setActionError(null);
+      setResolution(null);
     } catch (requestError) {
-      setActionError(requestError instanceof ApiError && requestError.actionError ? requestError.actionError : null);
+      setActionError(
+        requestError instanceof ApiError && requestError.actionError
+          ? requestError.actionError
+          : null,
+      );
       const fallback = compatibilityAction(response);
-      if (fallback?.action_type === "save_preference") setActionSession({ mode: "legacy_chat", action: fallback, serverBacked: false });
+      if (fallback?.action_type === "save_preference")
+        setActionSession({ mode: "legacy_chat", action: fallback, serverBacked: false });
       else setActionSession(null);
     }
   }
 
-  function updateLogicalMessage(message: LogicalUserMessage, retryState: LogicalUserMessage["retryState"]) {
-    setMessages((current) => current.map((item) => item.id === message.id ? { ...item, retryState } : item));
+  function updateLogicalMessage(
+    message: LogicalUserMessage,
+    retryState: LogicalUserMessage["retryState"],
+  ) {
+    setMessages((current) =>
+      current.map((item) => (item.id === message.id ? { ...item, retryState } : item)),
+    );
   }
 
   async function handleAssistantResponse(response: ChatResponse, message: LogicalUserMessage) {
@@ -84,32 +194,77 @@ export function ChatPage() {
       return;
     }
     updateLogicalMessage(message, "terminal");
-    setLastRetryMessage(response.status === "failed" || response.status === "cancelled" ? { ...message, retryState: "terminal" } : null);
+    setLastRetryMessage(
+      response.status === "failed" || response.status === "cancelled"
+        ? { ...message, retryState: "terminal" }
+        : null,
+    );
     appendAssistant(response);
-    if (response.status === "confirmation_required" && response.pending_action_id) await loadLegacyAction(response);
+    if (response.status === "confirmation_required" && response.pending_action_id)
+      await loadLegacyAction(response);
   }
 
   const chatMutation = useMutation({
-    mutationFn: (message: LogicalUserMessage) => shopMindApi.chat(requestFor(message), message.idempotencyKey),
-    onSuccess: (response, message) => { void handleAssistantResponse(response, message); if (response.retry_state === "in_progress") setError("本次请求仍在处理中，可以稍后重试获取结果。 "); else setError(response.status === "failed" ? response.answer : null); },
-    onError: (requestError, message) => { const interrupted = { ...message, retryState: "interrupted" as const }; updateLogicalMessage(message, "interrupted"); setLastRetryMessage(interrupted); setError(chatErrorMessage(requestError)); },
+    mutationFn: (message: LogicalUserMessage) =>
+      shopMindApi.chat(requestFor(message), message.idempotencyKey),
+    onSuccess: (response, message) => {
+      void handleAssistantResponse(response, message);
+      if (response.retry_state === "in_progress")
+        setError("本次请求仍在处理中，可以稍后重试获取结果。 ");
+      else setError(response.status === "failed" ? response.answer : null);
+    },
+    onError: (requestError, message) => {
+      const interrupted = { ...message, retryState: "interrupted" as const };
+      updateLogicalMessage(message, "interrupted");
+      setLastRetryMessage(interrupted);
+      setError(chatErrorMessage(requestError));
+    },
   });
 
   const actionMutation = useMutation({
-    mutationFn: async ({ confirmed, updatedFields }: { confirmed: boolean; updatedFields?: PendingActionTransitionRequest["updated_fields"] }) => {
+    mutationFn: async ({
+      confirmed,
+      updatedFields,
+    }: {
+      confirmed: boolean;
+      updatedFields?: PendingActionTransitionRequest["updated_fields"];
+    }) => {
       if (!actionSession) throw new Error("No pending action");
       if (actionSession.mode === "structured_catalog") {
-        const request = { thread_id: threadId, expected_version: actionSession.action.version, ...(isDevelopment && userId.trim() ? { user_id: userId.trim() } : {}), ...(confirmed ? { updated_fields: updatedFields ?? undefined } : {}) };
-        return confirmed ? shopMindApi.confirmPendingAction(actionSession.action.pending_action_id, request) : shopMindApi.cancelPendingAction(actionSession.action.pending_action_id, { thread_id: threadId, expected_version: actionSession.action.version, ...(isDevelopment && userId.trim() ? { user_id: userId.trim() } : {}) });
+        const request = {
+          thread_id: threadId,
+          expected_version: actionSession.action.version,
+          ...(isDevelopment && userId.trim() ? { user_id: userId.trim() } : {}),
+          ...(confirmed ? { updated_fields: updatedFields ?? undefined } : {}),
+        };
+        return confirmed
+          ? shopMindApi.confirmPendingAction(actionSession.action.pending_action_id, request)
+          : shopMindApi.cancelPendingAction(actionSession.action.pending_action_id, {
+              thread_id: threadId,
+              expected_version: actionSession.action.version,
+              ...(isDevelopment && userId.trim() ? { user_id: userId.trim() } : {}),
+            });
       }
-      if (actionSession.action.action_type === "add_to_cart" && !actionSession.serverBacked) throw new Error("请重新加载待确认动作后再确认加购。");
-      return shopMindApi.confirm({ user_id: userId.trim(), pending_action_id: actionSession.action.pending_action_id, confirmed, thread_id: threadId, include_debug: false, ...(actionSession.action.action_type === "add_to_cart" ? { expected_version: actionSession.action.version } : {}), ...(updatedFields ? { updated_arguments: updatedFields } : {}) });
+      if (actionSession.action.action_type === "add_to_cart" && !actionSession.serverBacked)
+        throw new Error("请重新加载待确认动作后再确认加购。");
+      return shopMindApi.confirm({
+        user_id: userId.trim(),
+        pending_action_id: actionSession.action.pending_action_id,
+        confirmed,
+        thread_id: threadId,
+        include_debug: false,
+        ...(actionSession.action.action_type === "add_to_cart"
+          ? { expected_version: actionSession.action.version }
+          : {}),
+        ...(updatedFields ? { updated_arguments: updatedFields } : {}),
+      });
     },
     onSuccess: async (result, variables) => {
-      const canonicalCartAdd = variables.confirmed
-        && actionSession?.action.action_type === "add_to_cart"
-        && (("pending_action" in result && result.pending_action.status === "confirmed")
-          || (!("pending_action" in result) && result.status === "completed"));
+      const canonicalCartAdd =
+        variables.confirmed &&
+        actionSession?.action.action_type === "add_to_cart" &&
+        (("pending_action" in result && result.pending_action.status === "confirmed") ||
+          (!("pending_action" in result) && result.status === "completed"));
       const identity = isDevelopment ? userId.trim() : "trusted";
       if (canonicalCartAdd) {
         clearCheckoutAttempt(identity);
@@ -118,57 +273,392 @@ export function ChatPage() {
         void queryClient.invalidateQueries({ queryKey: cartQueryKey(identity) });
       }
       if ("pending_action" in result) {
-        setActionSession((current) => current ? { ...current, action: result.pending_action } : current);
+        setActionSession((current) =>
+          current ? { ...current, action: result.pending_action } : current,
+        );
         setResolution(result);
         setActionError(null);
         setCartEnabled(true);
+      } else {
+        appendAssistant(result);
+        if (result.pending_action_id) await loadLegacyAction(result);
+        else setActionSession(null);
       }
-      else { appendAssistant(result); if (result.pending_action_id) await loadLegacyAction(result); else setActionSession(null); }
     },
     onError: async (requestError) => {
       const action = requestError instanceof ApiError ? requestError.actionError : null;
       setActionError(action);
-      if (action && ["action_expired", "product_inactive", "sku_inactive", "catalog_not_found", "catalog_identity_changed", "action_resolution_conflict"].includes(action.code) && actionSession) {
-        try { const refreshed = await shopMindApi.getPendingAction(actionSession.action.pending_action_id, threadId, isDevelopment && userId.trim() ? userId.trim() : undefined); setActionSession((current) => current ? { ...current, action: refreshed } : current); } catch { /* retain typed error */ }
+      if (
+        action &&
+        [
+          "action_expired",
+          "product_inactive",
+          "sku_inactive",
+          "catalog_not_found",
+          "catalog_identity_changed",
+          "action_resolution_conflict",
+        ].includes(action.code) &&
+        actionSession
+      ) {
+        try {
+          const refreshed = await shopMindApi.getPendingAction(
+            actionSession.action.pending_action_id,
+            threadId,
+            isDevelopment && userId.trim() ? userId.trim() : undefined,
+          );
+          setActionSession((current) => (current ? { ...current, action: refreshed } : current));
+        } catch {
+          /* retain typed error */
+        }
       }
     },
   });
 
   async function runStream(message: LogicalUserMessage) {
-    const controller = new AbortController(); abortRef.current = controller; activeMessageRef.current = message; updateStream({ type: "start" }); let responseAdded = false;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    activeMessageRef.current = message;
+    updateStream({ type: "start" });
+    let responseAdded = false;
     try {
-      for await (const event of shopMindApi.streamChat(requestFor(message), message.idempotencyKey, controller.signal)) {
+      for await (const event of shopMindApi.streamChat(
+        requestFor(message),
+        message.idempotencyKey,
+        controller.signal,
+      )) {
         const next = updateStream({ type: "event", event });
-        if (next.response && !responseAdded) { responseAdded = true; await handleAssistantResponse(next.response, message); }
+        if (next.response && !responseAdded) {
+          responseAdded = true;
+          await handleAssistantResponse(next.response, message);
+        }
       }
       const finalState = updateStream({ type: "eof" });
-      if (finalState.status === "in_progress") { setLastRetryMessage({ ...message, retryState: "interrupted" }); setError("本次请求仍在处理中，可以稍后重试获取结果。 "); }
-      else if (finalState.status === "failed" && !responseAdded) { updateLogicalMessage(message, "terminal"); setLastRetryMessage({ ...message, retryState: "terminal" }); setError(finalState.error); }
-      else if (finalState.status !== "detached") setError(null);
-    } catch (streamError) { if (controller.signal.aborted) { updateStream({ type: "detach" }); const interrupted = { ...message, retryState: "interrupted" as const }; updateLogicalMessage(message, "interrupted"); setLastRetryMessage(interrupted); setError("已停止接收实时过程，可以重试获取本次结果。 "); } else { const next = updateStream({ type: "error", message: chatErrorMessage(streamError) }); const interrupted = { ...message, retryState: "interrupted" as const }; updateLogicalMessage(message, "interrupted"); setLastRetryMessage(interrupted); setError(next.error); } }
-    finally { abortRef.current = null; activeMessageRef.current = null; }
+      if (finalState.status === "in_progress") {
+        setLastRetryMessage({ ...message, retryState: "interrupted" });
+        setError("本次请求仍在处理中，可以稍后重试获取结果。 ");
+      } else if (finalState.status === "failed" && !responseAdded) {
+        updateLogicalMessage(message, "terminal");
+        setLastRetryMessage({ ...message, retryState: "terminal" });
+        setError(finalState.error);
+      } else if (finalState.status !== "detached") setError(null);
+    } catch (streamError) {
+      if (controller.signal.aborted) {
+        updateStream({ type: "detach" });
+        const interrupted = { ...message, retryState: "interrupted" as const };
+        updateLogicalMessage(message, "interrupted");
+        setLastRetryMessage(interrupted);
+        setError("已停止接收实时过程，可以重试获取本次结果。 ");
+      } else {
+        const next = updateStream({ type: "error", message: chatErrorMessage(streamError) });
+        const interrupted = { ...message, retryState: "interrupted" as const };
+        updateLogicalMessage(message, "interrupted");
+        setLastRetryMessage(interrupted);
+        setError(next.error);
+      }
+    } finally {
+      abortRef.current = null;
+      activeMessageRef.current = null;
+    }
   }
 
   async function selectSku(skuId: string, context: RecommendationContextView) {
     if (actionSession || !context.source_run_id) return;
     try {
-      const action = await shopMindApi.createAddToCartPendingAction({ thread_id: threadId, source_run_id: context.source_run_id, sku_id: skuId, quantity: 1, ...(isDevelopment && userId.trim() ? { user_id: userId.trim() } : {}) });
-      setActionSession({ mode: "structured_catalog", action, sourceRunId: context.source_run_id, serverBacked: true }); setActionError(null); setResolution(null);
-    } catch (requestError) { setActionError(requestError instanceof ApiError ? requestError.actionError : null); }
+      const action = await shopMindApi.createAddToCartPendingAction({
+        thread_id: threadId,
+        source_run_id: context.source_run_id,
+        sku_id: skuId,
+        quantity: 1,
+        ...(isDevelopment && userId.trim() ? { user_id: userId.trim() } : {}),
+      });
+      setActionSession({
+        mode: "structured_catalog",
+        action,
+        sourceRunId: context.source_run_id,
+        serverBacked: true,
+      });
+      setActionError(null);
+      setResolution(null);
+    } catch (requestError) {
+      setActionError(requestError instanceof ApiError ? requestError.actionError : null);
+    }
   }
 
-  function submitMessage(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const content = draft.trim(); if (!content || chatMutation.isPending || actionMutation.isPending || streamBusy) return; const message: LogicalUserMessage = { id: newId("message"), role: "user", content, idempotencyKey: newId("chat-idem"), retryState: "pending", retryScope: currentRetryScope() }; setMessages((current) => [...current, message]); setDraft(""); setError(null); setLastRetryMessage(null); if (transport === "json") chatMutation.mutate(message); else void runStream(message); }
-  function retryLastMessage() { if (!lastRetryMessage || chatMutation.isPending || actionMutation.isPending || streamBusy) return; const scope = currentRetryScope(); const sameScope = lastRetryMessage.retryScope.threadId === scope.threadId && lastRetryMessage.retryScope.ownerScope === scope.ownerScope; const reuseKey = sameScope && lastRetryMessage.retryState === "interrupted"; const message: LogicalUserMessage = reuseKey ? { ...lastRetryMessage, retryState: "pending" } : { ...lastRetryMessage, id: newId("message"), idempotencyKey: newId("chat-idem"), retryState: "pending", retryScope: scope }; if (message.id !== lastRetryMessage.id) setMessages((current) => [...current, message]); else updateLogicalMessage(message, "pending"); setLastRetryMessage(message); setError(null); if (transport === "json") chatMutation.mutate(message); else void runStream(message); }
-  function submitAction(confirmed: boolean, updatedFields?: PendingActionTransitionRequest["updated_fields"]) { if (!actionSession || actionMutation.isPending || streamBusy) return; actionMutation.mutate({ confirmed, updatedFields }); }
-  function startNewThread() { if (chatMutation.isPending || actionMutation.isPending || streamBusy) return; setThreadId(createThreadId()); setMessages([]); setError(null); setLastRetryMessage(null); setActionSession(null); setActionError(null); setResolution(null); setCartEnabled(false); streamStateRef.current = initialStreamState; setStreamState(initialStreamState); setDraft(""); }
-  function cancelStream() { abortRef.current?.abort(); }
-  function fillDraft(prompt: string) { setDraft(prompt); window.requestAnimationFrame(() => inputRef.current?.focus()); }
+  function submitMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const content = draft.trim();
+    if (!content || chatMutation.isPending || actionMutation.isPending || streamBusy) return;
+    const message: LogicalUserMessage = {
+      id: newId("message"),
+      role: "user",
+      content,
+      idempotencyKey: newId("chat-idem"),
+      retryState: "pending",
+      retryScope: currentRetryScope(),
+    };
+    setMessages((current) => [...current, message]);
+    setDraft("");
+    setError(null);
+    setLastRetryMessage(null);
+    if (transport === "json") chatMutation.mutate(message);
+    else void runStream(message);
+  }
+  function retryLastMessage() {
+    if (!lastRetryMessage || chatMutation.isPending || actionMutation.isPending || streamBusy)
+      return;
+    const scope = currentRetryScope();
+    const sameScope =
+      lastRetryMessage.retryScope.threadId === scope.threadId &&
+      lastRetryMessage.retryScope.ownerScope === scope.ownerScope;
+    const reuseKey = sameScope && lastRetryMessage.retryState === "interrupted";
+    const message: LogicalUserMessage = reuseKey
+      ? { ...lastRetryMessage, retryState: "pending" }
+      : {
+          ...lastRetryMessage,
+          id: newId("message"),
+          idempotencyKey: newId("chat-idem"),
+          retryState: "pending",
+          retryScope: scope,
+        };
+    if (message.id !== lastRetryMessage.id) setMessages((current) => [...current, message]);
+    else updateLogicalMessage(message, "pending");
+    setLastRetryMessage(message);
+    setError(null);
+    if (transport === "json") chatMutation.mutate(message);
+    else void runStream(message);
+  }
+  function submitAction(
+    confirmed: boolean,
+    updatedFields?: PendingActionTransitionRequest["updated_fields"],
+  ) {
+    if (!actionSession || actionMutation.isPending || streamBusy) return;
+    actionMutation.mutate({ confirmed, updatedFields });
+  }
+  function startNewThread() {
+    if (chatMutation.isPending || actionMutation.isPending || streamBusy) return;
+    setThreadId(createThreadId());
+    setMessages([]);
+    setError(null);
+    setLastRetryMessage(null);
+    setActionSession(null);
+    setActionError(null);
+    setResolution(null);
+    setCartEnabled(false);
+    streamStateRef.current = initialStreamState;
+    setStreamState(initialStreamState);
+    setDraft("");
+  }
+  function cancelStream() {
+    abortRef.current?.abort();
+  }
+  function fillDraft(prompt: string) {
+    setDraft(prompt);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  }
   const busy = chatMutation.isPending || actionMutation.isPending || streamBusy;
 
-  return <section className="chat-page" aria-labelledby="chat-title">
-    <div className="chat-heading"><div><p className="eyebrow">SHOPMIND WORKBENCH</p><h1 id="chat-title">把购物问题，变成清晰决定</h1><p className="chat-subtitle">用中文描述需求，ShopMind 会整理商品信息、偏好与决策依据。</p></div><div className="chat-heading-actions"><Link className="secondary-button" to="/tasks">进入持久任务</Link><button className="secondary-button" disabled={busy} onClick={startNewThread} type="button">新建会话</button></div></div>
-    <div className="chat-layout"><aside className="context-panel" aria-label="会话信息"><div className="panel-heading"><span>当前会话</span><span className="online-dot">在线</span></div><div className="thread-card"><span className="label">Thread</span><code>{threadShortId}</code><small>Action 只绑定当前 thread 和消息的 recommendation_context。</small></div>{isDevelopment && <label className="field-label" htmlFor="dev-user-id">开发用户标识<input id="dev-user-id" value={userId} onChange={(event) => setUserId(event.target.value)} /></label>}<div className="boundary-card"><span className="label">安全边界</span><p>商品选择进入结构化 PendingAction；确认和取消分别通过专用端点。</p></div><CartPanel enabled={cartEnabled} onCheckout={() => navigate("/checkout")} /></aside>
-      <div className="conversation-card"><div className="conversation-header"><div><strong>购物决策对话</strong><span>{transport === "stream" ? "Ordered POST-SSE" : "POST JSON"}</span></div><div className="conversation-actions">{busy && <span className="pending-label" role="status">处理中…</span>}{streamBusy && <button className="text-button" onClick={cancelStream} type="button">停止接收</button>}</div></div>{streamState.progress.length > 0 && streamBusy && <div className="stream-progress" aria-live="polite"><div className="stream-progress-heading"><span>实时执行进度</span><span>{streamState.lastSequence} 个事件</span></div><div className="stream-progress-list">{streamState.progress.map((item) => <span key={item.sequence}>{item.agentName ? `${item.agentName} · ` : ""}{item.label}</span>)}</div></div>}<div aria-live="polite" className="messages" data-testid="message-list">{messages.length === 0 ? <div className="empty-conversation"><div className="empty-icon" aria-hidden="true">⌁</div><h2>从一个具体问题开始</h2><p>告诉我场景、预算和偏好，或直接比较两款笔记本。</p></div> : messages.map((message) => message.role === "assistant" ? <AssistantMessage key={message.id} message={message} onFillPrompt={fillDraft} onSelectSku={selectSku} /> : <MessageBubble key={message.id} message={message} />)}{busy && <div className="message-row message-row-assistant" role="status"><div className="message-avatar" aria-hidden="true">S</div><div className="message-bubble typing-bubble"><span /><span /><span /></div></div>}</div>{error && <div className="error-state" role="alert"><div><strong>这次没有完成</strong><p>{error}</p></div><button className="text-button" disabled={busy} onClick={retryLastMessage} type="button">重试</button></div>}<form className="composer" onSubmit={submitMessage}><label className="sr-only" htmlFor="chat-message">输入购物问题</label><textarea ref={inputRef} data-testid="chat-input" id="chat-message" onChange={(event) => setDraft(event.target.value)} placeholder="描述你的购物需求…" rows={2} value={draft} /><div className="composer-footer"><div className="transport-toggle" aria-label="回答方式" role="group"><button aria-pressed={transport === "stream"} className={transport === "stream" ? "selected" : ""} onClick={() => setTransport("stream")} type="button">实时过程</button><button aria-pressed={transport === "json"} className={transport === "json" ? "selected" : ""} data-testid="json-mode-button" onClick={() => setTransport("json")} type="button">快速回答</button></div><span className="composer-hint">{transport === "stream" ? "POST SSE · 断开仅停止接收" : "POST JSON"}</span><button className="primary-button" data-testid="send-button" disabled={!draft.trim() || busy} type="submit">{busy ? "分析中" : "发送"}</button></div></form><div className="quick-prompts" aria-label="常用问题">{QUICK_PROMPTS.map((prompt) => <button key={prompt} disabled={busy} onClick={() => fillDraft(prompt)} type="button">{prompt}</button>)}</div>{actionSession && <ActionDrawer action={actionSession.action} busy={actionMutation.isPending || streamBusy} error={actionError} resolution={resolution} onCancel={() => submitAction(false)} onConfirm={(fields) => submitAction(true, fields)} onDismiss={() => setActionSession(null)} />}</div>
-    </div>
-  </section>;
+  return (
+    <section className="chat-page" aria-labelledby="chat-title">
+      <div className="chat-heading">
+        <div>
+          <p className="eyebrow">SHOPMIND WORKBENCH</p>
+          <h1 id="chat-title">把购物问题，变成清晰决定</h1>
+          <p className="chat-subtitle">用中文描述需求，ShopMind 会整理商品信息、偏好与决策依据。</p>
+        </div>
+        <div className="chat-heading-actions">
+          <Link className="secondary-button" to="/tasks">
+            进入持久任务
+          </Link>
+          <button
+            className="secondary-button"
+            disabled={busy}
+            onClick={startNewThread}
+            type="button"
+          >
+            新建会话
+          </button>
+        </div>
+      </div>
+      <div className="chat-layout">
+        <aside className="context-panel" aria-label="会话信息">
+          <div className="panel-heading">
+            <span>当前会话</span>
+            <span className="online-dot">在线</span>
+          </div>
+          <div className="thread-card">
+            <span className="label">Thread</span>
+            <code>{threadShortId}</code>
+            <small>Action 只绑定当前 thread 和消息的 recommendation_context。</small>
+          </div>
+          {isDevelopment && (
+            <label className="field-label" htmlFor="dev-user-id">
+              开发用户标识
+              <input
+                id="dev-user-id"
+                value={userId}
+                onChange={(event) => setUserId(event.target.value)}
+              />
+            </label>
+          )}
+          <div className="boundary-card">
+            <span className="label">安全边界</span>
+            <p>商品选择进入结构化 PendingAction；确认和取消分别通过专用端点。</p>
+          </div>
+          <CartPanel enabled={cartEnabled} onCheckout={() => navigate("/checkout")} />
+        </aside>
+        <div className="conversation-card">
+          <div className="conversation-header">
+            <div>
+              <strong>购物决策对话</strong>
+              <span>{transport === "stream" ? "Ordered POST-SSE" : "POST JSON"}</span>
+            </div>
+            <div className="conversation-actions">
+              {busy && (
+                <span className="pending-label" role="status">
+                  处理中…
+                </span>
+              )}
+              {streamBusy && (
+                <button className="text-button" onClick={cancelStream} type="button">
+                  停止接收
+                </button>
+              )}
+            </div>
+          </div>
+          {streamState.progress.length > 0 && streamBusy && (
+            <div className="stream-progress" aria-live="polite">
+              <div className="stream-progress-heading">
+                <span>实时执行进度</span>
+                <span>{streamState.lastSequence} 个事件</span>
+              </div>
+              <div className="stream-progress-list">
+                {streamState.progress.map((item) => (
+                  <span key={item.sequence}>
+                    {item.agentName ? `${item.agentName} · ` : ""}
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div aria-live="polite" className="messages" data-testid="message-list">
+            {messages.length === 0 ? (
+              <div className="empty-conversation">
+                <div className="empty-icon" aria-hidden="true">
+                  ⌁
+                </div>
+                <h2>从一个具体问题开始</h2>
+                <p>告诉我场景、预算和偏好，或直接比较两款笔记本。</p>
+              </div>
+            ) : (
+              messages.map((message) =>
+                message.role === "assistant" ? (
+                  <AssistantMessage
+                    key={message.id}
+                    message={message}
+                    onFillPrompt={fillDraft}
+                    onSelectSku={selectSku}
+                  />
+                ) : (
+                  <MessageBubble key={message.id} message={message} />
+                ),
+              )
+            )}
+            {busy && (
+              <div className="message-row message-row-assistant" role="status">
+                <div className="message-avatar" aria-hidden="true">
+                  S
+                </div>
+                <div className="message-bubble typing-bubble">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
+          </div>
+          {error && (
+            <div className="error-state" role="alert">
+              <div>
+                <strong>这次没有完成</strong>
+                <p>{error}</p>
+              </div>
+              <button
+                className="text-button"
+                disabled={busy}
+                onClick={retryLastMessage}
+                type="button"
+              >
+                重试
+              </button>
+            </div>
+          )}
+          <form className="composer" onSubmit={submitMessage}>
+            <label className="sr-only" htmlFor="chat-message">
+              输入购物问题
+            </label>
+            <textarea
+              ref={inputRef}
+              data-testid="chat-input"
+              id="chat-message"
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="描述你的购物需求…"
+              rows={2}
+              value={draft}
+            />
+            <div className="composer-footer">
+              <div className="transport-toggle" aria-label="回答方式" role="group">
+                <button
+                  aria-pressed={transport === "stream"}
+                  className={transport === "stream" ? "selected" : ""}
+                  onClick={() => setTransport("stream")}
+                  type="button"
+                >
+                  实时过程
+                </button>
+                <button
+                  aria-pressed={transport === "json"}
+                  className={transport === "json" ? "selected" : ""}
+                  data-testid="json-mode-button"
+                  onClick={() => setTransport("json")}
+                  type="button"
+                >
+                  快速回答
+                </button>
+              </div>
+              <span className="composer-hint">
+                {transport === "stream" ? "POST SSE · 断开仅停止接收" : "POST JSON"}
+              </span>
+              <button
+                className="primary-button"
+                data-testid="send-button"
+                disabled={!draft.trim() || busy}
+                type="submit"
+              >
+                {busy ? "分析中" : "发送"}
+              </button>
+            </div>
+          </form>
+          <div className="quick-prompts" aria-label="常用问题">
+            {QUICK_PROMPTS.map((prompt) => (
+              <button key={prompt} disabled={busy} onClick={() => fillDraft(prompt)} type="button">
+                {prompt}
+              </button>
+            ))}
+          </div>
+          {actionSession && (
+            <ActionDrawer
+              action={actionSession.action}
+              busy={actionMutation.isPending || streamBusy}
+              error={actionError}
+              resolution={resolution}
+              onCancel={() => submitAction(false)}
+              onConfirm={(fields) => submitAction(true, fields)}
+              onDismiss={() => setActionSession(null)}
+            />
+          )}
+        </div>
+      </div>
+    </section>
+  );
 }

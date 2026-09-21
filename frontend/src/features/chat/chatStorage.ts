@@ -1,9 +1,10 @@
 const THREAD_STORAGE_KEY = "shopmind.frontend.thread_id";
 
 function newOpaqueId(prefix: string): string {
-  const randomId = typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2);
+  const randomId =
+    typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
   return `${prefix}-${randomId}`;
 }
 

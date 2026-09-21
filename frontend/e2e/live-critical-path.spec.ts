@@ -18,10 +18,21 @@ const demoEnvironment = {
 function runDemoSmoke(args: string[]): Record<string, unknown> {
   const output = execFileSync(
     verifierPython,
-    ["scripts/smoke_shopmind_demo.py", "--backend-url", backendUrl, "--frontend-url", frontendUrl, ...args, "--json"],
+    [
+      "scripts/smoke_shopmind_demo.py",
+      "--backend-url",
+      backendUrl,
+      "--frontend-url",
+      frontendUrl,
+      ...args,
+      "--json",
+    ],
     { cwd: repositoryRoot, env: demoEnvironment, encoding: "utf8" },
   ).trim();
-  const jsonLine = output.split(/\r?\n/).reverse().find((line) => line.trim().startsWith("{"));
+  const jsonLine = output
+    .split(/\r?\n/)
+    .reverse()
+    .find((line) => line.trim().startsWith("{"));
   if (!jsonLine) throw new Error(`Smoke verifier did not return JSON: ${output}`);
   return JSON.parse(jsonLine) as Record<string, unknown>;
 }
@@ -36,7 +47,9 @@ test("real core path reaches paid Order and exact PostgreSQL facts", async ({ pa
   await expect(identityInput).toHaveValue(userId);
 
   await page.getByTestId("json-mode-button").click();
-  await page.getByTestId("chat-input").fill("laptop，预算 12000 元以内，主要用于 Java 开发，内存至少 16GB，希望尽量轻");
+  await page
+    .getByTestId("chat-input")
+    .fill("laptop，预算 12000 元以内，主要用于 Java 开发，内存至少 16GB，希望尽量轻");
   await page.getByTestId("send-button").click();
 
   const recommendation = page.locator("article.recommendation-card").first();

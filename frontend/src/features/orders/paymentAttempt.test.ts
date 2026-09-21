@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearAllPaymentSubmissions, newPaymentSubmission, readPaymentSubmission, updatePaymentSubmission } from "./paymentAttempt";
+import {
+  clearAllPaymentSubmissions,
+  newPaymentSubmission,
+  readPaymentSubmission,
+  updatePaymentSubmission,
+} from "./paymentAttempt";
 
 describe("Payment submission persistence", () => {
   beforeEach(() => clearAllPaymentSubmissions());
@@ -9,7 +14,9 @@ describe("Payment submission persistence", () => {
     expect(submission.request).toEqual({ provider: "mock", payment_method_ref: "mock-web" });
     expect(submission.idempotencyKey).toBeTruthy();
     expect(readPaymentSubmission("user-a", "order-1")).toEqual(submission);
-    expect(localStorage.getItem("shopmind-payment-attempt:user-a:order-1")).toContain(submission.idempotencyKey);
+    expect(localStorage.getItem("shopmind-payment-attempt:user-a:order-1")).toContain(
+      submission.idempotencyKey,
+    );
   });
 
   it("updates unknown/recovery state without changing the key or body", () => {

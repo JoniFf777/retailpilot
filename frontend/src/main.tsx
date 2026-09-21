@@ -10,5 +10,9 @@ import "./styles/global.css";
 import "./styles/catalog.css";
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode><AppProviders><RouterProvider router={router} /></AppProviders></StrictMode>,
+  <StrictMode>
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>
+  </StrictMode>,
 );

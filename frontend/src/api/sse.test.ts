@@ -13,6 +13,12 @@ describe("ShopMind SSE contract", () => {
   });
 
   it("rejects an envelope whose event and sequence disagree", () => {
-    expect(() => toAgentEvent({ event: "run.failed", id: "4", data: JSON.stringify({ sequence: 3, event_type: "run.result" }) })).toThrow(/mismatch/);
+    expect(() =>
+      toAgentEvent({
+        event: "run.failed",
+        id: "4",
+        data: JSON.stringify({ sequence: 3, event_type: "run.result" }),
+      }),
+    ).toThrow(/mismatch/);
   });
 });

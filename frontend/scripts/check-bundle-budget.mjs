@@ -16,7 +16,9 @@ for (const file of readdirSync(distAssets)) {
   if (!budget) continue;
   const size = statSync(join(distAssets, file)).size;
   const result = size <= budget ? "ok" : "over budget";
-  console.log(`${result}: ${file} ${(size / 1024).toFixed(1)} KiB / ${(budget / 1024).toFixed(0)} KiB`);
+  console.log(
+    `${result}: ${file} ${(size / 1024).toFixed(1)} KiB / ${(budget / 1024).toFixed(0)} KiB`,
+  );
   if (size > budget) failed = true;
 }
 
