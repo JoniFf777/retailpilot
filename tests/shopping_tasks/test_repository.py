@@ -56,6 +56,37 @@ def test_expired_step_lease_cannot_publish_late_result() -> None:
         raise AssertionError("expired lease was allowed to publish")
 
 
+def test_snapshot_exposes_lease_state_without_leaking_the_lease_token() -> None:
+    Session = session_factory()
+    session = Session()
+    task = create_task(session, owner_id="u-lease", request=ShoppingTaskRequest(kind="compatibility_diagnosis", goal_text="连接无画面"), idempotency_key="k-lease")
+    session.commit()
+    claimed = claim_task(session, worker_id="worker-a", lease_seconds=30, now=datetime.now(timezone.utc))
+    assert claimed is not None
+    task, task_token = claimed
+    step, _attempt = claim_ready_step(session, task=task, lease_token=task_token, lease_seconds=30, now=datetime.now(timezone.utc))
+    session.commit()
+
+    result = snapshot(session, owner_id="u-lease", task_id=task.id)
+    assert result is not None
+    by_key = {item.key: item for item in result.steps}
+
+    claimed_step = by_key[step.step_key]
+    assert claimed_step.plan_revision == 1
+    assert claimed_step.has_lease is True
+    assert claimed_step.lease_until == step.lease_until
+
+    unclaimed = [item for item in result.steps if item.key != step.step_key]
+    assert unclaimed, "expected at least one step the frontier did not claim"
+    assert all(item.has_lease is False and item.lease_until is None for item in unclaimed)
+
+    # `lease_token` is a fencing credential; TaskStepView doesn't declare it at all
+    # (and, being extra="forbid", would have rejected construction if repository.py
+    # ever tried to include it) — this is an explicit regression check on top of that.
+    assert not any(hasattr(item, "lease_token") for item in result.steps)
+    assert "lease_token" not in result.model_dump_json()
+
+
 def test_ready_frontier_is_bounded_to_three_independent_steps() -> None:
     Session = session_factory()
     session = Session()

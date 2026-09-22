@@ -29,6 +29,7 @@ from app.shopping_tasks.actions import (
 from app.shopping_tasks.models import ShoppingTaskAction, ShoppingTaskArtifact, ShoppingTaskCommand, ShoppingTaskEvent, ShoppingTaskStep
 from app.shopping_tasks.model_gateway import plan_with_gateway
 from app.shopping_tasks.repository import CommandConflict, append_event, create_task, find_command, get_task, list_tasks, refresh_task_status, revise_task_plan, snapshot
+from app.shopping_tasks.contracts import TaskActionPreviewResult, TaskActionResolution, TaskCommandResult, TaskCreateResult, TaskListItemView, TaskListResponse, TaskSnapshot
 
 
 router = APIRouter(prefix="/shopping-tasks", tags=["shopping-tasks"])
@@ -46,7 +47,7 @@ def _not_found() -> HTTPException:
     return HTTPException(status_code=404, detail="Shopping task not found")
 
 
-@router.post("", status_code=status.HTTP_202_ACCEPTED)
+@router.post("", status_code=status.HTTP_202_ACCEPTED, response_model=TaskCreateResult)
 async def create_shopping_task(
     body: ShoppingTaskCreateRequest,
     request: Request,
@@ -76,7 +77,7 @@ async def create_shopping_task(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.get("")
+@router.get("", response_model=TaskListResponse)
 async def list_shopping_tasks(
     user_id: str | None = Query(default=None), limit: int = Query(default=50, ge=1, le=100), offset: int = Query(default=0, ge=0),
     identity_boundary: IdentityBoundary = Depends(get_identity_boundary), session: Session = Depends(get_db_session),
@@ -86,16 +87,16 @@ async def list_shopping_tasks(
     return {"items": [{"task_id": str(row.id), "kind": row.kind, "status": row.status, "mode": row.mode, "version": row.version, "created_at": row.created_at} for row in rows], "limit": limit, "offset": offset}
 
 
-@router.get("/{task_id}")
-async def get_shopping_task(task_id: UUID, user_id: str | None = Query(default=None), identity_boundary: IdentityBoundary = Depends(get_identity_boundary), session: Session = Depends(get_db_session)) -> dict[str, Any]:
+@router.get("/{task_id}", response_model=TaskSnapshot)
+async def get_shopping_task(task_id: UUID, user_id: str | None = Query(default=None), identity_boundary: IdentityBoundary = Depends(get_identity_boundary), session: Session = Depends(get_db_session)) -> TaskSnapshot:
     identity = _identity(identity_boundary, user_id)
     value = snapshot(session, owner_id=identity.effective_user_id or "", task_id=task_id)
     if value is None:
         raise _not_found()
-    return value.model_dump(mode="json")
+    return value
 
 
-@router.post("/{task_id}/inputs")
+@router.post("/{task_id}/inputs", response_model=TaskCommandResult)
 async def add_task_inputs(task_id: UUID, body: ShoppingTaskInputRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), identity_boundary: IdentityBoundary = Depends(get_identity_boundary), session: Session = Depends(get_db_session)) -> dict[str, Any]:
     if not idempotency_key:
         raise HTTPException(status_code=400, detail="Idempotency-Key required")
@@ -160,7 +161,7 @@ async def add_task_inputs(task_id: UUID, body: ShoppingTaskInputRequest, idempot
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.post("/{task_id}/cancel")
+@router.post("/{task_id}/cancel", response_model=TaskCommandResult)
 async def cancel_task(task_id: UUID, body: ShoppingTaskCommandRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), identity_boundary: IdentityBoundary = Depends(get_identity_boundary), session: Session = Depends(get_db_session)) -> dict[str, Any]:
     if not idempotency_key:
         raise HTTPException(status_code=400, detail="Idempotency-Key required")
@@ -187,7 +188,7 @@ async def cancel_task(task_id: UUID, body: ShoppingTaskCommandRequest, idempoten
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.post("/{task_id}/resume")
+@router.post("/{task_id}/resume", response_model=TaskCommandResult)
 async def resume_task(task_id: UUID, body: ShoppingTaskCommandRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), identity_boundary: IdentityBoundary = Depends(get_identity_boundary), session: Session = Depends(get_db_session)) -> dict[str, Any]:
     if not idempotency_key:
         raise HTTPException(status_code=400, detail="Idempotency-Key required")
@@ -237,7 +238,7 @@ async def task_events(task_id: UUID, after_sequence: int = Query(default=0, ge=0
     return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
 
-@router.post("/{task_id}/actions")
+@router.post("/{task_id}/actions", response_model=TaskActionPreviewResult)
 async def prepare_task_action(task_id: UUID, body: ShoppingTaskActionRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), identity_boundary: IdentityBoundary = Depends(get_identity_boundary), session: Session = Depends(get_db_session)) -> dict[str, Any]:
     if not idempotency_key:
         raise HTTPException(status_code=400, detail="Idempotency-Key required")
@@ -285,7 +286,7 @@ async def prepare_task_action(task_id: UUID, body: ShoppingTaskActionRequest, id
     return result_view
 
 
-@router.post("/{task_id}/actions/{action_id}/confirm")
+@router.post("/{task_id}/actions/{action_id}/confirm", response_model=TaskActionResolution)
 async def confirm_task_action(task_id: UUID, action_id: UUID, body: ShoppingTaskConfirmRequest, idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), identity_boundary: IdentityBoundary = Depends(get_identity_boundary), session: Session = Depends(get_db_session)) -> dict[str, Any]:
     if not idempotency_key:
         raise HTTPException(status_code=400, detail="Idempotency-Key required")

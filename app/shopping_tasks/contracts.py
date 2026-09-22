@@ -205,6 +205,68 @@ class ActionPreview(StrictModel):
     status: Literal["pending", "confirmed", "cancelled", "expired", "rejected"] = "pending"
 
 
+class TaskStepView(StrictModel):
+    key: StrictStr
+    plan_revision: StrictInt = Field(ge=1)
+    capability: StrictStr
+    role: Role
+    status: StepStatus
+    attempt_count: StrictInt = Field(ge=0)
+    output_artifact_id: UUID | None = None
+    has_lease: StrictBool
+    # A worker holds the fencing token, never the client; only presence and expiry
+    # are ever exposed here (see repository.snapshot()).
+    lease_until: datetime | None = None
+
+
+class TaskArtifactView(StrictModel):
+    id: UUID
+    kind: StrictStr
+    branch: StrictStr
+    status: Literal["pending", "passed", "failed", "superseded"]
+    payload: dict[str, Any]
+
+
+class TaskBundleItemView(BaseModel):
+    """Narrow view of `app.shopping_tasks.bundle.BundleItem`: only the fields
+    TaskDetailPage.tsx reads. Kept independent rather than imported from `.bundle`
+    to avoid a contracts <-> bundle <-> compatibility import cycle (compatibility.py
+    imports SourceRef from this module); `extra="allow"` because the actual object
+    has more fields (sku_id, name, currency, quantity, ...) than this view declares."""
+
+    model_config = ConfigDict(extra="allow", str_strip_whitespace=True)
+    slot: StrictStr | None = None
+    sku_code: StrictStr | None = None
+    price: StrictStr | None = None
+
+
+class TaskBundleOptionView(BaseModel):
+    model_config = ConfigDict(extra="allow", str_strip_whitespace=True)
+    total: StrictStr | None = None
+    currency: StrictStr | None = None
+    items: list[TaskBundleItemView] = Field(default_factory=list)
+
+
+class TaskBundleProposalView(BaseModel):
+    model_config = ConfigDict(extra="allow", str_strip_whitespace=True)
+    options: list[TaskBundleOptionView] = Field(default_factory=list)
+
+
+class TaskOutputView(BaseModel):
+    """The task's composed output. Only the two fields the frontend renders today
+    (`bundle_proposal`, `verification_report`) get real shape; `compose_result`'s
+    payload also carries an `outcome` string plus kind-specific extras
+    (`diagnostic_check` for compatibility_diagnosis, `assessment` for
+    after_sales_assessment) that stay untyped and simply pass through, since which
+    of those exist depends on `TaskSnapshot.kind`. `verification_report` reuses
+    `VerificationReport` directly (not a narrowed view) since `verify_task_output()`
+    below is its only producer, so the stored shape always matches exactly."""
+
+    model_config = ConfigDict(extra="allow", str_strip_whitespace=True)
+    bundle_proposal: TaskBundleProposalView | None = None
+    verification_report: VerificationReport | None = None
+
+
 class TaskSnapshot(StrictModel):
     task_id: UUID
     owner_id: StrictStr
@@ -214,11 +276,62 @@ class TaskSnapshot(StrictModel):
     version: StrictInt
     goal: GoalSpec
     plan: PlanProposal | None = None
-    steps: list[dict[str, Any]] = Field(default_factory=list)
-    artifacts: list[dict[str, Any]] = Field(default_factory=list)
-    output: dict[str, Any] | None = None
+    steps: list[TaskStepView] = Field(default_factory=list)
+    artifacts: list[TaskArtifactView] = Field(default_factory=list)
+    output: TaskOutputView | None = None
     pending_interaction: dict[str, Any] | None = None
     last_sequence: StrictInt = 0
+
+
+class TaskListItemView(StrictModel):
+    task_id: StrictStr
+    kind: TaskKind
+    status: TaskStatus
+    mode: Literal["offline", "agent"]
+    version: StrictInt
+    created_at: datetime
+
+
+class TaskListResponse(StrictModel):
+    items: list[TaskListItemView]
+    limit: StrictInt
+    offset: StrictInt
+
+
+class TaskCreateResult(StrictModel):
+    task_id: StrictStr
+    status: TaskStatus
+    version: StrictInt
+    mode: Literal["offline", "agent"]
+    accepted: StrictBool
+
+
+class TaskCommandResult(StrictModel):
+    """Shared response shape for the inputs/cancel/resume command endpoints."""
+
+    task_id: StrictStr
+    status: TaskStatus
+    version: StrictInt
+
+
+class TaskActionPreviewResult(StrictModel):
+    action_id: StrictStr
+    action_type: Literal["add_bundle_to_cart", "save_after_sales_draft"]
+    status: StrictStr
+    version: StrictInt
+    expires_at: StrictStr
+    payload: dict[str, Any]
+
+
+class TaskActionResolution(StrictModel):
+    schema_version: Literal["shopmind.task-action-resolution.v1"] = "shopmind.task-action-resolution.v1"
+    task_id: StrictStr
+    action_id: StrictStr
+    action_version: StrictInt
+    status: StrictStr
+    side_effect: StrictBool | StrictStr
+    cart_items: list[StrictStr] | None = None
+    draft_only: StrictBool | None = None
 
 
 def utcnow() -> datetime:

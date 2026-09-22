@@ -540,7 +540,20 @@ def snapshot(session: Session, *, owner_id: str, task_id: UUID) -> TaskSnapshot 
     return TaskSnapshot(
         task_id=task.id, owner_id=task.owner_id, kind=task.kind, status=task.status, mode=task.mode,
         version=task.version, goal=GoalSpec.model_validate(task.goal_json), plan=plan,
-        steps=[{"key": step.step_key, "capability": step.capability, "role": step.role, "status": step.status, "attempt_count": step.attempt_count, "output_artifact_id": str(step.output_artifact_id) if step.output_artifact_id else None} for step in task.steps],
+        steps=[
+            {
+                "key": step.step_key,
+                "plan_revision": step.plan_revision,
+                "capability": step.capability,
+                "role": step.role,
+                "status": step.status,
+                "attempt_count": step.attempt_count,
+                "output_artifact_id": str(step.output_artifact_id) if step.output_artifact_id else None,
+                "has_lease": step.lease_token is not None,
+                "lease_until": step.lease_until.isoformat() if step.lease_until else None,
+            }
+            for step in task.steps
+        ],
         artifacts=[{"id": str(item.id), "kind": item.kind, "branch": item.branch, "status": item.verification_status, "payload": item.payload_json} for item in task.artifacts],
         output=task.output_json, pending_interaction=task.pending_interaction_json, last_sequence=int(last_sequence),
     )
