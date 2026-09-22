@@ -83,7 +83,9 @@ class CustomerInfo(NamedTuple):
     customer_name: str
 
 
-def classify_query_intent(query: str, model: str = DEFAULT_MODEL) -> QueryClassification:
+def classify_query_intent(
+    query: str, model: str = DEFAULT_MODEL
+) -> QueryClassification:
     """Classify whether a query requires customer identity verification.
 
     Args:
@@ -169,9 +171,7 @@ def query_router(
     # Not already verified - classify query to see if verification is needed
     last_message = state["messages"][-1]
     model = runtime.context.model if runtime.context is not None else DEFAULT_MODEL
-    query_classification = classify_query_intent(
-        last_message.content, model=model
-    )
+    query_classification = classify_query_intent(last_message.content, model=model)
 
     # Route based on classification
     if query_classification.get("requires_verification"):

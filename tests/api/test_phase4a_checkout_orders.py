@@ -5,7 +5,12 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.cart.models import ShopMindCartItem
 from app.core.settings import Settings
 from app.db.base import Base
@@ -21,7 +26,12 @@ def _store() -> tuple[sessionmaker, object, Settings]:
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     session = factory()
-    category = CatalogCategory(code=f"phase4a-{uuid4().hex}", name="Laptop", status="active", managed_by_seed=False)
+    category = CatalogCategory(
+        code=f"phase4a-{uuid4().hex}",
+        name="Laptop",
+        status="active",
+        managed_by_seed=False,
+    )
     product = CatalogProduct(
         product_code=f"P4A-{uuid4().hex}",
         category=category,
@@ -41,7 +51,9 @@ def _store() -> tuple[sessionmaker, object, Settings]:
         variant_attributes_json={},
         managed_by_seed=False,
     )
-    inventory = CatalogInventory(sku=sku, on_hand_quantity=2, reserved_quantity=0, version=0)
+    inventory = CatalogInventory(
+        sku=sku, on_hand_quantity=2, reserved_quantity=0, version=0
+    )
     session.add_all([category, product, sku, inventory])
     session.flush()
     upsert_cart_item(session, user_id="phase4a-user", sku_id=sku.id, quantity=1)
@@ -63,7 +75,12 @@ def test_preview_create_replay_cancel_and_owner_scoped_order_state() -> None:
     )
     session.commit()
     assert result.idempotent_replay is False
-    assert session.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-user")).all() == []
+    assert (
+        session.scalars(
+            select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-user")
+        ).all()
+        == []
+    )
     inventory = session.scalar(select(CatalogInventory))
     assert (inventory.reserved_quantity, inventory.version) == (1, 1)
     replay = create_order(
@@ -74,13 +91,21 @@ def test_preview_create_replay_cancel_and_owner_scoped_order_state() -> None:
         settings=Settings(),
     )
     assert replay.idempotent_replay is True
-    cancelled = cancel_order(session, user_id="phase4a-user", order_id=result.order.order_id)
+    cancelled = cancel_order(
+        session, user_id="phase4a-user", order_id=result.order.order_id
+    )
     session.commit()
     assert cancelled.order.status == "cancelled"
-    assert session.scalar(select(ShopMindInventoryReservation).where(ShopMindInventoryReservation.status == "released"))
+    assert session.scalar(
+        select(ShopMindInventoryReservation).where(
+            ShopMindInventoryReservation.status == "released"
+        )
+    )
     inventory = session.scalar(select(CatalogInventory))
     assert (inventory.reserved_quantity, inventory.version) == (0, 2)
-    cancelled_again = cancel_order(session, user_id="phase4a-user", order_id=result.order.order_id)
+    cancelled_again = cancel_order(
+        session, user_id="phase4a-user", order_id=result.order.order_id
+    )
     assert cancelled_again.idempotent_replay is True
     session.close()
     engine.dispose()
@@ -91,7 +116,13 @@ def test_idempotency_conflict_does_not_use_mutable_cart_validation() -> None:
     session: Session = factory()
     preview = preview_checkout(session, user_id="phase4a-user", settings=settings)
     first = CreateOrderRequest(checkout_token=preview.checkout_token)
-    create_order(session, user_id="phase4a-user", idempotency_key="same-key", request=first, settings=settings)
+    create_order(
+        session,
+        user_id="phase4a-user",
+        idempotency_key="same-key",
+        request=first,
+        settings=settings,
+    )
     session.commit()
     with pytest.raises(OrderServiceError) as conflict:
         create_order(

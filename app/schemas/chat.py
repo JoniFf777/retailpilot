@@ -132,16 +132,13 @@ class ChatResponse(BaseModel):
     run_id: Optional[str] = Field(
         default=None,
         description=(
-            "Opaque persisted run identifier returned only when "
-            "include_debug=true."
+            "Opaque persisted run identifier returned only when include_debug=true."
         ),
         examples=["runtime-run-id"],
     )
     trace_id: Optional[str] = Field(
         default=None,
-        description=(
-            "Opaque trace identifier returned only when include_debug=true."
-        ),
+        description=("Opaque trace identifier returned only when include_debug=true."),
         examples=["runtime-trace-id"],
     )
     debug: Optional[dict[str, Any]] = Field(

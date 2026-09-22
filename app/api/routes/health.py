@@ -24,9 +24,7 @@ from app.runtime import (
 
 
 router = APIRouter()
-GOVERNANCE_AUDIT_HEALTH_SCHEMA_VERSION = (
-    "shopmind.governance-audit-health.v1"
-)
+GOVERNANCE_AUDIT_HEALTH_SCHEMA_VERSION = "shopmind.governance-audit-health.v1"
 
 
 @router.get("/health")
@@ -48,7 +46,9 @@ def get_outbox_health_report(*, settings=None, session_factory=None) -> dict[str
         snapshot = get_outbox_health_snapshot(session)
         return {
             "publisher_enabled": bool(resolved_settings.shopmind_outbox_enabled),
-            "status": "enabled" if resolved_settings.shopmind_outbox_enabled else "disabled",
+            "status": (
+                "enabled" if resolved_settings.shopmind_outbox_enabled else "disabled"
+            ),
             "pending": snapshot["pending"],
             "publishing": snapshot["publishing"],
             "published": snapshot["published"],
@@ -138,9 +138,7 @@ def get_service_metrics_health_report(
         success_rate_target=(
             resolved_settings.shopmind_service_slo_success_rate_target
         ),
-        p95_latency_target_ms=(
-            resolved_settings.shopmind_service_slo_p95_latency_ms
-        ),
+        p95_latency_target_ms=(resolved_settings.shopmind_service_slo_p95_latency_ms),
     )
     return ServiceHealthReport(
         status=slo.status,
@@ -161,9 +159,7 @@ def get_production_preflight_health_report(settings=None) -> dict[str, Any]:
     """Return only the closed static preflight; never expose configuration."""
 
     resolved_settings = settings or get_settings()
-    return evaluate_production_preflight(resolved_settings).model_dump(
-        mode="json"
-    )
+    return evaluate_production_preflight(resolved_settings).model_dump(mode="json")
 
 
 @router.get("/health/preflight")

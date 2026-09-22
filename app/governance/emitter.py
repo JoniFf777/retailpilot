@@ -301,11 +301,7 @@ def project_runtime_governance_records(
     for event in result.events:
         payload = event.payload
         action_id = payload.get("action_id")
-        if (
-            not isinstance(action_id, str)
-            or not action_id.strip()
-            or owner_id is None
-        ):
+        if not isinstance(action_id, str) or not action_id.strip() or owner_id is None:
             continue
         action_type = payload.get("action_type")
         if not isinstance(action_type, str) or not action_type.strip():

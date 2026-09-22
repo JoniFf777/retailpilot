@@ -18,8 +18,18 @@ def upgrade() -> None:
     op.create_table(
         "shopmind_shopping_task_worker_heartbeats",
         sa.Column("worker_id", sa.String(length=128), primary_key=True),
-        sa.Column("started_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("last_seen_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "started_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.Column(
+            "last_seen_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
     )
     op.create_index(
         "idx_shopmind_task_worker_last_seen",

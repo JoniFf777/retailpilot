@@ -56,7 +56,14 @@ def test_build_steps_includes_safe_default_sequence():
         "documents",
         "smoke",
     ]
-    assert [step.destructive for step in steps] == [False, False, True, True, True, False]
+    assert [step.destructive for step in steps] == [
+        False,
+        False,
+        True,
+        True,
+        True,
+        False,
+    ]
 
 
 def test_build_steps_honors_skip_and_integration_options():
@@ -67,7 +74,13 @@ def test_build_steps_honors_skip_and_integration_options():
         runner,
     )
 
-    assert [step.name for step in steps] == ["prerequisites", "alembic", "seed", "shopmind-catalog", "integration"]
+    assert [step.name for step in steps] == [
+        "prerequisites",
+        "alembic",
+        "seed",
+        "shopmind-catalog",
+        "integration",
+    ]
 
 
 def test_build_steps_can_skip_seed_for_migration_only_plan():
@@ -169,7 +182,9 @@ def test_missing_vector_fails_before_migration(monkeypatch):
     monkeypatch.setattr(bootstrap_postgres, "_has_vector_extension", lambda _url: False)
     monkeypatch.delenv("POSTGRES_ADMIN_URL", raising=False)
 
-    with pytest.raises(BootstrapSafetyError, match="pgvector extension prerequisite missing"):
+    with pytest.raises(
+        BootstrapSafetyError, match="pgvector extension prerequisite missing"
+    ):
         bootstrap_postgres.ensure_pgvector_prerequisite(
             "postgresql+psycopg://app:secret@127.0.0.1:5432/release_test"
         )

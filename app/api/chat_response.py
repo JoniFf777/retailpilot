@@ -59,7 +59,9 @@ def build_chat_response(
         authoritative_run_id=authoritative_run_id,
     )
     response: dict[str, Any] = {
-        "answer": public_failure.message if public_failure else payload.get("answer", ""),
+        "answer": (
+            public_failure.message if public_failure else payload.get("answer", "")
+        ),
         "status": status,
         "tool_calls": payload.get("tool_calls", []),
         "pending_action_id": payload.get("pending_action_id"),
@@ -69,8 +71,12 @@ def build_chat_response(
     if include_runtime_fields:
         response.update(
             {
-                "retry_state": public_failure.retry_state if public_failure else retry_state,
-                "runtime_error_code": public_failure.code if public_failure else runtime_error_code,
+                "retry_state": (
+                    public_failure.retry_state if public_failure else retry_state
+                ),
+                "runtime_error_code": (
+                    public_failure.code if public_failure else runtime_error_code
+                ),
                 "authoritative_run_id": (
                     public_failure.authoritative_run_id
                     if public_failure
@@ -81,7 +87,9 @@ def build_chat_response(
     recommendation = payload.get("recommendation")
     if recommendation is not None:
         try:
-            response["recommendation"] = RecommendationResult.model_validate(recommendation)
+            response["recommendation"] = RecommendationResult.model_validate(
+                recommendation
+            )
             if payload.get("run_id"):
                 response["recommendation_context"] = {
                     "source_run_id": str(payload["run_id"]),

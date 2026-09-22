@@ -63,7 +63,8 @@ def release_active_reservations(
                 CatalogInventory.reserved_quantity >= reservation.quantity,
             )
             .values(
-                reserved_quantity=CatalogInventory.reserved_quantity - reservation.quantity,
+                reserved_quantity=CatalogInventory.reserved_quantity
+                - reservation.quantity,
                 version=CatalogInventory.version + 1,
                 updated_at=released_at or datetime.now(timezone.utc),
             )

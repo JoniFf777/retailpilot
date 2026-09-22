@@ -31,16 +31,96 @@ class ActionLifecycleCase(TypedDict):
 
 
 ACTION_LIFECYCLE_CASES: tuple[ActionLifecycleCase, ...] = (
-    {"name": "preference_confirm", "scenario": "confirm", "expected_result": "confirmed", "expected_action_status": "confirmed", "expected_preference_count": 1, "expected_preference_value": "quiet keyboard", "expected_events": None},
-    {"name": "preference_cancel", "scenario": "cancel", "expected_result": "cancelled", "expected_action_status": "cancelled", "expected_preference_count": 0, "expected_preference_value": None, "expected_events": None},
-    {"name": "preference_expired", "scenario": "expired", "expected_result": "pending action expired", "expected_action_status": "expired", "expected_preference_count": 0, "expected_preference_value": None, "expected_events": None},
-    {"name": "preference_cross_user", "scenario": "cross_user", "expected_result": "user mismatch", "expected_action_status": "pending", "expected_preference_count": 0, "expected_preference_value": None, "expected_events": None},
-    {"name": "preference_cross_thread", "scenario": "cross_thread", "expected_result": "thread mismatch", "expected_action_status": "pending", "expected_preference_count": 0, "expected_preference_value": None, "expected_events": None},
-    {"name": "preference_duplicate", "scenario": "duplicate", "expected_result": "pending action is not confirmable", "expected_action_status": "confirmed", "expected_preference_count": 1, "expected_preference_value": "quiet keyboard", "expected_events": None},
-    {"name": "preference_handler_failure", "scenario": "malformed", "expected_result": "invalid pending action payload", "expected_action_status": "pending", "expected_preference_count": 0, "expected_preference_value": None, "expected_events": None},
-    {"name": "preference_edited", "scenario": "edited", "expected_result": "confirmed", "expected_action_status": "confirmed", "expected_preference_count": 1, "expected_preference_value": "silent switches", "expected_events": ("action.resumed", "action.edited", "action.confirmed")},
-    {"name": "preference_resumed", "scenario": "resumed", "expected_result": "confirmed", "expected_action_status": "confirmed", "expected_preference_count": 1, "expected_preference_value": "quiet keyboard", "expected_events": ("action.resumed", "action.confirmed")},
-    {"name": "preference_replayed", "scenario": "replayed", "expected_result": "replayed", "expected_action_status": "confirmed", "expected_preference_count": 1, "expected_preference_value": "quiet keyboard", "expected_events": ("action.resumed", "action.confirmed", "run.replayed")},
+    {
+        "name": "preference_confirm",
+        "scenario": "confirm",
+        "expected_result": "confirmed",
+        "expected_action_status": "confirmed",
+        "expected_preference_count": 1,
+        "expected_preference_value": "quiet keyboard",
+        "expected_events": None,
+    },
+    {
+        "name": "preference_cancel",
+        "scenario": "cancel",
+        "expected_result": "cancelled",
+        "expected_action_status": "cancelled",
+        "expected_preference_count": 0,
+        "expected_preference_value": None,
+        "expected_events": None,
+    },
+    {
+        "name": "preference_expired",
+        "scenario": "expired",
+        "expected_result": "pending action expired",
+        "expected_action_status": "expired",
+        "expected_preference_count": 0,
+        "expected_preference_value": None,
+        "expected_events": None,
+    },
+    {
+        "name": "preference_cross_user",
+        "scenario": "cross_user",
+        "expected_result": "user mismatch",
+        "expected_action_status": "pending",
+        "expected_preference_count": 0,
+        "expected_preference_value": None,
+        "expected_events": None,
+    },
+    {
+        "name": "preference_cross_thread",
+        "scenario": "cross_thread",
+        "expected_result": "thread mismatch",
+        "expected_action_status": "pending",
+        "expected_preference_count": 0,
+        "expected_preference_value": None,
+        "expected_events": None,
+    },
+    {
+        "name": "preference_duplicate",
+        "scenario": "duplicate",
+        "expected_result": "pending action is not confirmable",
+        "expected_action_status": "confirmed",
+        "expected_preference_count": 1,
+        "expected_preference_value": "quiet keyboard",
+        "expected_events": None,
+    },
+    {
+        "name": "preference_handler_failure",
+        "scenario": "malformed",
+        "expected_result": "invalid pending action payload",
+        "expected_action_status": "pending",
+        "expected_preference_count": 0,
+        "expected_preference_value": None,
+        "expected_events": None,
+    },
+    {
+        "name": "preference_edited",
+        "scenario": "edited",
+        "expected_result": "confirmed",
+        "expected_action_status": "confirmed",
+        "expected_preference_count": 1,
+        "expected_preference_value": "silent switches",
+        "expected_events": ("action.resumed", "action.edited", "action.confirmed"),
+    },
+    {
+        "name": "preference_resumed",
+        "scenario": "resumed",
+        "expected_result": "confirmed",
+        "expected_action_status": "confirmed",
+        "expected_preference_count": 1,
+        "expected_preference_value": "quiet keyboard",
+        "expected_events": ("action.resumed", "action.confirmed"),
+    },
+    {
+        "name": "preference_replayed",
+        "scenario": "replayed",
+        "expected_result": "replayed",
+        "expected_action_status": "confirmed",
+        "expected_preference_count": 1,
+        "expected_preference_value": "quiet keyboard",
+        "expected_events": ("action.resumed", "action.confirmed", "run.replayed"),
+    },
 )
 
 
@@ -72,12 +152,18 @@ def replay_action_lifecycle_case(case: ActionLifecycleCase) -> dict[str, Any]:
     if case["scenario"] == "cancel":
         outcome = cancel_pending_action(session, action_id, "eval-user", "eval-thread")
     elif case["scenario"] == "cross_user":
-        outcome = confirm_save_preference(session, action_id, "other-user", "eval-thread")
+        outcome = confirm_save_preference(
+            session, action_id, "other-user", "eval-thread"
+        )
     elif case["scenario"] == "cross_thread":
-        outcome = confirm_save_preference(session, action_id, "eval-user", "other-thread")
+        outcome = confirm_save_preference(
+            session, action_id, "eval-user", "other-thread"
+        )
     elif case["scenario"] == "duplicate":
         confirm_save_preference(session, action_id, "eval-user", "eval-thread")
-        outcome = confirm_save_preference(session, action_id, "eval-user", "eval-thread")
+        outcome = confirm_save_preference(
+            session, action_id, "eval-user", "eval-thread"
+        )
     elif case["scenario"] == "edited":
         resolved = resolve_pending_action(
             session, action_id, "eval-user", "eval-thread"
@@ -163,23 +249,24 @@ def replay_action_lifecycle_case(case: ActionLifecycleCase) -> dict[str, Any]:
         outcome = {
             "status": (
                 "replayed"
-                if replay.metadata.get("idempotency_replayed")
-                and execution_count == 1
+                if replay.metadata.get("idempotency_replayed") and execution_count == 1
                 else "error"
             )
         }
         session = session_factory()
     else:
-        outcome = confirm_save_preference(session, action_id, "eval-user", "eval-thread")
+        outcome = confirm_save_preference(
+            session, action_id, "eval-user", "eval-thread"
+        )
     session.commit()
 
     action_status = session.get(PendingAction, action_id).status
     preferences = session.scalars(select(UserPreference)).all()
     preference_count = len(preferences)
-    preference_value = (
-        preferences[0].preference_value if preferences else None
+    preference_value = preferences[0].preference_value if preferences else None
+    result_value = (
+        outcome.get("message") if outcome["status"] == "error" else outcome["status"]
     )
-    result_value = outcome.get("message") if outcome["status"] == "error" else outcome["status"]
     checks = {
         "result": result_value == case["expected_result"],
         "action_status": action_status == case["expected_action_status"],
@@ -232,10 +319,12 @@ def evaluate_action_lifecycle(
 
 def format_action_lifecycle_summary(summary: dict[str, Any]) -> str:
     failures = ", ".join(item["name"] for item in summary["failures"]) or "none"
-    return "\n".join((
-        "# ShopMind Action Lifecycle Evaluation",
-        "",
-        f"- cases: {summary['passed_cases']}/{summary['total_cases']}",
-        f"- checks: {summary['passed_checks']}/{summary['total_checks']}",
-        f"- failures: {failures}",
-    ))
+    return "\n".join(
+        (
+            "# ShopMind Action Lifecycle Evaluation",
+            "",
+            f"- cases: {summary['passed_cases']}/{summary['total_cases']}",
+            f"- checks: {summary['passed_checks']}/{summary['total_checks']}",
+            f"- failures: {failures}",
+        )
+    )

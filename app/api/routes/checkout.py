@@ -9,7 +9,11 @@ from app.api.routes._helpers import checkout_service_error_response
 from app.core.settings import get_settings
 from app.db.session import get_db_session
 from app.dependencies.security import bind_request_user, get_identity_boundary
-from app.schemas.checkout import CheckoutErrorResponse, CheckoutPreview, CheckoutPreviewRequest
+from app.schemas.checkout import (
+    CheckoutErrorResponse,
+    CheckoutPreview,
+    CheckoutPreviewRequest,
+)
 from app.security import IdentityBoundary
 from app.services.checkout import CheckoutServiceError, preview_checkout
 

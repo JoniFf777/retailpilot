@@ -19,8 +19,7 @@ from app.runtime import (
 def make_shared_session_factories():
     database_name = f"shopmind-replay-{uuid4()}"
     database_url = (
-        f"sqlite+pysqlite:///file:{database_name}"
-        "?mode=memory&cache=shared&uri=true"
+        f"sqlite+pysqlite:///file:{database_name}?mode=memory&cache=shared&uri=true"
     )
     writer_engine = create_engine(database_url)
     Base.metadata.create_all(writer_engine)
@@ -87,9 +86,7 @@ def test_records_and_replays_persisted_trajectory_across_engine_boundary() -> No
     fallback = next(
         event for event in recorded.events if event.event_type == "provider.fallback"
     )
-    assert fallback.classification == {
-        "reason": "provider_error_or_invalid_contract"
-    }
+    assert fallback.classification == {"reason": "provider_error_or_invalid_contract"}
     serialized = recorded.model_dump_json()
     assert "provider secret must not be recorded" not in serialized
     assert "private user request" not in serialized

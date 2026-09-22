@@ -7,7 +7,11 @@ from typing import Any, Callable
 from urllib.parse import urlsplit
 
 from app.ai_platform.extensions import ExtensionDefinition, validate_mcp_tool
-from app.runtime.contracts import DatabaseAccess, ToolResourcePolicy, ToolSideEffectClass
+from app.runtime.contracts import (
+    DatabaseAccess,
+    ToolResourcePolicy,
+    ToolSideEffectClass,
+)
 from app.runtime.tool_gateway import ToolCapability
 
 
@@ -20,14 +24,23 @@ class McpServerConfig:
 
     def validate(self) -> None:
         parsed = urlsplit(self.endpoint)
-        if parsed.scheme != "https" or not parsed.hostname or parsed.query or parsed.fragment:
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.query
+            or parsed.fragment
+        ):
             raise ValueError("MCP server endpoints require query-free HTTPS.")
         if parsed.username or parsed.password:
             raise ValueError("MCP endpoints cannot contain credentials.")
 
 
 class McpDiscovery:
-    def __init__(self, config: McpServerConfig, fetch_tools: Callable[[str], list[dict[str, Any]]]) -> None:
+    def __init__(
+        self,
+        config: McpServerConfig,
+        fetch_tools: Callable[[str], list[dict[str, Any]]],
+    ) -> None:
         self._config = config
         self._fetch_tools = fetch_tools
 

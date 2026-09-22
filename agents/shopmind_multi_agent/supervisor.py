@@ -107,9 +107,7 @@ def supervisor_node(
             planner_fallback_reason=execution_plan.metadata.get(
                 "planner_fallback_reason"
             ),
-            fallback_planner_type=execution_plan.metadata.get(
-                "fallback_planner_type"
-            ),
+            fallback_planner_type=execution_plan.metadata.get("fallback_planner_type"),
             intent=supervisor_decision["intent"],
             confidence=supervisor_decision["confidence"],
             fallback_used=supervisor_decision["fallback_used"],

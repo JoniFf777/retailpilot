@@ -20,7 +20,11 @@ class RetrievalCaseMetrics:
 
 
 def _normalized_ids(values: Sequence[str]) -> list[str]:
-    return [str(value).strip() for value in values if value is not None and str(value).strip()]
+    return [
+        str(value).strip()
+        for value in values
+        if value is not None and str(value).strip()
+    ]
 
 
 def evaluate_retrieval_case(

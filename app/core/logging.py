@@ -73,7 +73,7 @@ def set_request_context(
 
 
 def reset_request_context(
-    tokens: tuple[contextvars.Token, contextvars.Token, contextvars.Token]
+    tokens: tuple[contextvars.Token, contextvars.Token, contextvars.Token],
 ) -> None:
     _correlation_id.reset(tokens[0])
     _request_id.reset(tokens[1])
@@ -92,9 +92,12 @@ def sanitize_error_message(value: Any, *, limit: int = 256) -> str:
     """Return a short exception message with credential-like values removed."""
 
     text = str(value).replace("\x00", " ").replace("\r", " ").replace("\n", " ")
+
     def redact(match: re.Match[str]) -> str:
         raw = match.group(0)
-        separators = [position for position in (raw.find("="), raw.find(":")) if position >= 0]
+        separators = [
+            position for position in (raw.find("="), raw.find(":")) if position >= 0
+        ]
         if not separators:
             return "<redacted>"
         return raw[: min(separators) + 1] + "<redacted>"
@@ -121,7 +124,14 @@ def log_event(
             continue
         if key == "error_message":
             payload[key] = sanitize_error_message(value)
-        elif key in {"event", "action", "status", "error_code", "error_class", "lease_until"}:
+        elif key in {
+            "event",
+            "action",
+            "status",
+            "error_code",
+            "error_class",
+            "lease_until",
+        }:
             payload[key] = sanitize_error_message(value, limit=128)
         else:
             payload[key] = value

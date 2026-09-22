@@ -24,7 +24,12 @@ def test_resilience_catalog_is_closed_and_covers_required_surfaces() -> None:
         "action_restart_resume",
     ]
     assert {scenario.fault_surface for scenario in RESILIENCE_SCENARIOS} == {
-        "provider", "tool", "transport", "control", "idempotency", "action"
+        "provider",
+        "tool",
+        "transport",
+        "control",
+        "idempotency",
+        "action",
     }
 
 

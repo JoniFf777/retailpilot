@@ -6,7 +6,15 @@ from datetime import datetime
 from typing import Annotated, Literal, Union
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictInt,
+    StrictStr,
+    field_validator,
+)
 
 from app.cart.constants import MAX_CART_ITEM_QUANTITY
 from app.schemas.cart import CartItemView, CartResponse
@@ -92,7 +100,10 @@ class TextEditableField(BaseModel):
     required: StrictBool = True
 
 
-EditableField = Annotated[Union[IntegerEditableField, EnumEditableField, TextEditableField], Field(discriminator="field_type")]
+EditableField = Annotated[
+    Union[IntegerEditableField, EnumEditableField, TextEditableField],
+    Field(discriminator="field_type"),
+]
 
 
 class AddToCartPreview(BaseModel):
@@ -185,8 +196,12 @@ class PendingActionTransitionResponse(BaseModel):
     price_changed: StrictBool = False
     snapshot_money: Money | None = None
     current_money: Money | None = None
-    requested_quantity: StrictInt | None = Field(default=None, ge=1, le=MAX_CART_ITEM_QUANTITY)
-    cart_quantity: StrictInt | None = Field(default=None, ge=1, le=MAX_CART_ITEM_QUANTITY)
+    requested_quantity: StrictInt | None = Field(
+        default=None, ge=1, le=MAX_CART_ITEM_QUANTITY
+    )
+    cart_quantity: StrictInt | None = Field(
+        default=None, ge=1, le=MAX_CART_ITEM_QUANTITY
+    )
     idempotent_replay: StrictBool = False
 
 
@@ -215,16 +230,24 @@ class CartActionOutcome(BaseModel):
     pending_action: PendingActionView | None = None
     cart_item: CartItemView | None = None
     price_changed: StrictBool = False
-    requested_quantity: StrictInt | None = Field(default=None, ge=1, le=MAX_CART_ITEM_QUANTITY)
-    cart_quantity: StrictInt | None = Field(default=None, ge=1, le=MAX_CART_ITEM_QUANTITY)
+    requested_quantity: StrictInt | None = Field(
+        default=None, ge=1, le=MAX_CART_ITEM_QUANTITY
+    )
+    cart_quantity: StrictInt | None = Field(
+        default=None, ge=1, le=MAX_CART_ITEM_QUANTITY
+    )
     idempotent_replay: StrictBool = False
-    details: PendingActionErrorDetails = Field(default_factory=PendingActionErrorDetails)
+    details: PendingActionErrorDetails = Field(
+        default_factory=PendingActionErrorDetails
+    )
 
 
 class ActionErrorResponse(BaseModel):
     code: ActionErrorCode
     message: StrictStr
-    details: PendingActionErrorDetails = Field(default_factory=PendingActionErrorDetails)
+    details: PendingActionErrorDetails = Field(
+        default_factory=PendingActionErrorDetails
+    )
     idempotent_replay: StrictBool = False
 
 
@@ -243,7 +266,11 @@ class PendingActionResolutionRecord(BaseModel):
     price_changed: StrictBool = False
     snapshot_money: Money | None = None
     current_money: Money | None = None
-    requested_quantity: StrictInt | None = Field(default=None, ge=1, le=MAX_CART_ITEM_QUANTITY)
-    cart_quantity: StrictInt | None = Field(default=None, ge=1, le=MAX_CART_ITEM_QUANTITY)
+    requested_quantity: StrictInt | None = Field(
+        default=None, ge=1, le=MAX_CART_ITEM_QUANTITY
+    )
+    cart_quantity: StrictInt | None = Field(
+        default=None, ge=1, le=MAX_CART_ITEM_QUANTITY
+    )
     error: ActionErrorResponse | None = None
     resolved_at: datetime

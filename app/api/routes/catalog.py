@@ -10,7 +10,11 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db_session
-from app.recommendation.categories import CategoryDefinition, CategoryRegistry, default_category_registry
+from app.recommendation.categories import (
+    CategoryDefinition,
+    CategoryRegistry,
+    default_category_registry,
+)
 from app.repositories.catalog import catalog_product_counts, list_catalog_product_rows
 from app.schemas.catalog import (
     CatalogCategoryListResponse,
@@ -38,13 +42,19 @@ class CatalogReadError(Exception):
 
 def _error_response(error: CatalogReadError) -> JSONResponse:
     body = CatalogErrorResponse(code=error.code, message=error.message)
-    return JSONResponse(status_code=error.status_code, content=body.model_dump(mode="json"))
+    return JSONResponse(
+        status_code=error.status_code, content=body.model_dump(mode="json")
+    )
 
 
 def _resolve_category(registry: CategoryRegistry, value: str) -> str:
     code = registry.resolve_code_or_alias(value)
     if code is None:
-        raise CatalogReadError("unsupported_category", "This Catalog category is not supported.", status.HTTP_404_NOT_FOUND)
+        raise CatalogReadError(
+            "unsupported_category",
+            "This Catalog category is not supported.",
+            status.HTTP_404_NOT_FOUND,
+        )
     return code
 
 
@@ -99,7 +109,9 @@ def _specification_value(attribute, value: Any) -> tuple[Any, str]:
             raise ValueError("string specification has an invalid value")
         return value, "string"
     if attribute.multi_valued:
-        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        if not isinstance(value, list) or not all(
+            isinstance(item, str) for item in value
+        ):
             raise ValueError("multi-valued enum specification has an invalid value")
         return [attribute.canonicalize_enum(item) for item in value], "string_list"
     return attribute.canonicalize_enum(value), "enum"
@@ -115,9 +127,15 @@ def _specifications(
 ) -> list[CatalogSpecificationView]:
     definition = registry.schema_for(category_code)
     merged = {**product_attributes, **(variant_attributes or {})}
-    issues = registry.validate_catalog_attributes(category_code, merged, path="catalog.attributes")
+    issues = registry.validate_catalog_attributes(
+        category_code, merged, path="catalog.attributes"
+    )
     if issues:
-        raise CatalogReadError("catalog_data_invalid", "Catalog data could not be displayed safely.", status.HTTP_503_SERVICE_UNAVAILABLE)
+        raise CatalogReadError(
+            "catalog_data_invalid",
+            "Catalog data could not be displayed safely.",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     output: list[CatalogSpecificationView] = []
     for key in definition.display_fields:
         attribute = definition.attribute_for(key)
@@ -144,12 +162,17 @@ def _specifications(
     return output
 
 
-def _sku_view(registry: CategoryRegistry, category_code: str, product, sku, inventory) -> CatalogSkuView:
+def _sku_view(
+    registry: CategoryRegistry, category_code: str, product, sku, inventory
+) -> CatalogSkuView:
     return CatalogSkuView(
         sku_id=sku.id,
         sku_code=sku.sku_code,
         sku_name=sku.name,
-        money=Money(amount=format(Decimal(sku.money_amount).quantize(Decimal("0.01")), ".2f"), currency=sku.currency),
+        money=Money(
+            amount=format(Decimal(sku.money_amount).quantize(Decimal("0.01")), ".2f"),
+            currency=sku.currency,
+        ),
         availability=_availability(sku, inventory),
         variant_specifications=_specifications(
             registry,
@@ -164,7 +187,9 @@ def _sku_view(registry: CategoryRegistry, category_code: str, product, sku, inve
 def _group_rows(rows):
     groups: dict[str, dict[str, Any]] = {}
     for product, sku, inventory in rows:
-        group = groups.setdefault(product.product_code, {"product": product, "rows": []})
+        group = groups.setdefault(
+            product.product_code, {"product": product, "rows": []}
+        )
         group["rows"].append((sku, inventory))
     return list(groups.values())
 
@@ -183,29 +208,45 @@ def _summary(registry: CategoryRegistry, counts, group) -> CatalogProductSummary
         brand=product.brand,
         name=product.name,
         category=_category_view(definition, counts),
-        specifications=_specifications(registry, category_code, product.attributes_json),
+        specifications=_specifications(
+            registry, category_code, product.attributes_json
+        ),
         skus=skus,
     )
 
 
 @router.get("/catalog/categories", response_model=CatalogCategoryListResponse)
-async def list_catalog_categories(session: Session = Depends(get_db_session)) -> CatalogCategoryListResponse | JSONResponse:
+async def list_catalog_categories(
+    session: Session = Depends(get_db_session),
+) -> CatalogCategoryListResponse | JSONResponse:
     try:
         registry = default_category_registry()
         counts = catalog_product_counts(session)
         return CatalogCategoryListResponse(
-            items=[_category_view(definition, counts) for definition in registry.supported_categories()]
+            items=[
+                _category_view(definition, counts)
+                for definition in registry.supported_categories()
+            ]
         )
     except CatalogReadError as exc:
         return _error_response(exc)
     except Exception:
-        return _error_response(CatalogReadError("catalog_unavailable", "Catalog is temporarily unavailable.", status.HTTP_503_SERVICE_UNAVAILABLE))
+        return _error_response(
+            CatalogReadError(
+                "catalog_unavailable",
+                "Catalog is temporarily unavailable.",
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        )
 
 
 @router.get(
     "/catalog/products",
     response_model=CatalogProductListResponse,
-    responses={404: {"model": CatalogErrorResponse}, 503: {"model": CatalogErrorResponse}},
+    responses={
+        404: {"model": CatalogErrorResponse},
+        503: {"model": CatalogErrorResponse},
+    },
 )
 async def list_catalog_products(
     category: str = Query(..., min_length=1, max_length=64),
@@ -217,32 +258,68 @@ async def list_catalog_products(
         registry = default_category_registry()
         category_code = _resolve_category(registry, category)
         counts = catalog_product_counts(session)
-        groups = _group_rows(list_catalog_product_rows(session, category_code=category_code))
+        groups = _group_rows(
+            list_catalog_product_rows(session, category_code=category_code)
+        )
         definition = registry.schema_for(category_code)
         category_view = _category_view(definition, counts)
-        items = [_summary(registry, counts, group) for group in groups[offset : offset + limit]]
-        return CatalogProductListResponse(category=category_view, items=items, total=len(groups), limit=limit, offset=offset)
+        items = [
+            _summary(registry, counts, group)
+            for group in groups[offset : offset + limit]
+        ]
+        return CatalogProductListResponse(
+            category=category_view,
+            items=items,
+            total=len(groups),
+            limit=limit,
+            offset=offset,
+        )
     except CatalogReadError as exc:
         return _error_response(exc)
     except Exception:
-        return _error_response(CatalogReadError("catalog_unavailable", "Catalog is temporarily unavailable.", status.HTTP_503_SERVICE_UNAVAILABLE))
+        return _error_response(
+            CatalogReadError(
+                "catalog_unavailable",
+                "Catalog is temporarily unavailable.",
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        )
 
 
 @router.get(
     "/catalog/products/{product_code}",
     response_model=CatalogProductDetail,
-    responses={404: {"model": CatalogErrorResponse}, 503: {"model": CatalogErrorResponse}},
+    responses={
+        404: {"model": CatalogErrorResponse},
+        503: {"model": CatalogErrorResponse},
+    },
 )
-async def get_catalog_product(product_code: str, session: Session = Depends(get_db_session)) -> CatalogProductDetail | JSONResponse:
+async def get_catalog_product(
+    product_code: str, session: Session = Depends(get_db_session)
+) -> CatalogProductDetail | JSONResponse:
     try:
         registry = default_category_registry()
-        groups = _group_rows(list_catalog_product_rows(session, product_code=product_code))
+        groups = _group_rows(
+            list_catalog_product_rows(session, product_code=product_code)
+        )
         if not groups:
-            raise CatalogReadError("catalog_not_found", "Catalog product was not found.", status.HTTP_404_NOT_FOUND)
+            raise CatalogReadError(
+                "catalog_not_found",
+                "Catalog product was not found.",
+                status.HTTP_404_NOT_FOUND,
+            )
         counts = catalog_product_counts(session)
         summary = _summary(registry, counts, groups[0])
-        return CatalogProductDetail(**summary.model_dump(), description=groups[0]["product"].description)
+        return CatalogProductDetail(
+            **summary.model_dump(), description=groups[0]["product"].description
+        )
     except CatalogReadError as exc:
         return _error_response(exc)
     except Exception:
-        return _error_response(CatalogReadError("catalog_unavailable", "Catalog is temporarily unavailable.", status.HTTP_503_SERVICE_UNAVAILABLE))
+        return _error_response(
+            CatalogReadError(
+                "catalog_unavailable",
+                "Catalog is temporarily unavailable.",
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        )

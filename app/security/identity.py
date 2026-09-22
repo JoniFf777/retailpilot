@@ -111,9 +111,7 @@ class SignedIdentityVerification(BaseModel):
                 "Authenticated identity verification requires one subject."
             )
         if self.authenticated == (self.failure is not None):
-            raise ValueError(
-                "Identity verification failure classification is invalid."
-            )
+            raise ValueError("Identity verification failure classification is invalid.")
         return self
 
 
@@ -207,26 +205,18 @@ class SignedHeaderIdentityVerifier:
 
         replay_fingerprint = coordination_key_fingerprint(
             "identity-signed-request",
-            (
-                f"{normalized_subject}\0{issued_at_seconds}\0"
-                f"{nonce}\0{signature}"
-            ),
+            (f"{normalized_subject}\0{issued_at_seconds}\0{nonce}\0{signature}"),
         )
         try:
             decision = self._replay_backend.claim_duplicate(
                 DeduplicationRequest(
                     namespace="identity.signed-header",
                     key_fingerprint=replay_fingerprint,
-                    ttl_ms=(
-                        self._max_age_seconds + self._clock_skew_seconds
-                    )
-                    * 1_000,
+                    ttl_ms=(self._max_age_seconds + self._clock_skew_seconds) * 1_000,
                 )
             )
         except Exception:
-            return self._failure(
-                IdentityAuthenticationFailure.BACKEND_UNAVAILABLE
-            )
+            return self._failure(IdentityAuthenticationFailure.BACKEND_UNAVAILABLE)
         if not decision.acquired:
             return self._failure(
                 IdentityAuthenticationFailure.REPLAYED
@@ -262,23 +252,17 @@ class IdentityBoundary:
     ) -> None:
         self._provider = provider
         normalized_subject = self._normalize_optional(trusted_subject)
-        invalid_subject = (
-            trusted_subject is not None
-            and (
-                normalized_subject is None
-                or len(normalized_subject) > 128
-                or any(ord(character) < 32 for character in normalized_subject)
-            )
+        invalid_subject = trusted_subject is not None and (
+            normalized_subject is None
+            or len(normalized_subject) > 128
+            or any(ord(character) < 32 for character in normalized_subject)
         )
-        self._trusted_subject = (
-            None if invalid_subject else normalized_subject
-        )
+        self._trusted_subject = None if invalid_subject else normalized_subject
         self._authentication_failure = (
             IdentityAuthenticationFailure.INVALID
             if (
                 invalid_subject
-                and authentication_failure
-                == IdentityAuthenticationFailure.MISSING
+                and authentication_failure == IdentityAuthenticationFailure.MISSING
             )
             else authentication_failure
         )
@@ -383,12 +367,8 @@ def build_identity_boundary(
             )
         verification = SignedHeaderIdentityVerifier(
             signing_secret=signing_secret.get_secret_value(),
-            replay_backend=(
-                replay_backend or _DEFAULT_SIGNED_IDENTITY_REPLAY_BACKEND
-            ),
-            max_age_seconds=(
-                settings.shopmind_identity_signature_max_age_seconds
-            ),
+            replay_backend=(replay_backend or _DEFAULT_SIGNED_IDENTITY_REPLAY_BACKEND),
+            max_age_seconds=(settings.shopmind_identity_signature_max_age_seconds),
             clock_skew_seconds=(
                 settings.shopmind_identity_signature_clock_skew_seconds
             ),
@@ -404,8 +384,7 @@ def build_identity_boundary(
             trusted_subject=verification.subject_id,
             authentication_failure=(
                 IdentityAuthenticationFailure(
-                    verification.failure
-                    or IdentityAuthenticationFailure.MISSING
+                    verification.failure or IdentityAuthenticationFailure.MISSING
                 )
             ),
         )

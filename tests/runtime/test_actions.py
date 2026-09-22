@@ -118,7 +118,9 @@ def test_action_registry_validates_transition_identity_and_direction() -> None:
     assert ACTION_REGISTRY.transition_tool(request) == "confirm_add_to_cart"
 
     with pytest.raises(ActionRegistryError, match="Action id is required"):
-        ACTION_REGISTRY.validate_transition(request.model_copy(update={"action_id": " "}))
+        ACTION_REGISTRY.validate_transition(
+            request.model_copy(update={"action_id": " "})
+        )
 
 
 def test_action_registry_rejects_duplicate_registration() -> None:

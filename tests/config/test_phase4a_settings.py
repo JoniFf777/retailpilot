@@ -18,5 +18,10 @@ def test_checkout_secret_and_ttl_validation() -> None:
         Settings(shopmind_checkout_token_ttl_seconds=3_601)
     with pytest.raises(ValidationError):
         Settings(shopmind_order_payment_ttl_seconds=86_401)
-    assert Settings(shopmind_checkout_token_ttl_seconds=1).shopmind_checkout_token_ttl_seconds == 1
+    assert (
+        Settings(
+            shopmind_checkout_token_ttl_seconds=1
+        ).shopmind_checkout_token_ttl_seconds
+        == 1
+    )
     assert Settings().shopmind_order_payment_ttl_seconds == 1_800

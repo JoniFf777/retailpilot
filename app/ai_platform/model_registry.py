@@ -61,7 +61,9 @@ def default_model_registry(settings=None) -> ModelCandidateRegistry:
                 supports_streaming=operation != ModelOperation.RERANK,
             )
         )
-    return ModelCandidateRegistry(ModelRegistrySnapshot("shopmind-models.v1", tuple(candidates)))
+    return ModelCandidateRegistry(
+        ModelRegistrySnapshot("shopmind-models.v1", tuple(candidates))
+    )
 
 
 __all__ = [

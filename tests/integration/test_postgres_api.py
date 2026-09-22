@@ -101,7 +101,9 @@ def _prepare_pending_action(user_id: str, quantity: int = 1) -> str:
 
 
 def _get_cart_item_count(user_id: str) -> int:
-    return _with_session(lambda session: get_cart_response(session, user_id=user_id).item_count)
+    return _with_session(
+        lambda session: get_cart_response(session, user_id=user_id).item_count
+    )
 
 
 def _prepare_preference_action(user_id: str) -> str:
@@ -130,7 +132,9 @@ def _get_pending_action_status(pending_action_id: str) -> str:
 
 def _get_pending_action_version(pending_action_id: str) -> int:
     return _with_session(
-        lambda session: session.get(cart_repository.PendingAction, pending_action_id).version
+        lambda session: session.get(
+            cart_repository.PendingAction, pending_action_id
+        ).version
     )
 
 
@@ -170,9 +174,7 @@ async def test_service_metrics_endpoint_exposes_closed_process_snapshot():
     payload = response.json()
     assert response.status_code == 200
     assert payload["schema_version"] == "shopmind.service-health.v1"
-    assert payload["metrics"]["schema_version"] == (
-        "shopmind.service-metrics.v1"
-    )
+    assert payload["metrics"]["schema_version"] == ("shopmind.service-metrics.v1")
     assert payload["slo"]["schema_version"] == "shopmind.service-slo.v1"
     assert payload["status"] in {"insufficient_data", "met", "breached"}
 
@@ -199,7 +201,10 @@ async def test_chat_confirm_endpoint_confirms_pending_action(smoke_user_id):
     assert body["status"] == "completed"
     assert body["tool_calls"] == ["confirm_add_to_cart"]
     assert body["pending_action_id"] == pending_action_id
-    assert _get_pending_action_status(pending_action_id) == cart_repository.CONFIRMED_STATUS
+    assert (
+        _get_pending_action_status(pending_action_id)
+        == cart_repository.CONFIRMED_STATUS
+    )
     assert _get_cart_item_count(smoke_user_id) == 1
 
 
@@ -225,7 +230,10 @@ async def test_chat_confirm_endpoint_cancels_pending_action(smoke_user_id):
     assert body["status"] == "cancelled"
     assert body["tool_calls"] == ["cancel_pending_action"]
     assert body["pending_action_id"] == pending_action_id
-    assert _get_pending_action_status(pending_action_id) == cart_repository.CANCELLED_STATUS
+    assert (
+        _get_pending_action_status(pending_action_id)
+        == cart_repository.CANCELLED_STATUS
+    )
     assert _get_cart_item_count(smoke_user_id) == 0
 
 
@@ -260,6 +268,7 @@ async def test_chat_confirm_endpoint_dispatches_preference_action(smoke_user_id)
             session, smoke_user_id
         )
     )
+
     def load_action_events(session):
         run_id = session.scalar(
             select(AgentRun.id)
@@ -279,18 +288,17 @@ async def test_chat_confirm_endpoint_dispatches_preference_action(smoke_user_id)
     assert body["trace_id"]
     inspection_payload = inspection.json()
     assert inspection.status_code == 200
-    assert inspection_payload["schema_version"] == (
-        "shopmind.owner-run-inspection.v1"
-    )
+    assert inspection_payload["schema_version"] == ("shopmind.owner-run-inspection.v1")
     assert inspection_payload["run_id"] == body["run_id"]
     assert inspection_payload["trace_id"] == body["trace_id"]
     assert all(
-        event["visibility"] == "client"
-        for event in inspection_payload["events"]
+        event["visibility"] == "client" for event in inspection_payload["events"]
     )
     assert "payload" not in inspection.text
     assert [item["preference_value"] for item in preferences] == ["quiet keyboard"]
-    action_events = [event for event in events if event["event_type"].startswith("action.")]
+    action_events = [
+        event for event in events if event["event_type"].startswith("action.")
+    ]
     assert [event["event_type"] for event in action_events] == [
         "action.resumed",
         "action.confirmed",
@@ -345,14 +353,10 @@ async def test_chat_confirm_edit_is_persisted_and_idempotently_replayed(
     assert first.status_code == replay.status_code == 200
     assert first.json() == replay.json()
     assert action.payload_json["preference_value"] == "silent switches"
-    assert [item["preference_value"] for item in preferences] == [
-        "silent switches"
-    ]
+    assert [item["preference_value"] for item in preferences] == ["silent switches"]
     assert [event["event_type"] for event in action_events] == [
         "action.resumed",
         "action.edited",
         "action.confirmed",
     ]
-    assert action_events[1]["payload_json"]["updated_fields"] == [
-        "preference_value"
-    ]
+    assert action_events[1]["payload_json"]["updated_fields"] == ["preference_value"]

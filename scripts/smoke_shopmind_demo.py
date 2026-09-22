@@ -157,7 +157,9 @@ def _assert_order_facts(
             ).scalars()
         )
         if attempts != ["succeeded"]:
-            raise DemoSmokeError(f"PaymentAttempt facts are {attempts}, expected one succeeded")
+            raise DemoSmokeError(
+                f"PaymentAttempt facts are {attempts}, expected one succeeded"
+            )
 
         reservations = list(
             session.scalars(
@@ -177,14 +179,19 @@ def _assert_order_facts(
 
         inventory_facts: list[dict[str, Any]] = []
         for item, reservation in zip(items, reservations, strict=True):
-            if reservation.sku_id != item.sku_id or reservation.quantity != item.quantity:
+            if (
+                reservation.sku_id != item.sku_id
+                or reservation.quantity != item.quantity
+            ):
                 raise DemoSmokeError("Reservation does not match its Order item")
             inventory = session.get(CatalogInventory, item.sku_id)
             if inventory is None:
                 raise DemoSmokeError("Order SKU has no Inventory row")
             before = (initial_inventory or {}).get(str(item.sku_id))
             if before is None:
-                raise DemoSmokeError("Missing pre-order Inventory snapshot for an Order SKU")
+                raise DemoSmokeError(
+                    "Missing pre-order Inventory snapshot for an Order SKU"
+                )
             expected_on_hand = before["on_hand_quantity"] - item.quantity
             expected_reserved = before["reserved_quantity"]
             expected_version = before["version"] + 2
@@ -223,7 +230,9 @@ def _assert_order_facts(
                 f"Outbox facts are {event_types}, expected one versioned order-created and payment-succeeded event"
             )
         if len(events) != 2:
-            raise DemoSmokeError(f"Expected exactly two Order outbox events, found {len(events)}")
+            raise DemoSmokeError(
+                f"Expected exactly two Order outbox events, found {len(events)}"
+            )
 
         return {
             "order_status": order.status,
@@ -255,7 +264,9 @@ def run_smoke(
     _, openapi = _http_json(backend_url.replace("/api", ""), "/openapi.json")
     missing_paths = sorted(REQUIRED_OPENAPI_PATHS - set(openapi.get("paths", {})))
     if missing_paths:
-        raise DemoSmokeError(f"OpenAPI is missing core paths: {', '.join(missing_paths)}")
+        raise DemoSmokeError(
+            f"OpenAPI is missing core paths: {', '.join(missing_paths)}"
+        )
 
     _, orders = _http_json(backend_url, f"/api/orders?user_id={user_id}")
     if not isinstance(orders.get("items"), list) or "next_cursor" not in orders:
@@ -263,11 +274,20 @@ def run_smoke(
 
     session = _session()
     try:
-        migration = session.execute(text("select version_num from alembic_version")).scalar_one()
-        active_skus = session.scalar(
-            select(func.count()).select_from(CatalogSku).where(CatalogSku.sale_status == "active")
-        ) or 0
-        inventory_rows = session.scalar(select(func.count()).select_from(CatalogInventory)) or 0
+        migration = session.execute(
+            text("select version_num from alembic_version")
+        ).scalar_one()
+        active_skus = (
+            session.scalar(
+                select(func.count())
+                .select_from(CatalogSku)
+                .where(CatalogSku.sale_status == "active")
+            )
+            or 0
+        )
+        inventory_rows = (
+            session.scalar(select(func.count()).select_from(CatalogInventory)) or 0
+        )
     finally:
         session.close()
     if migration != MIGRATION_HEAD:
@@ -277,12 +297,17 @@ def run_smoke(
 
     # Frontend is HTML rather than JSON; keep this probe separate and explicit.
     try:
-        with urlopen(Request(f"{frontend_url.rstrip('/')}/", headers={"Accept": "text/html"}), timeout=8) as response:
+        with urlopen(
+            Request(f"{frontend_url.rstrip('/')}/", headers={"Accept": "text/html"}),
+            timeout=8,
+        ) as response:
             frontend_status = response.status
             html = response.read().decode("utf-8", errors="replace")
     except (OSError, URLError) as exc:
-        raise DemoSmokeError(f"Cannot reach frontend: {exc.__class__.__name__}") from exc
-    if frontend_status != 200 or "<div id=\"root\">" not in html:
+        raise DemoSmokeError(
+            f"Cannot reach frontend: {exc.__class__.__name__}"
+        ) from exc
+    if frontend_status != 200 or '<div id="root">' not in html:
         raise DemoSmokeError("Frontend did not return the Vite application shell")
 
     facts = None
@@ -304,7 +329,11 @@ def run_smoke(
         )
         recommendation = chat.get("recommendation")
         context = chat.get("recommendation_context") or {}
-        recommendations = recommendation.get("recommendations") if isinstance(recommendation, dict) else None
+        recommendations = (
+            recommendation.get("recommendations")
+            if isinstance(recommendation, dict)
+            else None
+        )
         if (
             not isinstance(recommendation, dict)
             or recommendation.get("outcome") != "recommended"
@@ -312,7 +341,9 @@ def run_smoke(
             or not recommendations
             or not context.get("source_run_id")
         ):
-            raise DemoSmokeError("Catalog recommendation response is not a usable structured result")
+            raise DemoSmokeError(
+                "Catalog recommendation response is not a usable structured result"
+            )
         selected = recommendations[0]
         sku_id = selected.get("sku_id")
         if not sku_id:
@@ -340,15 +371,21 @@ def run_smoke(
             method="POST",
             payload={"user_id": user_id, "thread_id": thread_id, "expected_version": 1},
         )
-        if (confirmed.get("pending_action") or {}).get("status") != "confirmed" or not confirmed.get("cart_item"):
-            raise DemoSmokeError("PendingAction confirmation did not create a Cart item")
+        if (confirmed.get("pending_action") or {}).get(
+            "status"
+        ) != "confirmed" or not confirmed.get("cart_item"):
+            raise DemoSmokeError(
+                "PendingAction confirmation did not create a Cart item"
+            )
         _, preview = _http_json(
             backend_url,
             f"/api/checkout/preview?user_id={user_id}",
             method="POST",
             payload={},
         )
-        if preview.get("can_create_order") is not True or not preview.get("checkout_token"):
+        if preview.get("can_create_order") is not True or not preview.get(
+            "checkout_token"
+        ):
             raise DemoSmokeError("Checkout Preview did not authorize the seeded Cart")
         order_key = f"shopmind-demo-order-{uuid4()}"
         _, created = _http_json(
@@ -362,7 +399,9 @@ def run_smoke(
         order = created.get("order") or {}
         exercised_order_id = str(order.get("order_id") or "")
         if not exercised_order_id or order.get("status") != "pending_payment":
-            raise DemoSmokeError("Create Order response did not create pending_payment Order")
+            raise DemoSmokeError(
+                "Create Order response did not create pending_payment Order"
+            )
         _, paid = _http_json(
             backend_url,
             f"/api/orders/{exercised_order_id}/payments?user_id={user_id}",
@@ -389,11 +428,17 @@ def run_smoke(
         )
     if order_id:
         _, order = _http_json(backend_url, f"/api/orders/{order_id}?user_id={user_id}")
-        _, payments = _http_json(backend_url, f"/api/orders/{order_id}/payments?user_id={user_id}")
-        if order.get("order_id") != order_id or not isinstance(payments.get("items"), list):
+        _, payments = _http_json(
+            backend_url, f"/api/orders/{order_id}/payments?user_id={user_id}"
+        )
+        if order.get("order_id") != order_id or not isinstance(
+            payments.get("items"), list
+        ):
             raise DemoSmokeError("Order/Payment response shape is invalid")
         if require_paid and facts is None:
-            raise DemoSmokeError("--require-paid requires a pre-order Inventory snapshot")
+            raise DemoSmokeError(
+                "--require-paid requires a pre-order Inventory snapshot"
+            )
 
     return {
         "status": "pass",
@@ -406,7 +451,9 @@ def run_smoke(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Verify the ShopMind offline core demo.")
+    parser = argparse.ArgumentParser(
+        description="Verify the ShopMind offline core demo."
+    )
     parser.add_argument("--backend-url", default="http://127.0.0.1:8000")
     parser.add_argument("--frontend-url", default="http://127.0.0.1:5173")
     parser.add_argument("--user-id", default="demo-user")

@@ -21,16 +21,44 @@ from .contracts import (
 )
 
 
-def _step(key: str, capability: str, role: Role, output_kind: str, *deps: str, refs: list[str] | None = None) -> PlanStep:
-    return PlanStep(key=key, capability=capability, role=role, output_kind=output_kind, depends_on=list(deps), input_refs=refs or [])
+def _step(
+    key: str,
+    capability: str,
+    role: Role,
+    output_kind: str,
+    *deps: str,
+    refs: list[str] | None = None,
+) -> PlanStep:
+    return PlanStep(
+        key=key,
+        capability=capability,
+        role=role,
+        output_kind=output_kind,
+        depends_on=list(deps),
+        input_refs=refs or [],
+    )
 
 
 def build_goal(request: ShoppingTaskRequest) -> GoalSpec:
     facts = list(request.known_facts)
-    if request.kind == "bundle_selection" and not any(fact.key in {"budget", "total_budget"} for fact in facts):
-        match = re.search(r"(?:预算|budget)\s*[:：]?\s*(\d+(?:\.\d+)?)", request.goal_text, flags=re.IGNORECASE)
+    if request.kind == "bundle_selection" and not any(
+        fact.key in {"budget", "total_budget"} for fact in facts
+    ):
+        match = re.search(
+            r"(?:预算|budget)\s*[:：]?\s*(\d+(?:\.\d+)?)",
+            request.goal_text,
+            flags=re.IGNORECASE,
+        )
         if match:
-            facts.append(Fact(key="budget", value=float(match.group(1)), source_ref=SourceRef(source="derived", source_id="goal-text-budget", verified=False)))
+            facts.append(
+                Fact(
+                    key="budget",
+                    value=float(match.group(1)),
+                    source_ref=SourceRef(
+                        source="derived", source_id="goal-text-budget", verified=False
+                    ),
+                )
+            )
     locked: dict[str, str] = {}
     excluded: list[str] = []
     for fact in facts:
@@ -44,7 +72,11 @@ def build_goal(request: ShoppingTaskRequest) -> GoalSpec:
         questions = []
         if not any(f.key in {"budget", "total_budget"} for f in facts):
             questions.append("total_budget")
-        hard = {f.key: f.value for f in facts if f.key in {"budget", "total_budget", "currency", "quantity"}}
+        hard = {
+            f.key: f.value
+            for f in facts
+            if f.key in {"budget", "total_budget", "currency", "quantity"}
+        }
         soft = {f.key: f.value for f in facts if f.key not in hard}
     elif request.kind == "compatibility_diagnosis":
         required = ["device", "symptom"]
@@ -54,36 +86,146 @@ def build_goal(request: ShoppingTaskRequest) -> GoalSpec:
         required = ["order"]
         questions = []
         hard, soft = {}, {f.key: f.value for f in facts}
-    return GoalSpec(kind=request.kind, goal_text=request.goal_text, required_slots=required, hard_constraints=hard, soft_requirements=soft, locked_selections=locked, excluded_skus=excluded, open_questions=questions, facts=facts)
+    return GoalSpec(
+        kind=request.kind,
+        goal_text=request.goal_text,
+        required_slots=required,
+        hard_constraints=hard,
+        soft_requirements=soft,
+        locked_selections=locked,
+        excluded_skus=excluded,
+        open_questions=questions,
+        facts=facts,
+    )
 
 
 def offline_plan(goal: GoalSpec) -> PlanProposal:
     if goal.kind == "bundle_selection":
         steps = [
             _step("extract_goal", "extract_goal", "coordinator", "goal_spec"),
-            _step("catalog_candidates", "catalog_candidates", "catalog_analyst", "candidate_set", "extract_goal"),
-            _step("lookup_compatibility", "lookup_compatibility", "catalog_analyst", "compatibility_report", "catalog_candidates"),
-            _step("solve_bundle", "solve_bundle", "catalog_analyst", "bundle_proposal", "catalog_candidates", "lookup_compatibility"),
-            _step("retrieve_evidence", "retrieve_evidence", "evidence_researcher", "evidence_bundle", "extract_goal"),
-            _step("verify_result", "verify_result", "reviewer", "verification_report", "solve_bundle", "retrieve_evidence"),
-            _step("compose_result", "compose_result", "coordinator", "task_result", "verify_result", "solve_bundle", "retrieve_evidence"),
+            _step(
+                "catalog_candidates",
+                "catalog_candidates",
+                "catalog_analyst",
+                "candidate_set",
+                "extract_goal",
+            ),
+            _step(
+                "lookup_compatibility",
+                "lookup_compatibility",
+                "catalog_analyst",
+                "compatibility_report",
+                "catalog_candidates",
+            ),
+            _step(
+                "solve_bundle",
+                "solve_bundle",
+                "catalog_analyst",
+                "bundle_proposal",
+                "catalog_candidates",
+                "lookup_compatibility",
+            ),
+            _step(
+                "retrieve_evidence",
+                "retrieve_evidence",
+                "evidence_researcher",
+                "evidence_bundle",
+                "extract_goal",
+            ),
+            _step(
+                "verify_result",
+                "verify_result",
+                "reviewer",
+                "verification_report",
+                "solve_bundle",
+                "retrieve_evidence",
+            ),
+            _step(
+                "compose_result",
+                "compose_result",
+                "coordinator",
+                "task_result",
+                "verify_result",
+                "solve_bundle",
+                "retrieve_evidence",
+            ),
         ]
     elif goal.kind == "compatibility_diagnosis":
         steps = [
             _step("extract_goal", "extract_goal", "coordinator", "goal_spec"),
-            _step("retrieve_evidence", "retrieve_evidence", "evidence_researcher", "evidence_bundle", "extract_goal"),
-            _step("suggest_diagnostic_check", "suggest_diagnostic_check", "evidence_researcher", "diagnostic_check", "extract_goal", "retrieve_evidence"),
-            _step("verify_result", "verify_result", "reviewer", "verification_report", "suggest_diagnostic_check", "retrieve_evidence"),
-            _step("compose_result", "compose_result", "coordinator", "task_result", "verify_result", "suggest_diagnostic_check"),
+            _step(
+                "retrieve_evidence",
+                "retrieve_evidence",
+                "evidence_researcher",
+                "evidence_bundle",
+                "extract_goal",
+            ),
+            _step(
+                "suggest_diagnostic_check",
+                "suggest_diagnostic_check",
+                "evidence_researcher",
+                "diagnostic_check",
+                "extract_goal",
+                "retrieve_evidence",
+            ),
+            _step(
+                "verify_result",
+                "verify_result",
+                "reviewer",
+                "verification_report",
+                "suggest_diagnostic_check",
+                "retrieve_evidence",
+            ),
+            _step(
+                "compose_result",
+                "compose_result",
+                "coordinator",
+                "task_result",
+                "verify_result",
+                "suggest_diagnostic_check",
+            ),
         ]
     else:
         steps = [
             _step("extract_goal", "extract_goal", "coordinator", "goal_spec"),
-            _step("read_owned_order", "read_owned_order", "catalog_analyst", "order_facts", "extract_goal"),
-            _step("retrieve_evidence", "retrieve_evidence", "evidence_researcher", "policy_evidence", "extract_goal"),
-            _step("assess_policy", "assess_policy", "evidence_researcher", "policy_assessment", "read_owned_order", "retrieve_evidence"),
-            _step("verify_result", "verify_result", "reviewer", "verification_report", "assess_policy", "retrieve_evidence"),
-            _step("compose_result", "compose_result", "coordinator", "task_result", "verify_result", "assess_policy"),
+            _step(
+                "read_owned_order",
+                "read_owned_order",
+                "catalog_analyst",
+                "order_facts",
+                "extract_goal",
+            ),
+            _step(
+                "retrieve_evidence",
+                "retrieve_evidence",
+                "evidence_researcher",
+                "policy_evidence",
+                "extract_goal",
+            ),
+            _step(
+                "assess_policy",
+                "assess_policy",
+                "evidence_researcher",
+                "policy_assessment",
+                "read_owned_order",
+                "retrieve_evidence",
+            ),
+            _step(
+                "verify_result",
+                "verify_result",
+                "reviewer",
+                "verification_report",
+                "assess_policy",
+                "retrieve_evidence",
+            ),
+            _step(
+                "compose_result",
+                "compose_result",
+                "coordinator",
+                "task_result",
+                "verify_result",
+                "assess_policy",
+            ),
         ]
     return PlanProposal(steps=steps, mode="offline")
 

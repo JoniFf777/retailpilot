@@ -50,7 +50,9 @@ def _document_version(content: str) -> str:
 
 
 def _section_title(content: str, start_index: int) -> str | None:
-    headings = re.findall(r"(?m)^#{1,6}\s+(.+?)\s*$", content[: max(0, start_index) + 1])
+    headings = re.findall(
+        r"(?m)^#{1,6}\s+(.+?)\s*$", content[: max(0, start_index) + 1]
+    )
     return headings[-1].strip() if headings else None
 
 

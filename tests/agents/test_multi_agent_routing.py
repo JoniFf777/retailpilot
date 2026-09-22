@@ -197,9 +197,9 @@ def test_mixed_question_runs_read_agents_in_order() -> None:
     ]
     assert result["execution_plan"]["execution_mode"] == "sequential"
     assert result["execution_plan"]["max_parallelism"] == 1
-    assert [
-        step["recipient"] for step in result["execution_plan"]["steps"]
-    ] == result["routes"]
+    assert [step["recipient"] for step in result["execution_plan"]["steps"]] == result[
+        "routes"
+    ]
     assert all(
         step["parallel_eligible"] and step["depends_on"] == []
         for step in result["execution_plan"]["steps"]
@@ -261,7 +261,10 @@ def test_decision_agent_requires_followup_without_read_summaries() -> None:
     assert result["decision"]["used_summaries"] == []
     assert result["decision"]["requires_followup"] is True
     assert result["decision"]["followup_reason"] == "no_read_summary_available"
-    assert result["final_response"] == "我目前没有检索到足够的信息，请补充商品、政策或偏好相关问题。"
+    assert (
+        result["final_response"]
+        == "我目前没有检索到足够的信息，请补充商品、政策或偏好相关问题。"
+    )
 
 
 def test_decision_agent_marks_product_document_scope_mismatch() -> None:
@@ -301,10 +304,7 @@ def test_decision_agent_marks_product_document_scope_mismatch() -> None:
     assert result["decision"]["answer_type"] == "evidence_conflict_followup"
     assert result["decision"]["used_summaries"] == ["product_summary"]
     assert result["decision"]["requires_followup"] is True
-    assert (
-        result["decision"]["followup_reason"]
-        == "product_evidence_scope_mismatch"
-    )
+    assert result["decision"]["followup_reason"] == "product_evidence_scope_mismatch"
     assert "document" not in result["final_response"]
     assert PRODUCT_EVIDENCE_SCOPE_MISMATCH_RESPONSE in result["final_response"]
     assert result["agent_steps"][-1]["evidence_conflict_count"] == 1
@@ -344,7 +344,9 @@ def test_decision_agent_keeps_matching_product_document_evidence() -> None:
 
 
 def test_routes_do_not_include_decision_agent() -> None:
-    routes = determine_routes("结合我的偏好查找键盘，并看看退货政策", user_id="USER-001")
+    routes = determine_routes(
+        "结合我的偏好查找键盘，并看看退货政策", user_id="USER-001"
+    )
 
     assert "decision_agent" not in routes
 
@@ -386,10 +388,7 @@ def test_write_intent_bypasses_read_agents_and_requires_handoff() -> None:
     assert result["decision"]["answer_type"] == "write_path_handoff"
     assert result["decision"]["used_summaries"] == []
     assert result["decision"]["requires_followup"] is True
-    assert (
-        result["decision"]["followup_reason"]
-        == "read_only_multi_agent_write_intent"
-    )
+    assert result["decision"]["followup_reason"] == "read_only_multi_agent_write_intent"
     assert [step["node"] for step in result["agent_steps"]] == [
         "supervisor",
         "route_dispatcher",
@@ -530,9 +529,10 @@ def test_langchain_supervisor_provider_uses_structured_output_contract() -> None
     assert messages is not None
     assert messages[0]["role"] == "system"
     assert "decision_agent" in messages[0]["content"]
-    assert "Allowed routes: preference_agent, product_agent, rag_agent" in messages[1][
-        "content"
-    ]
+    assert (
+        "Allowed routes: preference_agent, product_agent, rag_agent"
+        in messages[1]["content"]
+    )
     assert decision["routes"] == ["preference_agent"]
     assert decision["routing_reasons"] == {
         "preference_agent": "structured_model_detected_preferences"
@@ -550,7 +550,9 @@ def test_llm_supervisor_router_falls_back_on_invalid_routes() -> None:
         model_name="test-router",
     )
 
-    decision = build_supervisor_decision("推荐一个键盘", user_id="USER-001", router=router)
+    decision = build_supervisor_decision(
+        "推荐一个键盘", user_id="USER-001", router=router
+    )
 
     assert decision["routes"] == ["product_agent"]
     assert decision["router_type"] == "llm_fallback"

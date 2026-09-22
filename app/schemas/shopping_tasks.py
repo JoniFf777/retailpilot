@@ -13,7 +13,9 @@ from app.shopping_tasks.contracts import Fact, ShoppingTaskRequest
 class ShoppingTaskCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     user_id: StrictStr | None = None
-    kind: Literal["bundle_selection", "compatibility_diagnosis", "after_sales_assessment"]
+    kind: Literal[
+        "bundle_selection", "compatibility_diagnosis", "after_sales_assessment"
+    ]
     goal_text: StrictStr = Field(min_length=1, max_length=4000)
     known_facts: list[Fact] = Field(default_factory=list, max_length=64)
     thread_id: StrictStr | None = Field(default=None, max_length=128)

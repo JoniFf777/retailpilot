@@ -27,13 +27,21 @@ def main() -> int:
         with engine.connect() as connection:
             connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{args.schema}"'))
             connection.execute(text(f'SET search_path TO "{args.schema}", public'))
-            connection.execute(text(f'CREATE TABLE IF NOT EXISTS "{args.schema}".alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)'))
+            connection.execute(
+                text(
+                    f'CREATE TABLE IF NOT EXISTS "{args.schema}".alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)'
+                )
+            )
             connection.commit()
             config = Config("alembic.ini")
             config.attributes["connection"] = connection
             command.upgrade(config, "head")
             tables = set(inspect(connection).get_table_names(schema=args.schema))
-            required = {"shopmind_shopping_tasks", "shopmind_shopping_task_steps", "shopmind_shopping_task_actions"}
+            required = {
+                "shopmind_shopping_tasks",
+                "shopmind_shopping_task_steps",
+                "shopmind_shopping_task_actions",
+            }
             missing = required - tables
             if missing:
                 raise RuntimeError(f"task migration missing tables: {sorted(missing)}")

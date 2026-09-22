@@ -60,9 +60,7 @@ def test_settings_reads_bounded_production_deployment_declarations(
 
     default = Settings.from_env()
 
-    assert default.shopmind_deployment_profile == (
-        DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE
-    )
+    assert default.shopmind_deployment_profile == (DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE)
     assert default.shopmind_deployment_replicas == (
         DEFAULT_SHOPMIND_DEPLOYMENT_REPLICAS
     )
@@ -92,9 +90,7 @@ def test_settings_reads_bounded_production_deployment_declarations(
     production = Settings.from_env()
 
     assert production.shopmind_deployment_profile == "production"
-    assert production.shopmind_deployment_replicas == (
-        MAX_SHOPMIND_DEPLOYMENT_REPLICAS
-    )
+    assert production.shopmind_deployment_replicas == (MAX_SHOPMIND_DEPLOYMENT_REPLICAS)
     assert production.shopmind_trusted_proxy_authentication is True
     assert production.shopmind_runtime_cleanup_scheduled is True
     assert production.shopmind_runtime_cleanup_evidence_path == (
@@ -108,9 +104,7 @@ def test_settings_reads_bounded_production_deployment_declarations(
     monkeypatch.setenv("SHOPMIND_DEPLOYMENT_REPLICAS", "0")
     fallback = Settings.from_env()
 
-    assert fallback.shopmind_deployment_profile == (
-        DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE
-    )
+    assert fallback.shopmind_deployment_profile == (DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE)
     assert fallback.shopmind_deployment_replicas == (
         DEFAULT_SHOPMIND_DEPLOYMENT_REPLICAS
     )
@@ -142,9 +136,7 @@ def test_settings_reads_bounded_service_slo_policy(monkeypatch) -> None:
     monkeypatch.setenv("SHOPMIND_SERVICE_SLO_P95_LATENCY_MS", "999999")
     bounded = Settings.from_env()
 
-    assert bounded.shopmind_service_slo_min_runs == (
-        MAX_SHOPMIND_SERVICE_SLO_MIN_RUNS
-    )
+    assert bounded.shopmind_service_slo_min_runs == (MAX_SHOPMIND_SERVICE_SLO_MIN_RUNS)
     assert bounded.shopmind_service_slo_success_rate_target == 1.0
     assert bounded.shopmind_service_slo_p95_latency_ms == (
         MAX_SHOPMIND_SERVICE_SLO_P95_LATENCY_MS
@@ -160,10 +152,15 @@ def test_settings_reads_evidence_reranker_choice_fail_closed(monkeypatch) -> Non
     assert Settings.from_env().shopmind_recommendation_evidence_reranker == "lexical"
 
     monkeypatch.setenv("SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER", "SEMANTIC")
-    monkeypatch.setenv("SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL", "local-cross-encoder")
+    monkeypatch.setenv(
+        "SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL", "local-cross-encoder"
+    )
     semantic = Settings.from_env()
     assert semantic.shopmind_recommendation_evidence_reranker == "semantic"
-    assert semantic.shopmind_recommendation_evidence_reranker_model == "local-cross-encoder"
+    assert (
+        semantic.shopmind_recommendation_evidence_reranker_model
+        == "local-cross-encoder"
+    )
 
     monkeypatch.setenv("SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER", "remote-model")
     assert Settings.from_env().shopmind_recommendation_evidence_reranker == "none"
@@ -244,7 +241,9 @@ def test_settings_defaults_invalid_supervisor_router_to_deterministic(monkeypatc
     assert settings.shopmind_agent_planner == DEFAULT_SHOPMIND_AGENT_PLANNER
 
 
-def test_settings_reads_positive_stream_controls_and_falls_back_for_invalid_values(monkeypatch):
+def test_settings_reads_positive_stream_controls_and_falls_back_for_invalid_values(
+    monkeypatch,
+):
     monkeypatch.setenv("SHOPMIND_STREAM_MAX_CONCURRENCY", "3")
     monkeypatch.setenv("SHOPMIND_STREAM_EVENT_BUFFER_SIZE", "16")
 
@@ -292,7 +291,9 @@ def test_settings_reads_coordination_backend_and_normalizes_stream_lease_timing(
 
     fallback = Settings.from_env()
 
-    assert fallback.shopmind_coordination_backend == DEFAULT_SHOPMIND_COORDINATION_BACKEND
+    assert (
+        fallback.shopmind_coordination_backend == DEFAULT_SHOPMIND_COORDINATION_BACKEND
+    )
     assert fallback.shopmind_stream_admission_lease_ttl_ms == (
         DEFAULT_SHOPMIND_STREAM_ADMISSION_LEASE_TTL_MS
     )
@@ -349,8 +350,7 @@ def test_settings_reads_and_masks_signed_identity_configuration(monkeypatch):
     assert settings.shopmind_identity_provider == "signed_header"
     assert settings.shopmind_identity_signing_secret is not None
     assert (
-        settings.shopmind_identity_signing_secret.get_secret_value()
-        == signing_secret
+        settings.shopmind_identity_signing_secret.get_secret_value() == signing_secret
     )
     assert settings.shopmind_identity_signature_max_age_seconds == 90
     assert settings.shopmind_identity_signature_clock_skew_seconds == 8

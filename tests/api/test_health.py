@@ -111,9 +111,7 @@ async def test_governance_audit_health_exposes_only_sanitized_metrics(
     payload = response.json()
 
     assert response.status_code == 200
-    assert payload["schema_version"] == (
-        "shopmind.governance-audit-health.v1"
-    )
+    assert payload["schema_version"] == ("shopmind.governance-audit-health.v1")
     assert payload["status"] == "degraded"
     assert payload["audit_enabled"] is True
     assert payload["monitor"]["status"] == "alerting"
@@ -180,9 +178,7 @@ async def test_service_metrics_health_exposes_closed_slo_and_returns_200(
     assert response.status_code == 200
     assert payload["schema_version"] == "shopmind.service-health.v1"
     assert payload["status"] == "breached"
-    assert payload["metrics"]["schema_version"] == (
-        "shopmind.service-metrics.v1"
-    )
+    assert payload["metrics"]["schema_version"] == ("shopmind.service-metrics.v1")
     assert payload["slo"]["schema_version"] == "shopmind.service-slo.v1"
     assert payload["metrics"]["failed_total"] == 2
     assert payload["slo"]["observed_success_rate"] == 0

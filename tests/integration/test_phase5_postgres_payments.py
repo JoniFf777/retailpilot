@@ -15,11 +15,20 @@ from alembic.runtime.migration import MigrationContext
 from sqlalchemy import create_engine, event, inspect, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.core.settings import Settings, get_settings
 from app.orders.models import ShopMindInventoryReservation, ShopMindOrder
 from app.payments.models import ShopMindPaymentAttempt
-from app.payments.providers import MockPaymentProvider, ProviderChargeRequest, ProviderOutcome
+from app.payments.providers import (
+    MockPaymentProvider,
+    ProviderChargeRequest,
+    ProviderOutcome,
+)
 from app.repositories.shopmind_cart import upsert_cart_item
 from app.schemas.orders import CreateOrderRequest
 from app.schemas.payments import PaymentAttemptRequest
@@ -52,12 +61,12 @@ def _bootstrap_private_schema(engine, schema: str) -> None:
         connection.execute(
             text(
                 f'CREATE TABLE "{schema}".alembic_version '
-                '(version_num VARCHAR(32) NOT NULL PRIMARY KEY)'
+                "(version_num VARCHAR(32) NOT NULL PRIMARY KEY)"
             )
         )
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".pending_actions (
+                f"""CREATE TABLE "{schema}".pending_actions (
                     id VARCHAR PRIMARY KEY,
                     user_id VARCHAR(128) NOT NULL,
                     thread_id VARCHAR,
@@ -70,7 +79,7 @@ def _bootstrap_private_schema(engine, schema: str) -> None:
                     metadata_json JSONB NOT NULL DEFAULT '{{}}'::jsonb,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                )'''
+                )"""
             )
         )
         connection.commit()
@@ -193,7 +202,9 @@ def _request(method: str = "method") -> PaymentAttemptRequest:
     return PaymentAttemptRequest(provider="mock", payment_method_ref=method)
 
 
-def _complete_payment(factory, provider, *, user_id: str, order_id: UUID, key: str, method: str):
+def _complete_payment(
+    factory, provider, *, user_id: str, order_id: UUID, key: str, method: str
+):
     session: Session = factory()
     try:
         claim = claim_payment_attempt(
@@ -209,7 +220,9 @@ def _complete_payment(factory, provider, *, user_id: str, order_id: UUID, key: s
         if claim.action == "replay_failed":
             return "failed_replay"
         if claim.action == "finalize":
-            finalize_payment(session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id)
+            finalize_payment(
+                session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id
+            )
             session.commit()
             return "success"
         outcome = resolve_provider_outcome(
@@ -223,7 +236,9 @@ def _complete_payment(factory, provider, *, user_id: str, order_id: UUID, key: s
             return "declined"
         if outcome.status == "unknown":
             return "unknown"
-        finalize_payment(session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id)
+        finalize_payment(
+            session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id
+        )
         session.commit()
         return "success"
     except (PaymentServiceError, OrderServiceError) as exc:
@@ -233,7 +248,9 @@ def _complete_payment(factory, provider, *, user_id: str, order_id: UUID, key: s
         session.close()
 
 
-def _concurrent_payments(factory, provider, *, user_id: str, order_id: UUID, keys: tuple[str, ...]):
+def _concurrent_payments(
+    factory, provider, *, user_id: str, order_id: UUID, keys: tuple[str, ...]
+):
     barrier = threading.Barrier(len(keys))
     results: list[str] = []
     results_lock = threading.Lock()
@@ -255,19 +272,33 @@ def _concurrent_payments(factory, provider, *, user_id: str, order_id: UUID, key
             elif claim.action == "replay_failed":
                 result = "failed_replay"
             elif claim.action == "finalize":
-                finalize_payment(session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id)
+                finalize_payment(
+                    session,
+                    user_id=user_id,
+                    order_id=order_id,
+                    attempt_id=claim.attempt_id,
+                )
                 session.commit()
                 result = "success"
             else:
-                outcome = resolve_provider_outcome(provider, claim=claim, request=_request())
-                persist_provider_outcome(session, attempt_id=claim.attempt_id, outcome=outcome)
+                outcome = resolve_provider_outcome(
+                    provider, claim=claim, request=_request()
+                )
+                persist_provider_outcome(
+                    session, attempt_id=claim.attempt_id, outcome=outcome
+                )
                 session.commit()
                 if outcome.status == "declined":
                     result = "declined"
                 elif outcome.status == "unknown":
                     result = "unknown"
                 else:
-                    finalize_payment(session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id)
+                    finalize_payment(
+                        session,
+                        user_id=user_id,
+                        order_id=order_id,
+                        attempt_id=claim.attempt_id,
+                    )
                     session.commit()
                     result = "success"
         except (PaymentServiceError, OrderServiceError) as exc:
@@ -293,15 +324,23 @@ def test_phase5a_migration_round_trip_and_introspection(phase5a_factory) -> None
         public_revision = connection.execute(
             text("SELECT version_num FROM public.alembic_version LIMIT 1")
         ).scalar_one_or_none()
-        private_schema = connection.execute(text("SELECT current_schema()")).scalar_one()
+        private_schema = connection.execute(
+            text("SELECT current_schema()")
+        ).scalar_one()
         connection.execute(text("SET search_path TO public"))
         connection.commit()
         connection.execute(text(f'SET search_path TO "{private_schema}"'))
         connection.commit()
         command.downgrade(_alembic(connection), "0012_shopmind_orders")
-        assert MigrationContext.configure(connection).get_current_revision() == "0012_shopmind_orders"
+        assert (
+            MigrationContext.configure(connection).get_current_revision()
+            == "0012_shopmind_orders"
+        )
         command.upgrade(_alembic(connection), "0013_shopmind_payments")
-        assert MigrationContext.configure(connection).get_current_revision() == "0013_shopmind_payments"
+        assert (
+            MigrationContext.configure(connection).get_current_revision()
+            == "0013_shopmind_payments"
+        )
 
         inspector = inspect(connection)
         columns = {
@@ -318,13 +357,18 @@ def test_phase5a_migration_round_trip_and_introspection(phase5a_factory) -> None
 
         uniques = {
             constraint["name"]: tuple(constraint["column_names"])
-            for constraint in inspector.get_unique_constraints("shopmind_payment_attempts")
+            for constraint in inspector.get_unique_constraints(
+                "shopmind_payment_attempts"
+            )
         }
         assert uniques["uq_shopmind_payment_attempts_user_order_key"] == (
-            "user_id", "order_id", "idempotency_key"
+            "user_id",
+            "order_id",
+            "idempotency_key",
         )
         assert uniques["uq_shopmind_payment_attempts_provider_key"] == (
-            "provider", "provider_idempotency_key"
+            "provider",
+            "provider_idempotency_key",
         )
         indexes = {
             index["name"]: index
@@ -345,7 +389,9 @@ def test_phase5a_migration_round_trip_and_introspection(phase5a_factory) -> None
 
         checks = {
             constraint["name"]
-            for constraint in inspector.get_check_constraints("shopmind_payment_attempts")
+            for constraint in inspector.get_check_constraints(
+                "shopmind_payment_attempts"
+            )
         }
         assert {
             "ck_shopmind_payment_attempts_status",
@@ -358,36 +404,67 @@ def test_phase5a_migration_round_trip_and_introspection(phase5a_factory) -> None
         }
         reservation_checks = {
             constraint["name"]
-            for constraint in inspector.get_check_constraints("shopmind_inventory_reservations")
+            for constraint in inspector.get_check_constraints(
+                "shopmind_inventory_reservations"
+            )
         }
         assert "ck_shopmind_orders_status" in order_checks
         assert "ck_shopmind_inventory_reservations_release_state" in reservation_checks
-        assert public_revision == connection.execute(
-            text("SELECT version_num FROM public.alembic_version LIMIT 1")
-        ).scalar_one_or_none()
+        assert (
+            public_revision
+            == connection.execute(
+                text("SELECT version_num FROM public.alembic_version LIMIT 1")
+            ).scalar_one_or_none()
+        )
 
 
 def test_phase5a_success_replay_and_exact_versions(phase5a_factory) -> None:
     order_id, sku_ids = _seed_order(phase5a_factory, user_id="phase5a-success")
     provider = MockPaymentProvider()
-    assert _complete_payment(
-        phase5a_factory, provider, user_id="phase5a-success", order_id=order_id,
-        key="payment-success", method="method",
-    ) == "success"
-    assert _complete_payment(
-        phase5a_factory, provider, user_id="phase5a-success", order_id=order_id,
-        key="payment-success", method="method",
-    ) == "replay"
+    assert (
+        _complete_payment(
+            phase5a_factory,
+            provider,
+            user_id="phase5a-success",
+            order_id=order_id,
+            key="payment-success",
+            method="method",
+        )
+        == "success"
+    )
+    assert (
+        _complete_payment(
+            phase5a_factory,
+            provider,
+            user_id="phase5a-success",
+            order_id=order_id,
+            key="payment-success",
+            method="method",
+        )
+        == "replay"
+    )
     session: Session = phase5a_factory()
     order = session.get(ShopMindOrder, order_id)
     attempt = session.scalar(select(ShopMindPaymentAttempt))
     reservation = session.scalar(select(ShopMindInventoryReservation))
     inventory = session.get(CatalogInventory, sku_ids[0])
-    assert order is not None and attempt is not None and reservation is not None and inventory is not None
+    assert (
+        order is not None
+        and attempt is not None
+        and reservation is not None
+        and inventory is not None
+    )
     assert (order.status, order.version) == ("paid", 2)
     assert (attempt.status, provider.charge_calls) == ("succeeded", 1)
-    assert (reservation.status, reservation.consumed_at is not None) == ("consumed", True)
-    assert (inventory.on_hand_quantity, inventory.reserved_quantity, inventory.version) == (1, 0, 2)
+    assert (reservation.status, reservation.consumed_at is not None) == (
+        "consumed",
+        True,
+    )
+    assert (
+        inventory.on_hand_quantity,
+        inventory.reserved_quantity,
+        inventory.version,
+    ) == (1, 0, 2)
     conflict_session: Session = phase5a_factory()
     with pytest.raises(PaymentServiceError) as conflict:
         claim_payment_attempt(
@@ -436,12 +513,21 @@ def test_phase5a_truly_concurrent_same_key_is_one_attempt(phase5a_factory) -> No
     inventory = session.get(CatalogInventory, sku_ids[0])
     order = session.get(ShopMindOrder, order_id)
     assert inventory is not None and order is not None
-    assert (order.status, inventory.on_hand_quantity, inventory.reserved_quantity, inventory.version) == ("paid", 1, 0, 2)
+    assert (
+        order.status,
+        inventory.on_hand_quantity,
+        inventory.reserved_quantity,
+        inventory.version,
+    ) == ("paid", 1, 0, 2)
     session.close()
 
 
-def test_phase5a_truly_concurrent_different_keys_cannot_double_pay(phase5a_factory) -> None:
-    order_id, sku_ids = _seed_order(phase5a_factory, user_id="phase5a-concurrent-different")
+def test_phase5a_truly_concurrent_different_keys_cannot_double_pay(
+    phase5a_factory,
+) -> None:
+    order_id, sku_ids = _seed_order(
+        phase5a_factory, user_id="phase5a-concurrent-different"
+    )
     provider = MockPaymentProvider()
     results = _concurrent_payments(
         phase5a_factory,
@@ -451,12 +537,19 @@ def test_phase5a_truly_concurrent_different_keys_cannot_double_pay(phase5a_facto
         keys=("different-key-a", "different-key-b"),
     )
     assert sum(result == "success" for result in results) == 1
-    assert all(result in {"success", "payment_in_progress", "order_already_paid"} for result in results)
+    assert all(
+        result in {"success", "payment_in_progress", "order_already_paid"}
+        for result in results
+    )
     session: Session = phase5a_factory()
     assert len(session.scalars(select(ShopMindPaymentAttempt)).all()) == 1
     inventory = session.get(CatalogInventory, sku_ids[0])
     assert inventory is not None
-    assert (inventory.on_hand_quantity, inventory.reserved_quantity, inventory.version) == (1, 0, 2)
+    assert (
+        inventory.on_hand_quantity,
+        inventory.reserved_quantity,
+        inventory.version,
+    ) == (1, 0, 2)
     session.close()
 
 
@@ -468,30 +561,57 @@ def test_phase5a_unknown_reconcile_and_declined_payment(phase5a_factory) -> None
             "decline": ("declined",),
         }
     )
-    assert _complete_payment(
-        phase5a_factory, provider, user_id="phase5a-outcomes", order_id=order_id,
-        key="unknown-key", method="unknown",
-    ) == "unknown"
-    assert _complete_payment(
-        phase5a_factory, provider, user_id="phase5a-outcomes", order_id=order_id,
-        key="unknown-key", method="unknown",
-    ) == "success"
+    assert (
+        _complete_payment(
+            phase5a_factory,
+            provider,
+            user_id="phase5a-outcomes",
+            order_id=order_id,
+            key="unknown-key",
+            method="unknown",
+        )
+        == "unknown"
+    )
+    assert (
+        _complete_payment(
+            phase5a_factory,
+            provider,
+            user_id="phase5a-outcomes",
+            order_id=order_id,
+            key="unknown-key",
+            method="unknown",
+        )
+        == "success"
+    )
     session: Session = phase5a_factory()
     order = session.get(ShopMindOrder, order_id)
     inventory = session.get(CatalogInventory, sku_ids[0])
     assert order is not None and inventory is not None
     assert order.status == "paid"
-    assert (inventory.on_hand_quantity, inventory.reserved_quantity, inventory.version) == (1, 0, 2)
+    assert (
+        inventory.on_hand_quantity,
+        inventory.reserved_quantity,
+        inventory.version,
+    ) == (1, 0, 2)
     session.close()
 
     declined_order_id, _ = _seed_order(phase5a_factory, user_id="phase5a-declined")
-    assert _complete_payment(
-        phase5a_factory, provider, user_id="phase5a-declined", order_id=declined_order_id,
-        key="declined-key", method="decline",
-    ) == "declined"
+    assert (
+        _complete_payment(
+            phase5a_factory,
+            provider,
+            user_id="phase5a-declined",
+            order_id=declined_order_id,
+            key="declined-key",
+            method="decline",
+        )
+        == "declined"
+    )
 
 
-def test_phase5a_provider_succeeded_survives_local_failure_and_retries_without_charge(phase5a_factory) -> None:
+def test_phase5a_provider_succeeded_survives_local_failure_and_retries_without_charge(
+    phase5a_factory,
+) -> None:
     order_id, sku_ids = _seed_order(phase5a_factory, user_id="phase5a-repair")
     provider = MockPaymentProvider()
     session: Session = phase5a_factory()
@@ -536,7 +656,10 @@ def test_phase5a_provider_succeeded_survives_local_failure_and_retries_without_c
         ),
     )
     session.commit()
-    assert session.get(ShopMindPaymentAttempt, claim.attempt_id).status == "provider_succeeded"
+    assert (
+        session.get(ShopMindPaymentAttempt, claim.attempt_id).status
+        == "provider_succeeded"
+    )
     reservation = session.scalar(select(ShopMindInventoryReservation))
     assert reservation is not None
     reservation.quantity = 2
@@ -545,7 +668,12 @@ def test_phase5a_provider_succeeded_survives_local_failure_and_retries_without_c
 
     session = phase5a_factory()
     with pytest.raises(PaymentServiceError) as error:
-        finalize_payment(session, user_id="phase5a-repair", order_id=order_id, attempt_id=claim.attempt_id)
+        finalize_payment(
+            session,
+            user_id="phase5a-repair",
+            order_id=order_id,
+            attempt_id=claim.attempt_id,
+        )
     assert error.value.code == "payment_finalization_pending"
     session.rollback()
     attempt = session.get(ShopMindPaymentAttempt, claim.attempt_id)
@@ -553,19 +681,30 @@ def test_phase5a_provider_succeeded_survives_local_failure_and_retries_without_c
     inventory = session.get(CatalogInventory, sku_ids[0])
     assert attempt is not None and order is not None and inventory is not None
     assert (attempt.status, order.status) == ("provider_succeeded", "pending_payment")
-    assert (inventory.on_hand_quantity, inventory.reserved_quantity, inventory.version) == (2, 1, 1)
+    assert (
+        inventory.on_hand_quantity,
+        inventory.reserved_quantity,
+        inventory.version,
+    ) == (2, 1, 1)
     reservation = session.scalar(select(ShopMindInventoryReservation))
     assert reservation is not None
     reservation.quantity = 1
     session.commit()
-    finalize_payment(session, user_id="phase5a-repair", order_id=order_id, attempt_id=claim.attempt_id)
+    finalize_payment(
+        session,
+        user_id="phase5a-repair",
+        order_id=order_id,
+        attempt_id=claim.attempt_id,
+    )
     session.commit()
     assert provider.charge_calls == 1
     assert session.get(ShopMindOrder, order_id).status == "paid"
     session.close()
 
 
-def test_phase5a_multi_sku_partial_failure_rolls_back_all_changes(phase5a_factory) -> None:
+def test_phase5a_multi_sku_partial_failure_rolls_back_all_changes(
+    phase5a_factory,
+) -> None:
     order_id, sku_ids = _seed_order(
         phase5a_factory,
         user_id="phase5a-multi",
@@ -600,11 +739,18 @@ def test_phase5a_multi_sku_partial_failure_rolls_back_all_changes(phase5a_factor
 
     session = phase5a_factory()
     with pytest.raises(PaymentServiceError):
-        finalize_payment(session, user_id="phase5a-multi", order_id=order_id, attempt_id=claim.attempt_id)
+        finalize_payment(
+            session,
+            user_id="phase5a-multi",
+            order_id=order_id,
+            attempt_id=claim.attempt_id,
+        )
     session.rollback()
     inventories = list(
         session.scalars(
-            select(CatalogInventory).where(CatalogInventory.sku_id.in_(sku_ids)).order_by(CatalogInventory.sku_id)
+            select(CatalogInventory)
+            .where(CatalogInventory.sku_id.in_(sku_ids))
+            .order_by(CatalogInventory.sku_id)
         ).all()
     )
     inventory_by_sku = {row.sku_id: row for row in inventories}
@@ -641,10 +787,17 @@ def test_phase5a_payment_vs_cancel_and_owner_conflict(phase5a_factory) -> None:
     cancel_session.close()
 
     provider = MockPaymentProvider()
-    assert _complete_payment(
-        phase5a_factory, provider, user_id="phase5a-cancel", order_id=order_id,
-        key="cancel-race-key", method="method",
-    ) == "success"
+    assert (
+        _complete_payment(
+            phase5a_factory,
+            provider,
+            user_id="phase5a-cancel",
+            order_id=order_id,
+            key="cancel-race-key",
+            method="method",
+        )
+        == "success"
+    )
 
     session = phase5a_factory()
     with pytest.raises(PaymentServiceError) as owner_error:
@@ -708,10 +861,16 @@ def test_phase5a_payment_lock_first_vs_cancel_is_serialized(phase5a_factory) -> 
             # Let the blocked Cancel transaction acquire the released Order
             # lock before Provider/finalization can change the Order state.
             assert cancel_lock_acquired.wait(timeout=15)
-            outcome = resolve_provider_outcome(provider, claim=claim, request=_request())
-            persist_provider_outcome(session, attempt_id=claim.attempt_id, outcome=outcome)
+            outcome = resolve_provider_outcome(
+                provider, claim=claim, request=_request()
+            )
+            persist_provider_outcome(
+                session, attempt_id=claim.attempt_id, outcome=outcome
+            )
             session.commit()
-            finalize_payment(session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id)
+            finalize_payment(
+                session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id
+            )
             session.commit()
             results["payment"] = "success"
         except (PaymentServiceError, OrderServiceError) as exc:
@@ -758,10 +917,19 @@ def test_phase5a_payment_lock_first_vs_cancel_is_serialized(phase5a_factory) -> 
     attempt = session.scalar(select(ShopMindPaymentAttempt))
     reservation = session.scalar(select(ShopMindInventoryReservation))
     inventory = session.get(CatalogInventory, sku_ids[0])
-    assert order is not None and attempt is not None and reservation is not None and inventory is not None
+    assert (
+        order is not None
+        and attempt is not None
+        and reservation is not None
+        and inventory is not None
+    )
     assert order.status == "paid"
     assert (attempt.status, reservation.status) == ("succeeded", "consumed")
-    assert (inventory.on_hand_quantity, inventory.reserved_quantity, inventory.version) == (1, 0, 2)
+    assert (
+        inventory.on_hand_quantity,
+        inventory.reserved_quantity,
+        inventory.version,
+    ) == (1, 0, 2)
     assert provider.charge_calls == 1
     session.close()
 
@@ -828,7 +996,15 @@ def test_phase5a_cancel_lock_first_vs_payment_is_serialized(phase5a_factory) -> 
     reservation = session.scalar(select(ShopMindInventoryReservation))
     inventory = session.get(CatalogInventory, sku_ids[0])
     assert order is not None and reservation is not None and inventory is not None
-    assert (order.status, attempt_count, reservation.status) == ("cancelled", 0, "released")
-    assert (inventory.on_hand_quantity, inventory.reserved_quantity, inventory.version) == (2, 0, 2)
+    assert (order.status, attempt_count, reservation.status) == (
+        "cancelled",
+        0,
+        "released",
+    )
+    assert (
+        inventory.on_hand_quantity,
+        inventory.reserved_quantity,
+        inventory.version,
+    ) == (2, 0, 2)
     assert provider.charge_calls == 0
     session.close()

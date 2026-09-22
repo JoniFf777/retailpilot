@@ -29,7 +29,9 @@ async def test_chat_returns_agent_answer(monkeypatch) -> None:
             "tool_calls": ["search_products"],
         }
 
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -69,7 +71,9 @@ async def test_chat_forwards_optional_idempotency_header(monkeypatch) -> None:
         assert idempotency_key == "chat-idem-1"
         return {"answer": "ok", "status": "completed", "tool_calls": []}
 
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -93,7 +97,9 @@ async def test_chat_does_not_block_health_while_agent_runs(monkeypatch) -> None:
         assert release.wait(timeout=2)
         return {"answer": "ok", "status": "completed", "tool_calls": []}
 
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", slow_call_shopmind_agent)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", slow_call_shopmind_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -128,11 +134,15 @@ async def test_chat_accepts_chinese_message(monkeypatch) -> None:
             "tool_calls": [],
         }
 
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post("/api/chat", json={"message": "我想买一台适合办公的显示器"})
+        response = await client.post(
+            "/api/chat", json={"message": "我想买一台适合办公的显示器"}
+        )
 
     assert response.status_code == 200
     assert captured["message"] == "我想买一台适合办公的显示器"
@@ -145,7 +155,9 @@ async def test_chat_accepts_chinese_message(monkeypatch) -> None:
 
 
 @pytest.mark.anyio
-async def test_chat_returns_pending_action_when_confirmation_required(monkeypatch) -> None:
+async def test_chat_returns_pending_action_when_confirmation_required(
+    monkeypatch,
+) -> None:
     pending_action_id = "123e4567-e89b-12d3-a456-426614174000"
 
     def fake_call_shopmind_agent(
@@ -163,7 +175,9 @@ async def test_chat_returns_pending_action_when_confirmation_required(monkeypatc
             "pending_action_id": pending_action_id,
         }
 
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -221,7 +235,9 @@ async def test_chat_uses_single_agent_by_default(monkeypatch) -> None:
         return {"answer": "multi agent answer", "status": "completed", "tool_calls": []}
 
     monkeypatch.setattr(agent_dependency, "invoke_shopmind_agent", fake_single_agent)
-    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
+    monkeypatch.setattr(
+        agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -281,7 +297,9 @@ async def test_chat_multi_mode_keeps_response_schema(monkeypatch) -> None:
             },
         }
 
-    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
+    monkeypatch.setattr(
+        agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -349,7 +367,9 @@ async def test_chat_can_include_multi_agent_debug_metadata(monkeypatch) -> None:
             },
         }
 
-    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
+    monkeypatch.setattr(
+        agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -374,7 +394,9 @@ async def test_chat_can_include_multi_agent_debug_metadata(monkeypatch) -> None:
 
 
 @pytest.mark.anyio
-async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(monkeypatch) -> None:
+async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(
+    monkeypatch,
+) -> None:
     calls = []
     pending_action_id = "123e4567-e89b-12d3-a456-426614174000"
 
@@ -430,7 +452,9 @@ async def test_chat_multi_mode_hands_write_intent_to_confirmation_path(monkeypat
             "pending_action_id": pending_action_id,
         }
 
-    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
+    monkeypatch.setattr(
+        agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent
+    )
     monkeypatch.setattr(agent_dependency, "invoke_write_handoff", fake_write_handoff)
 
     transport = ASGITransport(app=app)
@@ -596,7 +620,9 @@ async def test_chat_multi_mode_can_select_llm_router_and_planner(monkeypatch) ->
             "tool_calls": [],
         }
 
-    monkeypatch.setattr(agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent)
+    monkeypatch.setattr(
+        agent_dependency, "invoke_shopmind_multi_agent", fake_multi_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

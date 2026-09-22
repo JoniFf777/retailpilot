@@ -39,7 +39,9 @@ def test_planner_policy_eval_passes_all_fixed_cases() -> None:
 
 def test_write_guard_case_skips_provider_and_keeps_empty_canonical_plan() -> None:
     case = next(
-        case for case in PLANNER_EVAL_CASES if case["name"] == "write_guard_skips_provider"
+        case
+        for case in PLANNER_EVAL_CASES
+        if case["name"] == "write_guard_skips_provider"
     )
 
     result = run_planner_eval_case(case)

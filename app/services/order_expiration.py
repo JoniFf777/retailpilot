@@ -101,9 +101,7 @@ def expire_orders_once(
         session: Session = session_factory()
         candidate = None
         try:
-            candidate = session.scalar(
-                _candidate_query(now=sweep_now, cursor=cursor)
-            )
+            candidate = session.scalar(_candidate_query(now=sweep_now, cursor=cursor))
             if candidate is None:
                 session.rollback()
                 break

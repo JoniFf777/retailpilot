@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from .contracts import MAX_INTERACTION_ROUNDS, MAX_MODEL_ATTEMPTS, MAX_PLAN_REPAIRS, MAX_STEP_ATTEMPTS, MAX_STEP_RETRIES
+from .contracts import (
+    MAX_INTERACTION_ROUNDS,
+    MAX_MODEL_ATTEMPTS,
+    MAX_PLAN_REPAIRS,
+    MAX_STEP_ATTEMPTS,
+    MAX_STEP_RETRIES,
+)
 
 
 class BudgetExceeded(ValueError):
@@ -60,8 +66,22 @@ def record_interaction(task) -> int:
 def record_usage(task, usage: dict[str, Any] | None) -> None:
     ledger = _ledger(task)
     usage = usage or {}
-    unknown = sum(1 for key in ("prompt_tokens", "completion_tokens", "total_tokens", "cost_usd") if usage.get(key) is None)
-    task.budget_json = {**ledger, "unknown_usage": int(ledger.get("unknown_usage", 0)) + unknown}
+    unknown = sum(
+        1
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens", "cost_usd")
+        if usage.get(key) is None
+    )
+    task.budget_json = {
+        **ledger,
+        "unknown_usage": int(ledger.get("unknown_usage", 0)) + unknown,
+    }
 
 
-__all__ = ["BudgetExceeded", "record_interaction", "record_usage", "reserve_model_attempt", "reserve_plan_repair", "reserve_step_attempt"]
+__all__ = [
+    "BudgetExceeded",
+    "record_interaction",
+    "record_usage",
+    "reserve_model_attempt",
+    "reserve_plan_repair",
+    "reserve_step_attempt",
+]

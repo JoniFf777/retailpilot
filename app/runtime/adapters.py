@@ -82,8 +82,7 @@ class AgentAdapter(Protocol):
 def _validate_adapter_task(agent_name: str, task: AgentTask) -> None:
     if task.recipient != agent_name:
         raise AgentAdapterError(
-            f"Task recipient '{task.recipient}' does not match adapter "
-            f"'{agent_name}'."
+            f"Task recipient '{task.recipient}' does not match adapter '{agent_name}'."
         )
 
 
@@ -117,9 +116,7 @@ class AgentAdapterRegistry:
                 raise AgentAdapterError(
                     "Registered Agent adapters must satisfy AgentAdapter."
                 )
-            if require_policy and not isinstance(
-                adapter, PolicyEnforcedAgentAdapter
-            ):
+            if require_policy and not isinstance(adapter, PolicyEnforcedAgentAdapter):
                 raise AgentAdapterError(
                     "Policy-required registries only accept "
                     "PolicyEnforcedAgentAdapter entries."

@@ -59,9 +59,8 @@ def _is_expired_or_deleted(
     deleted_at: datetime | None,
     now: datetime,
 ) -> bool:
-    return (
-        (expires_at is not None and _as_utc(expires_at) <= _as_utc(now))
-        or (deleted_at is not None and _as_utc(deleted_at) <= _as_utc(now))
+    return (expires_at is not None and _as_utc(expires_at) <= _as_utc(now)) or (
+        deleted_at is not None and _as_utc(deleted_at) <= _as_utc(now)
     )
 
 
@@ -103,11 +102,11 @@ def prune_runtime_persistence(
             session.delete(summary)
             deleted_summaries += 1
 
-    runs = list(
-        session.scalars(select(AgentRun).order_by(AgentRun.started_at.asc()))
-    )
+    runs = list(session.scalars(select(AgentRun).order_by(AgentRun.started_at.asc())))
     for run in runs:
-        if run.expires_at is not None and _as_utc(run.expires_at) <= _as_utc(current_time):
+        if run.expires_at is not None and _as_utc(run.expires_at) <= _as_utc(
+            current_time
+        ):
             session.delete(run)
             deleted_runs += 1
 
@@ -117,7 +116,9 @@ def prune_runtime_persistence(
         )
     )
     for record in idempotency_records:
-        if record.expires_at is not None and _as_utc(record.expires_at) <= _as_utc(current_time):
+        if record.expires_at is not None and _as_utc(record.expires_at) <= _as_utc(
+            current_time
+        ):
             session.delete(record)
             deleted_idempotency_records += 1
 
@@ -130,7 +131,9 @@ def prune_runtime_persistence(
             deleted_memory_records += 1
 
     threads = list(
-        session.scalars(select(ConversationThread).order_by(ConversationThread.created_at.asc()))
+        session.scalars(
+            select(ConversationThread).order_by(ConversationThread.created_at.asc())
+        )
     )
     for thread in threads:
         if _is_expired_or_deleted(thread.expires_at, thread.deleted_at, current_time):

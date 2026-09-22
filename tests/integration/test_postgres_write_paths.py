@@ -70,7 +70,10 @@ def test_postgres_preference_write_path(postgres_session, smoke_user_id):
     assert created["preference_type"] == "brand"
     assert preferences[0]["preference_value"] == "Logitech"
     assert clear_result["deleted_count"] == 1
-    assert preference_repository.get_user_preferences(postgres_session, smoke_user_id) == []
+    assert (
+        preference_repository.get_user_preferences(postgres_session, smoke_user_id)
+        == []
+    )
 
 
 def test_postgres_cart_pending_confirm_write_path(postgres_session, smoke_user_id):
@@ -189,9 +192,7 @@ def test_postgres_prepare_restart_edit_confirm_uses_persisted_action_id(
         assert confirmed["status"] == cart_repository.CONFIRMED_STATUS
         assert action.status == cart_repository.CONFIRMED_STATUS
         assert action.payload_json["preference_value"] == "silent switches"
-        assert [item["preference_value"] for item in preferences] == [
-            "silent switches"
-        ]
+        assert [item["preference_value"] for item in preferences] == ["silent switches"]
     finally:
         verify_session.close()
 

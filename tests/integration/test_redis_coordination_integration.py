@@ -73,9 +73,7 @@ def test_two_redis_backends_share_atomic_coordination_state() -> None:
             return backend.try_acquire(concurrent_request).accepted
 
         with ThreadPoolExecutor(max_workers=8) as executor:
-            concurrent_results = list(
-                executor.map(acquire_concurrently, range(8))
-            )
+            concurrent_results = list(executor.map(acquire_concurrently, range(8)))
         assert sum(concurrent_results) == 3
 
         expiry_request = AdmissionRequest(
@@ -110,13 +108,16 @@ def test_two_redis_backends_share_atomic_coordination_state() -> None:
             namespace="answer",
             key_fingerprint=_fingerprint("cache"),
         )
-        assert first.put_cache(
-            CachePutRequest(
-                **cache_key.model_dump(),
-                value={"answer": "shared"},
-                ttl_ms=5_000,
-            )
-        ).stored is True
+        assert (
+            first.put_cache(
+                CachePutRequest(
+                    **cache_key.model_dump(),
+                    value={"answer": "shared"},
+                    ttl_ms=5_000,
+                )
+            ).stored
+            is True
+        )
         assert second.get_cache(cache_key).value == {"answer": "shared"}
         assert second.invalidate_cache(cache_key).released is True
         assert first.get_cache(cache_key).hit is False
@@ -125,13 +126,16 @@ def test_two_redis_backends_share_atomic_coordination_state() -> None:
             namespace="answer",
             key_fingerprint=_fingerprint("expiring-cache"),
         )
-        assert first.put_cache(
-            CachePutRequest(
-                **expiring_cache_key.model_dump(),
-                value={"answer": "temporary"},
-                ttl_ms=100,
-            )
-        ).stored is True
+        assert (
+            first.put_cache(
+                CachePutRequest(
+                    **expiring_cache_key.model_dump(),
+                    value={"answer": "temporary"},
+                    ttl_ms=100,
+                )
+            ).stored
+            is True
+        )
         time.sleep(0.15)
         assert second.get_cache(expiring_cache_key).hit is False
     finally:

@@ -226,7 +226,9 @@ def evaluate_coordination_equivalence() -> dict[str, Any]:
     redis_lease = pair.redis.try_acquire(admission)
     admission_checks = [
         _equivalent(local_lease, redis_lease),
-        _equivalent(pair.local.try_acquire(admission), pair.redis.try_acquire(admission)),
+        _equivalent(
+            pair.local.try_acquire(admission), pair.redis.try_acquire(admission)
+        ),
         _equivalent(
             pair.local.renew_admission(local_lease.lease_id, lease_ttl_ms=1_000),
             pair.redis.renew_admission(redis_lease.lease_id, lease_ttl_ms=1_000),
@@ -246,12 +248,16 @@ def evaluate_coordination_equivalence() -> dict[str, Any]:
         window_ms=1_000,
     )
     rate_checks = [
-        _equivalent(pair.local.check_rate_limit(rate), pair.redis.check_rate_limit(rate))
+        _equivalent(
+            pair.local.check_rate_limit(rate), pair.redis.check_rate_limit(rate)
+        )
         for _ in range(3)
     ]
     pair.advance_ms(1_000)
     rate_checks.append(
-        _equivalent(pair.local.check_rate_limit(rate), pair.redis.check_rate_limit(rate))
+        _equivalent(
+            pair.local.check_rate_limit(rate), pair.redis.check_rate_limit(rate)
+        )
     )
     cases.append({"case_id": "fixed_window_rate_limit", "checks": rate_checks})
 

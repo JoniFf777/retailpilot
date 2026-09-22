@@ -132,8 +132,8 @@ def _validate_save_preference_updates(
         preference_type = updated_arguments["preference_type"]
         if not isinstance(preference_type, str):
             return None, "invalid updated arguments"
-        normalized_type, was_invalid = (
-            preference_repository._normalize_preference_type(preference_type)
+        normalized_type, was_invalid = preference_repository._normalize_preference_type(
+            preference_type
         )
         if was_invalid:
             return None, "invalid updated arguments"
@@ -243,9 +243,7 @@ def prepare_save_preference(
             "preference_value": preference_value.strip(),
         },
         risk_class=risk_class,
-        preview_text=(
-            f"Save {normalized_type} preference: {preference_value.strip()}"
-        ),
+        preview_text=(f"Save {normalized_type} preference: {preference_value.strip()}"),
         status=PENDING_STATUS,
         expires_at=expires_at or now + DEFAULT_PENDING_ACTION_TTL,
         metadata_json={"preference_type_normalized": was_invalid_type},
@@ -304,9 +302,7 @@ def confirm_add_to_cart(
             "action_type": action.action_type,
         }
 
-    validated_updates, update_error = _validate_add_to_cart_updates(
-        updated_arguments
-    )
+    validated_updates, update_error = _validate_add_to_cart_updates(updated_arguments)
     if update_error is not None:
         return {"status": "error", "message": update_error}
 
@@ -320,7 +316,11 @@ def confirm_add_to_cart(
 
     product = session.get(Product, product_id)
     if product is None:
-        return {"status": "error", "message": "product not found", "product_id": product_id}
+        return {
+            "status": "error",
+            "message": "product not found",
+            "product_id": product_id,
+        }
 
     now = _now()
     if validated_updates is not None:
@@ -415,9 +415,7 @@ def confirm_save_preference(
     )
     if validated_updates is not None:
         action.payload_json = payload
-        action.preview_text = (
-            f"Save {preference_type} preference: {preference_value}"
-        )
+        action.preview_text = f"Save {preference_type} preference: {preference_value}"
     action.status = CONFIRMED_STATUS
     action.updated_at = _now()
     session.flush()

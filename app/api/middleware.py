@@ -71,7 +71,9 @@ class CorrelationIdMiddleware:
                     key.lower() == CORRELATION_RESPONSE_HEADER.lower()
                     for key, _value in response_headers
                 ):
-                    response_headers.append((CORRELATION_RESPONSE_HEADER, correlation_id.encode("ascii")))
+                    response_headers.append(
+                        (CORRELATION_RESPONSE_HEADER, correlation_id.encode("ascii"))
+                    )
                 message = {**message, "headers": response_headers}
             await send(message)
 

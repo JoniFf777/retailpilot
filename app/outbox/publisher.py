@@ -123,7 +123,8 @@ class OutboxPublisher:
                 attempt_count=claim.attempt_count,
                 status=(
                     "dead_letter"
-                    if claim.attempt_count >= self._settings.shopmind_outbox_max_attempts
+                    if claim.attempt_count
+                    >= self._settings.shopmind_outbox_max_attempts
                     else "pending"
                 ),
                 error_code="publish_failed",
@@ -151,7 +152,9 @@ class OutboxPublisher:
             )
             session.commit()
             if not updated:
-                logger.info("Ignoring stale Outbox publish completion for %s", claim.event_id)
+                logger.info(
+                    "Ignoring stale Outbox publish completion for %s", claim.event_id
+                )
             else:
                 log_event(
                     "outbox.publish.succeeded",
@@ -173,7 +176,9 @@ class OutboxPublisher:
             while not stop_event.is_set():
                 processed = self.run_once()
                 if processed == 0:
-                    stop_event.wait(self._settings.shopmind_outbox_poll_interval_seconds)
+                    stop_event.wait(
+                        self._settings.shopmind_outbox_poll_interval_seconds
+                    )
         finally:
             self.shutdown()
 

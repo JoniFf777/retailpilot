@@ -265,9 +265,7 @@ class ShopMindReferenceClient:
         if response.is_redirect:
             raise ReferenceClientError("redirect_rejected")
         if response.status_code >= 300:
-            raise ReferenceClientError(
-                f"request_failed_{response.status_code}"
-            )
+            raise ReferenceClientError(f"request_failed_{response.status_code}")
         content_type = response.headers.get("content-type", "").lower()
         if expected_content_type not in content_type:
             raise ReferenceClientError("content_type_invalid")
@@ -341,10 +339,7 @@ class ShopMindReferenceClient:
         event = finish_event()
         if event is not None:
             event_count += 1
-            if (
-                event_count > self._max_sse_events
-                or event.sequence <= last_sequence
-            ):
+            if event_count > self._max_sse_events or event.sequence <= last_sequence:
                 raise ReferenceClientError("stream_bounds_exceeded")
             yield event
 
@@ -468,9 +463,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         pending_action_id=args.pending_action_id,
                         confirmed=args.approve,
                         thread_id=args.thread_id,
-                        updated_arguments=_json_object(
-                            args.updated_arguments_json
-                        ),
+                        updated_arguments=_json_object(args.updated_arguments_json),
                         include_debug=not args.no_debug,
                         idempotency_key=args.idempotency_key,
                     )
@@ -498,9 +491,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ValueError,
     ) as exc:
         code = (
-            exc.code
-            if isinstance(exc, ReferenceClientError)
-            else "arguments_invalid"
+            exc.code if isinstance(exc, ReferenceClientError) else "arguments_invalid"
         )
         print(f"ShopMind reference client: {code}", file=sys.stderr)
         return 1

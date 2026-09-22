@@ -355,10 +355,7 @@ def inspect_owner_agent_run(
         AgentRunEvent.visibility == "client",
     )
     client_event_count = int(
-        session.scalar(
-            select(func.count(AgentRunEvent.id)).where(*event_filter)
-        )
-        or 0
+        session.scalar(select(func.count(AgentRunEvent.id)).where(*event_filter)) or 0
     )
     events = session.scalars(
         select(AgentRunEvent)

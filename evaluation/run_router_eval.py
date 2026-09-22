@@ -47,7 +47,10 @@ from agents.shopmind_multi_agent.supervisor_router import (
     SupervisorRouter,
     create_supervisor_router,
 )
-from evaluation.shopmind_router_eval import RouterEvalSummary, evaluate_supervisor_router
+from evaluation.shopmind_router_eval import (
+    RouterEvalSummary,
+    evaluate_supervisor_router,
+)
 from evaluation.shopmind_router_eval import ROUTER_EVAL_CASES, RouterEvalCase
 
 
@@ -202,8 +205,7 @@ def format_target_summary(summary: dict[str, Any]) -> str:
     lines.append("failures:")
     for failure in summary["failures"]:
         lines.append(
-            "- "
-            f"{failure['case']} {failure['evaluator']}: {failure['comment']}"
+            f"- {failure['case']} {failure['evaluator']}: {failure['comment']}"
         )
     return "\n".join(lines)
 
@@ -292,8 +294,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--event-metrics",
         action="store_true",
         help=(
-            "Print Prometheus-style V3 debug event metrics for target or "
-            "handoff mode."
+            "Print Prometheus-style V3 debug event metrics for target or handoff mode."
         ),
     )
     parser.add_argument(

@@ -47,7 +47,9 @@ def test_accepted_baseline_is_closed_and_aligned_with_catalog() -> None:
     assert set(baseline.suites) == {suite.suite_id for suite in catalog.suites}
     assert set(baseline.metrics) == set(REGRESSION_METRIC_DIRECTIONS)
     assert set(baseline.thresholds) == set(REGRESSION_METRIC_DIRECTIONS)
-    assert all(threshold.allowed_delta == 0 for threshold in baseline.thresholds.values())
+    assert all(
+        threshold.allowed_delta == 0 for threshold in baseline.thresholds.values()
+    )
 
 
 def test_catalog_gate_passes_accepted_deterministic_baseline() -> None:
@@ -133,9 +135,7 @@ def test_regression_comparison_fails_closed(
     comparison = compare_candidate_to_baseline(catalog, candidate, baseline)
 
     assert comparison["passed"] is False
-    assert expected_check in {
-        failure["check_id"] for failure in comparison["failures"]
-    }
+    assert expected_check in {failure["check_id"] for failure in comparison["failures"]}
 
 
 def test_suite_execution_errors_are_sanitized(monkeypatch) -> None:

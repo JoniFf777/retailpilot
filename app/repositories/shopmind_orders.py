@@ -9,7 +9,11 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.payments.models import PAYMENT_ACTIVE_STATUSES, ShopMindPaymentAttempt
-from app.orders.models import ShopMindInventoryReservation, ShopMindOrder, ShopMindOrderItem
+from app.orders.models import (
+    ShopMindInventoryReservation,
+    ShopMindOrder,
+    ShopMindOrderItem,
+)
 
 
 def get_order_by_id(
@@ -31,7 +35,10 @@ def get_order_by_idempotency_key(
     query = (
         select(ShopMindOrder)
         .options(selectinload(ShopMindOrder.items))
-        .where(ShopMindOrder.user_id == user_id, ShopMindOrder.idempotency_key == idempotency_key)
+        .where(
+            ShopMindOrder.user_id == user_id,
+            ShopMindOrder.idempotency_key == idempotency_key,
+        )
     )
     if for_update:
         query = query.with_for_update(of=ShopMindOrder)
@@ -55,12 +62,17 @@ def list_orders(
         query = query.where(
             or_(
                 ShopMindOrder.created_at < cursor_created_at,
-                and_(ShopMindOrder.created_at == cursor_created_at, ShopMindOrder.id < UUID(cursor_id)),
+                and_(
+                    ShopMindOrder.created_at == cursor_created_at,
+                    ShopMindOrder.id < UUID(cursor_id),
+                ),
             )
         )
     return list(
         session.scalars(
-            query.order_by(ShopMindOrder.created_at.desc(), ShopMindOrder.id.desc()).limit(limit + 1)
+            query.order_by(
+                ShopMindOrder.created_at.desc(), ShopMindOrder.id.desc()
+            ).limit(limit + 1)
         ).all()
     )
 
@@ -102,7 +114,9 @@ def has_active_payment_attempt(
             ShopMindPaymentAttempt.order_id == order_id,
             ShopMindPaymentAttempt.status.in_(PAYMENT_ACTIVE_STATUSES),
         )
-        .order_by(ShopMindPaymentAttempt.created_at.asc(), ShopMindPaymentAttempt.id.asc())
+        .order_by(
+            ShopMindPaymentAttempt.created_at.asc(), ShopMindPaymentAttempt.id.asc()
+        )
         .limit(1)
     )
     if for_update:

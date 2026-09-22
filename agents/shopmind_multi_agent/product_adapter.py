@@ -52,7 +52,12 @@ def create_product_agent_adapter(
         task_input = ProductAgentTaskInput.model_validate(task.input_data)
         node_result = product_agent_node(
             {
-                "messages": [{"role": "user", "content": task_input.query_override or task_input.message}],
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": task_input.query_override or task_input.message,
+                    }
+                ],
                 "user_id": task.user_id or "",
                 "thread_id": task.thread_id,
                 "tool_calls": task_input.tool_calls,
@@ -106,9 +111,11 @@ def product_agent_adapter_node(
             agent_steps=list(state.get("agent_steps", [])),
         ).model_dump(mode="python"),
         context_references=[
-            reference
-            if isinstance(reference, MemoryReference)
-            else MemoryReference.model_validate(reference)
+            (
+                reference
+                if isinstance(reference, MemoryReference)
+                else MemoryReference.model_validate(reference)
+            )
             for reference in context_references
         ],
         trace_id=getattr(runtime_context, "trace_id", None) or str(uuid4()),

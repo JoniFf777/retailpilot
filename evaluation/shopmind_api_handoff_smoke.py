@@ -213,16 +213,14 @@ async def run_api_handoff_smoke_case(
 
             if response.status_code != 200:
                 failures.append(
-                    "confirm http status "
-                    f"expected=200 actual={response.status_code}"
+                    f"confirm http status expected=200 actual={response.status_code}"
                 )
 
             expected_status = case.get("expected_confirm_status")
             actual_status = confirm_output.get("status")
             if expected_status is not None and actual_status != expected_status:
                 failures.append(
-                    "confirm status "
-                    f"expected={expected_status} actual={actual_status}"
+                    f"confirm status expected={expected_status} actual={actual_status}"
                 )
 
     event_summary = summarize_debug_events(outputs)
@@ -248,10 +246,7 @@ async def run_api_handoff_smoke(
     cases: Sequence[ApiHandoffSmokeCase] = API_HANDOFF_SMOKE_CASES,
 ) -> dict[str, Any]:
     """Run API-boundary smoke cases and aggregate event metrics."""
-    case_results = [
-        await run_api_handoff_smoke_case(case, client)
-        for case in cases
-    ]
+    case_results = [await run_api_handoff_smoke_case(case, client) for case in cases]
     outputs_for_event_summary: list[dict[str, Any]] = []
     for result in case_results:
         outputs_for_event_summary.extend(result["chat_outputs"])

@@ -149,9 +149,7 @@ class HttpAgentAdapter:
         if task.idempotency_key is not None:
             headers["Idempotency-Key"] = task.idempotency_key
         if self.authorization_bearer_token is not None:
-            headers["Authorization"] = (
-                f"Bearer {self.authorization_bearer_token}"
-            )
+            headers["Authorization"] = f"Bearer {self.authorization_bearer_token}"
 
         try:
             with client.stream(

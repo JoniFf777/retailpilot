@@ -48,7 +48,9 @@ def _database_identity(database_url: str) -> tuple[str, int, str, str]:
     parsed = make_url(database_url)
     scheme = parsed.drivername.split("+", 1)[0].lower()
     if scheme != "postgresql":
-        raise BootstrapSafetyError("ShopMind bootstrap requires a PostgreSQL database URL.")
+        raise BootstrapSafetyError(
+            "ShopMind bootstrap requires a PostgreSQL database URL."
+        )
     return (
         (parsed.host or "").lower(),
         (parsed.port or 5432),
@@ -247,7 +249,9 @@ def print_plan(database_url: str, steps: list[BootstrapStep]) -> None:
     print(f"目标数据库：{_mask_database_url(database_url)}")
     print("执行计划：")
     for index, step in enumerate(steps, 1):
-        destructive_label = "（会清空/写入 V2 数据）" if step.destructive else "（只读/迁移）"
+        destructive_label = (
+            "（会清空/写入 V2 数据）" if step.destructive else "（只读/迁移）"
+        )
         print(f"{index}. {step.name}: {step.description} {destructive_label}")
 
 

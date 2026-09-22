@@ -1,6 +1,20 @@
 from fastapi import APIRouter
 
-from app.api.routes import ai_operations, cart, catalog, checkout, chat, chat_confirm, chat_stream, health, orders, owner_data, payments, pending_actions, shopping_tasks
+from app.api.routes import (
+    ai_operations,
+    cart,
+    catalog,
+    checkout,
+    chat,
+    chat_confirm,
+    chat_stream,
+    health,
+    orders,
+    owner_data,
+    payments,
+    pending_actions,
+    shopping_tasks,
+)
 
 
 api_router = APIRouter()

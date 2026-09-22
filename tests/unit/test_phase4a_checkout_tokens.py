@@ -24,8 +24,18 @@ SKU_B = UUID("00000000-0000-0000-0000-00000000000b")
 
 def _token(*, user_id: str = "user-a", expires_ttl: int = 900) -> str:
     cart = [
-        {"cart_item_id": "00000000-0000-0000-0000-000000000002", "sku_id": SKU_B, "quantity": 1, "version": 1},
-        {"cart_item_id": "00000000-0000-0000-0000-000000000001", "sku_id": SKU_A, "quantity": 2, "version": 3},
+        {
+            "cart_item_id": "00000000-0000-0000-0000-000000000002",
+            "sku_id": SKU_B,
+            "quantity": 1,
+            "version": 1,
+        },
+        {
+            "cart_item_id": "00000000-0000-0000-0000-000000000001",
+            "sku_id": SKU_A,
+            "quantity": 2,
+            "version": 3,
+        },
     ]
     prices = [
         {"sku_id": SKU_B, "unit_price_amount": "19.9", "currency": "CNY"},
@@ -64,7 +74,9 @@ def test_token_rejects_tamper_wrong_owner_unknown_schema_and_expiry() -> None:
         verify_checkout_token(token, user_id="user-b", secret=SECRET, now=NOW)
     assert owner.value.code == "checkout_invalid"
     with pytest.raises(CheckoutTokenError) as expiry:
-        verify_checkout_token(token, user_id="user-a", secret=SECRET, now=NOW + timedelta(seconds=901))
+        verify_checkout_token(
+            token, user_id="user-a", secret=SECRET, now=NOW + timedelta(seconds=901)
+        )
     assert expiry.value.code == "checkout_expired"
 
 
@@ -80,5 +92,9 @@ def test_fingerprints_and_request_hash_are_order_independent_and_exact() -> None
     ]
     assert build_price_fingerprint(prices) == build_price_fingerprint(reversed(prices))
     request = CreateOrderRequest(checkout_token="token")
-    assert request_hash(request) == request_hash(CreateOrderRequest.model_validate({"checkout_token": "token"}))
-    assert request_hash(request) != request_hash(CreateOrderRequest(checkout_token="token-2"))
+    assert request_hash(request) == request_hash(
+        CreateOrderRequest.model_validate({"checkout_token": "token"})
+    )
+    assert request_hash(request) != request_hash(
+        CreateOrderRequest(checkout_token="token-2")
+    )

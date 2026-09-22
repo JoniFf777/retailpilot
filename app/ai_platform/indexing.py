@@ -33,16 +33,31 @@ class PostgreSQLEvidenceIndexer:
         self._embedding_provider = embedding_provider
         self._embedding_model = embedding_model
 
-    def index(self, chunks: list[EvidenceChunk], descriptor: ShoppingEvidenceDescriptor, *, evidence_version_id: int | None = None) -> int:
+    def index(
+        self,
+        chunks: list[EvidenceChunk],
+        descriptor: ShoppingEvidenceDescriptor,
+        *,
+        evidence_version_id: int | None = None,
+    ) -> int:
         vectors = self._embeddings.embed_documents([chunk.content for chunk in chunks])
         if len(vectors) != len(chunks):
             raise ValueError("Embedding count does not match evidence chunk count.")
         if evidence_version_id is not None:
-            self._session.execute(delete(Document).where(Document.evidence_version_id == evidence_version_id))
-        doc_type = "policy" if descriptor.evidence_type in {
-            EvidenceType.STORE_POLICY.value,
-            EvidenceType.COMPATIBILITY.value,
-        } else "product"
+            self._session.execute(
+                delete(Document).where(
+                    Document.evidence_version_id == evidence_version_id
+                )
+            )
+        doc_type = (
+            "policy"
+            if descriptor.evidence_type
+            in {
+                EvidenceType.STORE_POLICY.value,
+                EvidenceType.COMPATIBILITY.value,
+            }
+            else "product"
+        )
         for chunk, vector in zip(chunks, vectors):
             metadata = non_authoritative_document_metadata(
                 {
@@ -54,8 +69,16 @@ class PostgreSQLEvidenceIndexer:
                     "policy_type": descriptor.scope.policy_type,
                     "region": descriptor.scope.region,
                     "channel": descriptor.scope.channel,
-                    "valid_from": descriptor.scope.valid_from.isoformat() if descriptor.scope.valid_from else None,
-                    "valid_until": descriptor.scope.valid_until.isoformat() if descriptor.scope.valid_until else None,
+                    "valid_from": (
+                        descriptor.scope.valid_from.isoformat()
+                        if descriptor.scope.valid_from
+                        else None
+                    ),
+                    "valid_until": (
+                        descriptor.scope.valid_until.isoformat()
+                        if descriptor.scope.valid_until
+                        else None
+                    ),
                     "document_version": descriptor.content_fingerprint[:16],
                     "evidence_version_id": evidence_version_id,
                 }
@@ -66,7 +89,11 @@ class PostgreSQLEvidenceIndexer:
                     evidence_version_id=evidence_version_id,
                     source_path=descriptor.source_path,
                     source_name=descriptor.source_name,
-                    product_id=descriptor.scope.product_ids[0] if descriptor.scope.product_ids else None,
+                    product_id=(
+                        descriptor.scope.product_ids[0]
+                        if descriptor.scope.product_ids
+                        else None
+                    ),
                     product_name=descriptor.title,
                     policy_name=descriptor.scope.policy_type,
                     chunk_index=chunk.index,
@@ -87,7 +114,9 @@ class FakeEvidenceIndexer:
     def __init__(self) -> None:
         self.calls: list[tuple[str, int]] = []
 
-    def index(self, chunks: list[EvidenceChunk], descriptor: ShoppingEvidenceDescriptor) -> int:
+    def index(
+        self, chunks: list[EvidenceChunk], descriptor: ShoppingEvidenceDescriptor
+    ) -> int:
         self.calls.append((descriptor.source_path, len(chunks)))
         return len(chunks)
 

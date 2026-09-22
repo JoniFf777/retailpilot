@@ -105,7 +105,9 @@ async def create_order_endpoint(
         raise
 
 
-@router.get("/orders", response_model=OrderListResponse, responses={422: ORDER_422_RESPONSE})
+@router.get(
+    "/orders", response_model=OrderListResponse, responses={422: ORDER_422_RESPONSE}
+)
 async def list_orders_endpoint(
     user_id: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),

@@ -74,9 +74,9 @@ def test_redis_backend_maps_atomic_script_results_to_closed_contracts() -> None:
         "lease_id": None,
         "retry_after_ms": 125,
     }
-    assert backend.renew_admission(
-        accepted.lease_id, lease_ttl_ms=1_000
-    ).renewed is True
+    assert (
+        backend.renew_admission(accepted.lease_id, lease_ttl_ms=1_000).renewed is True
+    )
     assert backend.release_admission(accepted.lease_id).released is True
 
     rate_request = RateLimitRequest(
@@ -103,9 +103,12 @@ def test_redis_backend_maps_atomic_script_results_to_closed_contracts() -> None:
     assert backend.forget_duplicate(claim.claim_id).released is True
 
     cache_key = CacheKey(namespace="answer", key_fingerprint=fingerprint("answer"))
-    assert backend.put_cache(
-        CachePutRequest(**cache_key.model_dump(), value={"v": 1}, ttl_ms=1_000)
-    ).stored is True
+    assert (
+        backend.put_cache(
+            CachePutRequest(**cache_key.model_dump(), value={"v": 1}, ttl_ms=1_000)
+        ).stored
+        is True
+    )
     assert backend.get_cache(cache_key).value == {"v": 1}
     assert backend.invalidate_cache(cache_key).released is True
     assert backend.get_cache(cache_key).hit is False
@@ -130,8 +133,7 @@ def test_redis_backend_maps_atomic_script_results_to_closed_contracts() -> None:
         keys = values[:numkeys]
         assert keys
         assert all(
-            key.startswith("shopmind:coord:v1:{shopmind-coordination}:")
-            for key in keys
+            key.startswith("shopmind:coord:v1:{shopmind-coordination}:") for key in keys
         )
         assert all("user" not in str(value) for value in values)
 

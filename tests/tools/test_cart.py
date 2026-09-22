@@ -7,7 +7,12 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
 from app.cart.models import ShopMindCartItem
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.db.models import CartItem, PendingAction, Product
 from app.schemas.pending_actions import CartActionOutcome
 import tools.cart as cart_tools
@@ -60,12 +65,16 @@ def cart_repository_session(monkeypatch):
         sale_status="active",
         variant_attributes_json={},
     )
-    session.add_all([
-        category,
-        catalog_product,
-        catalog_sku,
-        CatalogInventory(sku=catalog_sku, on_hand_quantity=20, reserved_quantity=0, version=0),
-    ])
+    session.add_all(
+        [
+            category,
+            catalog_product,
+            catalog_sku,
+            CatalogInventory(
+                sku=catalog_sku, on_hand_quantity=20, reserved_quantity=0, version=0
+            ),
+        ]
+    )
     session.commit()
 
     @contextmanager
@@ -91,7 +100,9 @@ def _extract_pending_action_id(result: str) -> str:
 def _count_cart_items(user_id: str) -> int:
     with cart_tools._get_cart_session() as session:
         return session.scalar(
-            select(func.count()).select_from(CartItem).where(CartItem.user_id == user_id)
+            select(func.count())
+            .select_from(CartItem)
+            .where(CartItem.user_id == user_id)
         )
 
 
@@ -107,7 +118,9 @@ def _count_pending_actions(user_id: str) -> int:
 def _count_shopmind_cart_items(user_id: str) -> int:
     with cart_tools._get_cart_session() as session:
         return session.scalar(
-            select(func.count()).select_from(ShopMindCartItem).where(ShopMindCartItem.user_id == user_id)
+            select(func.count())
+            .select_from(ShopMindCartItem)
+            .where(ShopMindCartItem.user_id == user_id)
         )
 
 
@@ -162,7 +175,11 @@ def test_confirm_add_to_cart_inserts_cart_item() -> None:
     pending_action_id = _extract_pending_action_id(prepare_result)
 
     confirm_result = confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1}
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": TEST_USER_ID,
+            "expected_version": 1,
+        }
     )
 
     assert _outcome(confirm_result).status == "confirmed"
@@ -180,7 +197,13 @@ def test_confirm_add_to_cart_sets_pending_action_status_confirmed() -> None:
     )
     pending_action_id = _extract_pending_action_id(prepare_result)
 
-    confirm_add_to_cart.invoke({"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1})
+    confirm_add_to_cart.invoke(
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": TEST_USER_ID,
+            "expected_version": 1,
+        }
+    )
 
     assert _get_pending_action_status(pending_action_id) == "confirmed"
 
@@ -228,7 +251,11 @@ def test_confirm_add_to_cart_rejects_user_mismatch() -> None:
     pending_action_id = _extract_pending_action_id(prepare_result)
 
     confirm_result = confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": OTHER_USER_ID, "expected_version": 1}
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": OTHER_USER_ID,
+            "expected_version": 1,
+        }
     )
 
     assert _outcome(confirm_result).code == "pending_action_not_found"
@@ -247,10 +274,18 @@ def test_confirm_add_to_cart_rejects_duplicate_confirmation() -> None:
     pending_action_id = _extract_pending_action_id(prepare_result)
 
     first_result = confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1}
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": TEST_USER_ID,
+            "expected_version": 1,
+        }
     )
     second_result = confirm_add_to_cart.invoke(
-        {"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1}
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": TEST_USER_ID,
+            "expected_version": 1,
+        }
     )
 
     assert _outcome(first_result).status == "confirmed"
@@ -268,7 +303,13 @@ def test_get_cart_items_returns_cart_products() -> None:
         }
     )
     pending_action_id = _extract_pending_action_id(prepare_result)
-    confirm_add_to_cart.invoke({"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1})
+    confirm_add_to_cart.invoke(
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": TEST_USER_ID,
+            "expected_version": 1,
+        }
+    )
 
     result = get_cart_items.invoke({"user_id": TEST_USER_ID})
 
@@ -288,7 +329,13 @@ def test_clear_cart_items_cleans_test_data() -> None:
         }
     )
     pending_action_id = _extract_pending_action_id(prepare_result)
-    confirm_add_to_cart.invoke({"pending_action_id": pending_action_id, "user_id": TEST_USER_ID, "expected_version": 1})
+    confirm_add_to_cart.invoke(
+        {
+            "pending_action_id": pending_action_id,
+            "user_id": TEST_USER_ID,
+            "expected_version": 1,
+        }
+    )
 
     clear_result = clear_cart_items.invoke({"user_id": TEST_USER_ID})
     cart_result = get_cart_items.invoke({"user_id": TEST_USER_ID})

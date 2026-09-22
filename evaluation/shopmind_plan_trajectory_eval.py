@@ -378,15 +378,13 @@ def _build_context(case: PlanTrajectoryCase, cancellation: Event) -> RunContext:
         metadata={
             "parallel_read_enabled": case.get("parallel_enabled", True),
             "parallel_read_max_workers": case["max_workers"],
-        }
+        },
     )
     budget = RunBudget(
         max_steps=case["max_steps"],
         max_tool_calls=case["max_tool_calls"],
         max_total_tokens=case.get("max_total_tokens"),
-        max_duration_ms=(
-            1 if case["scenario"] == "expired_duration" else None
-        ),
+        max_duration_ms=(1 if case["scenario"] == "expired_duration" else None),
     )
     request = RunRequest(
         operation="chat",
@@ -545,9 +543,7 @@ def _event_contract(
 ) -> tuple[bool, bool, dict[str, int]]:
     event_types = [str(event["event_type"]) for event in emitted]
     event_counts = _sorted_counts(event_types)
-    step_status_counts = _sorted_counts(
-        [str(item["status"]) for item in step_statuses]
-    )
+    step_status_counts = _sorted_counts([str(item["status"]) for item in step_statuses])
     expected_started = sum(int(item["attempt_count"]) > 0 for item in step_statuses)
     expected_attempts = sum(int(item["attempt_count"]) for item in step_statuses)
     valid = (
@@ -605,20 +601,14 @@ def replay_plan_trajectory_case(
     step_status_counts = _sorted_counts(
         [str(item["status"]) for item in execution["step_statuses"]]
     )
-    error_counts = _sorted_counts(
-        [str(code) for code in execution["error_codes"]]
-    )
+    error_counts = _sorted_counts([str(code) for code in execution["error_codes"]])
     metadata = context.metadata_snapshot()
     tool_records = list(metadata.get("tool_call_records", []))
     tool_record_status_counts = _sorted_counts(
         [str(record["status"]) for record in tool_records]
     )
-    plan_routes = [
-        step["recipient"] for step in result["execution_plan"]["steps"]
-    ]
-    route_positions = [
-        plan_routes.index(route) for route in result["executed_routes"]
-    ]
+    plan_routes = [step["recipient"] for step in result["execution_plan"]["steps"]]
+    route_positions = [plan_routes.index(route) for route in result["executed_routes"]]
     fan_in_plan_order = route_positions == sorted(route_positions)
     step_statuses = list(execution["step_statuses"])
     event_contract, attempt_event_contract, event_counts = _event_contract(
@@ -635,8 +625,7 @@ def replay_plan_trajectory_case(
         )
     ]
     attempt_counts = {
-        str(item["recipient"]): int(item["attempt_count"])
-        for item in step_statuses
+        str(item["recipient"]): int(item["attempt_count"]) for item in step_statuses
     }
     gateway_call_count = int(metadata.get("tool_gateway_call_count", 0))
     max_tool_calls = case["max_tool_calls"]
@@ -667,8 +656,7 @@ def replay_plan_trajectory_case(
         "execution_mode": trajectory["execution_mode"]
         == case.get("expected_execution_mode", "bounded_parallel"),
         "status": trajectory["status"] == case["expected_status"],
-        "step_status_counts": step_status_counts
-        == case["expected_step_status_counts"],
+        "step_status_counts": step_status_counts == case["expected_step_status_counts"],
         "executed_route_count": trajectory["executed_route_count"]
         == case["expected_route_count"],
         "fan_in_plan_order": fan_in_plan_order,
@@ -676,8 +664,7 @@ def replay_plan_trajectory_case(
         == case["expected_tool_call_count"],
         "tool_record_count": trajectory["tool_record_count"]
         == case["expected_tool_record_count"],
-        "gateway_call_count": gateway_call_count
-        == case["expected_gateway_call_count"],
+        "gateway_call_count": gateway_call_count == case["expected_gateway_call_count"],
         "error_counts": error_counts == case["expected_error_counts"],
         "decision_summary_count": trajectory["decision_summary_count"]
         == case["expected_summary_count"],

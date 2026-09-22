@@ -256,11 +256,7 @@ def _format_metric_labels(labels: dict[str, str]) -> str:
         return ""
     formatted = []
     for key, value in sorted(labels.items()):
-        escaped = (
-            value.replace("\\", "\\\\")
-            .replace("\n", "\\n")
-            .replace('"', '\\"')
-        )
+        escaped = value.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
         formatted.append(f'{key}="{escaped}"')
     return "{" + ",".join(formatted) + "}"
 
@@ -405,9 +401,7 @@ def format_event_dashboard_markdown(
     for check in report["checks"]:
         result = "pass" if check["passed"] else "warn"
         lines.append(
-            "| "
-            f"{check['name']} | {result} | {check['actual']} | "
-            f"{check['expected']} |"
+            f"| {check['name']} | {result} | {check['actual']} | {check['expected']} |"
         )
 
     lines.extend(["", "## Event Counts", ""])

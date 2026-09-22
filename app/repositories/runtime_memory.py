@@ -106,8 +106,7 @@ def list_memory_records(
     if user_id is not None:
         scoped_records.extend(
             [
-                (MemoryRecord.user_id == user_id)
-                & MemoryRecord.thread_id.is_(None),
+                (MemoryRecord.user_id == user_id) & MemoryRecord.thread_id.is_(None),
             ]
         )
         if thread_id is not None:

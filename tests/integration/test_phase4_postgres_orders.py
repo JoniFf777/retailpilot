@@ -20,19 +20,37 @@ from alembic.runtime.migration import MigrationContext
 from sqlalchemy import create_engine, event, inspect, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.cart.models import ShopMindCartItem
-from app.checkout.tokens import CheckoutPriceLine, build_cart_fingerprint, create_checkout_token
+from app.checkout.tokens import (
+    CheckoutPriceLine,
+    build_cart_fingerprint,
+    create_checkout_token,
+)
 from app.core.settings import Settings, get_settings
 from app.db.models import AgentRun, ConversationThread, PendingAction
 from app.orders.models import ShopMindInventoryReservation, ShopMindOrder
 from app.outbox.models import ShopMindOutboxEvent
 from app.repositories.shopmind_cart import upsert_cart_item
 from app.schemas.orders import CreateOrderRequest
-from app.schemas.recommendation import AvailabilityView, LaptopConstraints, Money, Recommendation, RecommendationResult
+from app.schemas.recommendation import (
+    AvailabilityView,
+    LaptopConstraints,
+    Money,
+    Recommendation,
+    RecommendationResult,
+)
 from app.services.checkout import preview_checkout
 from app.services.orders import OrderServiceError, cancel_order, create_order
-from app.services.pending_actions import confirm_add_to_cart, create_add_to_cart_pending_action
+from app.services.pending_actions import (
+    confirm_add_to_cart,
+    create_add_to_cart_pending_action,
+)
 
 
 pytestmark = pytest.mark.skipif(
@@ -64,40 +82,70 @@ def _assert_phase4_schema(connection, schema: str) -> None:
     )
     order_uniques = {
         constraint["name"]: tuple(constraint["column_names"])
-        for constraint in inspector.get_unique_constraints("shopmind_orders", schema=schema)
+        for constraint in inspector.get_unique_constraints(
+            "shopmind_orders", schema=schema
+        )
     }
     item_uniques = {
         constraint["name"]: tuple(constraint["column_names"])
-        for constraint in inspector.get_unique_constraints("shopmind_order_items", schema=schema)
+        for constraint in inspector.get_unique_constraints(
+            "shopmind_order_items", schema=schema
+        )
     }
     reservation_uniques = {
         constraint["name"]: tuple(constraint["column_names"])
-        for constraint in inspector.get_unique_constraints("shopmind_inventory_reservations", schema=schema)
+        for constraint in inspector.get_unique_constraints(
+            "shopmind_inventory_reservations", schema=schema
+        )
     }
-    assert order_uniques["uq_shopmind_orders_user_idempotency"] == ("user_id", "idempotency_key")
+    assert order_uniques["uq_shopmind_orders_user_idempotency"] == (
+        "user_id",
+        "idempotency_key",
+    )
     assert item_uniques["uq_shopmind_order_items_order_sku"] == ("order_id", "sku_id")
-    assert reservation_uniques["uq_shopmind_inventory_reservations_order_item"] == ("order_item_id",)
+    assert reservation_uniques["uq_shopmind_inventory_reservations_order_item"] == (
+        "order_item_id",
+    )
     item_fks = {
         tuple(foreign_key["constrained_columns"]): (
             foreign_key["referred_table"],
             foreign_key.get("options", {}).get("ondelete"),
         )
-        for foreign_key in inspector.get_foreign_keys("shopmind_order_items", schema=schema)
+        for foreign_key in inspector.get_foreign_keys(
+            "shopmind_order_items", schema=schema
+        )
     }
     reservation_fks = {
         tuple(foreign_key["constrained_columns"]): (
             foreign_key["referred_table"],
             foreign_key.get("options", {}).get("ondelete"),
         )
-        for foreign_key in inspector.get_foreign_keys("shopmind_inventory_reservations", schema=schema)
+        for foreign_key in inspector.get_foreign_keys(
+            "shopmind_inventory_reservations", schema=schema
+        )
     }
     assert item_fks[("order_id",)] == ("shopmind_orders", "CASCADE")
     assert item_fks[("sku_id",)] == ("shopmind_product_skus", "RESTRICT")
     assert reservation_fks[("order_item_id",)] == ("shopmind_order_items", "RESTRICT")
     assert reservation_fks[("sku_id",)] == ("shopmind_product_skus", "RESTRICT")
-    order_checks = {constraint["name"] for constraint in inspector.get_check_constraints("shopmind_orders", schema=schema)}
-    item_checks = {constraint["name"] for constraint in inspector.get_check_constraints("shopmind_order_items", schema=schema)}
-    reservation_checks = {constraint["name"] for constraint in inspector.get_check_constraints("shopmind_inventory_reservations", schema=schema)}
+    order_checks = {
+        constraint["name"]
+        for constraint in inspector.get_check_constraints(
+            "shopmind_orders", schema=schema
+        )
+    }
+    item_checks = {
+        constraint["name"]
+        for constraint in inspector.get_check_constraints(
+            "shopmind_order_items", schema=schema
+        )
+    }
+    reservation_checks = {
+        constraint["name"]
+        for constraint in inspector.get_check_constraints(
+            "shopmind_inventory_reservations", schema=schema
+        )
+    }
     assert {
         "ck_shopmind_orders_status",
         "ck_shopmind_orders_total_equals_subtotal",
@@ -113,10 +161,15 @@ def _assert_phase4_schema(connection, schema: str) -> None:
         "ck_shopmind_inventory_reservations_status",
         "ck_shopmind_inventory_reservations_release_state",
     }.issubset(reservation_checks)
-    order_indexes = {index["name"] for index in inspector.get_indexes("shopmind_orders", schema=schema)}
+    order_indexes = {
+        index["name"]
+        for index in inspector.get_indexes("shopmind_orders", schema=schema)
+    }
     reservation_indexes = {
         index["name"]
-        for index in inspector.get_indexes("shopmind_inventory_reservations", schema=schema)
+        for index in inspector.get_indexes(
+            "shopmind_inventory_reservations", schema=schema
+        )
     }
     assert {
         "idx_shopmind_orders_user_created_at_id",
@@ -133,18 +186,20 @@ def test_phase4a_migrations_round_trip_in_private_schema() -> None:
             text("SELECT version_num FROM public.alembic_version LIMIT 1")
         ).scalar_one_or_none()
         public_tables_before = connection.execute(
-            text("SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'")
+            text(
+                "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'"
+            )
         ).scalar_one()
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         connection.execute(
             text(
                 f'CREATE TABLE "{schema}".alembic_version '
-                '(version_num VARCHAR(32) NOT NULL PRIMARY KEY)'
+                "(version_num VARCHAR(32) NOT NULL PRIMARY KEY)"
             )
         )
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".pending_actions (
+                f"""CREATE TABLE "{schema}".pending_actions (
                     id VARCHAR PRIMARY KEY,
                     user_id VARCHAR(128) NOT NULL,
                     thread_id VARCHAR,
@@ -157,7 +212,7 @@ def test_phase4a_migrations_round_trip_in_private_schema() -> None:
                     metadata_json JSONB NOT NULL DEFAULT '{{}}'::jsonb,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                )'''
+                )"""
             )
         )
         connection.commit()
@@ -180,11 +235,20 @@ def test_phase4a_migrations_round_trip_in_private_schema() -> None:
                 "shopmind_inventory_reservations",
             }.issubset(table_names)
             _assert_phase4_schema(connection, schema)
-            assert MigrationContext.configure(connection).get_current_revision() == "0012_shopmind_orders"
+            assert (
+                MigrationContext.configure(connection).get_current_revision()
+                == "0012_shopmind_orders"
+            )
             command.downgrade(_alembic(connection), "0011_shopmind_cart")
-            assert MigrationContext.configure(connection).get_current_revision() == "0011_shopmind_cart"
+            assert (
+                MigrationContext.configure(connection).get_current_revision()
+                == "0011_shopmind_cart"
+            )
             command.upgrade(_alembic(connection), "0012_shopmind_orders")
-            assert MigrationContext.configure(connection).get_current_revision() == "0012_shopmind_orders"
+            assert (
+                MigrationContext.configure(connection).get_current_revision()
+                == "0012_shopmind_orders"
+            )
         finally:
             connection.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
             connection.commit()
@@ -192,7 +256,9 @@ def test_phase4a_migrations_round_trip_in_private_schema() -> None:
             text("SELECT version_num FROM public.alembic_version LIMIT 1")
         ).scalar_one_or_none()
         public_tables_after = connection.execute(
-            text("SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'")
+            text(
+                "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'"
+            )
         ).scalar_one()
         assert public_revision_after == public_revision
         assert public_tables_after == public_tables_before
@@ -209,12 +275,12 @@ def phase4a_factory():
         connection.execute(
             text(
                 f'CREATE TABLE "{schema}".alembic_version '
-                '(version_num VARCHAR(32) NOT NULL PRIMARY KEY)'
+                "(version_num VARCHAR(32) NOT NULL PRIMARY KEY)"
             )
         )
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".pending_actions (
+                f"""CREATE TABLE "{schema}".pending_actions (
                     id VARCHAR PRIMARY KEY,
                     user_id VARCHAR(128) NOT NULL,
                     thread_id VARCHAR,
@@ -227,7 +293,7 @@ def phase4a_factory():
                     metadata_json JSONB NOT NULL DEFAULT '{{}}'::jsonb,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                )'''
+                )"""
             )
         )
         connection.commit()
@@ -260,19 +326,35 @@ def phase4a_factory():
         engine.dispose()
 
 
-def _seed_order_case(factory, *, users: tuple[str, ...] = ("phase4a-a", "phase4a-b"), stock: int = 1):
+def _seed_order_case(
+    factory, *, users: tuple[str, ...] = ("phase4a-a", "phase4a-b"), stock: int = 1
+):
     session: Session = factory()
-    category = CatalogCategory(code=f"p4a-{uuid4().hex}", name="Laptop", status="active", managed_by_seed=False)
+    category = CatalogCategory(
+        code=f"p4a-{uuid4().hex}", name="Laptop", status="active", managed_by_seed=False
+    )
     product = CatalogProduct(
-        product_code=f"P4A-{uuid4().hex}", category=category, brand="ShopMind",
-        name="Phase 4A Product", sale_status="active", attributes_json={}, managed_by_seed=False,
+        product_code=f"P4A-{uuid4().hex}",
+        category=category,
+        brand="ShopMind",
+        name="Phase 4A Product",
+        sale_status="active",
+        attributes_json={},
+        managed_by_seed=False,
     )
     sku = CatalogSku(
-        product=product, sku_code=f"P4A-SKU-{uuid4().hex}", name="Base",
-        money_amount=Decimal("10.00"), currency="CNY", sale_status="active",
-        variant_attributes_json={}, managed_by_seed=False,
+        product=product,
+        sku_code=f"P4A-SKU-{uuid4().hex}",
+        name="Base",
+        money_amount=Decimal("10.00"),
+        currency="CNY",
+        sale_status="active",
+        variant_attributes_json={},
+        managed_by_seed=False,
     )
-    inventory = CatalogInventory(sku=sku, on_hand_quantity=stock, reserved_quantity=0, version=0)
+    inventory = CatalogInventory(
+        sku=sku, on_hand_quantity=stock, reserved_quantity=0, version=0
+    )
     session.add_all([category, product, sku, inventory])
     session.flush()
     for user in users:
@@ -297,28 +379,55 @@ def _seed_multi_sku_case(
     stocks: tuple[int, ...] = (2, 2),
 ):
     session: Session = factory()
-    category = CatalogCategory(code=f"p4a-multi-{uuid4().hex}", name="Laptop", status="active", managed_by_seed=False)
+    category = CatalogCategory(
+        code=f"p4a-multi-{uuid4().hex}",
+        name="Laptop",
+        status="active",
+        managed_by_seed=False,
+    )
     sku_ids = []
     for index, (currency, stock) in enumerate(zip(currencies, stocks, strict=True)):
         product = CatalogProduct(
-            product_code=f"P4A-M-{uuid4().hex}", category=category, brand="ShopMind",
-            name=f"Phase 4A Product {index}", sale_status="active", attributes_json={}, managed_by_seed=False,
+            product_code=f"P4A-M-{uuid4().hex}",
+            category=category,
+            brand="ShopMind",
+            name=f"Phase 4A Product {index}",
+            sale_status="active",
+            attributes_json={},
+            managed_by_seed=False,
         )
         sku = CatalogSku(
-            product=product, sku_code=f"P4A-M-SKU-{uuid4().hex}", name=f"Variant {index}",
-            money_amount=Decimal("10.00") + index, currency=currency, sale_status="active",
-            variant_attributes_json={}, managed_by_seed=False,
+            product=product,
+            sku_code=f"P4A-M-SKU-{uuid4().hex}",
+            name=f"Variant {index}",
+            money_amount=Decimal("10.00") + index,
+            currency=currency,
+            sale_status="active",
+            variant_attributes_json={},
+            managed_by_seed=False,
         )
-        session.add_all([product, sku, CatalogInventory(sku=sku, on_hand_quantity=stock, reserved_quantity=0, version=0)])
+        session.add_all(
+            [
+                product,
+                sku,
+                CatalogInventory(
+                    sku=sku, on_hand_quantity=stock, reserved_quantity=0, version=0
+                ),
+            ]
+        )
         session.flush()
         sku_ids.append(sku.id)
     for user_id, sequence in cart_sequences.items():
         for index in sequence:
-            upsert_cart_item(session, user_id=user_id, sku_id=sku_ids[index], quantity=1)
+            upsert_cart_item(
+                session, user_id=user_id, sku_id=sku_ids[index], quantity=1
+            )
     session.commit()
     settings = Settings(shopmind_checkout_signing_secret="p" * 32)
     tokens = {
-        user_id: preview_checkout(session, user_id=user_id, settings=settings).checkout_token
+        user_id: preview_checkout(
+            session, user_id=user_id, settings=settings
+        ).checkout_token
         for user_id in cart_sequences
     }
     assert all(tokens.values())
@@ -343,17 +452,28 @@ def _fresh_token(
     )
     skus = {row.sku_id: session.get(CatalogSku, row.sku_id) for row in cart_rows}
     currency = next(iter({sku.currency for sku in skus.values()}))
-    subtotal = sum((Decimal(skus[row.sku_id].money_amount) * row.quantity for row in cart_rows), Decimal("0.00"))
+    subtotal = sum(
+        (Decimal(skus[row.sku_id].money_amount) * row.quantity for row in cart_rows),
+        Decimal("0.00"),
+    )
     return create_checkout_token(
         user_id=user_id,
         cart_fingerprint=build_cart_fingerprint(
-            {"cart_item_id": row.id, "sku_id": row.sku_id, "quantity": row.quantity, "version": row.version}
+            {
+                "cart_item_id": row.id,
+                "sku_id": row.sku_id,
+                "quantity": row.quantity,
+                "version": row.version,
+            }
             for row in cart_rows
         ),
         price_lines=[
             CheckoutPriceLine(
                 sku_id=row.sku_id,
-                unit_price_amount=format(Decimal(skus[row.sku_id].money_amount).quantize(Decimal("0.01")), ".2f"),
+                unit_price_amount=format(
+                    Decimal(skus[row.sku_id].money_amount).quantize(Decimal("0.01")),
+                    ".2f",
+                ),
                 currency=skus[row.sku_id].currency,
             )
             for row in cart_rows
@@ -378,7 +498,9 @@ def _state_for_skus(session: Session, sku_ids) -> list[tuple[int, int]]:
 
 
 def _seed_phase2_pending_action(factory):
-    settings, tokens, ids = _seed_order_case(factory, users=("phase4a-action-race",), stock=2)
+    settings, tokens, ids = _seed_order_case(
+        factory, users=("phase4a-action-race",), stock=2
+    )
     user_id = "phase4a-action-race"
     session: Session = factory()
     sku = session.get(CatalogSku, ids[0])
@@ -411,7 +533,9 @@ def _seed_phase2_pending_action(factory):
                 specifications=[],
                 score=90,
                 score_breakdown=[],
-                availability=AvailabilityView(sale_status="active", available_quantity=2, in_stock=True),
+                availability=AvailabilityView(
+                    sale_status="active", available_quantity=2, in_stock=True
+                ),
                 reason="match",
             )
         ],
@@ -489,8 +613,11 @@ def test_phase4a_last_stock_concurrency_and_partial_rollback(phase4a_factory):
         try:
             barrier.wait(timeout=10)
             value = create_order(
-                session, user_id=user, idempotency_key=f"stock-{user}",
-                request=CreateOrderRequest(checkout_token=tokens[user]), settings=settings,
+                session,
+                user_id=user,
+                idempotency_key=f"stock-{user}",
+                request=CreateOrderRequest(checkout_token=tokens[user]),
+                settings=settings,
             )
             session.commit()
             results.append(("success", user, value.order.order_id))
@@ -506,51 +633,119 @@ def test_phase4a_last_stock_concurrency_and_partial_rollback(phase4a_factory):
     for thread in threads:
         thread.join(timeout=30)
     assert sorted(row[0] for row in results) == ["error", "success"]
-    assert sorted(row[2] if row[0] == "error" else "ok" for row in results) == ["insufficient_inventory", "ok"]
+    assert sorted(row[2] if row[0] == "error" else "ok" for row in results) == [
+        "insufficient_inventory",
+        "ok",
+    ]
     session: Session = phase4a_factory()
     inventory = session.get(CatalogInventory, ids[1])
     assert (inventory.reserved_quantity, inventory.version) == (1, 1)
     assert len(session.scalars(select(ShopMindOrder)).all()) == 1
-    assert session.scalar(select(ShopMindOrder).where(ShopMindOrder.id == next(row[2] for row in results if row[0] == "success")))
-    assert len(session.scalars(select(ShopMindInventoryReservation).where(ShopMindInventoryReservation.status == "active")).all()) == 1
+    assert session.scalar(
+        select(ShopMindOrder).where(
+            ShopMindOrder.id == next(row[2] for row in results if row[0] == "success")
+        )
+    )
+    assert (
+        len(
+            session.scalars(
+                select(ShopMindInventoryReservation).where(
+                    ShopMindInventoryReservation.status == "active"
+                )
+            ).all()
+        )
+        == 1
+    )
     assert len(session.scalars(select(ShopMindCartItem)).all()) == 1
     session.close()
 
 
 def test_phase4a_same_key_concurrent_replay_and_conflict(phase4a_factory):
-    settings, tokens, ids = _seed_order_case(phase4a_factory, users=("phase4a-same",), stock=2)
+    settings, tokens, ids = _seed_order_case(
+        phase4a_factory, users=("phase4a-same",), stock=2
+    )
     token = tokens["phase4a-same"]
-    replay_results = _concurrent_create(phase4a_factory, user_id="phase4a-same", token=token, key="same-key")
+    replay_results = _concurrent_create(
+        phase4a_factory, user_id="phase4a-same", token=token, key="same-key"
+    )
     assert sorted(replay_results) == [("success", False), ("success", True)]
     session: Session = phase4a_factory()
-    assert len(session.scalars(select(ShopMindOrder).where(ShopMindOrder.idempotency_key == "same-key")).all()) == 1
-    assert len(session.scalars(select(ShopMindInventoryReservation).where(ShopMindInventoryReservation.status == "active")).all()) == 1
+    assert (
+        len(
+            session.scalars(
+                select(ShopMindOrder).where(ShopMindOrder.idempotency_key == "same-key")
+            ).all()
+        )
+        == 1
+    )
+    assert (
+        len(
+            session.scalars(
+                select(ShopMindInventoryReservation).where(
+                    ShopMindInventoryReservation.status == "active"
+                )
+            ).all()
+        )
+        == 1
+    )
     assert _state_for_skus(session, [ids[0]]) == [(1, 1)]
-    assert session.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-same")).all() == []
+    assert (
+        session.scalars(
+            select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-same")
+        ).all()
+        == []
+    )
     session.close()
 
-    settings, tokens, _ = _seed_order_case(phase4a_factory, users=("phase4a-conflict",), stock=2)
+    settings, tokens, _ = _seed_order_case(
+        phase4a_factory, users=("phase4a-conflict",), stock=2
+    )
     first = tokens["phase4a-conflict"]
     second = create_checkout_token(
         user_id="phase4a-conflict",
         cart_fingerprint=build_cart_fingerprint([]),
-        price_lines=[CheckoutPriceLine(sku_id=uuid4(), unit_price_amount="1.00", currency="CNY")],
-        currency="CNY", subtotal_amount="1.00", secret="p" * 32, ttl_seconds=900,
+        price_lines=[
+            CheckoutPriceLine(sku_id=uuid4(), unit_price_amount="1.00", currency="CNY")
+        ],
+        currency="CNY",
+        subtotal_amount="1.00",
+        secret="p" * 32,
+        ttl_seconds=900,
     )
     session = phase4a_factory()
-    create_order(session, user_id="phase4a-conflict", idempotency_key="conflict-key", request=CreateOrderRequest(checkout_token=first), settings=settings)
+    create_order(
+        session,
+        user_id="phase4a-conflict",
+        idempotency_key="conflict-key",
+        request=CreateOrderRequest(checkout_token=first),
+        settings=settings,
+    )
     session.commit()
     with pytest.raises(OrderServiceError) as conflict:
-        create_order(session, user_id="phase4a-conflict", idempotency_key="conflict-key", request=CreateOrderRequest(checkout_token=second), settings=Settings())
+        create_order(
+            session,
+            user_id="phase4a-conflict",
+            idempotency_key="conflict-key",
+            request=CreateOrderRequest(checkout_token=second),
+            settings=Settings(),
+        )
     assert conflict.value.code == "idempotency_conflict"
     session.rollback()
     session.close()
 
 
 def test_phase4a_cancel_concurrency_releases_once(phase4a_factory):
-    settings, tokens, ids = _seed_order_case(phase4a_factory, users=("phase4a-cancel",), stock=2)
+    settings, tokens, ids = _seed_order_case(
+        phase4a_factory, users=("phase4a-cancel",), stock=2
+    )
     session: Session = phase4a_factory()
-    created = create_order(session, user_id="phase4a-cancel", idempotency_key="cancel-key", request=CreateOrderRequest(checkout_token=tokens["phase4a-cancel"]), settings=settings)
+    created = create_order(
+        session,
+        user_id="phase4a-cancel",
+        idempotency_key="cancel-key",
+        request=CreateOrderRequest(checkout_token=tokens["phase4a-cancel"]),
+        settings=settings,
+    )
     session.commit()
     order_id = created.order.order_id
     session.close()
@@ -577,17 +772,35 @@ def test_phase4a_cancel_concurrency_releases_once(phase4a_factory):
         thread.join(timeout=30)
     assert sorted(results) == [False, True]
     current = phase4a_factory()
-    reservation = current.scalar(select(ShopMindInventoryReservation).where(ShopMindInventoryReservation.order_item_id.is_not(None)))
+    reservation = current.scalar(
+        select(ShopMindInventoryReservation).where(
+            ShopMindInventoryReservation.order_item_id.is_not(None)
+        )
+    )
     assert reservation.status == "released"
-    assert len(current.scalars(select(ShopMindOrder).where(ShopMindOrder.id == order_id)).all()) == 1
+    assert (
+        len(
+            current.scalars(
+                select(ShopMindOrder).where(ShopMindOrder.id == order_id)
+            ).all()
+        )
+        == 1
+    )
     assert len(current.scalars(select(ShopMindInventoryReservation)).all()) == 1
     assert _state_for_skus(current, [ids[0]]) == [(0, 2)]
-    assert current.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-cancel")).all() == []
+    assert (
+        current.scalars(
+            select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-cancel")
+        ).all()
+        == []
+    )
     current.close()
 
 
 def test_phase4a_replay_after_token_expiry(phase4a_factory):
-    settings, _, ids = _seed_order_case(phase4a_factory, users=("phase4a-expired",), stock=2)
+    settings, _, ids = _seed_order_case(
+        phase4a_factory, users=("phase4a-expired",), stock=2
+    )
     session: Session = phase4a_factory()
     token = _fresh_token(
         session,
@@ -611,15 +824,36 @@ def test_phase4a_replay_after_token_expiry(phase4a_factory):
         request=CreateOrderRequest(checkout_token=token),
         settings=settings,
     )
-    assert replay.idempotent_replay is True and replay.order.order_id == created.order.order_id
-    assert len(session.scalars(select(ShopMindOrder).where(ShopMindOrder.idempotency_key == "expiry-replay")).all()) == 1
+    assert (
+        replay.idempotent_replay is True
+        and replay.order.order_id == created.order.order_id
+    )
+    assert (
+        len(
+            session.scalars(
+                select(ShopMindOrder).where(
+                    ShopMindOrder.idempotency_key == "expiry-replay"
+                )
+            ).all()
+        )
+        == 1
+    )
     assert _state_for_skus(session, [ids[0]]) == [(1, 1)]
-    assert session.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-expired")).all() == []
+    assert (
+        session.scalars(
+            select(ShopMindCartItem).where(
+                ShopMindCartItem.user_id == "phase4a-expired"
+            )
+        ).all()
+        == []
+    )
     session.close()
 
 
 def test_phase4a_same_key_different_request_is_truly_concurrent(phase4a_factory):
-    settings, tokens, ids = _seed_order_case(phase4a_factory, users=("phase4a-conflict-race",), stock=2)
+    settings, tokens, ids = _seed_order_case(
+        phase4a_factory, users=("phase4a-conflict-race",), stock=2
+    )
     session: Session = phase4a_factory()
     second_token = _fresh_token(
         session,
@@ -650,7 +884,10 @@ def test_phase4a_same_key_different_request_is_truly_concurrent(phase4a_factory)
         finally:
             current.close()
 
-    threads = [threading.Thread(target=worker, args=(tokens["phase4a-conflict-race"],)), threading.Thread(target=worker, args=(second_token,))]
+    threads = [
+        threading.Thread(target=worker, args=(tokens["phase4a-conflict-race"],)),
+        threading.Thread(target=worker, args=(second_token,)),
+    ]
     for thread in threads:
         thread.start()
     for thread in threads:
@@ -658,10 +895,30 @@ def test_phase4a_same_key_different_request_is_truly_concurrent(phase4a_factory)
     assert all(not thread.is_alive() for thread in threads)
     assert sorted(results) == [("error", "idempotency_conflict"), ("success", False)]
     current = phase4a_factory()
-    assert len(current.scalars(select(ShopMindOrder).where(ShopMindOrder.idempotency_key == "conflict-race")).all()) == 1
-    assert current.scalars(select(ShopMindInventoryReservation).where(ShopMindInventoryReservation.status == "active")).all()
+    assert (
+        len(
+            current.scalars(
+                select(ShopMindOrder).where(
+                    ShopMindOrder.idempotency_key == "conflict-race"
+                )
+            ).all()
+        )
+        == 1
+    )
+    assert current.scalars(
+        select(ShopMindInventoryReservation).where(
+            ShopMindInventoryReservation.status == "active"
+        )
+    ).all()
     assert _state_for_skus(current, [ids[0]]) == [(1, 1)]
-    assert current.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-conflict-race")).all() == []
+    assert (
+        current.scalars(
+            select(ShopMindCartItem).where(
+                ShopMindCartItem.user_id == "phase4a-conflict-race"
+            )
+        ).all()
+        == []
+    )
     current.close()
 
 
@@ -699,9 +956,23 @@ def test_phase4a_multisku_ab_ba_has_no_deadlock(phase4a_factory):
     assert sorted(results) == [False, False]
     current = phase4a_factory()
     assert len(current.scalars(select(ShopMindOrder)).all()) == 2
-    assert len(current.scalars(select(ShopMindInventoryReservation).where(ShopMindInventoryReservation.status == "active")).all()) == 4
+    assert (
+        len(
+            current.scalars(
+                select(ShopMindInventoryReservation).where(
+                    ShopMindInventoryReservation.status == "active"
+                )
+            ).all()
+        )
+        == 4
+    )
     assert _state_for_skus(current, sku_ids) == [(2, 2), (2, 2)]
-    assert current.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id.in_(tokens))).all() == []
+    assert (
+        current.scalars(
+            select(ShopMindCartItem).where(ShopMindCartItem.user_id.in_(tokens))
+        ).all()
+        == []
+    )
     current.close()
 
 
@@ -725,11 +996,27 @@ def test_phase4a_mixed_currency_and_multisku_failure_rollback(phase4a_factory):
         )
     assert mixed.value.code == "mixed_currency"
     session.rollback()
-    assert session.scalars(select(ShopMindOrder).where(ShopMindOrder.idempotency_key == "mixed-priority")).all() == []
+    assert (
+        session.scalars(
+            select(ShopMindOrder).where(
+                ShopMindOrder.idempotency_key == "mixed-priority"
+            )
+        ).all()
+        == []
+    )
     assert session.scalars(select(ShopMindOutboxEvent)).all() == []
     assert session.scalars(select(ShopMindInventoryReservation)).all() == []
     assert _state_for_skus(session, sku_ids) == [(0, 0), (0, 0)]
-    assert len(session.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-mixed")).all()) == 2
+    assert (
+        len(
+            session.scalars(
+                select(ShopMindCartItem).where(
+                    ShopMindCartItem.user_id == "phase4a-mixed"
+                )
+            ).all()
+        )
+        == 2
+    )
     session.close()
 
     settings, tokens, sku_ids = _seed_multi_sku_case(
@@ -751,16 +1038,34 @@ def test_phase4a_mixed_currency_and_multisku_failure_rollback(phase4a_factory):
         )
     assert insufficient.value.code == "insufficient_inventory"
     session.rollback()
-    assert session.scalars(select(ShopMindOrder).where(ShopMindOrder.idempotency_key == "multisku-rollback")).all() == []
+    assert (
+        session.scalars(
+            select(ShopMindOrder).where(
+                ShopMindOrder.idempotency_key == "multisku-rollback"
+            )
+        ).all()
+        == []
+    )
     assert session.scalars(select(ShopMindOutboxEvent)).all() == []
     assert session.scalars(select(ShopMindInventoryReservation)).all() == []
     assert _state_for_skus(session, sku_ids) == [(0, 0), (0, 0)]
-    assert len(session.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-rollback")).all()) == 2
+    assert (
+        len(
+            session.scalars(
+                select(ShopMindCartItem).where(
+                    ShopMindCartItem.user_id == "phase4a-rollback"
+                )
+            ).all()
+        )
+        == 2
+    )
     session.close()
 
 
 def test_phase4a_corrupt_reservation_cancel_rolls_back_safely(phase4a_factory):
-    settings, tokens, ids = _seed_order_case(phase4a_factory, users=("phase4a-corrupt",), stock=2)
+    settings, tokens, ids = _seed_order_case(
+        phase4a_factory, users=("phase4a-corrupt",), stock=2
+    )
     session: Session = phase4a_factory()
     created = create_order(
         session,
@@ -775,7 +1080,9 @@ def test_phase4a_corrupt_reservation_cancel_rolls_back_safely(phase4a_factory):
     reservation.released_at = datetime.now(timezone.utc)
     session.commit()
     with pytest.raises(OrderServiceError) as inconsistent:
-        cancel_order(session, user_id="phase4a-corrupt", order_id=created.order.order_id)
+        cancel_order(
+            session, user_id="phase4a-corrupt", order_id=created.order.order_id
+        )
     assert inconsistent.value.code == "reservation_inconsistent"
     session.rollback()
     persisted = session.get(ShopMindOrder, created.order.order_id)
@@ -783,12 +1090,23 @@ def test_phase4a_corrupt_reservation_cancel_rolls_back_safely(phase4a_factory):
     assert len(session.scalars(select(ShopMindInventoryReservation)).all()) == 1
     assert session.scalar(select(ShopMindInventoryReservation)).status == "released"
     assert _state_for_skus(session, [ids[0]]) == [(1, 1)]
-    assert len(session.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-corrupt")).all()) == 0
+    assert (
+        len(
+            session.scalars(
+                select(ShopMindCartItem).where(
+                    ShopMindCartItem.user_id == "phase4a-corrupt"
+                )
+            ).all()
+        )
+        == 0
+    )
     session.close()
 
 
 def test_phase4a_create_replay_vs_cancel_race_is_serialized(phase4a_factory):
-    settings, tokens, ids = _seed_order_case(phase4a_factory, users=("phase4a-create-cancel",), stock=2)
+    settings, tokens, ids = _seed_order_case(
+        phase4a_factory, users=("phase4a-create-cancel",), stock=2
+    )
     session: Session = phase4a_factory()
     created = create_order(
         session,
@@ -809,7 +1127,9 @@ def test_phase4a_create_replay_vs_cancel_race_is_serialized(phase4a_factory):
                 current,
                 user_id="phase4a-create-cancel",
                 idempotency_key="create-cancel",
-                request=CreateOrderRequest(checkout_token=tokens["phase4a-create-cancel"]),
+                request=CreateOrderRequest(
+                    checkout_token=tokens["phase4a-create-cancel"]
+                ),
                 settings=settings,
             )
             current.commit()
@@ -821,7 +1141,11 @@ def test_phase4a_create_replay_vs_cancel_race_is_serialized(phase4a_factory):
         current: Session = phase4a_factory()
         try:
             barrier.wait(timeout=10)
-            response = cancel_order(current, user_id="phase4a-create-cancel", order_id=created.order.order_id)
+            response = cancel_order(
+                current,
+                user_id="phase4a-create-cancel",
+                order_id=created.order.order_id,
+            )
             current.commit()
             results.append(("cancel", response.idempotent_replay))
         finally:
@@ -840,12 +1164,21 @@ def test_phase4a_create_replay_vs_cancel_race_is_serialized(phase4a_factory):
     assert order.status == "cancelled"
     assert current.scalar(select(ShopMindInventoryReservation)).status == "released"
     assert _state_for_skus(current, [ids[0]]) == [(0, 2)]
-    assert current.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase4a-create-cancel")).all() == []
+    assert (
+        current.scalars(
+            select(ShopMindCartItem).where(
+                ShopMindCartItem.user_id == "phase4a-create-cancel"
+            )
+        ).all()
+        == []
+    )
     current.close()
 
 
 def test_phase4a_create_vs_phase2_pending_action_confirm_is_serialized(phase4a_factory):
-    settings, token, ids, thread_id, action_id = _seed_phase2_pending_action(phase4a_factory)
+    settings, token, ids, thread_id, action_id = _seed_phase2_pending_action(
+        phase4a_factory
+    )
     user_id = "phase4a-action-race"
     barrier = threading.Barrier(2)
     results = []
@@ -885,7 +1218,10 @@ def test_phase4a_create_vs_phase2_pending_action_confirm_is_serialized(phase4a_f
         finally:
             current.close()
 
-    threads = [threading.Thread(target=create_worker), threading.Thread(target=confirm_worker)]
+    threads = [
+        threading.Thread(target=create_worker),
+        threading.Thread(target=confirm_worker),
+    ]
     for thread in threads:
         thread.start()
     for thread in threads:
@@ -896,10 +1232,18 @@ def test_phase4a_create_vs_phase2_pending_action_confirm_is_serialized(phase4a_f
     current = phase4a_factory()
     action = current.get(PendingAction, action_id)
     assert action is not None and action.status == "confirmed"
-    cart = current.scalar(select(ShopMindCartItem).where(ShopMindCartItem.user_id == user_id))
-    order_count = len(current.scalars(select(ShopMindOrder).where(ShopMindOrder.user_id == user_id)).all())
+    cart = current.scalar(
+        select(ShopMindCartItem).where(ShopMindCartItem.user_id == user_id)
+    )
+    order_count = len(
+        current.scalars(
+            select(ShopMindOrder).where(ShopMindOrder.user_id == user_id)
+        ).all()
+    )
     active_reservations = current.scalars(
-        select(ShopMindInventoryReservation).where(ShopMindInventoryReservation.status == "active")
+        select(ShopMindInventoryReservation).where(
+            ShopMindInventoryReservation.status == "active"
+        )
     ).all()
     if any(result == ("create", "success", False) for result in results):
         assert order_count == 1

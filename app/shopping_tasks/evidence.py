@@ -8,7 +8,12 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.recommendation.retrieval_pipeline import RepositoryLexicalChannel, RepositoryVectorChannel, RetrievalPipeline, SearchRequest
+from app.recommendation.retrieval_pipeline import (
+    RepositoryLexicalChannel,
+    RepositoryVectorChannel,
+    RetrievalPipeline,
+    SearchRequest,
+)
 from app.ai_platform.models import ShoppingEvidencePublication
 from sqlalchemy import select
 
@@ -58,22 +63,49 @@ class TaskEvidenceResult(BaseModel):
     supplemental_used: bool = False
 
 
-def _citation(row: dict[str, Any], *, channels: tuple[str, ...]) -> CitationProjection | None:
+def _citation(
+    row: dict[str, Any], *, channels: tuple[str, ...]
+) -> CitationProjection | None:
     metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
     citation_id = row.get("id") or row.get("source_path")
     content = str(row.get("content") or "").casefold()
-    injection_markers = ("ignore previous", "confirm_add_to_cart", "add_to_cart", "系统提示")
-    if not citation_id or metadata.get("authority") not in {None, "evidence_only"} or metadata.get("status") in {"revoked", "expired", "failed"}:
+    injection_markers = (
+        "ignore previous",
+        "confirm_add_to_cart",
+        "add_to_cart",
+        "系统提示",
+    )
+    if (
+        not citation_id
+        or metadata.get("authority") not in {None, "evidence_only"}
+        or metadata.get("status") in {"revoked", "expired", "failed"}
+    ):
         return None
     if any(marker in content for marker in injection_markers):
         return None
     return CitationProjection(
-        citation_id=str(citation_id), source_path=str(row.get("source_path")) if row.get("source_path") else None,
-        evidence_type=str(row.get("evidence_type") or metadata.get("evidence_type") or "unknown"),
-        source_version=str(metadata.get("version")) if metadata.get("version") is not None else None,
-        status=str(metadata.get("status") or "active"), channel_attribution=channels,
-        product_ids=tuple(str(item) for item in metadata.get("product_ids") or ()) if isinstance(metadata.get("product_ids"), list) else (),
-        sku_codes=tuple(str(item) for item in metadata.get("sku_codes") or ()) if isinstance(metadata.get("sku_codes"), list) else (),
+        citation_id=str(citation_id),
+        source_path=str(row.get("source_path")) if row.get("source_path") else None,
+        evidence_type=str(
+            row.get("evidence_type") or metadata.get("evidence_type") or "unknown"
+        ),
+        source_version=(
+            str(metadata.get("version"))
+            if metadata.get("version") is not None
+            else None
+        ),
+        status=str(metadata.get("status") or "active"),
+        channel_attribution=channels,
+        product_ids=(
+            tuple(str(item) for item in metadata.get("product_ids") or ())
+            if isinstance(metadata.get("product_ids"), list)
+            else ()
+        ),
+        sku_codes=(
+            tuple(str(item) for item in metadata.get("sku_codes") or ())
+            if isinstance(metadata.get("sku_codes"), list)
+            else ()
+        ),
     )
 
 
@@ -88,7 +120,11 @@ def retrieve_task_evidence(
 
     scope_session = session_factory()
     try:
-        active_versions = tuple(scope_session.scalars(select(ShoppingEvidencePublication.evidence_version_id)).all())
+        active_versions = tuple(
+            scope_session.scalars(
+                select(ShoppingEvidencePublication.evidence_version_id)
+            ).all()
+        )
     finally:
         scope_session.close()
     queries = [spec.original_question, *spec.subquestions[:2]]
@@ -106,7 +142,19 @@ def retrieve_task_evidence(
         if remaining <= 0:
             statuses[f"deadline:{index}"] = "timeout"
             break
-        request = SearchRequest(query=query, evidence_type=spec.evidence_type, product_ids=spec.product_ids, category_code=spec.category_code, policy_type=spec.policy_type, region=spec.region, channel=spec.channel, limit=spec.limit, channel_timeout_seconds=min(2.0, remaining), rrf_k=spec.rrf_k, evidence_version_ids=active_versions)
+        request = SearchRequest(
+            query=query,
+            evidence_type=spec.evidence_type,
+            product_ids=spec.product_ids,
+            category_code=spec.category_code,
+            policy_type=spec.policy_type,
+            region=spec.region,
+            channel=spec.channel,
+            limit=spec.limit,
+            channel_timeout_seconds=min(2.0, remaining),
+            rrf_k=spec.rrf_k,
+            evidence_version_ids=active_versions,
+        )
         rows, current = RetrievalPipeline(channels).search(request)
         all_rows.extend(rows)
         statuses.update({f"{name}:{index}": value for name, value in current.items()})
@@ -117,20 +165,43 @@ def retrieve_task_evidence(
         if key in seen:
             continue
         seen.add(key)
-        projection = _citation(row, channels=tuple(name for name in statuses if name.rsplit(":", 1)[-1] == "0"))
+        projection = _citation(
+            row,
+            channels=tuple(name for name in statuses if name.rsplit(":", 1)[-1] == "0"),
+        )
         if projection is not None:
-            if spec.sku_codes and (not projection.sku_codes or not set(spec.sku_codes).intersection(projection.sku_codes)):
+            if spec.sku_codes and (
+                not projection.sku_codes
+                or not set(spec.sku_codes).intersection(projection.sku_codes)
+            ):
                 continue
             projections.append(projection)
         if len(projections) >= spec.limit:
             break
     if projections:
-        status = "degraded" if any(value in {"degraded", "unavailable", "timeout"} for value in statuses.values()) else "ok"
+        status = (
+            "degraded"
+            if any(
+                value in {"degraded", "unavailable", "timeout"}
+                for value in statuses.values()
+            )
+            else "ok"
+        )
     elif any(value in {"unavailable", "timeout"} for value in statuses.values()):
         status = "unavailable"
     else:
         status = "empty"
-    return TaskEvidenceResult(status=status, citations=projections, channel_statuses=statuses, supplemental_used=bool(supplemental_query))
+    return TaskEvidenceResult(
+        status=status,
+        citations=projections,
+        channel_statuses=statuses,
+        supplemental_used=bool(supplemental_query),
+    )
 
 
-__all__ = ["CitationProjection", "TaskEvidenceResult", "TaskQuerySpec", "retrieve_task_evidence"]
+__all__ = [
+    "CitationProjection",
+    "TaskEvidenceResult",
+    "TaskQuerySpec",
+    "retrieve_task_evidence",
+]

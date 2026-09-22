@@ -175,7 +175,9 @@ def get_conversation_thread(
         )
         normalized_user_id = _clean_optional(user_id)
         if normalized_user_id is not None:
-            statement = statement.where(ConversationThread.user_id == normalized_user_id)
+            statement = statement.where(
+                ConversationThread.user_id == normalized_user_id
+            )
         thread = session.scalar(statement)
     else:
         normalized_user_id = _clean_optional(user_id)

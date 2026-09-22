@@ -347,10 +347,7 @@ def _format_candidate_line(product: dict[str, Any], index: int) -> str:
 
 def _format_product_id_clarification(candidates: list[dict[str, Any]]) -> str:
     if not candidates:
-        return (
-            "我可以帮你创建待确认加购动作，但需要明确商品 ID，"
-            "例如 TECH-KEY-001。"
-        )
+        return "我可以帮你创建待确认加购动作，但需要明确商品 ID，例如 TECH-KEY-001。"
 
     lines = [
         _format_candidate_line(product, index)
@@ -358,8 +355,7 @@ def _format_product_id_clarification(candidates: list[dict[str, Any]]) -> str:
     ]
     return (
         "我还不能确定要加入购物车的具体商品。请回复要加购的商品 ID，"
-        "可从这些候选中选择：\n"
-        + "\n".join(lines)
+        "可从这些候选中选择：\n" + "\n".join(lines)
     )
 
 
@@ -492,7 +488,9 @@ def _invoke_preference_write_handoff(
         ),
         "status": (
             "confirmation_required"
-            if outcome is not None and outcome.status == "prepared" and pending_action_id
+            if outcome is not None
+            and outcome.status == "prepared"
+            and pending_action_id
             else "failed"
         ),
         "tool_calls": [PREFERENCE_WRITE_HANDOFF_TOOL_CALL],

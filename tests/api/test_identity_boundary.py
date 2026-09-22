@@ -99,7 +99,9 @@ async def test_trusted_header_identity_supplies_effective_user(monkeypatch) -> N
         captured.append(user_id)
         return {"answer": "ok", "status": "completed", "tool_calls": []}
 
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent
+    )
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(

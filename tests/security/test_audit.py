@@ -236,9 +236,7 @@ def test_missing_memory_audit_omits_unknown_kind_and_scope() -> None:
     )
 
     assert audit.decision == "not_found"
-    assert audit.metadata.model_dump(exclude_none=True) == {
-        "records_affected": 0
-    }
+    assert audit.metadata.model_dump(exclude_none=True) == {"records_affected": 0}
     serialized = _serialized(audit)
     assert "private-missing-memory-id" not in serialized
     assert "private-user-001" not in serialized

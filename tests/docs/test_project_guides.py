@@ -78,7 +78,9 @@ def test_machine_local_and_runtime_artifacts_are_ignored() -> None:
 
 def test_current_architecture_and_interview_material_cover_commerce() -> None:
     architecture = Path("docs/architecture.md").read_text(encoding="utf-8")
-    interview = Path("docs/interview_architecture_overview.md").read_text(encoding="utf-8")
+    interview = Path("docs/interview_architecture_overview.md").read_text(
+        encoding="utf-8"
+    )
     for term in (
         "Current Commerce Architecture",
         "Checkout, Payment, and Outbox transaction sequence",

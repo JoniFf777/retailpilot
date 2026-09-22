@@ -44,7 +44,12 @@ class SearchChannel(Protocol):
 class RepositoryVectorChannel:
     """Vector channel over the existing PostgreSQL/SQLite evidence repository."""
 
-    def __init__(self, session_factory: Callable, embed_query: Callable[[str], list[float]], name: str = "vector") -> None:
+    def __init__(
+        self,
+        session_factory: Callable,
+        embed_query: Callable[[str], list[float]],
+        name: str = "vector",
+    ) -> None:
         self._session_factory = session_factory
         self._embed_query = embed_query
         self.name = name
@@ -55,16 +60,30 @@ class RepositoryVectorChannel:
             embedding = self._embed_query(request.query)
             if request.product_ids:
                 rows = document_repository.search_product_documents_for_product_ids(
-                    session, embedding, product_ids=request.product_ids, evidence_version_ids=request.evidence_version_ids, k=request.limit
+                    session,
+                    embedding,
+                    product_ids=request.product_ids,
+                    evidence_version_ids=request.evidence_version_ids,
+                    k=request.limit,
                 )
             elif request.evidence_type == "store_policy":
-                rows = document_repository.search_policy_documents(session, embedding, evidence_version_ids=request.evidence_version_ids, k=request.limit)
+                rows = document_repository.search_policy_documents(
+                    session,
+                    embedding,
+                    evidence_version_ids=request.evidence_version_ids,
+                    k=request.limit,
+                )
             else:
                 rows = document_repository.search_documents(
                     session,
                     embedding,
-                    doc_type="policy" if request.evidence_type == "compatibility" else "product",
-                    k=request.limit, evidence_version_ids=request.evidence_version_ids,
+                    doc_type=(
+                        "policy"
+                        if request.evidence_type == "compatibility"
+                        else "product"
+                    ),
+                    k=request.limit,
+                    evidence_version_ids=request.evidence_version_ids,
                 )
             return [_with_evidence_type(row, request.evidence_type) for row in rows]
         finally:
@@ -84,7 +103,11 @@ class RepositoryLexicalChannel:
             rows = document_repository.search_keyword_documents(
                 session,
                 request.query,
-                doc_type="policy" if request.evidence_type in {"compatibility", "store_policy"} else "product",
+                doc_type=(
+                    "policy"
+                    if request.evidence_type in {"compatibility", "store_policy"}
+                    else "product"
+                ),
                 product_ids=request.product_ids if request.product_ids else None,
                 k=request.limit,
                 evidence_version_ids=request.evidence_version_ids,
@@ -99,7 +122,9 @@ class DisabledExternalChannel:
 
     def __init__(self, name: str) -> None:
         if name not in {"graph", "web_search"}:
-            raise ValueError("Only graph and web_search are optional external channels.")
+            raise ValueError(
+                "Only graph and web_search are optional external channels."
+            )
         self.name = name
 
     def search(self, request: SearchRequest) -> list[dict[str, Any]]:
@@ -122,7 +147,9 @@ def _with_evidence_type(value: dict[str, Any], evidence_type: str) -> dict[str, 
 class PostProcessor(Protocol):
     name: str
 
-    def process(self, candidates: list[dict[str, Any]], request: SearchRequest) -> list[dict[str, Any]]: ...
+    def process(
+        self, candidates: list[dict[str, Any]], request: SearchRequest
+    ) -> list[dict[str, Any]]: ...
 
 
 def normalize_candidates(
@@ -135,11 +162,20 @@ def normalize_candidates(
         metadata = value.get("metadata") or {}
         if not isinstance(metadata, dict):
             metadata = {}
-        if str(metadata.get("evidence_type") or value.get("evidence_type") or "") != request.evidence_type:
+        if (
+            str(metadata.get("evidence_type") or value.get("evidence_type") or "")
+            != request.evidence_type
+        ):
             continue
         scoped_products = set(metadata.get("product_ids") or ())
         product_id = value.get("product_id") or metadata.get("product_id")
-        if allowed_products and scoped_products and not allowed_products.intersection(scoped_products | {str(product_id or "")}):
+        if (
+            allowed_products
+            and scoped_products
+            and not allowed_products.intersection(
+                scoped_products | {str(product_id or "")}
+            )
+        ):
             continue
         value["metadata"] = metadata
         value.setdefault("evidence_type", request.evidence_type)
@@ -174,7 +210,9 @@ def rrf_fuse(
     scores: dict[str, float] = {}
     for ranked in ranked_lists:
         for rank, item in enumerate(ranked, start=1):
-            key = str(item.get("id") or item.get("source_path") or item.get("content", ""))
+            key = str(
+                item.get("id") or item.get("source_path") or item.get("content", "")
+            )
             fused.setdefault(key, dict(item))
             scores[key] = scores.get(key, 0.0) + 1.0 / (rrf_k + rank)
     ordered = sorted(fused, key=lambda key: (-scores[key], key))[:limit]
@@ -189,7 +227,9 @@ def rrf_fuse(
 class EvidenceGate:
     name = "evidence_gate"
 
-    def process(self, candidates: list[dict[str, Any]], request: SearchRequest) -> list[dict[str, Any]]:
+    def process(
+        self, candidates: list[dict[str, Any]], request: SearchRequest
+    ) -> list[dict[str, Any]]:
         allowed_products = set(request.product_ids)
         result: list[dict[str, Any]] = []
         for item in candidates:
@@ -198,7 +238,9 @@ class EvidenceGate:
                 continue
             if allowed_products:
                 scoped = set(metadata.get("product_ids") or ())
-                product_id = str(item.get("product_id") or metadata.get("product_id") or "")
+                product_id = str(
+                    item.get("product_id") or metadata.get("product_id") or ""
+                )
                 # A scoped recommendation query cannot trust a legacy chunk
                 # that lacks product identity; accepting it would let an old
                 # un-migrated document masquerade as evidence for any SKU.
@@ -206,18 +248,32 @@ class EvidenceGate:
                     continue
                 if not allowed_products.intersection(scoped | {product_id}):
                     continue
-            if request.policy_type and metadata.get("policy_type") not in {None, request.policy_type}:
+            if request.policy_type and metadata.get("policy_type") not in {
+                None,
+                request.policy_type,
+            }:
                 continue
             if request.region and metadata.get("region") not in {None, request.region}:
                 continue
-            if request.channel and metadata.get("channel") not in {None, request.channel}:
+            if request.channel and metadata.get("channel") not in {
+                None,
+                request.channel,
+            }:
                 continue
             now = datetime.now(timezone.utc)
             valid_from = metadata.get("valid_from")
             valid_until = metadata.get("valid_until")
             try:
-                parsed_from = datetime.fromisoformat(str(valid_from).replace("Z", "+00:00")) if valid_from else None
-                parsed_until = datetime.fromisoformat(str(valid_until).replace("Z", "+00:00")) if valid_until else None
+                parsed_from = (
+                    datetime.fromisoformat(str(valid_from).replace("Z", "+00:00"))
+                    if valid_from
+                    else None
+                )
+                parsed_until = (
+                    datetime.fromisoformat(str(valid_until).replace("Z", "+00:00"))
+                    if valid_until
+                    else None
+                )
             except ValueError:
                 continue
             if parsed_from and parsed_from.tzinfo is None:
@@ -237,13 +293,19 @@ class RerankPostProcessor:
 
     name = "rerank"
 
-    def __init__(self, reranker: Callable[[str, list[dict[str, Any]], int], list[Any]]) -> None:
+    def __init__(
+        self, reranker: Callable[[str, list[dict[str, Any]], int], list[Any]]
+    ) -> None:
         self._reranker = reranker
 
-    def process(self, candidates: list[dict[str, Any]], request: SearchRequest) -> list[dict[str, Any]]:
+    def process(
+        self, candidates: list[dict[str, Any]], request: SearchRequest
+    ) -> list[dict[str, Any]]:
         proposed = self._reranker(request.query, candidates, request.limit)
         by_key = {
-            str(item.get("id") or item.get("source_path") or item.get("content", "")): item
+            str(
+                item.get("id") or item.get("source_path") or item.get("content", "")
+            ): item
             for item in candidates
         }
         result: list[dict[str, Any]] = []
@@ -272,10 +334,14 @@ class RetrievalPipeline:
         self._post_processors = tuple(post_processors or [EvidenceGate()])
         self._executor = executor
 
-    def search(self, request: SearchRequest) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    def search(
+        self, request: SearchRequest
+    ) -> tuple[list[dict[str, Any]], dict[str, str]]:
         statuses: dict[str, str] = {}
         futures = []
-        executor = self._executor or ThreadPoolExecutor(max_workers=max(1, len(self._channels)))
+        executor = self._executor or ThreadPoolExecutor(
+            max_workers=max(1, len(self._channels))
+        )
         owns_executor = self._executor is None
         try:
             for channel in self._channels:

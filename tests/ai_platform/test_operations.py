@@ -7,14 +7,30 @@ from app.db.models import GovernanceAuditRecord
 
 
 def test_trace_projection_excludes_payload_content():
-    result = project_trace([{
-        "sequence": 1,
-        "event_type": "tool.completed",
-        "agent_name": "rag_agent",
-        "visibility": "client",
-        "payload": {"status": "completed", "message": "private text", "tool_arguments": {"secret": "x"}},
-    }])
-    assert result == [{"sequence": 1, "event_type": "tool.completed", "agent_name": "rag_agent", "visibility": "client", "status": "completed"}]
+    result = project_trace(
+        [
+            {
+                "sequence": 1,
+                "event_type": "tool.completed",
+                "agent_name": "rag_agent",
+                "visibility": "client",
+                "payload": {
+                    "status": "completed",
+                    "message": "private text",
+                    "tool_arguments": {"secret": "x"},
+                },
+            }
+        ]
+    )
+    assert result == [
+        {
+            "sequence": 1,
+            "event_type": "tool.completed",
+            "agent_name": "rag_agent",
+            "visibility": "client",
+            "status": "completed",
+        }
+    ]
 
 
 def test_admin_operation_can_emit_pii_safe_governance_fact():

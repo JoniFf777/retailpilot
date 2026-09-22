@@ -219,7 +219,10 @@ def test_alembic_revision_ids_fit_default_version_table():
     for revision_file in revision_files:
         module = ast.parse(revision_file.read_text(encoding="utf-8"))
         for statement in module.body:
-            if isinstance(statement, ast.AnnAssign) and statement.target.id == "revision":
+            if (
+                isinstance(statement, ast.AnnAssign)
+                and statement.target.id == "revision"
+            ):
                 revision_ids.append(ast.literal_eval(statement.value))
                 break
 

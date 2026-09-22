@@ -101,9 +101,7 @@ def test_trusted_header_identity_fails_closed_for_invalid_subject() -> None:
         trusted_subject="x" * 129,
     )
 
-    assert boundary.authentication_failure == (
-        IdentityAuthenticationFailure.INVALID
-    )
+    assert boundary.authentication_failure == (IdentityAuthenticationFailure.INVALID)
     with pytest.raises(AuthenticationRequiredError) as raised:
         boundary.bind_user(None, require_user=False)
     assert raised.value.failure == IdentityAuthenticationFailure.INVALID
@@ -136,9 +134,7 @@ def test_signed_header_identity_authenticates_once_and_binds_owner() -> None:
         clock=lambda: SIGNED_NOW,
         **headers,
     )
-    assert replayed.authentication_failure == (
-        IdentityAuthenticationFailure.REPLAYED
-    )
+    assert replayed.authentication_failure == (IdentityAuthenticationFailure.REPLAYED)
     with pytest.raises(AuthenticationRequiredError) as raised:
         replayed.bind_user("signed-user", require_user=True)
     assert raised.value.failure == IdentityAuthenticationFailure.REPLAYED

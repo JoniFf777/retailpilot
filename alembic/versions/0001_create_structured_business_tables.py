@@ -79,22 +79,14 @@ def upgrade() -> None:
 
     op.create_table(
         "order_items",
-        sa.Column(
-            "order_item_id", sa.BigInteger(), sa.Identity(), nullable=False
-        ),
+        sa.Column("order_item_id", sa.BigInteger(), sa.Identity(), nullable=False),
         sa.Column("order_id", sa.String(), nullable=False),
         sa.Column("product_id", sa.String(), nullable=False),
         sa.Column("quantity", sa.Integer(), nullable=False),
         sa.Column("price_per_unit", sa.Numeric(10, 2), nullable=False),
-        sa.CheckConstraint(
-            "quantity > 0", name="ck_order_items_quantity_positive"
-        ),
-        sa.CheckConstraint(
-            "price_per_unit > 0", name="ck_order_items_price_positive"
-        ),
-        sa.ForeignKeyConstraint(
-            ["order_id"], ["orders.order_id"], ondelete="CASCADE"
-        ),
+        sa.CheckConstraint("quantity > 0", name="ck_order_items_quantity_positive"),
+        sa.CheckConstraint("price_per_unit > 0", name="ck_order_items_price_positive"),
+        sa.ForeignKeyConstraint(["order_id"], ["orders.order_id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["product_id"], ["products.product_id"]),
         sa.PrimaryKeyConstraint("order_item_id"),
     )
@@ -125,9 +117,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "idx_user_preferences_user", "user_preferences", ["user_id"]
-    )
+    op.create_index("idx_user_preferences_user", "user_preferences", ["user_id"])
 
     op.create_table(
         "cart_items",
@@ -160,7 +150,9 @@ def upgrade() -> None:
         sa.Column("user_id", sa.String(), nullable=False),
         sa.Column("thread_id", sa.String(), nullable=True),
         sa.Column("action_type", sa.String(), nullable=False),
-        sa.Column("payload_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "payload_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False
+        ),
         sa.Column("status", sa.String(), nullable=False),
         sa.Column(
             "created_at",

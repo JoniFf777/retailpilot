@@ -62,9 +62,7 @@ def make_action_record(
 
 def test_append_and_reload_preserves_typed_contract_and_default_retention():
     session = make_session()
-    record = make_action_record(
-        audit_id="00000000-0000-0000-0000-000000000101"
-    )
+    record = make_action_record(audit_id="00000000-0000-0000-0000-000000000101")
 
     appended = append_governance_audit_record(
         session,
@@ -129,9 +127,7 @@ def test_owner_inspection_is_exact_bounded_filtered_and_newest_first():
 
 def test_cross_owner_lookup_never_returns_a_record():
     session = make_session()
-    record = make_action_record(
-        audit_id="00000000-0000-0000-0000-000000000105"
-    )
+    record = make_action_record(audit_id="00000000-0000-0000-0000-000000000105")
     append_governance_audit_record(session, record=record, now=BASE_TIME)
     session.commit()
     other_owner = governance_fingerprint(
@@ -192,9 +188,7 @@ def test_expired_records_are_hidden_then_pruned():
 
 def test_append_is_immutable_and_rejects_duplicate_audit_id():
     session = make_session()
-    record = make_action_record(
-        audit_id="00000000-0000-0000-0000-000000000108"
-    )
+    record = make_action_record(audit_id="00000000-0000-0000-0000-000000000108")
     append_governance_audit_record(session, record=record, now=BASE_TIME)
 
     with pytest.raises(GovernanceAuditConflictError, match="already exists"):

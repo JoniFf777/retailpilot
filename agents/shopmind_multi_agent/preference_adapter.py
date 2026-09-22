@@ -103,9 +103,11 @@ def preference_agent_adapter_node(
             agent_steps=list(state.get("agent_steps", [])),
         ).model_dump(mode="python"),
         context_references=[
-            reference
-            if isinstance(reference, MemoryReference)
-            else MemoryReference.model_validate(reference)
+            (
+                reference
+                if isinstance(reference, MemoryReference)
+                else MemoryReference.model_validate(reference)
+            )
             for reference in context_references
         ],
         trace_id=getattr(runtime_context, "trace_id", None) or str(uuid4()),
@@ -125,9 +127,9 @@ def preference_agent_adapter_node(
         },
     )
     result = invoke_agent_adapter(adapter, task)
-    node_output = PreferenceAgentTaskOutput.model_validate(result.output_data).model_dump(
-        mode="python"
-    )
+    node_output = PreferenceAgentTaskOutput.model_validate(
+        result.output_data
+    ).model_dump(mode="python")
     node_output["delegated_usage"] = [
         *state.get("delegated_usage", []),
         result.usage.model_dump(mode="python"),

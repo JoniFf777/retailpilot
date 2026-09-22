@@ -182,7 +182,10 @@ def search_products(
             f"请基于数据库结果回答，不要凭空编造商品。"
         )
 
-    lines = [_format_product_line(product, index) for index, product in enumerate(products, 1)]
+    lines = [
+        _format_product_line(product, index)
+        for index, product in enumerate(products, 1)
+    ]
     return (
         f"找到 {len(products)} 个符合条件的商品：\n"
         f"筛选条件：{filter_summary}\n\n"
@@ -259,7 +262,9 @@ def compare_products(product_identifiers: Sequence[str]) -> str:
         missing_text = "、".join(missing_identifiers)
         response_parts.append(f"未找到以下商品：{missing_text}。请检查商品 ID 或名称。")
 
-    response_parts.append("以上信息来自商品数据库，请不要凭空补充数据库中不存在的商品信息。")
+    response_parts.append(
+        "以上信息来自商品数据库，请不要凭空补充数据库中不存在的商品信息。"
+    )
     return "\n\n".join(response_parts)
 
 

@@ -79,7 +79,5 @@ def build_runtime_budget(settings: Any) -> RunBudget:
         max_total_tokens=_optional_setting(
             settings, "shopmind_runtime_max_total_tokens"
         ),
-        max_cost_usd=_optional_float_setting(
-            settings, "shopmind_runtime_max_cost_usd"
-        ),
+        max_cost_usd=_optional_float_setting(settings, "shopmind_runtime_max_cost_usd"),
     )

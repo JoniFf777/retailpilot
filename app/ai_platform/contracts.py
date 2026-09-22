@@ -92,10 +92,18 @@ class ShoppingEvidenceDescriptor(_Contract):
         if self.evidence_type == EvidenceType.PRODUCT_GUIDE and not (
             self.scope.product_ids or self.scope.sku_codes or self.scope.category_code
         ):
-            raise ValueError("Product guides require a product, SKU, or category scope.")
-        if self.evidence_type == EvidenceType.BUYING_GUIDE and not self.scope.category_code:
+            raise ValueError(
+                "Product guides require a product, SKU, or category scope."
+            )
+        if (
+            self.evidence_type == EvidenceType.BUYING_GUIDE
+            and not self.scope.category_code
+        ):
             raise ValueError("Buying guides require a category scope.")
-        if self.evidence_type == EvidenceType.STORE_POLICY and not self.scope.policy_type:
+        if (
+            self.evidence_type == EvidenceType.STORE_POLICY
+            and not self.scope.policy_type
+        ):
             raise ValueError("Store policies require a policy type.")
         if self.evidence_type == EvidenceType.COMPATIBILITY and not (
             self.scope.compatibility_keys

@@ -15,7 +15,12 @@ from sqlalchemy import create_engine, event, inspect, select, text, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.cart.models import ShopMindCartItem
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.core.settings import Settings, get_settings
 from app.outbox.contracts import (
     OutboxEventEnvelope,
@@ -33,7 +38,11 @@ from app.outbox.repository import (
     reclaim_expired,
     redrive_event,
 )
-from app.orders.models import ShopMindInventoryReservation, ShopMindOrder, ShopMindOrderItem
+from app.orders.models import (
+    ShopMindInventoryReservation,
+    ShopMindOrder,
+    ShopMindOrderItem,
+)
 from app.payments.models import ShopMindPaymentAttempt
 from app.payments.providers import ProviderOutcome
 from app.repositories.shopmind_cart import upsert_cart_item
@@ -67,12 +76,12 @@ def _bootstrap_private_schema(engine, schema: str) -> None:
         connection.execute(
             text(
                 f'CREATE TABLE "{schema}".alembic_version '
-                '(version_num VARCHAR(32) NOT NULL PRIMARY KEY)'
+                "(version_num VARCHAR(32) NOT NULL PRIMARY KEY)"
             )
         )
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".pending_actions (
+                f"""CREATE TABLE "{schema}".pending_actions (
                     id VARCHAR PRIMARY KEY,
                     user_id VARCHAR(128) NOT NULL,
                     thread_id VARCHAR,
@@ -85,7 +94,7 @@ def _bootstrap_private_schema(engine, schema: str) -> None:
                     metadata_json JSONB NOT NULL DEFAULT '{{}}'::jsonb,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                )'''
+                )"""
             )
         )
         connection.commit()
@@ -121,7 +130,9 @@ def phase6_factory():
         engine.dispose()
 
 
-def _event(*, aggregate_id: UUID, sequence: int, event_type: str = "shopmind.order.created.v1"):
+def _event(
+    *, aggregate_id: UUID, sequence: int, event_type: str = "shopmind.order.created.v1"
+):
     return OutboxEventEnvelope(
         event_id=uuid4(),
         event_type=event_type,
@@ -143,15 +154,33 @@ def _seed_order(
         code=f"p6-{uuid4().hex}", name="Phase 6", status="active", managed_by_seed=False
     )
     product = CatalogProduct(
-        product_code=f"P6-{uuid4().hex}", category=category, brand="ShopMind",
-        name="Phase 6 Product", sale_status="active", attributes_json={}, managed_by_seed=False
+        product_code=f"P6-{uuid4().hex}",
+        category=category,
+        brand="ShopMind",
+        name="Phase 6 Product",
+        sale_status="active",
+        attributes_json={},
+        managed_by_seed=False,
     )
     sku = CatalogSku(
-        product=product, sku_code=f"P6-SKU-{uuid4().hex}", name="Variant",
-        money_amount=Decimal("10.00"), currency="CNY", sale_status="active",
-        variant_attributes_json={}, managed_by_seed=False
+        product=product,
+        sku_code=f"P6-SKU-{uuid4().hex}",
+        name="Variant",
+        money_amount=Decimal("10.00"),
+        currency="CNY",
+        sale_status="active",
+        variant_attributes_json={},
+        managed_by_seed=False,
     )
-    session.add_all([product, sku, CatalogInventory(sku=sku, on_hand_quantity=2, reserved_quantity=0, version=0)])
+    session.add_all(
+        [
+            product,
+            sku,
+            CatalogInventory(
+                sku=sku, on_hand_quantity=2, reserved_quantity=0, version=0
+            ),
+        ]
+    )
     session.flush()
     sku_id = sku.id
     upsert_cart_item(session, user_id=user_id, sku_id=sku.id, quantity=1)
@@ -197,7 +226,9 @@ def _complete_provider_success(factory, *, user_id: str, order_id: UUID) -> UUID
     )
     persist_provider_outcome(session, attempt_id=claim.attempt_id, outcome=outcome)
     session.commit()
-    finalize_payment(session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id)
+    finalize_payment(
+        session, user_id=user_id, order_id=order_id, attempt_id=claim.attempt_id
+    )
     session.commit()
     session.close()
     return claim.attempt_id
@@ -207,7 +238,10 @@ def test_migration_roundtrip_and_schema_constraints(phase6_factory) -> None:
     factory, engine = phase6_factory
     with engine.connect() as connection:
         inspector = inspect(connection)
-        columns = {column["name"]: column for column in inspector.get_columns("shopmind_outbox_events")}
+        columns = {
+            column["name"]: column
+            for column in inspector.get_columns("shopmind_outbox_events")
+        }
         assert set(columns) == {
             "id",
             "aggregate_type",
@@ -252,10 +286,14 @@ def test_migration_roundtrip_and_schema_constraints(phase6_factory) -> None:
             "broker_message_id",
             "published_at",
         }
-        assert {constraint["name"] for constraint in inspector.get_unique_constraints("shopmind_outbox_events")} == {
-            "uq_shopmind_outbox_aggregate_sequence"
+        assert {
+            constraint["name"]
+            for constraint in inspector.get_unique_constraints("shopmind_outbox_events")
+        } == {"uq_shopmind_outbox_aggregate_sequence"}
+        check_names = {
+            constraint["name"]
+            for constraint in inspector.get_check_constraints("shopmind_outbox_events")
         }
-        check_names = {constraint["name"] for constraint in inspector.get_check_constraints("shopmind_outbox_events")}
         assert {
             "ck_shopmind_outbox_aggregate_sequence_positive",
             "ck_shopmind_outbox_event_version_positive",
@@ -265,7 +303,10 @@ def test_migration_roundtrip_and_schema_constraints(phase6_factory) -> None:
             "ck_shopmind_outbox_lease_state",
             "ck_shopmind_outbox_published_state",
         } == check_names
-        indexes = {index["name"]: index for index in inspector.get_indexes("shopmind_outbox_events")}
+        indexes = {
+            index["name"]: index
+            for index in inspector.get_indexes("shopmind_outbox_events")
+        }
         assert {
             "idx_shopmind_outbox_claim",
             "idx_shopmind_outbox_aggregate_order",
@@ -336,19 +377,35 @@ def test_bounded_outbox_operational_snapshot_hides_payload(phase6_factory) -> No
     session.close()
 
 
-def test_same_aggregate_ordering_and_different_aggregate_parallel(phase6_factory) -> None:
+def test_same_aggregate_ordering_and_different_aggregate_parallel(
+    phase6_factory,
+) -> None:
     factory, _engine = phase6_factory
     aggregate_a = uuid4()
     aggregate_b = uuid4()
     session = factory()
     enqueue_event(session, _event(aggregate_id=aggregate_a, sequence=1))
-    enqueue_event(session, _event(aggregate_id=aggregate_a, sequence=2, event_type="shopmind.order.cancelled.v1"))
+    enqueue_event(
+        session,
+        _event(
+            aggregate_id=aggregate_a,
+            sequence=2,
+            event_type="shopmind.order.cancelled.v1",
+        ),
+    )
     enqueue_event(session, _event(aggregate_id=aggregate_b, sequence=1))
     session.commit()
 
     first = claim_pending(session, batch_size=10, lease_seconds=60)
-    assert {claim.envelope.aggregate_id for claim in first} == {aggregate_a, aggregate_b}
-    assert [claim.envelope.aggregate_sequence for claim in first if claim.envelope.aggregate_id == aggregate_a] == [1]
+    assert {claim.envelope.aggregate_id for claim in first} == {
+        aggregate_a,
+        aggregate_b,
+    }
+    assert [
+        claim.envelope.aggregate_sequence
+        for claim in first
+        if claim.envelope.aggregate_id == aggregate_a
+    ] == [1]
     session.commit()
 
     for claim in first:
@@ -360,7 +417,10 @@ def test_same_aggregate_ordering_and_different_aggregate_parallel(phase6_factory
         )
     session.commit()
     second = claim_pending(session, batch_size=10, lease_seconds=60)
-    assert [(claim.envelope.aggregate_id, claim.envelope.aggregate_sequence) for claim in second] == [(aggregate_a, 2)]
+    assert [
+        (claim.envelope.aggregate_id, claim.envelope.aggregate_sequence)
+        for claim in second
+    ] == [(aggregate_a, 2)]
     session.rollback()
     session.close()
 
@@ -558,7 +618,11 @@ def test_outbox_publisher_republishes_same_envelope_after_mark_crash(
     assert rows[0].attempt_count == 2
     assert rows[0].last_error is None
     assert rows[0].broker_message_id == "broker-message-after-retry"
-    publish_logs = [fields for event_name, fields in events if event_name == "outbox.publish.succeeded"]
+    publish_logs = [
+        fields
+        for event_name, fields in events
+        if event_name == "outbox.publish.succeeded"
+    ]
     assert publish_logs
     assert str(publish_logs[-1]["outbox_event_id"]) == str(event_id)
     assert str(publish_logs[-1]["aggregate_id"]) == str(aggregate_id)
@@ -651,13 +715,16 @@ def test_outbox_publisher_persists_only_safe_failure_diagnostic(
             assert secret not in log_text
 
         failed_logs = [
-            fields for event_name, fields in events
+            fields
+            for event_name, fields in events
             if event_name == "outbox.publish.failed"
         ]
         assert failed_logs
         assert failed_logs[-1]["error_code"] == "publish_failed"
         assert failed_logs[-1]["error_class"] == "RuntimeError"
-        assert failed_logs[-1]["error_message"] == "RocketMQ publish failed (RuntimeError)"
+        assert (
+            failed_logs[-1]["error_message"] == "RocketMQ publish failed (RuntimeError)"
+        )
     finally:
         session.close()
 
@@ -703,7 +770,14 @@ def test_dead_letter_blocks_and_operator_redrive_unblocks(phase6_factory) -> Non
     aggregate_id = uuid4()
     session = factory()
     first_event = enqueue_event(session, _event(aggregate_id=aggregate_id, sequence=1))
-    enqueue_event(session, _event(aggregate_id=aggregate_id, sequence=2, event_type="shopmind.order.cancelled.v1"))
+    enqueue_event(
+        session,
+        _event(
+            aggregate_id=aggregate_id,
+            sequence=2,
+            event_type="shopmind.order.cancelled.v1",
+        ),
+    )
     session.commit()
     claim = claim_pending(session, batch_size=1, lease_seconds=60)[0]
     session.commit()
@@ -758,22 +832,30 @@ def test_create_cancel_and_payment_events_are_transactional(phase6_factory) -> N
     assert len(cancelled) == 1
     assert cancelled_order is not None
     assert cancelled[0].aggregate_sequence == cancelled_order.version
-    assert session.scalar(
-        select(ShopMindOutboxEvent.id).where(
-            ShopMindOutboxEvent.aggregate_id == order_id,
-            ShopMindOutboxEvent.event_type == "shopmind.order.cancelled.v1",
+    assert (
+        session.scalar(
+            select(ShopMindOutboxEvent.id).where(
+                ShopMindOutboxEvent.aggregate_id == order_id,
+                ShopMindOutboxEvent.event_type == "shopmind.order.cancelled.v1",
+            )
         )
-    ) is not None
-    assert session.scalar(
-        select(ShopMindOutboxEvent.occurred_at).where(
-            ShopMindOutboxEvent.aggregate_id == order_id,
-            ShopMindOutboxEvent.event_type == "shopmind.order.created.v1",
+        is not None
+    )
+    assert (
+        session.scalar(
+            select(ShopMindOutboxEvent.occurred_at).where(
+                ShopMindOutboxEvent.aggregate_id == order_id,
+                ShopMindOutboxEvent.event_type == "shopmind.order.created.v1",
+            )
         )
-    ) == occurred_at
+        == occurred_at
+    )
     session.close()
 
 
-def test_create_rollback_removes_business_facts_and_outbox_event(phase6_factory) -> None:
+def test_create_rollback_removes_business_facts_and_outbox_event(
+    phase6_factory,
+) -> None:
     factory, _engine = phase6_factory
     order_id, sku_id = _seed_order(
         factory,
@@ -782,14 +864,19 @@ def test_create_rollback_removes_business_facts_and_outbox_event(phase6_factory)
     )
     session = factory()
     assert session.get(ShopMindOrder, order_id) is None
-    assert session.scalars(
-        select(ShopMindOutboxEvent).where(
-            ShopMindOutboxEvent.aggregate_id == order_id,
-        )
-    ).all() == []
+    assert (
+        session.scalars(
+            select(ShopMindOutboxEvent).where(
+                ShopMindOutboxEvent.aggregate_id == order_id,
+            )
+        ).all()
+        == []
+    )
     assert session.scalars(select(ShopMindInventoryReservation)).all() == []
     cart_items = session.scalars(
-        select(ShopMindCartItem).where(ShopMindCartItem.user_id == "phase6-rollback-user")
+        select(ShopMindCartItem).where(
+            ShopMindCartItem.user_id == "phase6-rollback-user"
+        )
     ).all()
     assert len(cart_items) == 1
     assert cart_items[0].quantity == 1
@@ -803,11 +890,15 @@ def test_create_rollback_removes_business_facts_and_outbox_event(phase6_factory)
 def test_payment_success_event_commits_with_business_facts(phase6_factory) -> None:
     factory, _engine = phase6_factory
     order_id, _sku_id = _seed_order(factory)
-    attempt_id = _complete_provider_success(factory, user_id="phase6-user", order_id=order_id)
+    attempt_id = _complete_provider_success(
+        factory, user_id="phase6-user", order_id=order_id
+    )
     session = factory()
     order = session.get(ShopMindOrder, order_id)
     attempt = session.get(ShopMindPaymentAttempt, attempt_id)
-    reservation = session.scalar(select(ShopMindInventoryReservation).join(ShopMindOrderItem))
+    reservation = session.scalar(
+        select(ShopMindInventoryReservation).join(ShopMindOrderItem)
+    )
     events = session.scalars(
         select(ShopMindOutboxEvent).where(
             ShopMindOutboxEvent.aggregate_id == order_id,
@@ -820,16 +911,21 @@ def test_payment_success_event_commits_with_business_facts(phase6_factory) -> No
     assert len(events) == 1
     assert events[0].payload["payment_attempt_id"] == str(attempt_id)
     assert events[0].aggregate_sequence == order.version
-    finalize_payment(session, user_id="phase6-user", order_id=order_id, attempt_id=attempt_id)
+    finalize_payment(
+        session, user_id="phase6-user", order_id=order_id, attempt_id=attempt_id
+    )
     session.commit()
-    assert len(
-        session.scalars(
-            select(ShopMindOutboxEvent).where(
-                ShopMindOutboxEvent.aggregate_id == order_id,
-                ShopMindOutboxEvent.event_type == "shopmind.payment.succeeded.v1",
-            )
-        ).all()
-    ) == 1
+    assert (
+        len(
+            session.scalars(
+                select(ShopMindOutboxEvent).where(
+                    ShopMindOutboxEvent.aggregate_id == order_id,
+                    ShopMindOutboxEvent.event_type == "shopmind.payment.succeeded.v1",
+                )
+            ).all()
+        )
+        == 1
+    )
     session.close()
 
 
@@ -864,18 +960,28 @@ def test_payment_finalization_failure_has_no_success_event(phase6_factory) -> No
     )
     session.commit()
     with pytest.raises(PaymentServiceError):
-        finalize_payment(session, user_id="phase6-user", order_id=order_id, attempt_id=claim.attempt_id)
-    session.rollback()
-    assert session.scalar(
-        select(ShopMindOutboxEvent.id).where(
-            ShopMindOutboxEvent.aggregate_id == order_id,
-            ShopMindOutboxEvent.event_type == "shopmind.payment.succeeded.v1",
+        finalize_payment(
+            session,
+            user_id="phase6-user",
+            order_id=order_id,
+            attempt_id=claim.attempt_id,
         )
-    ) is None
+    session.rollback()
+    assert (
+        session.scalar(
+            select(ShopMindOutboxEvent.id).where(
+                ShopMindOutboxEvent.aggregate_id == order_id,
+                ShopMindOutboxEvent.event_type == "shopmind.payment.succeeded.v1",
+            )
+        )
+        is None
+    )
     session.close()
 
 
-def test_publish_failure_retries_without_mutating_business_facts(phase6_factory) -> None:
+def test_publish_failure_retries_without_mutating_business_facts(
+    phase6_factory,
+) -> None:
     factory, _engine = phase6_factory
     order_id, _sku_id = _seed_order(factory)
     session = factory()
@@ -900,7 +1006,9 @@ def test_publish_failure_retries_without_mutating_business_facts(phase6_factory)
     )
     session.commit()
     order = session.get(ShopMindOrder, order_id)
-    reservation = session.scalar(select(ShopMindInventoryReservation).join(ShopMindOrderItem))
+    reservation = session.scalar(
+        select(ShopMindInventoryReservation).join(ShopMindOrderItem)
+    )
     current = session.get(ShopMindOutboxEvent, event.id)
     assert order is not None and order.status == "pending_payment"
     assert reservation is not None and reservation.status == "active"

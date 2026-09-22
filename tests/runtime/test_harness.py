@@ -118,14 +118,22 @@ def test_harness_persists_only_canonical_recommendation_and_fingerprints_it():
     session_factory = make_session_factory()
     harness = ShopMindRuntimeHarness(session_factory=session_factory)
     recommendation = {
-        "outcome": "no_match", "ranking_policy_version": "v1", "request_summary": "x",
-        "structured_constraints": {}, "no_match_reason": "none",
+        "outcome": "no_match",
+        "ranking_policy_version": "v1",
+        "request_summary": "x",
+        "structured_constraints": {},
+        "no_match_reason": "none",
     }
     result = harness.run(
-        RunRequest(operation=RunOperation.CHAT, user_id="user-1", idempotency_key="rec-idem"),
+        RunRequest(
+            operation=RunOperation.CHAT, user_id="user-1", idempotency_key="rec-idem"
+        ),
         lambda context: {
-            "answer": "none", "status": "completed", "recommendation": recommendation,
-            "raw_result": {"secret": "raw"}, "recommendation_diagnostics": {"secret": "diagnostic"},
+            "answer": "none",
+            "status": "completed",
+            "recommendation": recommendation,
+            "raw_result": {"secret": "raw"},
+            "recommendation_diagnostics": {"secret": "diagnostic"},
         },
     )
     assert result.output_data == {"recommendation": recommendation}
@@ -144,7 +152,11 @@ def test_harness_fails_before_persistence_when_recommendation_contract_is_invali
     harness = ShopMindRuntimeHarness(session_factory=session_factory)
     result = harness.run(
         RunRequest(operation=RunOperation.CHAT, user_id="user-1"),
-        lambda context: {"answer": "bad", "status": "completed", "recommendation": {"outcome": "recommended"}},
+        lambda context: {
+            "answer": "bad",
+            "status": "completed",
+            "recommendation": {"outcome": "recommended"},
+        },
         raise_on_error=False,
     )
     assert result.status == RunStatus.FAILED

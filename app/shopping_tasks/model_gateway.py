@@ -19,9 +19,22 @@ from langchain.chat_models import init_chat_model
 from app.ai_platform.contracts import ModelOperation
 from app.ai_platform.model_registry import default_model_registry
 from app.ai_platform.resilience import ModelGateway, ModelInvocation, SharedAIBudget
-from app.runtime import RunMode, RunOperation, RunRequest, ShopMindRuntimeHarness, build_runtime_budget, build_runtime_policy
+from app.runtime import (
+    RunMode,
+    RunOperation,
+    RunRequest,
+    ShopMindRuntimeHarness,
+    build_runtime_budget,
+    build_runtime_policy,
+)
 
-from .contracts import GoalSpec, PlanProposal, PlanStep, VerificationIssue, VerificationReport
+from .contracts import (
+    GoalSpec,
+    PlanProposal,
+    PlanStep,
+    VerificationIssue,
+    VerificationReport,
+)
 from .planner import assert_valid_plan, offline_plan
 
 
@@ -76,12 +89,21 @@ def _prompt(goal: GoalSpec, baseline: PlanProposal) -> list[dict[str, str]]:
         },
         {
             "role": "user",
-            "content": json.dumps({"goal": goal.model_dump(mode="json"), "baseline": baseline.model_dump(mode="json")}, ensure_ascii=False, sort_keys=True),
+            "content": json.dumps(
+                {
+                    "goal": goal.model_dump(mode="json"),
+                    "baseline": baseline.model_dump(mode="json"),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
         },
     ]
 
 
-def _invoke_structured(candidate, goal: GoalSpec, baseline: PlanProposal) -> PlanProposal:
+def _invoke_structured(
+    candidate, goal: GoalSpec, baseline: PlanProposal
+) -> PlanProposal:
     started = perf_counter()
     llm = _chat_model(candidate, max_tokens=2500)
     proposal = _json_response(llm.invoke(_prompt(goal, baseline)))
@@ -143,7 +165,10 @@ def _coerce_plan_response(
         assert_valid_plan(result, goal=goal)
     except ValueError:
         result = baseline.model_copy(
-            update={"mode": "agent", "reason": "structured_gateway_plan:policy_normalized"}
+            update={
+                "mode": "agent",
+                "reason": "structured_gateway_plan:policy_normalized",
+            }
         )
     return result
 
@@ -162,7 +187,9 @@ def plan_with_gateway(
         del context
         invocation = gateway.execute(
             ModelOperation.PLANNER,
-            lambda candidate: ModelInvocation(value=_invoke_structured(candidate, goal, baseline)),
+            lambda candidate: ModelInvocation(
+                value=_invoke_structured(candidate, goal, baseline)
+            ),
         )
         return {"task_planner": invocation.value.model_dump(mode="json")}
 
@@ -178,7 +205,9 @@ def plan_with_gateway(
     )
     try:
         result = ShopMindRuntimeHarness().run(request, executor, raise_on_error=False)
-        if result.error is None and isinstance(result.output_data.get("task_planner"), dict):
+        if result.error is None and isinstance(
+            result.output_data.get("task_planner"), dict
+        ):
             return PlanProposal.model_validate(result.output_data["task_planner"])
         if result.error is not None:
             reason = f"gateway_error:{getattr(result.error, 'code', 'unknown')}"
@@ -186,7 +215,9 @@ def plan_with_gateway(
             reason = "gateway_error:invalid_harness_output"
     except Exception as exc:
         reason = type(exc).__name__
-    return baseline.model_copy(update={"mode": "agent", "reason": f"agent_fallback:{reason}"})
+    return baseline.model_copy(
+        update={"mode": "agent", "reason": f"agent_fallback:{reason}"}
+    )
 
 
 def _review_prompt(
@@ -233,7 +264,9 @@ def _bounded_review_context(task_output: dict[str, Any]) -> dict[str, Any]:
     for key in sorted(task_output):
         if remaining <= 0:
             break
-        encoded = json.dumps(task_output[key], ensure_ascii=False, sort_keys=True, default=str)
+        encoded = json.dumps(
+            task_output[key], ensure_ascii=False, sort_keys=True, default=str
+        )
         chunk = encoded[: min(600, remaining)]
         try:
             bounded[key] = json.loads(chunk)
@@ -271,7 +304,9 @@ def _coerce_review_response(payload: dict[str, Any]) -> VerificationReport:
             if not isinstance(raw, dict):
                 continue
             code = str(raw.get("code") or f"reviewer_issue_{index + 1}")[:128]
-            message = str(raw.get("message") or "模型复核发现需要进一步检查的结果。")[:1000]
+            message = str(raw.get("message") or "模型复核发现需要进一步检查的结果。")[
+                :1000
+            ]
             issues.append(
                 VerificationIssue(
                     code=code,
@@ -295,9 +330,11 @@ def _json_response(message: Any) -> dict[str, Any]:
     content = getattr(message, "content", message)
     if isinstance(content, list):
         content = "\n".join(
-            str(item.get("text") or item.get("content") or "")
-            if isinstance(item, dict)
-            else str(item)
+            (
+                str(item.get("text") or item.get("content") or "")
+                if isinstance(item, dict)
+                else str(item)
+            )
             for item in content
         )
     text = str(content or "").strip()

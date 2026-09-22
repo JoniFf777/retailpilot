@@ -22,7 +22,9 @@ def main() -> int:
     parts = urlsplit(base)
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     query["options"] = f"-csearch_path={args.schema},public"
-    os.environ["DATABASE_URL"] = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+    os.environ["DATABASE_URL"] = urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+    )
     os.environ["LANGSMITH_TRACING"] = "false"
     get_settings.cache_clear()
     from app.db.session import SessionLocal

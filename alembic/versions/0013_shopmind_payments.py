@@ -65,16 +65,30 @@ def upgrade() -> None:
         sa.Column("idempotency_key", sa.String(length=128), nullable=False),
         sa.Column("request_hash", sa.String(length=64), nullable=False),
         sa.Column("failure_code", sa.String(length=64), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
         sa.Column("provider_result_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.CheckConstraint("provider IN ('mock')", name="ck_shopmind_payment_attempts_provider"),
+        sa.CheckConstraint(
+            "provider IN ('mock')", name="ck_shopmind_payment_attempts_provider"
+        ),
         sa.CheckConstraint(
             "status IN ('processing', 'unknown', 'provider_succeeded', 'failed', 'succeeded')",
             name="ck_shopmind_payment_attempts_status",
         ),
-        sa.CheckConstraint("amount > 0", name="ck_shopmind_payment_attempts_amount_positive"),
+        sa.CheckConstraint(
+            "amount > 0", name="ck_shopmind_payment_attempts_amount_positive"
+        ),
         sa.CheckConstraint(
             "length(currency) = 3 AND currency = upper(currency)",
             name="ck_shopmind_payment_attempts_currency",
@@ -104,11 +118,14 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
-            "user_id", "order_id", "idempotency_key",
+            "user_id",
+            "order_id",
+            "idempotency_key",
             name="uq_shopmind_payment_attempts_user_order_key",
         ),
         sa.UniqueConstraint(
-            "provider", "provider_idempotency_key",
+            "provider",
+            "provider_idempotency_key",
             name="uq_shopmind_payment_attempts_provider_key",
         ),
     )

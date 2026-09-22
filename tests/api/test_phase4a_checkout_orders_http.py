@@ -14,7 +14,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.api.routes import checkout as checkout_route
 from app.api.routes import orders as orders_route
 from app.cart.models import ShopMindCartItem
-from app.checkout.tokens import CheckoutPriceLine, build_cart_fingerprint, create_checkout_token
+from app.checkout.tokens import (
+    CheckoutPriceLine,
+    build_cart_fingerprint,
+    create_checkout_token,
+)
 from app.core.settings import Settings
 from app.db.base import Base
 from app.db.session import get_db_session
@@ -99,11 +103,15 @@ async def test_orders_http_trusted_identity_full_lifecycle_and_typed_errors(
             assert invalid.status_code == 409
             assert invalid.json()["code"] == "checkout_invalid"
 
-            missing_key = await client.post("/api/orders", json={"checkout_token": "missing-key"})
+            missing_key = await client.post(
+                "/api/orders", json={"checkout_token": "missing-key"}
+            )
             assert missing_key.status_code == 422
             assert "detail" in missing_key.json()
 
-            body_owner = await client.post("/api/checkout/preview", json={"user_id": "other"})
+            body_owner = await client.post(
+                "/api/checkout/preview", json={"user_id": "other"}
+            )
             assert body_owner.status_code == 422
 
             body_owner_order = await client.post(
@@ -116,9 +124,20 @@ async def test_orders_http_trusted_identity_full_lifecycle_and_typed_errors(
             expired = create_checkout_token(
                 user_id="trusted-owner",
                 cart_fingerprint=build_cart_fingerprint(
-                    [{"cart_item_id": cart_item.id, "sku_id": sku_id, "quantity": 1, "version": 1}]
+                    [
+                        {
+                            "cart_item_id": cart_item.id,
+                            "sku_id": sku_id,
+                            "quantity": 1,
+                            "version": 1,
+                        }
+                    ]
                 ),
-                price_lines=[CheckoutPriceLine(sku_id=sku_id, unit_price_amount="5999.00", currency="CNY")],
+                price_lines=[
+                    CheckoutPriceLine(
+                        sku_id=sku_id, unit_price_amount="5999.00", currency="CNY"
+                    )
+                ],
                 currency="CNY",
                 subtotal_amount=Decimal("5999.00"),
                 secret="h" * 32,
@@ -171,21 +190,35 @@ async def test_orders_http_trusted_identity_full_lifecycle_and_typed_errors(
             assert replay.json()["idempotent_replay"] is True
 
             listed = await client.get("/api/orders")
-            assert listed.status_code == 200 and [row["order_id"] for row in listed.json()["items"]] == [order_id]
+            assert listed.status_code == 200 and [
+                row["order_id"] for row in listed.json()["items"]
+            ] == [order_id]
             detail = await client.get(f"/api/orders/{order_id}")
             assert detail.status_code == 200
 
             current_subject["value"] = "other-owner"
             hidden_detail = await client.get(f"/api/orders/{order_id}")
             hidden_cancel = await client.post(f"/api/orders/{order_id}/cancel")
-            assert (hidden_detail.status_code, hidden_detail.json()["code"]) == (404, "order_not_found")
-            assert (hidden_cancel.status_code, hidden_cancel.json()["code"]) == (404, "order_not_found")
+            assert (hidden_detail.status_code, hidden_detail.json()["code"]) == (
+                404,
+                "order_not_found",
+            )
+            assert (hidden_cancel.status_code, hidden_cancel.json()["code"]) == (
+                404,
+                "order_not_found",
+            )
 
             current_subject["value"] = "trusted-owner"
             cancelled = await client.post(f"/api/orders/{order_id}/cancel")
-            assert cancelled.status_code == 200 and cancelled.json()["idempotent_replay"] is False
+            assert (
+                cancelled.status_code == 200
+                and cancelled.json()["idempotent_replay"] is False
+            )
             cancelled_replay = await client.post(f"/api/orders/{order_id}/cancel")
-            assert cancelled_replay.status_code == 200 and cancelled_replay.json()["idempotent_replay"] is True
+            assert (
+                cancelled_replay.status_code == 200
+                and cancelled_replay.json()["idempotent_replay"] is True
+            )
     finally:
         app.dependency_overrides.clear()
 
@@ -203,12 +236,23 @@ async def test_checkout_http_development_query_compatibility_and_unavailable(
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            preview = await client.post("/api/checkout/preview", params={"user_id": "development-owner"}, json={})
-            assert preview.status_code == 200 and preview.json()["can_create_order"] is True
+            preview = await client.post(
+                "/api/checkout/preview",
+                params={"user_id": "development-owner"},
+                json={},
+            )
+            assert (
+                preview.status_code == 200
+                and preview.json()["can_create_order"] is True
+            )
             token = preview.json()["checkout_token"]
 
             monkeypatch.setattr(checkout_route, "get_settings", lambda: Settings())
-            unavailable = await client.post("/api/checkout/preview", params={"user_id": "development-owner"}, json={})
+            unavailable = await client.post(
+                "/api/checkout/preview",
+                params={"user_id": "development-owner"},
+                json={},
+            )
             assert unavailable.status_code == 503
             assert unavailable.json()["code"] == "checkout_unavailable"
 

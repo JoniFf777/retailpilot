@@ -176,9 +176,7 @@ def _signed_identity_case() -> dict[str, Any]:
     try:
         replayed.bind_user(owner_id, require_user=True)
     except AuthenticationRequiredError as exc:
-        replay_denied = (
-            exc.failure == IdentityAuthenticationFailure.REPLAYED
-        )
+        replay_denied = exc.failure == IdentityAuthenticationFailure.REPLAYED
 
     outcome = {
         "provider": str(boundary.provider_name),
@@ -192,9 +190,7 @@ def _signed_identity_case() -> dict[str, Any]:
         "provider_selected": (
             boundary.provider_name == IdentityProviderName.SIGNED_HEADER
         ),
-        "scheme_closed": (
-            boundary.authentication_scheme == "ShopMindSignedHeader"
-        ),
+        "scheme_closed": (boundary.authentication_scheme == "ShopMindSignedHeader"),
         "owner_bound": binding.effective_user_id == owner_id,
         "principal_typed": binding.principal.provider == "signed_header",
         "fingerprint_only": len(binding.principal.subject_fingerprint) == 64,
@@ -276,10 +272,7 @@ def _owner_memory_case() -> dict[str, Any]:
         finally:
             session.close()
 
-        trajectory = [
-            (row.operation, row.decision)
-            for row in audit_rows
-        ]
+        trajectory = [(row.operation, row.decision) for row in audit_rows]
         audit_projection = json.dumps(
             [
                 {
@@ -300,8 +293,7 @@ def _owner_memory_case() -> dict[str, Any]:
         }
         checks = {
             "inspection_exact_owner": (
-                [item.memory_id for item in snapshot.memories]
-                == [owner_memory_id]
+                [item.memory_id for item in snapshot.memories] == [owner_memory_id]
             ),
             "correction_explicit": (
                 correction is not None
@@ -311,15 +303,15 @@ def _owner_memory_case() -> dict[str, Any]:
             ),
             "cross_owner_blocked": cross_owner is None,
             "deletion_exact": (
-                deletion is not None
-                and deletion.memory_id == owner_memory_id
+                deletion is not None and deletion.memory_id == owner_memory_id
             ),
             "owner_memory_removed": deleted is None,
             "other_owner_retained": (
                 retained is not None
                 and retained.content_text == "private retained other-owner content"
             ),
-            "audit_trajectory": trajectory == [
+            "audit_trajectory": trajectory
+            == [
                 ("memory.inspect", "succeeded"),
                 ("memory.correct", "succeeded"),
                 ("memory.correct", "not_found"),
@@ -437,16 +429,12 @@ def _owner_full_deletion_case() -> dict[str, Any]:
             )
             other_memories = list(
                 session.scalars(
-                    select(MemoryRecord).where(
-                        MemoryRecord.user_id == other_owner
-                    )
+                    select(MemoryRecord).where(MemoryRecord.user_id == other_owner)
                 )
             )
             other_preferences = list(
                 session.scalars(
-                    select(UserPreference).where(
-                        UserPreference.user_id == other_owner
-                    )
+                    select(UserPreference).where(UserPreference.user_id == other_owner)
                 )
             )
             audit_rows = list(
@@ -460,10 +448,7 @@ def _owner_full_deletion_case() -> dict[str, Any]:
         finally:
             session.close()
 
-        trajectory = [
-            (row.operation, row.decision, row.reason)
-            for row in audit_rows
-        ]
+        trajectory = [(row.operation, row.decision, row.reason) for row in audit_rows]
         audit_projection = json.dumps(
             [
                 {
@@ -492,8 +477,7 @@ def _owner_full_deletion_case() -> dict[str, Any]:
                 and first.counts.candidate_contexts == 1
             ),
             "second_idempotent_by_effect": (
-                second.status == "already_deleted"
-                and second.records_affected == 0
+                second.status == "already_deleted" and second.records_affected == 0
             ),
             "request_identity_stable": (
                 first.deletion_request_id
@@ -502,10 +486,10 @@ def _owner_full_deletion_case() -> dict[str, Any]:
             ),
             "target_owner_removed": target_remaining == 0,
             "other_owner_retained": (
-                len(other_memories) == 1
-                and len(other_preferences) == 1
+                len(other_memories) == 1 and len(other_preferences) == 1
             ),
-            "audit_retained": trajectory == [
+            "audit_retained": trajectory
+            == [
                 ("deletion.execute", "skipped", "already_deleted"),
                 ("deletion.execute", "succeeded", "completed"),
                 ("deletion.request", "requested", "user_requested"),
@@ -577,8 +561,7 @@ def _audit_monitor_case() -> dict[str, Any]:
             and first_failure.consecutive_failures == 1
         ),
         "threshold_activates_once": (
-            second_failure.alert_activated
-            and second_failure.consecutive_failures == 2
+            second_failure.alert_activated and second_failure.consecutive_failures == 2
         ),
         "skip_does_not_recover": (
             not skipped.alert_recovered
@@ -600,8 +583,7 @@ def _audit_monitor_case() -> dict[str, Any]:
             and final.skipped_calls_total == 1
         ),
         "transition_counts": (
-            final.alert_transitions_total == 1
-            and final.recovery_transitions_total == 1
+            final.alert_transitions_total == 1 and final.recovery_transitions_total == 1
         ),
         "output_private_free": (
             "private" not in serialized
@@ -623,9 +605,7 @@ def _audit_persistence_case() -> dict[str, Any]:
         emitter = GovernanceAuditEmitter(session_factory, monitor=monitor)
         record = GovernanceAuditFactory(
             clock=lambda: NOW,
-            audit_id_factory=lambda: UUID(
-                "00000000-0000-0000-0000-000000000402"
-            ),
+            audit_id_factory=lambda: UUID("00000000-0000-0000-0000-000000000402"),
         ).action_decision(
             operation=AuditOperation.ACTION_CONFIRM,
             decision=AuditDecision.SUCCEEDED,
@@ -684,8 +664,7 @@ def _audit_persistence_case() -> dict[str, Any]:
                 and len(row.resource_fingerprint) == 64
             ),
             "metadata_allowlisted": (
-                row is not None
-                and row.metadata_json == {"action_type": "add_to_cart"}
+                row is not None and row.metadata_json == {"action_type": "add_to_cart"}
             ),
             "monitor_counts_commits": (
                 snapshot.emission_calls_total == 2
@@ -729,10 +708,7 @@ def replay_governance_lifecycle_case(scenario: str) -> dict[str, Any]:
 def evaluate_governance_lifecycle(
     scenarios: Sequence[str] = GOVERNANCE_LIFECYCLE_SCENARIOS,
 ) -> dict[str, Any]:
-    results = [
-        replay_governance_lifecycle_case(scenario)
-        for scenario in scenarios
-    ]
+    results = [replay_governance_lifecycle_case(scenario) for scenario in scenarios]
     total_checks = sum(result["total_checks"] for result in results)
     passed_checks = sum(result["checks_passed"] for result in results)
     passed_cases = sum(result["passed"] for result in results)
@@ -743,17 +719,13 @@ def evaluate_governance_lifecycle(
         "passed_cases": passed_cases,
         "total_checks": total_checks,
         "passed_checks": passed_checks,
-        "failures": [
-            result for result in results if not result["passed"]
-        ],
+        "failures": [result for result in results if not result["passed"]],
         "results": results,
     }
 
 
 def format_governance_lifecycle_summary(summary: Mapping[str, Any]) -> str:
-    failures = ", ".join(
-        result["name"] for result in summary["failures"]
-    ) or "none"
+    failures = ", ".join(result["name"] for result in summary["failures"]) or "none"
     return "\n".join(
         (
             "# ShopMind Governance Lifecycle Evaluation",

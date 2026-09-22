@@ -113,11 +113,7 @@ def route_dispatcher_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
     for route in routes:
         if route not in executed_routes:
             plan_step_id = next(
-                (
-                    step.step_id
-                    for step in plan.steps
-                    if step.recipient == route
-                ),
+                (step.step_id for step in plan.steps if step.recipient == route),
                 None,
             )
             return {
@@ -173,9 +169,11 @@ def parallel_read_executor_node(
         isolated_state = build_isolated_step_state(state, step)
         output = specialist_nodes[step.recipient](isolated_state)
         references = [
-            reference
-            if isinstance(reference, MemoryReference)
-            else MemoryReference.model_validate(reference)
+            (
+                reference
+                if isinstance(reference, MemoryReference)
+                else MemoryReference.model_validate(reference)
+            )
             for reference in output.get("evidence_references", [])
         ]
         delegated_usage = output.get("delegated_usage", [])
@@ -250,9 +248,7 @@ def parallel_read_executor_node(
         plan,
         handler,
         cancellation_check=(
-            None
-            if runtime_context is None
-            else runtime_context.refresh_cancellation
+            None if runtime_context is None else runtime_context.refresh_cancellation
         ),
         step_observer=observe_step,
         attempt_observer=observe_attempt,
@@ -415,7 +411,9 @@ def create_shopmind_multi_agent_graph(
             runtime_context=runtime_context,
         )
     elif rag_tools is None:
-        rag_tools = {} if local_rag_disabled else guard_tools("rag_agent", RAG_AGENT_TOOLS)
+        rag_tools = (
+            {} if local_rag_disabled else guard_tools("rag_agent", RAG_AGENT_TOOLS)
+        )
 
     graph = StateGraph(ShopMindMultiAgentState)
     delegation_guard = DelegationBudgetGuard(
@@ -452,9 +450,12 @@ def create_shopmind_multi_agent_graph(
         "rag_agent": rag_node,
         "preference_agent": preference_node,
     }
-    catalog_candidate_provider = catalog_candidate_provider or SqlAlchemyCatalogCandidateProvider()
+    catalog_candidate_provider = (
+        catalog_candidate_provider or SqlAlchemyCatalogCandidateProvider()
+    )
     recommendation_preference_provider = (
-        recommendation_preference_provider or SqlAlchemyRecommendationPreferenceProvider()
+        recommendation_preference_provider
+        or SqlAlchemyRecommendationPreferenceProvider()
     )
     if recommendation_evidence_provider is None:
         offline_evidence = (
@@ -465,16 +466,20 @@ def create_shopmind_multi_agent_graph(
             )
         )
         if offline_evidence:
-            recommendation_evidence_provider = OfflineDemoRecommendationEvidenceProvider()
+            recommendation_evidence_provider = (
+                OfflineDemoRecommendationEvidenceProvider()
+            )
         else:
             reranker = (
                 LexicalEvidenceReranker()
-                if runtime_settings.shopmind_recommendation_evidence_reranker == "lexical"
+                if runtime_settings.shopmind_recommendation_evidence_reranker
+                == "lexical"
                 else (
                     SemanticEvidenceReranker(
                         runtime_settings.shopmind_recommendation_evidence_reranker_model
                     )
-                    if runtime_settings.shopmind_recommendation_evidence_reranker == "semantic"
+                    if runtime_settings.shopmind_recommendation_evidence_reranker
+                    == "semantic"
                     else None
                 )
             )
@@ -493,7 +498,9 @@ def create_shopmind_multi_agent_graph(
     )
     graph.add_node(
         "catalog_candidates",
-        lambda state: catalog_candidates_node(state, provider=catalog_candidate_provider),
+        lambda state: catalog_candidates_node(
+            state, provider=catalog_candidate_provider
+        ),
     )
     graph.add_node(
         "recommendation_preference",
@@ -503,7 +510,9 @@ def create_shopmind_multi_agent_graph(
     )
     graph.add_node(
         "deterministic_ranking",
-        lambda state: deterministic_ranking_node(state, registry=recommendation_registry),
+        lambda state: deterministic_ranking_node(
+            state, registry=recommendation_registry
+        ),
     )
     graph.add_node(
         "recommendation_evidence",

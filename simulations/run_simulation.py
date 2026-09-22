@@ -70,7 +70,7 @@ class SimulationRunner:
             "failed": 0,
             "total_turns": 0,
             "interrupts_handled": 0,
-            "agent_errors": 0
+            "agent_errors": 0,
         }
 
     def load_scenarios(self) -> List[Dict]:
@@ -105,11 +105,15 @@ class SimulationRunner:
         Returns:
             Dict with run_id, thread_id, turn_count, success status
         """
-        scenario_id = scenario['scenario_id']
+        scenario_id = scenario["scenario_id"]
         logger.info(f"Starting scenario: {scenario_id}")
 
         # Create thread with simulation metadata
-        customer_segment = scenario.get("customer", {}).get("segment", "anonymous") if scenario.get("customer") else "anonymous"
+        customer_segment = (
+            scenario.get("customer", {}).get("segment", "anonymous")
+            if scenario.get("customer")
+            else "anonymous"
+        )
         extra_meta = {
             "generation_mode": "dynamic" if scenario.get("_archetype_id") else "static",
         }
@@ -136,7 +140,9 @@ class SimulationRunner:
                 result = await self._run_standard_scenario(thread_id, scenario)
 
             self.stats["successful"] += 1
-            logger.info(f"Scenario {scenario_id} completed successfully: {result['turn_count']} turns")
+            logger.info(
+                f"Scenario {scenario_id} completed successfully: {result['turn_count']} turns"
+            )
             return result
 
         except Exception as e:
@@ -165,7 +171,7 @@ class SimulationRunner:
             thread_id,
             DEPLOYMENT_GRAPH_NAME,
             input=input_msg,
-            metadata={"scenario_id": scenario["scenario_id"]}
+            metadata={"scenario_id": scenario["scenario_id"]},
         )
 
         turn_count = 1
@@ -183,7 +189,7 @@ class SimulationRunner:
             email_response = self.interrupt_handler.generate_email_response(
                 interrupt_msg=interrupt_msg,
                 customer_email=customer["email"],
-                persona=scenario["persona"]
+                persona=scenario["persona"],
             )
 
             # Step 5: Resume with email
@@ -199,9 +205,7 @@ class SimulationRunner:
 
         # Step 6: Continue with follow-up turns
         additional_turns = await self._run_followup_turns(
-            thread_id=thread_id,
-            scenario=scenario,
-            initial_response=result
+            thread_id=thread_id, scenario=scenario, initial_response=result
         )
 
         return {
@@ -209,7 +213,7 @@ class SimulationRunner:
             "thread_id": thread_id,
             "turn_count": turn_count + additional_turns,
             "customer_verified": True,
-            "scenario_id": scenario["scenario_id"]
+            "scenario_id": scenario["scenario_id"],
         }
 
     async def _run_standard_scenario(self, thread_id: str, scenario: Dict) -> Dict:
@@ -226,14 +230,12 @@ class SimulationRunner:
             thread_id,
             DEPLOYMENT_GRAPH_NAME,
             input=input_msg,
-            metadata={"scenario_id": scenario["scenario_id"]}
+            metadata={"scenario_id": scenario["scenario_id"]},
         )
 
         # Continue conversation with follow-ups
         additional_turns = await self._run_followup_turns(
-            thread_id=thread_id,
-            scenario=scenario,
-            initial_response=result
+            thread_id=thread_id, scenario=scenario, initial_response=result
         )
 
         return {
@@ -241,7 +243,7 @@ class SimulationRunner:
             "thread_id": thread_id,
             "turn_count": 1 + additional_turns,
             "customer_verified": False,
-            "scenario_id": scenario["scenario_id"]
+            "scenario_id": scenario["scenario_id"],
         }
 
     async def _run_followup_turns(
@@ -270,7 +272,10 @@ class SimulationRunner:
         # Build conversation history
         conversation_history = [
             {"role": "user", "content": scenario["initial_query"]},
-            {"role": "assistant", "content": initial_response["messages"][-1]["content"]}
+            {
+                "role": "assistant",
+                "content": initial_response["messages"][-1]["content"],
+            },
         ]
 
         # Determine target number of turns based on scenario complexity
@@ -285,19 +290,25 @@ class SimulationRunner:
                 conversation_history=conversation_history,
                 turn_number=turn + 2,  # +2 because we already had initial query
                 min_turns=min_turns,
-                customer_email=customer_email
+                customer_email=customer_email,
             )
 
-            followup_query = await self.llm.ainvoke(followup_prompt, config={"run_name": "SimulatedHumanUser"})
+            followup_query = await self.llm.ainvoke(
+                followup_prompt, config={"run_name": "SimulatedHumanUser"}
+            )
             followup_content = followup_query.content.strip()
 
             # Check if persona decides to end conversation
             if self._should_end_conversation(followup_content):
-                logger.debug(f"Conversation naturally concluded at turn {turn_count + 1}")
+                logger.debug(
+                    f"Conversation naturally concluded at turn {turn_count + 1}"
+                )
                 break
 
             # Send follow-up
-            logger.debug(f"Sending follow-up query (turn {turn + 2}): {followup_content}")
+            logger.debug(
+                f"Sending follow-up query (turn {turn + 2}): {followup_content}"
+            )
             input_msg = {"messages": [{"role": "user", "content": followup_content}]}
 
             try:
@@ -305,20 +316,24 @@ class SimulationRunner:
                     thread_id,
                     DEPLOYMENT_GRAPH_NAME,
                     input=input_msg,
-                    metadata={"scenario_id": scenario["scenario_id"]}
+                    metadata={"scenario_id": scenario["scenario_id"]},
                 )
             except Exception as e:
                 # Agent may crash on certain queries - log and end conversation gracefully
                 logger.warning(f"Agent error on follow-up turn {turn + 2}: {e}")
-                logger.info(f"Ending conversation early due to agent error after {turn_count} follow-up turns")
+                logger.info(
+                    f"Ending conversation early due to agent error after {turn_count} follow-up turns"
+                )
                 self.stats["agent_errors"] += 1
                 break
 
             turn_count += 1
-            conversation_history.extend([
-                {"role": "user", "content": followup_content},
-                {"role": "assistant", "content": result["messages"][-1]["content"]}
-            ])
+            conversation_history.extend(
+                [
+                    {"role": "user", "content": followup_content},
+                    {"role": "assistant", "content": result["messages"][-1]["content"]},
+                ]
+            )
 
             self.stats["total_turns"] += 1
 
@@ -330,7 +345,7 @@ class SimulationRunner:
         conversation_history: List[Dict],
         turn_number: int,
         min_turns: int = 1,
-        customer_email: str = None
+        customer_email: str = None,
     ) -> str:
         """Build prompt for generating realistic follow-up query."""
         sentiment = persona.get("sentiment", "neutral")
@@ -351,20 +366,24 @@ class SimulationRunner:
             "neutral": """
 - Be professional and straightforward
 - Ask clarifying questions if needed
-- End naturally after getting sufficient information"""
+- End naturally after getting sufficient information""",
         }
 
-        email_hint = f"\nIf asked for your email address, provide exactly: {customer_email}" if customer_email else ""
+        email_hint = (
+            f"\nIf asked for your email address, provide exactly: {customer_email}"
+            if customer_email
+            else ""
+        )
 
         return f"""You are simulating a customer with this profile:
 
-Description: {persona['description']}
-Communication Style: {persona['communication_style']}
+Description: {persona["description"]}
+Communication Style: {persona["communication_style"]}
 Sentiment: {sentiment}
-Typical Queries: {', '.join(persona['typical_queries'])}{email_hint}
+Typical Queries: {", ".join(persona["typical_queries"])}{email_hint}
 
 Sentiment-Specific Behavior:
-{sentiment_instructions.get(sentiment, sentiment_instructions['neutral'])}
+{sentiment_instructions.get(sentiment, sentiment_instructions["neutral"])}
 
 Conversation so far:
 {self._format_history(conversation_history)}
@@ -409,12 +428,20 @@ Your response (just the customer's message, or CONVERSATION_END):"""
             return self.select_scenarios(self.load_scenarios(), count)
         elif mode == "dynamic":
             from simulations.dynamic_scenario_generator import generate_dynamic_scenario
-            return [await generate_dynamic_scenario(DEFAULT_DB_PATH, self.llm) for _ in range(count)]
+
+            return [
+                await generate_dynamic_scenario(DEFAULT_DB_PATH, self.llm)
+                for _ in range(count)
+            ]
         elif mode == "mixed":
             from simulations.dynamic_scenario_generator import generate_dynamic_scenario
+
             half = count // 2
             static = self.select_scenarios(self.load_scenarios(), half)
-            dynamic = [await generate_dynamic_scenario(DEFAULT_DB_PATH, self.llm) for _ in range(count - half)]
+            dynamic = [
+                await generate_dynamic_scenario(DEFAULT_DB_PATH, self.llm)
+                for _ in range(count - half)
+            ]
             combined = static + dynamic
             random.shuffle(combined)
             return combined
@@ -454,7 +481,7 @@ Your response (just the customer's message, or CONVERSATION_END):"""
         logger.info(f"Total Turns: {self.stats['total_turns']}")
         logger.info(f"Interrupts Handled: {self.stats['interrupts_handled']}")
         logger.info(f"Agent Errors (gracefully handled): {self.stats['agent_errors']}")
-        avg_turns = self.stats['total_turns'] / max(self.stats['successful'], 1)
+        avg_turns = self.stats["total_turns"] / max(self.stats["successful"], 1)
         logger.info(f"Avg Turns per Conversation: {avg_turns:.1f}")
         logger.info("=" * 60)
 
@@ -468,31 +495,33 @@ async def main():
         "--count",
         type=int,
         default=DEFAULT_CONVERSATIONS_PER_RUN,
-        help=f"Number of conversations to simulate (default: {DEFAULT_CONVERSATIONS_PER_RUN})"
+        help=f"Number of conversations to simulate (default: {DEFAULT_CONVERSATIONS_PER_RUN})",
     )
     parser.add_argument(
         "--scenario",
         type=str,
-        help="Run specific scenario by ID (e.g., 'angry_delayed_order')"
+        help="Run specific scenario by ID (e.g., 'angry_delayed_order')",
     )
     parser.add_argument(
         "--url",
         type=str,
         default=None,
-        help="Deployment URL (default: LANGGRAPH_DEPLOYMENT_URL env var)"
+        help="Deployment URL (default: LANGGRAPH_DEPLOYMENT_URL env var)",
     )
     parser.add_argument(
         "--mode",
         choices=["static", "dynamic", "mixed"],
         default=DEFAULT_SIMULATION_MODE,
-        help="Scenario generation mode: static (JSON file), dynamic (LLM+DB), or mixed (default: dynamic)"
+        help="Scenario generation mode: static (JSON file), dynamic (LLM+DB), or mixed (default: dynamic)",
     )
 
     args = parser.parse_args()
 
     url = args.url or os.getenv("LANGGRAPH_DEPLOYMENT_URL")
     if not url:
-        logger.error("Deployment URL not set. Use --url or set LANGGRAPH_DEPLOYMENT_URL in .env")
+        logger.error(
+            "Deployment URL not set. Use --url or set LANGGRAPH_DEPLOYMENT_URL in .env"
+        )
         sys.exit(1)
 
     logger.info(f"Connecting to deployment: {url}")
@@ -501,7 +530,9 @@ async def main():
     if args.scenario:
         # Run single scenario
         scenarios = runner.load_scenarios()
-        scenario = next((s for s in scenarios if s["scenario_id"] == args.scenario), None)
+        scenario = next(
+            (s for s in scenarios if s["scenario_id"] == args.scenario), None
+        )
         if not scenario:
             logger.error(f"Scenario '{args.scenario}' not found")
             logger.info(f"Available scenarios: {[s['scenario_id'] for s in scenarios]}")

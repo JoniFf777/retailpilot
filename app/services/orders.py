@@ -23,7 +23,11 @@ from app.repositories.shopmind_orders import (
     get_order_by_idempotency_key,
     list_orders,
 )
-from app.orders.models import ShopMindInventoryReservation, ShopMindOrder, ShopMindOrderItem
+from app.orders.models import (
+    ShopMindInventoryReservation,
+    ShopMindOrder,
+    ShopMindOrderItem,
+)
 from app.outbox.contracts import build_order_cancelled_event, build_order_created_event
 from app.outbox.repository import enqueue_event
 from app.services.payment_safety import inspect_payment_history
@@ -101,7 +105,9 @@ def _order_view(order: ShopMindOrder) -> OrderView:
         version=order.version,
         created_at=order.created_at,
         updated_at=order.updated_at,
-        expires_at=ensure_utc(order.expires_at) if order.expires_at is not None else None,
+        expires_at=(
+            ensure_utc(order.expires_at) if order.expires_at is not None else None
+        ),
     )
 
 
@@ -111,7 +117,10 @@ def _response(order: ShopMindOrder, *, replay: bool) -> CreateOrderResponse:
 
 def _is_idempotency_unique(exc: IntegrityError) -> bool:
     constraint_name = getattr(getattr(exc, "orig", None), "diag", None)
-    return getattr(constraint_name, "constraint_name", None) == "uq_shopmind_orders_user_idempotency"
+    return (
+        getattr(constraint_name, "constraint_name", None)
+        == "uq_shopmind_orders_user_idempotency"
+    )
 
 
 def create_order(
@@ -235,17 +244,25 @@ def create_order(
     for sku_id in sku_ids:
         sku = sku_by_id.get(sku_id)
         if sku is None:
-            raise _error("price_changed", "A SKU in the Checkout token no longer exists.", 409)
+            raise _error(
+                "price_changed", "A SKU in the Checkout token no longer exists.", 409
+            )
         product = product_by_id.get(sku.product_id)
         if product is None:
-            raise _error("price_changed", "A product in the Checkout token no longer exists.", 409)
+            raise _error(
+                "price_changed",
+                "A product in the Checkout token no longer exists.",
+                409,
+            )
         if product.sale_status != "active":
             raise _error("product_inactive", "A product is no longer active.", 409)
         if sku.sale_status != "active":
             raise _error("sku_inactive", "A SKU is no longer active.", 409)
         inventory = inventory_by_sku.get(sku_id)
         if inventory is None:
-            raise _error("inventory_missing", "Inventory is not available for a SKU.", 409)
+            raise _error(
+                "inventory_missing", "Inventory is not available for a SKU.", 409
+            )
         currencies.add(sku.currency)
         quantity = cart_by_sku[sku_id].quantity
         available = inventory.on_hand_quantity - inventory.reserved_quantity
@@ -258,16 +275,29 @@ def create_order(
                 requested_quantity=quantity,
             )
     if len(currencies) != 1:
-        raise _error("mixed_currency", "Order creation requires a single currency.", 409)
+        raise _error(
+            "mixed_currency", "Order creation requires a single currency.", 409
+        )
     for sku_id in sku_ids:
         sku = sku_by_id[sku_id]
         signed_line = price_by_sku[sku_id]
         current_amount = _amount(sku.money_amount)
-        if current_amount != _amount(signed_line.unit_price_amount) or sku.currency != signed_line.currency:
-            raise _error("price_changed", "A catalog price changed after the Checkout Preview.", 409)
+        if (
+            current_amount != _amount(signed_line.unit_price_amount)
+            or sku.currency != signed_line.currency
+        ):
+            raise _error(
+                "price_changed",
+                "A catalog price changed after the Checkout Preview.",
+                409,
+            )
         line_total += current_amount * cart_by_sku[sku_id].quantity
-    if next(iter(currencies)) != payload.currency or line_total.quantize(Decimal("0.01")) != _amount(payload.subtotal_amount):
-        raise _error("price_changed", "The Checkout total changed after the Preview.", 409)
+    if next(iter(currencies)) != payload.currency or line_total.quantize(
+        Decimal("0.01")
+    ) != _amount(payload.subtotal_amount):
+        raise _error(
+            "price_changed", "The Checkout total changed after the Preview.", 409
+        )
 
     order_items: list[ShopMindOrderItem] = []
     for sku_id in sku_ids:
@@ -301,14 +331,19 @@ def create_order(
                 <= CatalogInventory.on_hand_quantity,
             )
             .values(
-                reserved_quantity=CatalogInventory.reserved_quantity + order_item.quantity,
+                reserved_quantity=CatalogInventory.reserved_quantity
+                + order_item.quantity,
                 version=CatalogInventory.version + 1,
                 updated_at=func.now(),
             )
             .returning(CatalogInventory.sku_id)
         ).scalar_one_or_none()
         if updated is None:
-            raise _error("insufficient_inventory", "Inventory is insufficient for the requested cart quantity.", 409)
+            raise _error(
+                "insufficient_inventory",
+                "Inventory is insufficient for the requested cart quantity.",
+                409,
+            )
         session.add(
             ShopMindInventoryReservation(
                 order_item_id=order_item.id,
@@ -363,7 +398,9 @@ def list_user_orders(
         last = page[-1]
         next_cursor = encode_order_cursor(last.created_at, last.id)
         orders = page
-    return OrderListResponse(items=[_order_view(order) for order in orders], next_cursor=next_cursor)
+    return OrderListResponse(
+        items=[_order_view(order) for order in orders], next_cursor=next_cursor
+    )
 
 
 def get_user_order(session: Session, *, user_id: str, order_id: UUID) -> OrderView:
@@ -373,8 +410,12 @@ def get_user_order(session: Session, *, user_id: str, order_id: UUID) -> OrderVi
     return _order_view(order)
 
 
-def cancel_order(session: Session, *, user_id: str, order_id: UUID) -> CancelOrderResponse:
-    order = get_order_by_id(session, user_id=user_id, order_id=order_id, for_update=True)
+def cancel_order(
+    session: Session, *, user_id: str, order_id: UUID
+) -> CancelOrderResponse:
+    order = get_order_by_id(
+        session, user_id=user_id, order_id=order_id, for_update=True
+    )
     if order is None:
         raise _error("order_not_found", "Order was not found.", 404)
     if order.status == "cancelled":
@@ -382,12 +423,16 @@ def cancel_order(session: Session, *, user_id: str, order_id: UUID) -> CancelOrd
     if order.status == "paid":
         raise _error("order_not_cancellable", "A paid Order cannot be cancelled.", 409)
     if order.status == "expired":
-        raise _error("order_not_cancellable", "An expired Order cannot be cancelled.", 409)
+        raise _error(
+            "order_not_cancellable", "An expired Order cannot be cancelled.", 409
+        )
     if order.status != "pending_payment":
         raise _error("order_not_cancellable", "The Order cannot be cancelled.", 409)
     payment_safety = inspect_payment_history(session, order_id=order.id)
     if payment_safety.status == "defer":
-        raise _error("payment_in_progress", "Payment is still in progress for this Order.", 409)
+        raise _error(
+            "payment_in_progress", "Payment is still in progress for this Order.", 409
+        )
     if payment_safety.status == "inconsistent":
         raise _error(
             "payment_state_inconsistent",
@@ -399,7 +444,9 @@ def cancel_order(session: Session, *, user_id: str, order_id: UUID) -> CancelOrd
     try:
         release_active_reservations(session, order_id=order.id, released_at=now)
     except ReservationReleaseError as exc:
-        raise _error("reservation_inconsistent", "Order reservations are inconsistent.", 409) from exc
+        raise _error(
+            "reservation_inconsistent", "Order reservations are inconsistent.", 409
+        ) from exc
     order.status = "cancelled"
     order.version += 1
     order.updated_at = now

@@ -24,16 +24,27 @@ class DiagnosticState(BaseModel):
     observations: list[dict[str, str]] = Field(default_factory=list, max_length=32)
 
 
-def record_observation(state: DiagnosticState, check_id: str, observation: str, source_ref: SourceRef) -> DiagnosticState:
+def record_observation(
+    state: DiagnosticState, check_id: str, observation: str, source_ref: SourceRef
+) -> DiagnosticState:
     if check_id in state.answered_check_ids:
         raise ValueError("diagnostic_question_already_answered")
     if state.round >= 5:
         raise ValueError("diagnostic_round_limit")
-    return state.model_copy(update={
-        "round": state.round + 1,
-        "answered_check_ids": [*state.answered_check_ids, check_id],
-        "observations": [*state.observations, {"check_id": check_id, "observation": observation, "source": source_ref.source}],
-    })
+    return state.model_copy(
+        update={
+            "round": state.round + 1,
+            "answered_check_ids": [*state.answered_check_ids, check_id],
+            "observations": [
+                *state.observations,
+                {
+                    "check_id": check_id,
+                    "observation": observation,
+                    "source": source_ref.source,
+                },
+            ],
+        }
+    )
 
 
 __all__ = ["DiagnosticCheck", "DiagnosticState", "record_observation"]

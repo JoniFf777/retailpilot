@@ -105,7 +105,7 @@ _UNSAFE_DEBUG_VALUE_MARKERS = (
     "sqlalchemy.",
     "psycopg",
     "sqlite3.",
-    "file \"",
+    'file "',
     "bearer ",
     "api_key",
     "provider_payload",
@@ -132,7 +132,10 @@ def public_error(
     if normalized_code not in PUBLIC_ERROR_CODES:
         normalized_code = GENERIC_PUBLIC_ERROR_CODE
     normalized_retry_state: PublicRetryState = (
-        "in_progress" if retry_state == "in_progress" or normalized_code == "runtime.idempotency_in_progress" else "terminal"
+        "in_progress"
+        if retry_state == "in_progress"
+        or normalized_code == "runtime.idempotency_in_progress"
+        else "terminal"
     )
     return PublicChatError(
         code=normalized_code,
@@ -165,7 +168,9 @@ def public_failure_result(
     """Build a safe legacy-shaped failure consumed by JSON and SSE routes."""
 
     projection = (
-        error if isinstance(error, PublicChatError) else public_error_from_exception(error)
+        error
+        if isinstance(error, PublicChatError)
+        else public_error_from_exception(error)
     )
     return {
         "answer": projection.message,

@@ -98,10 +98,7 @@ def _search_documents_sqlite(
         .order_by(Document.id.asc())
         .limit(k)
     )
-    return [
-        document_to_dict(document)
-        for document in session.scalars(statement).all()
-    ]
+    return [document_to_dict(document) for document in session.scalars(statement).all()]
 
 
 def search_documents(
@@ -121,8 +118,15 @@ def search_documents(
     if bind.dialect.name != "postgresql":
         statement = select(Document).where(Document.doc_type == doc_type)
         if evidence_version_ids is not None:
-            statement = statement.where(Document.evidence_version_id.in_(list(evidence_version_ids)))
-        return [document_to_dict(document) for document in session.scalars(statement.order_by(Document.id.asc()).limit(k)).all()]
+            statement = statement.where(
+                Document.evidence_version_id.in_(list(evidence_version_ids))
+            )
+        return [
+            document_to_dict(document)
+            for document in session.scalars(
+                statement.order_by(Document.id.asc()).limit(k)
+            ).all()
+        ]
 
     embedding = _format_pgvector(query_embedding)
     statement = text(
@@ -150,7 +154,13 @@ def search_documents(
     )
     rows = session.execute(
         statement,
-        {"embedding": embedding, "doc_type": doc_type, "k": k, "evidence_version_ids": list(evidence_version_ids or ()), "evidence_version_ids_no_filter": evidence_version_ids is None},
+        {
+            "embedding": embedding,
+            "doc_type": doc_type,
+            "k": k,
+            "evidence_version_ids": list(evidence_version_ids or ()),
+            "evidence_version_ids_no_filter": evidence_version_ids is None,
+        },
     ).mappings()
     return [_row_to_dict(row) for row in rows]
 
@@ -162,7 +172,11 @@ def search_product_documents(
     evidence_version_ids: Sequence[int] | None = None,
 ) -> list[dict[str, Any]]:
     return search_documents(
-        session, query_embedding, doc_type="product", k=k, evidence_version_ids=evidence_version_ids
+        session,
+        query_embedding,
+        doc_type="product",
+        k=k,
+        evidence_version_ids=evidence_version_ids,
     )
 
 
@@ -180,20 +194,28 @@ def search_product_documents_for_product_ids(
     candidate with no legacy mapping simply has no product-document evidence.
     """
 
-    normalized_ids = sorted({str(product_id) for product_id in product_ids if product_id})
+    normalized_ids = sorted(
+        {str(product_id) for product_id in product_ids if product_id}
+    )
     if not normalized_ids:
         return []
     bind = session.get_bind()
     if bind.dialect.name != "postgresql":
         statement = (
             select(Document)
-            .where(Document.doc_type == "product", Document.product_id.in_(normalized_ids))
+            .where(
+                Document.doc_type == "product", Document.product_id.in_(normalized_ids)
+            )
             .order_by(Document.product_id.asc(), Document.id.asc())
             .limit(k)
         )
         if evidence_version_ids is not None:
-            statement = statement.where(Document.evidence_version_id.in_(list(evidence_version_ids)))
-        return [document_to_dict(document) for document in session.scalars(statement).all()]
+            statement = statement.where(
+                Document.evidence_version_id.in_(list(evidence_version_ids))
+            )
+        return [
+            document_to_dict(document) for document in session.scalars(statement).all()
+        ]
 
     embedding = _format_pgvector(query_embedding)
     statement = text(
@@ -211,7 +233,13 @@ def search_product_documents_for_product_ids(
     )
     rows = session.execute(
         statement,
-        {"embedding": embedding, "product_ids": normalized_ids, "k": k, "evidence_version_ids": list(evidence_version_ids or ()), "evidence_version_ids_no_filter": evidence_version_ids is None},
+        {
+            "embedding": embedding,
+            "product_ids": normalized_ids,
+            "k": k,
+            "evidence_version_ids": list(evidence_version_ids or ()),
+            "evidence_version_ids_no_filter": evidence_version_ids is None,
+        },
     ).mappings()
     return [_row_to_dict(row) for row in rows]
 
@@ -223,7 +251,11 @@ def search_policy_documents(
     evidence_version_ids: Sequence[int] | None = None,
 ) -> list[dict[str, Any]]:
     return search_documents(
-        session, query_embedding, doc_type="policy", k=k, evidence_version_ids=evidence_version_ids
+        session,
+        query_embedding,
+        doc_type="policy",
+        k=k,
+        evidence_version_ids=evidence_version_ids,
     )
 
 
@@ -248,7 +280,9 @@ def search_keyword_documents(
         return []
     statement = select(Document).where(Document.doc_type == doc_type)
     if evidence_version_ids is not None:
-        statement = statement.where(Document.evidence_version_id.in_(list(evidence_version_ids)))
+        statement = statement.where(
+            Document.evidence_version_id.in_(list(evidence_version_ids))
+        )
     normalized_ids = sorted({str(value) for value in (product_ids or []) if value})
     if product_ids is not None and not normalized_ids:
         return []
@@ -286,8 +320,12 @@ def search_keyword_documents(
             if not frequency:
                 continue
             document_count = document_frequency.get(term, 0)
-            idf = math.log(1 + (len(documents) - document_count + 0.5) / (document_count + 0.5))
-            denominator = frequency + 1.2 * (1 - 0.75 + 0.75 * length / max(1.0, average_length))
+            idf = math.log(
+                1 + (len(documents) - document_count + 0.5) / (document_count + 0.5)
+            )
+            denominator = frequency + 1.2 * (
+                1 - 0.75 + 0.75 * length / max(1.0, average_length)
+            )
             score += idf * (frequency * 2.2 / denominator) * min(query_count, 2)
         if score > 0:
             scored.append((score, document))

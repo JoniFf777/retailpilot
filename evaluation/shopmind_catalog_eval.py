@@ -134,8 +134,7 @@ class EvaluationCatalog(BaseModel):
         ]
         if missing:
             raise ValueError(
-                "Required evaluation categories are not covered: "
-                + ", ".join(missing)
+                "Required evaluation categories are not covered: " + ", ".join(missing)
             )
         return self
 
@@ -263,7 +262,9 @@ def _summary_counts(summary: Mapping[str, Any]) -> tuple[int, int, int, int]:
         total_checks = int(summary["total_checks"])
         passed_checks = int(summary["passed_checks"])
     except (KeyError, TypeError, ValueError) as exc:
-        raise CatalogError("Evaluation suite summary is missing stable counts.") from exc
+        raise CatalogError(
+            "Evaluation suite summary is missing stable counts."
+        ) from exc
     if min(total_cases, passed_cases, total_checks, passed_checks) < 0:
         raise CatalogError("Evaluation suite summary contains negative counts.")
     if passed_cases > total_cases or passed_checks > total_checks:
@@ -286,9 +287,7 @@ def _suite_snapshot(
             f"Evaluation suite '{suite.suite_id}' failures must be a list."
         )
     failures = [
-        failure
-        if isinstance(failure, dict)
-        else {"code": "evaluation.failure_invalid"}
+        failure if isinstance(failure, dict) else {"code": "evaluation.failure_invalid"}
         for failure in raw_failures
     ]
     return SuiteSnapshot(
@@ -314,9 +313,7 @@ def _read_suite_artifact(path: Path, suite_id: str) -> dict[str, Any]:
             f"Evaluation suite '{suite_id}' artifact is unreadable."
         ) from exc
     if not isinstance(payload, dict):
-        raise CatalogError(
-            f"Evaluation suite '{suite_id}' artifact must be an object."
-        )
+        raise CatalogError(f"Evaluation suite '{suite_id}' artifact must be an object.")
     return payload
 
 
@@ -331,9 +328,7 @@ def evaluate_catalog(
     snapshots: list[SuiteSnapshot] = []
     for suite in catalog.suites:
         artifact_path = (
-            artifacts_root / suite.artifact_path
-            if artifacts_root is not None
-            else None
+            artifacts_root / suite.artifact_path if artifacts_root is not None else None
         )
         if reuse_existing and artifact_path is not None and artifact_path.exists():
             summary = _read_suite_artifact(artifact_path, suite.suite_id)
@@ -425,11 +420,7 @@ def _comparison_check(
         "passed": passed,
         "candidate": candidate,
         "baseline": baseline,
-        **(
-            {"allowed_delta": allowed_delta}
-            if allowed_delta is not None
-            else {}
-        ),
+        **({"allowed_delta": allowed_delta} if allowed_delta is not None else {}),
     }
 
 
@@ -575,9 +566,7 @@ def evaluate_catalog_regression(
     )
     comparison = compare_candidate_to_baseline(catalog, candidate, baseline)
     suite_failures = [
-        suite_id
-        for suite_id, suite in candidate["suites"].items()
-        if suite["failures"]
+        suite_id for suite_id, suite in candidate["suites"].items() if suite["failures"]
     ]
     passed = not suite_failures and comparison["passed"]
     return {

@@ -19,11 +19,15 @@ def _scoped_url(base: str, schema: str) -> str:
     parts = urlsplit(base)
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     query["options"] = f"-csearch_path={schema},public"
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+    return urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run real-model shopping task acceptance.")
+    parser = argparse.ArgumentParser(
+        description="Run real-model shopping task acceptance."
+    )
     parser.add_argument("--schema", required=True)
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument(
@@ -40,9 +44,13 @@ def main(argv: list[str] | None = None) -> int:
         trajectories = report.get("trajectories") or []
         for row in trajectories:
             reasons = row.get("plan_reasons") or []
-            provider_plan = any("structured_gateway_plan" in str(reason) for reason in reasons)
+            provider_plan = any(
+                "structured_gateway_plan" in str(reason) for reason in reasons
+            )
             row["provider_plan_succeeded"] = provider_plan
-            row["passed"] = row.get("status") in {"succeeded", "waiting_input"} and provider_plan
+            row["passed"] = (
+                row.get("status") in {"succeeded", "waiting_input"} and provider_plan
+            )
         reviewer_observed = any(bool(row.get("reviewer_used")) for row in trajectories)
         report["reviewer_observed"] = reviewer_observed
         report["passed"] = (
@@ -84,7 +92,11 @@ def main(argv: list[str] | None = None) -> int:
     from app.db.session import SessionLocal
     from app.shopping_tasks.contracts import Fact, ShoppingTaskRequest, SourceRef
     from app.shopping_tasks.model_gateway import plan_with_gateway
-    from app.shopping_tasks.models import ShoppingTask, ShoppingTaskPlan, ShoppingTaskStep
+    from app.shopping_tasks.models import (
+        ShoppingTask,
+        ShoppingTaskPlan,
+        ShoppingTaskStep,
+    )
     from app.shopping_tasks.repository import create_task
     from app.shopping_tasks.worker import run_worker_once
     import app.shopping_tasks.worker as worker_module
@@ -213,7 +225,9 @@ def main(argv: list[str] | None = None) -> int:
             worked = run_worker_once(session, worker_id="real-model-acceptance")
             session.expire_all()
             states = [session.get(ShoppingTask, task_id).status for task_id in task_ids]
-            if all(state in {"succeeded", "waiting_input", "failed"} for state in states):
+            if all(
+                state in {"succeeded", "waiting_input", "failed"} for state in states
+            ):
                 break
             if not worked:
                 continue
@@ -240,7 +254,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             reviewer_used = any(
                 isinstance(step.output_json, dict)
-                and (step.output_json.get("verification_report") or {}).get("reviewer_used")
+                and (step.output_json.get("verification_report") or {}).get(
+                    "reviewer_used"
+                )
                 for step in verify_steps
             )
             plan_reasons = [plan.reason for plan in plans]
@@ -248,7 +264,9 @@ def main(argv: list[str] | None = None) -> int:
                 "structured_gateway_plan" in reason for reason in plan_reasons
             )
             outcome = (task.output_json or {}).get("outcome")
-            row_passed = task.status in {"succeeded", "waiting_input"} and structured_plan
+            row_passed = (
+                task.status in {"succeeded", "waiting_input"} and structured_plan
+            )
             passed = passed and row_passed
             trajectories.append(
                 {
@@ -265,7 +283,9 @@ def main(argv: list[str] | None = None) -> int:
                     "passed": row_passed,
                 }
             )
-        bundle = next(item for item in trajectories if item["kind"] == "bundle_selection")
+        bundle = next(
+            item for item in trajectories if item["kind"] == "bundle_selection"
+        )
         repair_observed = bundle["plan_revisions"] >= 2
         reviewer_observed = any(item["reviewer_used"] for item in trajectories)
         passed = passed and repair_observed and reviewer_observed
@@ -294,7 +314,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0 if passed else 1
     finally:
-        worker_module.retrieve_task_evidence = original_retrieve if "original_retrieve" in locals() else worker_module.retrieve_task_evidence
+        worker_module.retrieve_task_evidence = (
+            original_retrieve
+            if "original_retrieve" in locals()
+            else worker_module.retrieve_task_evidence
+        )
         session.close()
 
 

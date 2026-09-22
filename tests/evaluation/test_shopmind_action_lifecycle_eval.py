@@ -10,8 +10,16 @@ from evaluation.shopmind_action_lifecycle_eval import (
 
 def test_action_lifecycle_cases_cover_required_transitions() -> None:
     assert {case["scenario"] for case in ACTION_LIFECYCLE_CASES} == {
-        "confirm", "cancel", "expired", "cross_user", "cross_thread",
-        "duplicate", "malformed", "edited", "resumed", "replayed",
+        "confirm",
+        "cancel",
+        "expired",
+        "cross_user",
+        "cross_thread",
+        "duplicate",
+        "malformed",
+        "edited",
+        "resumed",
+        "replayed",
     }
 
 

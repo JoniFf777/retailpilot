@@ -66,9 +66,7 @@ def run_cleanup(
         deleted_summaries=cleanup.deleted_summaries,
         deleted_idempotency_records=cleanup.deleted_idempotency_records,
         deleted_memory_records=cleanup.deleted_memory_records,
-        deleted_governance_audit_records=(
-            cleanup.deleted_governance_audit_records
-        ),
+        deleted_governance_audit_records=(cleanup.deleted_governance_audit_records),
     )
     evidence_path = getattr(
         settings,
@@ -101,9 +99,7 @@ def print_report(report: RuntimePersistenceCleanupReport) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     return argparse.ArgumentParser(
-        description=(
-            "Delete expired runtime persistence and governance audit rows."
-        )
+        description=("Delete expired runtime persistence and governance audit rows.")
     )
 
 

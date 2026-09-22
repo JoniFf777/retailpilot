@@ -7,12 +7,18 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.ai_platform.extensions import ExtensionDefinition, ExtensionRegistry, ExtensionSnapshot
+from app.ai_platform.extensions import (
+    ExtensionDefinition,
+    ExtensionRegistry,
+    ExtensionSnapshot,
+)
 from app.ai_platform.prompts import validate_prompt_candidate
 from app.ai_platform.models import AIExtensionDefinition, AIExtensionPublication
 
 
-def persist_extension(session: Session, definition: ExtensionDefinition) -> AIExtensionDefinition:
+def persist_extension(
+    session: Session, definition: ExtensionDefinition
+) -> AIExtensionDefinition:
     if definition.extension_type == "prompt":
         validate_prompt_candidate(definition.extension_key, definition.content)
     row = AIExtensionDefinition(
@@ -82,7 +88,9 @@ def load_extension_snapshot(session: Session) -> ExtensionSnapshot:
             AIExtensionPublication.definition_id == AIExtensionDefinition.id,
         )
         .where(AIExtensionDefinition.status == "active")
-        .order_by(AIExtensionDefinition.extension_type, AIExtensionDefinition.extension_key)
+        .order_by(
+            AIExtensionDefinition.extension_type, AIExtensionDefinition.extension_key
+        )
     ).all()
     definitions = tuple(
         ExtensionDefinition(

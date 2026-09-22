@@ -181,9 +181,7 @@ def evaluate_supervisor_router(
         comparison = compare_routes(expected_routes, actual_routes)
         expected_intent = case.get("expected_intent")
         actual_intent = decision.get("intent")
-        intent_matches = (
-            expected_intent is None or expected_intent == actual_intent
-        )
+        intent_matches = expected_intent is None or expected_intent == actual_intent
 
         if comparison["score"] and intent_matches:
             exact_matches += 1

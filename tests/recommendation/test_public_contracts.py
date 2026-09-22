@@ -17,6 +17,11 @@ def test_money_keeps_decimal_string_contract() -> None:
 
 
 def test_availability_sale_status_is_literal() -> None:
-    assert AvailabilityView(sale_status="active", available_quantity=1, in_stock=True).sale_status == "active"
+    assert (
+        AvailabilityView(
+            sale_status="active", available_quantity=1, in_stock=True
+        ).sale_status
+        == "active"
+    )
     with pytest.raises(ValidationError):
         AvailabilityView(sale_status="retired", available_quantity=1, in_stock=True)

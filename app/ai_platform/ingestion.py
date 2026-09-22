@@ -48,7 +48,9 @@ class EvidenceChunk:
 
 
 class EvidenceIndexer(Protocol):
-    def index(self, chunks: list[EvidenceChunk], descriptor: ShoppingEvidenceDescriptor) -> int: ...
+    def index(
+        self, chunks: list[EvidenceChunk], descriptor: ShoppingEvidenceDescriptor
+    ) -> int: ...
 
 
 @dataclass(frozen=True)
@@ -63,7 +65,9 @@ def fingerprint(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def classify_legacy_source(path: str | Path, content: str) -> ShoppingEvidenceDescriptor:
+def classify_legacy_source(
+    path: str | Path, content: str
+) -> ShoppingEvidenceDescriptor:
     source_path = str(path)
     name = Path(source_path).stem.casefold()
     source_fingerprint = fingerprint(source_path)
@@ -88,7 +92,13 @@ def classify_legacy_source(path: str | Path, content: str) -> ShoppingEvidenceDe
         scope=scope,
         title=_title(content),
         metadata=non_authoritative_document_metadata(
-            {"legacy_doc_type": "product" if evidence_type == EvidenceType.PRODUCT_GUIDE else "policy"}
+            {
+                "legacy_doc_type": (
+                    "product"
+                    if evidence_type == EvidenceType.PRODUCT_GUIDE
+                    else "policy"
+                )
+            }
         ),
     )
 
@@ -110,7 +120,9 @@ def parse_markdown(content: str) -> str:
 def chunk_markdown(content: str, *, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
     if max_chars <= 0 or max_chars > MAX_CHUNK_CHARS:
         raise ValueError("Invalid chunk size.")
-    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", content) if part.strip()]
+    paragraphs = [
+        part.strip() for part in re.split(r"\n\s*\n", content) if part.strip()
+    ]
     chunks: list[str] = []
     current = ""
     for paragraph in paragraphs:
@@ -171,7 +183,11 @@ class ShoppingEvidencePipeline:
         )
         if task.status == "completed":
             index_node = next(
-                (node for node in task.nodes if node.node_type == PipelineNodeType.INDEXER.value),
+                (
+                    node
+                    for node in task.nodes
+                    if node.node_type == PipelineNodeType.INDEXER.value
+                ),
                 None,
             )
             return PipelineRunResult(
@@ -209,7 +225,9 @@ class ShoppingEvidencePipeline:
         node_by_type = {node.node_type: node for node in task.nodes}
 
         task.current_node = PipelineNodeType.FETCHER.value
-        mark_node_running(session, node_by_type[PipelineNodeType.FETCHER.value], now=now)
+        mark_node_running(
+            session, node_by_type[PipelineNodeType.FETCHER.value], now=now
+        )
         mark_node_completed(
             session,
             node_by_type[PipelineNodeType.FETCHER.value],
@@ -228,7 +246,9 @@ class ShoppingEvidencePipeline:
             now=now,
         )
         task.current_node = PipelineNodeType.CHUNKER.value
-        mark_node_running(session, node_by_type[PipelineNodeType.CHUNKER.value], now=now)
+        mark_node_running(
+            session, node_by_type[PipelineNodeType.CHUNKER.value], now=now
+        )
         raw_chunks = chunk_markdown(parsed)
         chunks = [
             EvidenceChunk(
@@ -252,7 +272,9 @@ class ShoppingEvidencePipeline:
             now=now,
         )
         task.current_node = PipelineNodeType.ENRICHER.value
-        mark_node_running(session, node_by_type[PipelineNodeType.ENRICHER.value], now=now)
+        mark_node_running(
+            session, node_by_type[PipelineNodeType.ENRICHER.value], now=now
+        )
         enriched = [
             EvidenceChunk(
                 content=chunk.content,
@@ -268,15 +290,21 @@ class ShoppingEvidencePipeline:
         mark_node_completed(
             session,
             node_by_type[PipelineNodeType.ENRICHER.value],
-            output_fingerprint=fingerprint("\n".join(chunk.content for chunk in enriched)),
+            output_fingerprint=fingerprint(
+                "\n".join(chunk.content for chunk in enriched)
+            ),
             item_count=len(enriched),
             now=now,
         )
         task.current_node = PipelineNodeType.INDEXER.value
-        mark_node_running(session, node_by_type[PipelineNodeType.INDEXER.value], now=now)
+        mark_node_running(
+            session, node_by_type[PipelineNodeType.INDEXER.value], now=now
+        )
         if self._indexer:
             try:
-                indexed = self._indexer.index(enriched, descriptor, evidence_version_id=task.evidence_version_id)
+                indexed = self._indexer.index(
+                    enriched, descriptor, evidence_version_id=task.evidence_version_id
+                )
             except TypeError as exc:
                 if "evidence_version_id" not in str(exc):
                     raise
@@ -288,7 +316,9 @@ class ShoppingEvidencePipeline:
         mark_node_completed(
             session,
             node_by_type[PipelineNodeType.INDEXER.value],
-            output_fingerprint=fingerprint("\n".join(chunk.content for chunk in enriched)),
+            output_fingerprint=fingerprint(
+                "\n".join(chunk.content for chunk in enriched)
+            ),
             item_count=indexed,
             now=now,
         )
@@ -301,7 +331,9 @@ class ShoppingEvidencePipeline:
         )
 
 
-def load_legacy_sources(documents_dir: Path) -> list[tuple[ShoppingEvidenceDescriptor, str]]:
+def load_legacy_sources(
+    documents_dir: Path,
+) -> list[tuple[ShoppingEvidenceDescriptor, str]]:
     result: list[tuple[ShoppingEvidenceDescriptor, str]] = []
     for path in sorted((documents_dir / "products").glob("*.md")):
         content = path.read_text(encoding="utf-8")

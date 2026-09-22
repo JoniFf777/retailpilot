@@ -26,7 +26,12 @@ def upgrade() -> None:
     )
     op.add_column(
         "pending_actions",
-        sa.Column("result_json", JSON_TYPE, nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "result_json",
+            JSON_TYPE,
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
     )
     op.add_column(
         "pending_actions",
@@ -42,7 +47,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint("ck_pending_actions_version_positive", "pending_actions", type_="check")
+    op.drop_constraint(
+        "ck_pending_actions_version_positive", "pending_actions", type_="check"
+    )
     op.drop_column("pending_actions", "resolved_at")
     op.drop_column("pending_actions", "resolution_request_hash")
     op.drop_column("pending_actions", "result_json")

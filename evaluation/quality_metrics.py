@@ -72,7 +72,8 @@ def aggregate_quality_metrics(outcomes: Sequence[TaskOutcome]) -> QualityMetrics
         hard_constraint_violation_rate=_ratio(
             sum(item.hard_constraint_violation_count for item in outcomes),
             sum(item.recommendation_count for item in outcomes),
-        ) or 0.0,
+        )
+        or 0.0,
         evidence_recall=_ratio(
             sum(item.supported_evidence_count for item in outcomes),
             sum(item.required_evidence_count for item in outcomes),

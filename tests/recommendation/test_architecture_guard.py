@@ -29,4 +29,4 @@ def test_generic_renderer_has_no_category_render_branch() -> None:
     paths = Path(ROOT / "frontend/src/features/recommendation").glob("*.tsx")
     source = "\n".join(path.read_text(encoding="utf-8") for path in paths)
     assert "category ===" not in source
-    assert "category ?? \"laptop\"" not in source
+    assert 'category ?? "laptop"' not in source

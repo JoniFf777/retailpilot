@@ -58,11 +58,14 @@ def create_ingestion_task(
     )
     if existing is not None:
         return existing
-    previous_version = session.scalar(
-        select(func.max(ShoppingEvidenceVersion.version)).where(
-            ShoppingEvidenceVersion.evidence_key == descriptor.source_path
+    previous_version = (
+        session.scalar(
+            select(func.max(ShoppingEvidenceVersion.version)).where(
+                ShoppingEvidenceVersion.evidence_key == descriptor.source_path
+            )
         )
-    ) or 0
+        or 0
+    )
     evidence = ShoppingEvidenceVersion(
         evidence_key=descriptor.source_path,
         evidence_type=_enum_value(descriptor.evidence_type),
@@ -118,7 +121,10 @@ def claim_ingestion_tasks(
         .where(
             ShoppingIngestionTask.status.in_(("pending", "running")),
             ShoppingIngestionTask.available_at <= now,
-            (ShoppingIngestionTask.lease_until.is_(None) | (ShoppingIngestionTask.lease_until < now)),
+            (
+                ShoppingIngestionTask.lease_until.is_(None)
+                | (ShoppingIngestionTask.lease_until < now)
+            ),
         )
         .order_by(ShoppingIngestionTask.created_at, ShoppingIngestionTask.id)
         .limit(limit)
@@ -134,7 +140,9 @@ def claim_ingestion_tasks(
     return tasks
 
 
-def mark_node_running(session: Session, node: ShoppingIngestionNode, *, now: datetime | None = None) -> None:
+def mark_node_running(
+    session: Session, node: ShoppingIngestionNode, *, now: datetime | None = None
+) -> None:
     node.status = "running"
     node.attempt_count += 1
     node.started_at = now or _now()
@@ -249,20 +257,31 @@ def list_current_evidence(
         select(ShoppingEvidenceVersion)
         .join(
             ShoppingEvidencePublication,
-            ShoppingEvidencePublication.evidence_version_id == ShoppingEvidenceVersion.id,
+            ShoppingEvidencePublication.evidence_version_id
+            == ShoppingEvidenceVersion.id,
         )
         .where(ShoppingEvidenceVersion.status == "published")
         .where(
-            (ShoppingEvidenceVersion.valid_from.is_(None) | (ShoppingEvidenceVersion.valid_from <= now)),
-            (ShoppingEvidenceVersion.valid_until.is_(None) | (ShoppingEvidenceVersion.valid_until > now)),
+            (
+                ShoppingEvidenceVersion.valid_from.is_(None)
+                | (ShoppingEvidenceVersion.valid_from <= now)
+            ),
+            (
+                ShoppingEvidenceVersion.valid_until.is_(None)
+                | (ShoppingEvidenceVersion.valid_until > now)
+            ),
         )
         .order_by(ShoppingEvidenceVersion.id)
         .limit(limit)
     )
     if evidence_type:
-        statement = statement.where(ShoppingEvidenceVersion.evidence_type == evidence_type)
+        statement = statement.where(
+            ShoppingEvidenceVersion.evidence_type == evidence_type
+        )
     if category_code:
-        statement = statement.where(ShoppingEvidenceVersion.category_code == category_code)
+        statement = statement.where(
+            ShoppingEvidenceVersion.category_code == category_code
+        )
     if policy_type:
         statement = statement.where(ShoppingEvidenceVersion.policy_type == policy_type)
     rows = list(session.scalars(statement).all())

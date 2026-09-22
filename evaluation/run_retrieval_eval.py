@@ -64,7 +64,10 @@ def main(argv: list[str] | None = None) -> int:
         report = {
             "schema_version": "shopmind.retrieval-eval.v1",
             "passed": False,
-            "error": {"code": "retrieval_eval_invalid", "message": "Retrieval evaluation input is invalid."},
+            "error": {
+                "code": "retrieval_eval_invalid",
+                "message": "Retrieval evaluation input is invalid.",
+            },
         }
     else:
         report["passed"] = True

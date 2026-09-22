@@ -28,7 +28,9 @@ def request_hash(request: BaseModel) -> str:
 
 def validate_idempotency_key(value: str) -> str:
     if not isinstance(value, str) or not IDEMPOTENCY_KEY_PATTERN.fullmatch(value):
-        raise ValueError("Idempotency-Key must contain only stable ASCII characters and be 1-128 characters long.")
+        raise ValueError(
+            "Idempotency-Key must contain only stable ASCII characters and be 1-128 characters long."
+        )
     return value
 
 
@@ -53,7 +55,13 @@ def decode_order_cursor(value: str) -> tuple[datetime, str]:
         data = json.loads(raw.decode("utf-8"))
         created_at = datetime.fromisoformat(data["created_at"])
         order_id = str(UUID(data["id"]))
-    except (ValueError, TypeError, KeyError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+    except (
+        ValueError,
+        TypeError,
+        KeyError,
+        json.JSONDecodeError,
+        UnicodeDecodeError,
+    ) as exc:
         raise ValueError("cursor is invalid") from exc
     if created_at.tzinfo is None or set(data) != {"created_at", "id"}:
         raise ValueError("cursor is invalid")

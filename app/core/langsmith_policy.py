@@ -116,9 +116,7 @@ def initialize_langsmith_runtime(
 
     try:
         selected_loader = (
-            load_dotenv
-            if dotenv_loader is _DEFAULT_DOTENV_LOADER
-            else dotenv_loader
+            load_dotenv if dotenv_loader is _DEFAULT_DOTENV_LOADER else dotenv_loader
         )
         if load_environment and callable(selected_loader):
             selected_loader(override=False)
@@ -127,9 +125,7 @@ def initialize_langsmith_runtime(
             explicit.get("SHOPMIND_DEPLOYMENT_PROFILE")
             or os.getenv("SHOPMIND_DEPLOYMENT_PROFILE")
         )
-        profile_tracing, profile_project, profile_sampling = _PROFILE_DEFAULTS[
-            profile
-        ]
+        profile_tracing, profile_project, profile_sampling = _PROFILE_DEFAULTS[profile]
 
         requested_tracing, tracing_valid = _parse_bool(
             explicit.get("LANGSMITH_TRACING")
@@ -158,9 +154,7 @@ def initialize_langsmith_runtime(
         sampling_raw = explicit.get("LANGSMITH_TRACING_SAMPLING_RATE")
         if sampling_raw is None:
             dotenv_sampling = os.getenv("LANGSMITH_TRACING_SAMPLING_RATE")
-            _, sampling_valid = _parse_sampling_rate(
-                dotenv_sampling, profile_sampling
-            )
+            _, sampling_valid = _parse_sampling_rate(dotenv_sampling, profile_sampling)
             sampling = profile_sampling
         else:
             sampling, sampling_valid = _parse_sampling_rate(
@@ -169,10 +163,7 @@ def initialize_langsmith_runtime(
         api_key_present = bool(os.getenv("LANGSMITH_API_KEY", "").strip())
 
         tracing_enabled = (
-            requested_tracing
-            and tracing_valid
-            and sampling_valid
-            and api_key_present
+            requested_tracing and tracing_valid and sampling_valid and api_key_present
         )
 
         raw_profile = os.getenv("SHOPMIND_DEPLOYMENT_PROFILE", "").strip().lower()
@@ -189,9 +180,7 @@ def initialize_langsmith_runtime(
                 "LangSmith tracing disabled: LANGSMITH_API_KEY is not configured."
             )
         elif requested_tracing and (not tracing_valid or not sampling_valid):
-            LOGGER.warning(
-                "LangSmith tracing disabled: invalid tracing configuration."
-            )
+            LOGGER.warning("LangSmith tracing disabled: invalid tracing configuration.")
 
         return LangSmithRuntime(
             profile=profile,

@@ -89,7 +89,11 @@ def create_shopmind_agent(
     Returns:
         一个使用 LangChain create_agent 创建的可调用 Agent graph。
     """
-    llm = init_chat_model(model or DEFAULT_MODEL, configurable_fields=["model"]) if isinstance(model, str) or model is None else model
+    llm = (
+        init_chat_model(model or DEFAULT_MODEL, configurable_fields=["model"])
+        if isinstance(model, str) or model is None
+        else model
+    )
 
     agent_kwargs: dict[str, Any] = {
         "model": llm,
@@ -178,7 +182,10 @@ def _extract_final_answer(raw_result: Any) -> str:
                 content = _message_content_to_text(message.content).strip()
                 if content:
                     return content
-            elif isinstance(message, BaseMessage) and getattr(message, "type", None) == "ai":
+            elif (
+                isinstance(message, BaseMessage)
+                and getattr(message, "type", None) == "ai"
+            ):
                 content = _message_content_to_text(message.content).strip()
                 if content:
                     return content

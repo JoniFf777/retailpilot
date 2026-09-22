@@ -18,7 +18,14 @@ from app.schemas.checkout import CheckoutPreview, CheckoutPreviewItem, CheckoutW
 
 
 class CheckoutServiceError(ValueError):
-    def __init__(self, code: str, message: str, *, status_code: int = 503, details: dict | None = None):
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        *,
+        status_code: int = 503,
+        details: dict | None = None,
+    ):
         super().__init__(message)
         self.code = code
         self.message = message
@@ -26,7 +33,9 @@ class CheckoutServiceError(ValueError):
         self.details = details or {}
 
 
-def preview_checkout(session: Session, *, user_id: str, settings: Settings) -> CheckoutPreview:
+def preview_checkout(
+    session: Session, *, user_id: str, settings: Settings
+) -> CheckoutPreview:
     if settings.shopmind_checkout_signing_secret is None:
         raise CheckoutServiceError(
             "checkout_unavailable",
@@ -44,11 +53,19 @@ def preview_checkout(session: Session, *, user_id: str, settings: Settings) -> C
             revalidation_required=True,
         )
 
-    items = [_to_view(item, sku, product, inventory) for item, sku, product, inventory in rows]
+    items = [
+        _to_view(item, sku, product, inventory)
+        for item, sku, product, inventory in rows
+    ]
     warnings: list[CheckoutWarning] = []
     for item in items:
         reason = item.availability.reason_code
-        if reason in {"product_inactive", "sku_inactive", "inventory_missing", "out_of_stock"}:
+        if reason in {
+            "product_inactive",
+            "sku_inactive",
+            "inventory_missing",
+            "out_of_stock",
+        }:
             warnings.append(
                 CheckoutWarning(
                     code=reason,
@@ -68,12 +85,18 @@ def preview_checkout(session: Session, *, user_id: str, settings: Settings) -> C
             )
     currencies = {item.unit_money.currency for item in items}
     if len(currencies) != 1:
-        warnings.append(CheckoutWarning(code="mixed_currency", message="Cart contains mixed currencies."))
+        warnings.append(
+            CheckoutWarning(
+                code="mixed_currency", message="Cart contains mixed currencies."
+            )
+        )
         currency = None
         subtotal = None
     else:
         currency = next(iter(currencies))
-        total = sum((Decimal(item.subtotal_money.amount) for item in items), Decimal("0.00"))
+        total = sum(
+            (Decimal(item.subtotal_money.amount) for item in items), Decimal("0.00")
+        )
         subtotal = Decimal(total).quantize(Decimal("0.01"))
     can_create_order = not warnings and currency is not None and subtotal is not None
     token = None

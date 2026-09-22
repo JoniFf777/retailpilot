@@ -89,9 +89,7 @@ def merge_parallel_step_results(
         "delegated_usage": [
             step_result.usage.model_dump(mode="python")
             for step in plan.steps
-            if (
-                (step_result := result_by_id[step.step_id]).usage is not None
-            )
+            if ((step_result := result_by_id[step.step_id]).usage is not None)
         ],
         "parallel_execution": {
             "plan_id": plan.plan_id,

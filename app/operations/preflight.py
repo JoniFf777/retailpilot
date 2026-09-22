@@ -147,9 +147,7 @@ def _identity_check(settings: Settings) -> ProductionPreflightCheck:
             ProductionPreflightCategory.IDENTITY,
             passed=True,
             passed_reason=ProductionPreflightReason.SIGNED_IDENTITY,
-            failed_reason=(
-                ProductionPreflightReason.DEVELOPMENT_IDENTITY_FORBIDDEN
-            ),
+            failed_reason=(ProductionPreflightReason.DEVELOPMENT_IDENTITY_FORBIDDEN),
         )
     if settings.shopmind_identity_provider == "trusted_header":
         return _check(
@@ -164,21 +162,14 @@ def _identity_check(settings: Settings) -> ProductionPreflightCheck:
         ProductionPreflightCategory.IDENTITY,
         passed=False,
         passed_reason=ProductionPreflightReason.SIGNED_IDENTITY,
-        failed_reason=(
-            ProductionPreflightReason.DEVELOPMENT_IDENTITY_FORBIDDEN
-        ),
+        failed_reason=(ProductionPreflightReason.DEVELOPMENT_IDENTITY_FORBIDDEN),
     )
 
 
 def _coordination_check(settings: Settings) -> ProductionPreflightCheck:
     if settings.shopmind_coordination_backend == "redis":
-        configured = (
-            settings.shopmind_coordination_redis_url is not None
-            and bool(
-                settings.shopmind_coordination_redis_url
-                .get_secret_value()
-                .strip()
-            )
+        configured = settings.shopmind_coordination_redis_url is not None and bool(
+            settings.shopmind_coordination_redis_url.get_secret_value().strip()
         )
         return _check(
             "coordination.topology",
@@ -192,9 +183,7 @@ def _coordination_check(settings: Settings) -> ProductionPreflightCheck:
         ProductionPreflightCategory.COORDINATION,
         passed=settings.shopmind_deployment_replicas == 1,
         passed_reason=ProductionPreflightReason.SINGLE_REPLICA_LOCAL,
-        failed_reason=(
-            ProductionPreflightReason.LOCAL_COORDINATION_MULTI_REPLICA
-        ),
+        failed_reason=(ProductionPreflightReason.LOCAL_COORDINATION_MULTI_REPLICA),
     )
 
 
@@ -255,12 +244,8 @@ def _retention_check(settings: Settings) -> ProductionPreflightCheck:
         "retention.cleanup",
         ProductionPreflightCategory.RETENTION,
         passed=settings.shopmind_runtime_cleanup_scheduled,
-        passed_reason=(
-            ProductionPreflightReason.RETENTION_CLEANUP_SCHEDULED
-        ),
-        failed_reason=(
-            ProductionPreflightReason.RETENTION_CLEANUP_UNSCHEDULED
-        ),
+        passed_reason=(ProductionPreflightReason.RETENTION_CLEANUP_SCHEDULED),
+        failed_reason=(ProductionPreflightReason.RETENTION_CLEANUP_UNSCHEDULED),
     )
 
 
@@ -314,9 +299,8 @@ def _shopping_tasks_check(settings: Settings) -> ProductionPreflightCheck:
             passed_reason=ProductionPreflightReason.SHOPPING_TASKS_OFFLINE_CONFIGURED,
             failed_reason=ProductionPreflightReason.SHOPPING_TASKS_AGENT_UNCONFIGURED,
         )
-    configured = (
-        getattr(settings, "shopmind_ai_platform_enabled", False)
-        and bool(str(getattr(settings, "workshop_model", "")).strip())
+    configured = getattr(settings, "shopmind_ai_platform_enabled", False) and bool(
+        str(getattr(settings, "workshop_model", "")).strip()
     )
     return _check(
         "shopping_tasks.configuration",

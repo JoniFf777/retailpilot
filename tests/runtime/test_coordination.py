@@ -55,9 +55,7 @@ def test_admission_lease_rejects_excess_and_recovers_after_release_or_ttl() -> N
     assert rejected.reason == "capacity_exhausted"
     assert rejected.retry_after_ms == 1_000
     clock.advance_ms(500)
-    assert backend.renew_admission(
-        first.lease_id, lease_ttl_ms=1_000
-    ).renewed is True
+    assert backend.renew_admission(first.lease_id, lease_ttl_ms=1_000).renewed is True
     clock.advance_ms(500)
     assert backend.try_acquire(request).accepted is False
     assert backend.release_admission(first.lease_id).released is True
@@ -147,13 +145,16 @@ def test_coordination_state_bounds_fail_closed() -> None:
             limit=2,
         )
     ).accepted
-    assert backend.try_acquire(
-        AdmissionRequest(
-            resource="run",
-            subject_fingerprint=fingerprint("two"),
-            limit=2,
-        )
-    ).reason == "backend_capacity_exhausted"
+    assert (
+        backend.try_acquire(
+            AdmissionRequest(
+                resource="run",
+                subject_fingerprint=fingerprint("two"),
+                limit=2,
+            )
+        ).reason
+        == "backend_capacity_exhausted"
+    )
     assert backend.check_rate_limit(
         RateLimitRequest(
             bucket="chat",
@@ -162,26 +163,32 @@ def test_coordination_state_bounds_fail_closed() -> None:
             window_ms=1_000,
         )
     ).accepted
-    assert backend.check_rate_limit(
-        RateLimitRequest(
-            bucket="chat",
-            subject_fingerprint=fingerprint("two"),
-            limit=2,
-            window_ms=1_000,
-        )
-    ).reason == "backend_capacity_exhausted"
+    assert (
+        backend.check_rate_limit(
+            RateLimitRequest(
+                bucket="chat",
+                subject_fingerprint=fingerprint("two"),
+                limit=2,
+                window_ms=1_000,
+            )
+        ).reason
+        == "backend_capacity_exhausted"
+    )
     assert backend.claim_duplicate(
         DeduplicationRequest(
             namespace="run",
             key_fingerprint=fingerprint("one"),
         )
     ).acquired
-    assert backend.claim_duplicate(
-        DeduplicationRequest(
-            namespace="run",
-            key_fingerprint=fingerprint("two"),
-        )
-    ).reason == "backend_capacity_exhausted"
+    assert (
+        backend.claim_duplicate(
+            DeduplicationRequest(
+                namespace="run",
+                key_fingerprint=fingerprint("two"),
+            )
+        ).reason
+        == "backend_capacity_exhausted"
+    )
 
 
 def test_bounded_cache_uses_ttl_lru_copying_and_value_size_limits() -> None:
@@ -211,20 +218,26 @@ def test_bounded_cache_uses_ttl_lru_copying_and_value_size_limits() -> None:
     assert backend.get_cache(second_key).hit is True
     clock.advance_ms(1_000)
     assert backend.get_cache(second_key).hit is False
-    assert backend.put_cache(
-        CachePutRequest(
-            namespace="answer",
-            key_fingerprint=fingerprint("large"),
-            value={"value": "x" * 40},
-        )
-    ).reason == "value_too_large"
-    assert backend.put_cache(
-        CachePutRequest(
-            namespace="answer",
-            key_fingerprint=fingerprint("invalid"),
-            value={"value": object()},
-        )
-    ).reason == "value_not_serializable"
+    assert (
+        backend.put_cache(
+            CachePutRequest(
+                namespace="answer",
+                key_fingerprint=fingerprint("large"),
+                value={"value": "x" * 40},
+            )
+        ).reason
+        == "value_too_large"
+    )
+    assert (
+        backend.put_cache(
+            CachePutRequest(
+                namespace="answer",
+                key_fingerprint=fingerprint("invalid"),
+                value={"value": object()},
+            )
+        ).reason
+        == "value_not_serializable"
+    )
 
 
 def test_cache_invalidation_is_idempotent() -> None:

@@ -39,9 +39,9 @@ def _failed_run(
         debug=debug,
         metadata={
             "retry_state": retry_state,
-            "authoritative_run_id": "winner-run-1"
-            if retry_state == "in_progress"
-            else None,
+            "authoritative_run_id": (
+                "winner-run-1" if retry_state == "in_progress" else None
+            ),
         },
     )
 
@@ -153,7 +153,9 @@ async def test_json_and_sse_typed_failure_projection_match(monkeypatch) -> None:
         "runtime_error_code": "version_conflict",
         "debug": {"error_message": "private provider failure"},
     }
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", lambda *_a, **_k: failure)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", lambda *_a, **_k: failure
+    )
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         json_response = await client.post(

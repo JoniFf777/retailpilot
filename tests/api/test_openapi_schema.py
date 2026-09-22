@@ -33,9 +33,9 @@ def test_openapi_chat_schemas_include_v3_handoff_examples() -> None:
         "cancelled",
         "failed",
     ]
-    assert "confirmation_required" in chat_response["properties"]["status"][
-        "description"
-    ]
+    assert (
+        "confirmation_required" in chat_response["properties"]["status"]["description"]
+    )
     assert chat_response["examples"][0]["pending_action_id"] == "pending-action-id"
     assert "run_id" in chat_response["properties"]
     assert "trace_id" in chat_response["properties"]
@@ -89,19 +89,35 @@ def test_openapi_structured_action_errors_and_confirm_headers() -> None:
     paths = schema["paths"]
     schemas = schema["components"]["schemas"]
     error = schemas["ActionErrorResponse"]
-    assert set(error["properties"]) >= {"code", "message", "details", "idempotent_replay"}
+    assert set(error["properties"]) >= {
+        "code",
+        "message",
+        "details",
+        "idempotent_replay",
+    }
     assert "action_resolution_conflict" in error["properties"]["code"]["enum"]
     assert "PendingActionErrorDetails" in str(error["properties"]["details"])
     assert schemas["PendingActionTransitionRequest"]["properties"]["expected_version"]
     confirm = paths["/api/pending-actions/{pending_action_id}/confirm"]["post"]
-    assert not any(parameter.get("name") == "Idempotency-Key" for parameter in confirm.get("parameters", []))
+    assert not any(
+        parameter.get("name") == "Idempotency-Key"
+        for parameter in confirm.get("parameters", [])
+    )
     assert "410" in confirm["responses"]
 
 
 def test_openapi_legacy_preference_fields_are_discriminated_and_typed() -> None:
     schemas = app.openapi()["components"]["schemas"]
-    assert schemas["PendingActionView"]["properties"]["editable_fields"]["items"]["discriminator"]["propertyName"] == "field_type"
-    assert schemas["IntegerEditableField"]["properties"]["field_type"]["const"] == "integer"
+    assert (
+        schemas["PendingActionView"]["properties"]["editable_fields"]["items"][
+            "discriminator"
+        ]["propertyName"]
+        == "field_type"
+    )
+    assert (
+        schemas["IntegerEditableField"]["properties"]["field_type"]["const"]
+        == "integer"
+    )
     assert schemas["EnumEditableField"]["properties"]["field_type"]["const"] == "enum"
     assert schemas["TextEditableField"]["properties"]["field_type"]["const"] == "text"
     assert "payload" not in schemas["PendingActionView"]["properties"]

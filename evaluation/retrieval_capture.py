@@ -31,8 +31,13 @@ def capture_retrieval_cases(
         case_id = str(case.get("case_id") or f"case-{index + 1}")
         started = perf_counter()
         try:
-            top_k = [CatalogSkuCandidate.model_validate(item) for item in case.get("top_k", [])]
-            evidence = provider.retrieve(message=str(case.get("message") or ""), top_k=top_k)
+            top_k = [
+                CatalogSkuCandidate.model_validate(item)
+                for item in case.get("top_k", [])
+            ]
+            evidence = provider.retrieve(
+                message=str(case.get("message") or ""), top_k=top_k
+            )
             if not isinstance(evidence, RecommendationEvidence):
                 raise TypeError("retrieval provider returned an invalid contract")
             ranked_ids = [
@@ -56,7 +61,10 @@ def capture_retrieval_cases(
                     "case_id": case_id,
                     "execution_ok": False,
                     "retrieved_ids": [],
-                    "diagnostics": {"error_code": "retrieval_capture_failed", "exception_type": type(exc).__name__},
+                    "diagnostics": {
+                        "error_code": "retrieval_capture_failed",
+                        "exception_type": type(exc).__name__,
+                    },
                     "latency_ms": (perf_counter() - started) * 1000,
                 }
             )

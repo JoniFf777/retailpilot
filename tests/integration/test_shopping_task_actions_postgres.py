@@ -17,12 +17,22 @@ from sqlalchemy.orm import Session, sessionmaker
 if os.getenv("RUN_POSTGRES_INTEGRATION") != "1":
     pytest.skip("set RUN_POSTGRES_INTEGRATION=1", allow_module_level=True)
 
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.cart.models import ShopMindCartItem
 from app.core.settings import get_settings
 from app.db.models import Customer, Order
 from app.shopping_tasks.actions import ShoppingTaskActionError, confirm_task_action
-from app.shopping_tasks.contracts import Fact, ShoppingTaskRequest, SourceRef, canonical_fingerprint
+from app.shopping_tasks.contracts import (
+    Fact,
+    ShoppingTaskRequest,
+    SourceRef,
+    canonical_fingerprint,
+)
 from app.shopping_tasks.models import (
     AfterSalesDraft,
     ShoppingTask,
@@ -42,7 +52,7 @@ def db_factory():
         connection.execute(
             text(
                 f'CREATE TABLE "{schema}".alembic_version '
-                '(version_num VARCHAR(32) NOT NULL PRIMARY KEY)'
+                "(version_num VARCHAR(32) NOT NULL PRIMARY KEY)"
             )
         )
         connection.commit()
@@ -209,7 +219,9 @@ def _confirm(factory, *, owner_id, task_id, action_id, version, key, confirmed=T
 
 def test_bundle_confirm_replay_and_single_item_failure_rolls_back(db_factory) -> None:
     owner = f"bundle-action-{uuid4().hex}"
-    task_id, version, action_id, _sku_ids = _seed_bundle_action(db_factory, owner_id=owner)
+    task_id, version, action_id, _sku_ids = _seed_bundle_action(
+        db_factory, owner_id=owner
+    )
     first = _confirm(
         db_factory,
         owner_id=owner,
@@ -229,7 +241,11 @@ def test_bundle_confirm_replay_and_single_item_failure_rolls_back(db_factory) ->
     assert first[0] == replay[0] == "ok"
     assert first[1] == replay[1]
     session = db_factory()
-    rows = list(session.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == owner)).all())
+    rows = list(
+        session.scalars(
+            select(ShopMindCartItem).where(ShopMindCartItem.user_id == owner)
+        ).all()
+    )
     assert len(rows) == 3 and {row.quantity for row in rows} == {1}
     session.close()
 
@@ -249,9 +265,12 @@ def test_bundle_confirm_replay_and_single_item_failure_rolls_back(db_factory) ->
     )
     assert failed == ("error", "catalog_changed_repreview_required")
     session = db_factory()
-    assert session.scalar(
-        select(ShopMindCartItem).where(ShopMindCartItem.user_id == failed_owner)
-    ) is None
+    assert (
+        session.scalar(
+            select(ShopMindCartItem).where(ShopMindCartItem.user_id == failed_owner)
+        )
+        is None
+    )
     assert session.get(ShoppingTaskAction, failed_action).status == "pending"
     session.close()
 
@@ -289,7 +308,9 @@ def test_concurrent_bundle_confirmation_and_cancel_are_serialized(db_factory) ->
     session = db_factory()
     action = session.get(ShoppingTaskAction, action_id)
     cart_rows = list(
-        session.scalars(select(ShopMindCartItem).where(ShopMindCartItem.user_id == owner)).all()
+        session.scalars(
+            select(ShopMindCartItem).where(ShopMindCartItem.user_id == owner)
+        ).all()
     )
     if action.status == "confirmed":
         assert len(cart_rows) == 3
@@ -381,14 +402,20 @@ def test_after_sales_draft_is_owner_bound_and_replayed_once(db_factory) -> None:
     assert first[0] == replay[0] == "ok"
     assert first[1] == replay[1]
     session = db_factory()
-    drafts = list(session.scalars(select(AfterSalesDraft).where(AfterSalesDraft.owner_id == owner)).all())
+    drafts = list(
+        session.scalars(
+            select(AfterSalesDraft).where(AfterSalesDraft.owner_id == owner)
+        ).all()
+    )
     assert len(drafts) == 1
     assert drafts[0].order_id == order.order_id
     assert drafts[0].payload_json["draft_only"] is True
     session.close()
 
 
-def test_rollback_drain_cancels_active_work_and_preserves_confirmed_cart(db_factory) -> None:
+def test_rollback_drain_cancels_active_work_and_preserves_confirmed_cart(
+    db_factory,
+) -> None:
     owner = f"rollback-owner-{uuid4().hex}"
     confirmed_task, version, action_id, _ = _seed_bundle_action(
         db_factory,

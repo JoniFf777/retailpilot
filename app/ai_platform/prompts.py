@@ -43,17 +43,30 @@ def validate_prompt_candidate(slot: PromptSlot | str, content: str) -> None:
     }[normalized]
     if not all(token.casefold() in text.casefold() for token in required):
         raise ValueError("Prompt candidate failed its deterministic contract gate.")
-    if any(token in text.casefold() for token in ("ignore tool policy", "bypass hitl", "disable confirmation")):
+    if any(
+        token in text.casefold()
+        for token in ("ignore tool policy", "bypass hitl", "disable confirmation")
+    ):
         raise ValueError("Prompt candidate attempts to weaken a safety boundary.")
 
 
-def resolve_prompt(slot: PromptSlot | str, registry: ExtensionRegistry | None = None) -> str:
+def resolve_prompt(
+    slot: PromptSlot | str, registry: ExtensionRegistry | None = None
+) -> str:
     normalized = PromptSlot(slot)
     if registry is not None:
         for definition in registry.enabled_for("prompt"):
-            if definition.extension_key == normalized.value and definition.content.strip():
+            if (
+                definition.extension_key == normalized.value
+                and definition.content.strip()
+            ):
                 return definition.content
     return BUILTIN_PROMPTS[normalized]
 
 
-__all__ = ["BUILTIN_PROMPTS", "PromptSlot", "resolve_prompt", "validate_prompt_candidate"]
+__all__ = [
+    "BUILTIN_PROMPTS",
+    "PromptSlot",
+    "resolve_prompt",
+    "validate_prompt_candidate",
+]

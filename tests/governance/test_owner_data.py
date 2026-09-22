@@ -155,6 +155,8 @@ def test_owner_memory_inspection_correction_and_deletion_are_exact_scoped():
     assert owner_id not in serialized
     assert "private outdated preference" not in serialized
     assert "explicit corrected preference" not in serialized
+
+
 def test_full_owner_deletion_retains_audit_and_is_idempotent_by_effect():
     Session = _session_factory()
     owner_id = "private-delete-owner"
@@ -243,9 +245,7 @@ def test_full_owner_deletion_retains_audit_and_is_idempotent_by_effect():
     try:
         retained_preferences = list(
             session.scalars(
-                select(UserPreference).where(
-                    UserPreference.user_id == other_owner
-                )
+                select(UserPreference).where(UserPreference.user_id == other_owner)
             )
         )
         rows = list(

@@ -1,6 +1,9 @@
 import pytest
 
-from evaluation.retrieval_metrics import aggregate_retrieval_metrics, evaluate_retrieval_case
+from evaluation.retrieval_metrics import (
+    aggregate_retrieval_metrics,
+    evaluate_retrieval_case,
+)
 
 
 def test_retrieval_metrics_use_unique_evidence_ids_and_rank() -> None:

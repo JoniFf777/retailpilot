@@ -42,9 +42,7 @@ def make_session_factory():
 def make_record():
     return GovernanceAuditFactory(
         clock=lambda: NOW,
-        audit_id_factory=lambda: UUID(
-            "00000000-0000-0000-0000-000000000201"
-        ),
+        audit_id_factory=lambda: UUID("00000000-0000-0000-0000-000000000201"),
     ).action_decision(
         operation=AuditOperation.ACTION_CONFIRM,
         decision=AuditDecision.SUCCEEDED,
@@ -91,9 +89,7 @@ def test_emitter_disabled_and_empty_batches_are_closed_skips():
 
 def test_emitter_storage_failure_is_sanitized_and_never_raises(caplog):
     def unavailable_session():
-        raise RuntimeError(
-            "private database host and password must never escape"
-        )
+        raise RuntimeError("private database host and password must never escape")
 
     result = GovernanceAuditEmitter(unavailable_session).emit(make_record())
     serialized = result.model_dump_json()

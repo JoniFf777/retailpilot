@@ -80,11 +80,17 @@ class StructuredRecommendationExecutor:
         remaining = list(plan.steps)
         while remaining:
             if len(completed) >= plan.max_steps:
-                errors.append({"code": "recommendation.step_budget_exceeded", "stage": "plan"})
+                errors.append(
+                    {"code": "recommendation.step_budget_exceeded", "stage": "plan"}
+                )
                 break
-            frontier = [step for step in remaining if set(step.depends_on).issubset(completed)]
+            frontier = [
+                step for step in remaining if set(step.depends_on).issubset(completed)
+            ]
             if not frontier:
-                errors.append({"code": "recommendation.dependency_blocked", "stage": "plan"})
+                errors.append(
+                    {"code": "recommendation.dependency_blocked", "stage": "plan"}
+                )
                 break
             step = frontier[0]
             remaining.remove(step)
@@ -92,16 +98,24 @@ class StructuredRecommendationExecutor:
                 errors.append({"code": "recommendation.cancelled", "stage": step.stage})
                 break
             started = perf_counter()
-            events.append({"stage": step.stage, "status": "started", "step_id": step.step_id})
+            events.append(
+                {"stage": step.stage, "status": "started", "step_id": step.step_id}
+            )
             handler = handlers.get(step.stage)
             if handler is None:
-                errors.append({"code": "recommendation.handler_missing", "stage": step.stage})
+                errors.append(
+                    {"code": "recommendation.handler_missing", "stage": step.stage}
+                )
                 break
             try:
                 output = handler(current)
             except Exception as exc:
-                errors.append({"code": "recommendation.stage_failed", "stage": step.stage})
-                events.append({"stage": step.stage, "status": "failed", "step_id": step.step_id})
+                errors.append(
+                    {"code": "recommendation.stage_failed", "stage": step.stage}
+                )
+                events.append(
+                    {"stage": step.stage, "status": "failed", "step_id": step.step_id}
+                )
                 break
             current.update(output)
             results[step.stage] = output
@@ -124,7 +138,9 @@ class StructuredRecommendationExecutor:
         ).model_dump(mode="json")
         return RecommendationTaskExecution(
             state=current,
-            result=RecommendationTaskResult.model_validate(current["recommendation_task"]),
+            result=RecommendationTaskResult.model_validate(
+                current["recommendation_task"]
+            ),
         )
 
 

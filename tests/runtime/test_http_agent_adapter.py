@@ -243,7 +243,9 @@ def test_http_adapter_maps_client_failures_without_leaking_details(
             content=AgentResult(
                 task_id="wrong-task",
                 status=AgentTaskStatus.COMPLETED,
-            ).model_dump_json().encode("utf-8"),
+            )
+            .model_dump_json()
+            .encode("utf-8"),
         ),
         lambda task: httpx.Response(
             200,

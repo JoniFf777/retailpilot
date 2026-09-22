@@ -18,7 +18,11 @@ from app.orders.state import request_hash, validate_idempotency_key
 from app.outbox.contracts import build_payment_succeeded_event
 from app.outbox.repository import enqueue_event
 from app.payments.models import ShopMindPaymentAttempt
-from app.payments.providers import PaymentProvider, ProviderChargeRequest, ProviderOutcome
+from app.payments.providers import (
+    PaymentProvider,
+    ProviderChargeRequest,
+    ProviderOutcome,
+)
 from app.repositories.shopmind_orders import (
     get_order_by_id,
     get_order_item_reservations_for_update,
@@ -214,7 +218,9 @@ def claim_payment_attempt(
         session, order_id=locked_order.id, for_update=True
     )
     if active is not None:
-        raise _error("payment_in_progress", "Payment is already in progress for this Order.", 409)
+        raise _error(
+            "payment_in_progress", "Payment is already in progress for this Order.", 409
+        )
 
     attempt_id = uuid4()
     now = datetime.now(timezone.utc)
@@ -275,7 +281,9 @@ def persist_provider_outcome(
 ) -> ShopMindPaymentAttempt:
     attempt = get_payment_attempt_for_update(session, attempt_id=attempt_id)
     if attempt is None:
-        raise _error("payment_provider_unavailable", "Payment Attempt was not found.", 503)
+        raise _error(
+            "payment_provider_unavailable", "Payment Attempt was not found.", 503
+        )
     if attempt.status in {"failed", "succeeded"}:
         return attempt
     # Provider success is durable. A late timeout or decline from an older
@@ -373,8 +381,10 @@ def finalize_payment(
                 CatalogInventory.on_hand_quantity >= reservation.quantity,
             )
             .values(
-                on_hand_quantity=CatalogInventory.on_hand_quantity - reservation.quantity,
-                reserved_quantity=CatalogInventory.reserved_quantity - reservation.quantity,
+                on_hand_quantity=CatalogInventory.on_hand_quantity
+                - reservation.quantity,
+                reserved_quantity=CatalogInventory.reserved_quantity
+                - reservation.quantity,
                 version=CatalogInventory.version + 1,
                 updated_at=datetime.now(timezone.utc),
             )
@@ -393,7 +403,9 @@ def finalize_payment(
     attempt.completed_at = now
     attempt.updated_at = now
     session.flush()
-    enqueue_event(session, build_payment_succeeded_event(order, attempt, occurred_at=now))
+    enqueue_event(
+        session, build_payment_succeeded_event(order, attempt, occurred_at=now)
+    )
 
 
 def _finalization_error(reason: str) -> PaymentServiceError:
@@ -439,7 +451,12 @@ def list_user_payment_attempts(
     order = get_order_by_id(session, user_id=user_id, order_id=order_id)
     if order is None:
         raise _error("order_not_found", "Order was not found.", 404)
-    return [_attempt_view(attempt) for attempt in list_payment_attempts(session, user_id=user_id, order_id=order_id)]
+    return [
+        _attempt_view(attempt)
+        for attempt in list_payment_attempts(
+            session, user_id=user_id, order_id=order_id
+        )
+    ]
 
 
 def _attempt_view(attempt: ShopMindPaymentAttempt) -> PaymentAttemptView:
@@ -448,7 +465,10 @@ def _attempt_view(attempt: ShopMindPaymentAttempt) -> PaymentAttemptView:
         order_id=attempt.order_id,
         provider="mock",
         status=attempt.status,
-        amount={"amount": format(Decimal(attempt.amount).quantize(Decimal("0.01")), ".2f"), "currency": attempt.currency},
+        amount={
+            "amount": format(Decimal(attempt.amount).quantize(Decimal("0.01")), ".2f"),
+            "currency": attempt.currency,
+        },
         failure_code=attempt.failure_code,
         provider_result_at=attempt.provider_result_at,
         created_at=attempt.created_at,

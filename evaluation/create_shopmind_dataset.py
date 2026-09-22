@@ -46,7 +46,11 @@ SHOPMIND_EXAMPLES = [
         },
         "outputs": {
             "expected_tools": ["get_user_preferences", "search_products"],
-            "forbidden_tools": ["confirm_add_to_cart", "cancel_pending_action", "clear_cart_items"],
+            "forbidden_tools": [
+                "confirm_add_to_cart",
+                "cancel_pending_action",
+                "clear_cart_items",
+            ],
             "expected_status": "completed",
             "expected_keywords": ["推荐"],
         },
@@ -194,7 +198,11 @@ SHOPMIND_EXAMPLES = [
         "inputs": {"message": "你好，今天心情不错"},
         "outputs": {
             "expected_tools": [],
-            "forbidden_tools": ["prepare_add_to_cart", "get_cart_items", "confirm_add_to_cart"],
+            "forbidden_tools": [
+                "prepare_add_to_cart",
+                "get_cart_items",
+                "confirm_add_to_cart",
+            ],
             "expected_status": "completed",
             "expected_keywords": ["你好"],
         },

@@ -106,8 +106,7 @@ def guard_tools(
     runtime_context: Any | None = None,
 ) -> list[PermissionedTool]:
     return [
-        guard_tool(agent_name, tool, runtime_context=runtime_context)
-        for tool in tools
+        guard_tool(agent_name, tool, runtime_context=runtime_context) for tool in tools
     ]
 
 

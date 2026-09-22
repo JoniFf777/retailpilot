@@ -29,9 +29,9 @@ class AddToCartActionEdits(_ActionEdits):
 
 
 class SavePreferenceActionEdits(_ActionEdits):
-    preference_type: Literal[
-        "budget", "brand", "avoid", "usage", "style", "other"
-    ] | None = None
+    preference_type: (
+        Literal["budget", "brand", "avoid", "usage", "style", "other"] | None
+    ) = None
     preference_value: str | None = Field(default=None, min_length=1)
 
 
@@ -88,9 +88,7 @@ class ActionRegistry:
             raise ActionRegistryError("Action user_id is required.")
         return definition
 
-    def validate_transition(
-        self, request: ActionTransitionRequest
-    ) -> ActionDefinition:
+    def validate_transition(self, request: ActionTransitionRequest) -> ActionDefinition:
         definition = self.definition_for(request.action_type)
         if not request.action_id.strip():
             raise ActionRegistryError("Action id is required.")
@@ -118,9 +116,7 @@ class ActionRegistry:
     ) -> dict[str, Any]:
         definition = self.definition_for(action_type)
         if definition.edit_schema is None:
-            raise ActionRegistryError(
-                f"Action '{action_type}' does not support edits."
-            )
+            raise ActionRegistryError(f"Action '{action_type}' does not support edits.")
         try:
             validated = definition.edit_schema.model_validate(updated_arguments)
         except ValidationError as exc:

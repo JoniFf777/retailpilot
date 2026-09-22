@@ -44,7 +44,12 @@ def _age_seconds(value: datetime | None) -> float | None:
     normalized = value
     if normalized.tzinfo is None or normalized.utcoffset() is None:
         normalized = normalized.replace(tzinfo=timezone.utc)
-    return max(0.0, (datetime.now(timezone.utc) - normalized.astimezone(timezone.utc)).total_seconds())
+    return max(
+        0.0,
+        (
+            datetime.now(timezone.utc) - normalized.astimezone(timezone.utc)
+        ).total_seconds(),
+    )
 
 
 def _inspection_event(event: ShopMindOutboxEvent) -> dict[str, object | None]:
@@ -127,8 +132,12 @@ def get_outbox_operational_snapshot(
         "dead_letter": int(counts[3] or 0),
         "oldest_pending_seconds": _age_seconds(oldest_pending),
         "oldest_publishing_lease_expiry": _iso_datetime(oldest_lease),
-        "recent_dead_letters": [_inspection_event(event) for event in recent_dead_letters],
-        "recent_publish_failures": [_inspection_event(event) for event in recent_failures],
+        "recent_dead_letters": [
+            _inspection_event(event) for event in recent_dead_letters
+        ],
+        "recent_publish_failures": [
+            _inspection_event(event) for event in recent_failures
+        ],
     }
 
 
@@ -191,7 +200,9 @@ def get_outbox_health_snapshot(
     }
 
 
-def enqueue_event(session: Session, envelope: OutboxEventEnvelope) -> ShopMindOutboxEvent:
+def enqueue_event(
+    session: Session, envelope: OutboxEventEnvelope
+) -> ShopMindOutboxEvent:
     event = ShopMindOutboxEvent(
         id=envelope.event_id,
         aggregate_type=envelope.aggregate_type,

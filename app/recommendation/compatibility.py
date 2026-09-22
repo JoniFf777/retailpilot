@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from app.schemas.recommendation import CategoryAttributeConstraint, LaptopConstraints, RecommendationRequest
+from app.schemas.recommendation import (
+    CategoryAttributeConstraint,
+    LaptopConstraints,
+    RecommendationRequest,
+)
 
 
-def laptop_constraints_from_request(request: RecommendationRequest) -> LaptopConstraints:
+def laptop_constraints_from_request(
+    request: RecommendationRequest,
+) -> LaptopConstraints:
     values: dict[str, object] = {
         "budget_min": request.budget_min,
         "budget_max": request.budget_max,
@@ -35,7 +41,9 @@ def laptop_constraints_from_request(request: RecommendationRequest) -> LaptopCon
     return LaptopConstraints.model_validate(values)
 
 
-def request_attributes_from_laptop_constraints(constraints: LaptopConstraints) -> dict[str, CategoryAttributeConstraint]:
+def request_attributes_from_laptop_constraints(
+    constraints: LaptopConstraints,
+) -> dict[str, CategoryAttributeConstraint]:
     values: dict[str, CategoryAttributeConstraint] = {}
     operators = {
         "memory_min_gb": "gte",
@@ -48,15 +56,27 @@ def request_attributes_from_laptop_constraints(constraints: LaptopConstraints) -
     for key, operator in operators.items():
         value = getattr(constraints, key)
         if value is not None:
-            values[key] = CategoryAttributeConstraint(value=value, operator=operator, role="hard")
+            values[key] = CategoryAttributeConstraint(
+                value=value, operator=operator, role="hard"
+            )
     if constraints.primary_use_cases:
-        values["primary_use_cases"] = CategoryAttributeConstraint(value=list(constraints.primary_use_cases), operator="enum_match", role="soft")
+        values["primary_use_cases"] = CategoryAttributeConstraint(
+            value=list(constraints.primary_use_cases),
+            operator="enum_match",
+            role="soft",
+        )
     if constraints.secondary_use_cases:
-        values["secondary_use_cases"] = CategoryAttributeConstraint(value=list(constraints.secondary_use_cases), operator="enum_match", role="soft")
+        values["secondary_use_cases"] = CategoryAttributeConstraint(
+            value=list(constraints.secondary_use_cases),
+            operator="enum_match",
+            role="soft",
+        )
     return values
 
 
-def structured_constraints_compatibility(request: RecommendationRequest) -> LaptopConstraints:
+def structured_constraints_compatibility(
+    request: RecommendationRequest,
+) -> LaptopConstraints:
     """Return the released Laptop-shaped field only at the compatibility edge."""
 
     if request.category == "laptop":

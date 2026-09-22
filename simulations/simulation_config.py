@@ -6,12 +6,16 @@ from typing import Literal
 
 # Add parent directory to path to import from project root
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import DEFAULT_MODEL, DEFAULT_DEPLOYMENT_URL, DEFAULT_DB_PATH  # noqa: F401 (re-exported)
+from config import (
+    DEFAULT_MODEL,
+    DEFAULT_DEPLOYMENT_URL,
+    DEFAULT_DB_PATH,
+)  # noqa: F401 (re-exported)
 
 # Simulation Parameters
 DEFAULT_CONVERSATIONS_PER_RUN = 1  # GHA runs multiple times/day; keep per-run count low
 DEFAULT_SIMULATION_MODE = "dynamic"  # static | dynamic | mixed
-MAX_TURNS_PER_CONVERSATION = 8     # Prevent runaway conversations
+MAX_TURNS_PER_CONVERSATION = 8  # Prevent runaway conversations
 SIMULATION_MODEL = DEFAULT_MODEL  # Use same model as rest of project
 
 # Deployment Settings
@@ -35,12 +39,12 @@ RESULTS_DIR = SIMULATION_DIR / "results"  # Optional: save conversation logs
 SIMULATION_METADATA = {
     "source": "automated_simulation",
     "system": "techhub_demo_generator",
-    "environment": "production"
+    "environment": "production",
 }
 
 # Interrupt Handling
 EMAIL_COLLECTION_TIMEOUT = 30  # seconds before giving up on interrupt
-MAX_VERIFICATION_RETRIES = 2   # How many times to retry email if fails
+MAX_VERIFICATION_RETRIES = 2  # How many times to retry email if fails
 
 # Logging
 LOG_LEVEL = "INFO"

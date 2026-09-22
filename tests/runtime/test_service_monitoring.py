@@ -172,9 +172,7 @@ def test_slo_reports_insufficient_met_and_breached_states() -> None:
     )
 
     assert insufficient.status == "insufficient_data"
-    assert {check.status for check in insufficient.checks} == {
-        "insufficient_data"
-    }
+    assert {check.status for check in insufficient.checks} == {"insufficient_data"}
     assert met.status == "met"
     assert met.eligible_runs_total == 5
     assert met.successful_runs_total == 4
@@ -207,9 +205,7 @@ def test_harness_observes_each_terminal_request_exactly_once() -> None:
     )
     failed = harness.run(
         request.model_copy(update={"request_id": "failure-request"}),
-        lambda _context: (_ for _ in ()).throw(
-            RuntimeError("private provider error")
-        ),
+        lambda _context: (_ for _ in ()).throw(RuntimeError("private provider error")),
         raise_on_error=False,
     )
     with pytest.raises(RuntimeError, match="private raised error"):

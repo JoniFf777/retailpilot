@@ -172,10 +172,9 @@ def is_write_intent(message: str) -> bool:
 
     from .write_handoff import is_candidate_selection_message
 
-    return (
-        _contains_any(message, WRITE_INTENT_KEYWORDS)
-        or is_candidate_selection_message(message)
-    )
+    return _contains_any(
+        message, WRITE_INTENT_KEYWORDS
+    ) or is_candidate_selection_message(message)
 
 
 def _write_intent_decision(
@@ -420,6 +419,8 @@ def create_supervisor_router(
                 if decision_provider is not None
                 else "langchain_structured_output"
             ),
-            model_name=None if decision_provider is not None else _describe_model(model),
+            model_name=(
+                None if decision_provider is not None else _describe_model(model)
+            ),
         )
     return DeterministicSupervisorRouter()

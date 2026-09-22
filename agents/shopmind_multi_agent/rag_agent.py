@@ -54,7 +54,9 @@ class RagSummary(BaseModel):
             if self.citations:
                 raise ValueError("Degraded RAG summaries cannot contain citations.")
         elif self.reason_code is not None:
-            raise ValueError("Successful RAG summaries cannot contain a degraded reason.")
+            raise ValueError(
+                "Successful RAG summaries cannot contain a degraded reason."
+            )
         return self
 
 
@@ -64,7 +66,11 @@ class RagToolResultError(ValueError):
 
 def _content_and_documents(result: Any) -> tuple[str, list[Document]]:
     if isinstance(result, tuple):
-        if len(result) != 2 or not isinstance(result[0], str) or not isinstance(result[1], list):
+        if (
+            len(result) != 2
+            or not isinstance(result[0], str)
+            or not isinstance(result[1], list)
+        ):
             raise RagToolResultError("RAG tool returned an invalid result shape.")
         content = result[0]
         docs = result[1]
@@ -103,7 +109,9 @@ def _doc_type(tool_name: str) -> str:
 def _security_notes(text: str) -> list[str]:
     lowered = text.lower()
     if any(pattern.lower() in lowered for pattern in INJECTION_PATTERNS):
-        return ["检索内容包含疑似 prompt injection 或写操作指令，已作为不可信内容处理。"]
+        return [
+            "检索内容包含疑似 prompt injection 或写操作指令，已作为不可信内容处理。"
+        ]
     return []
 
 
@@ -120,9 +128,9 @@ def rag_agent_node(
     message = get_last_user_message(state)
     lowered = message.lower()
 
-    if any(keyword in lowered for keyword in ("policy", "return", "warranty", "shipping")) or any(
-        keyword in message for keyword in ("政策", "退货", "退款", "保修", "配送")
-    ):
+    if any(
+        keyword in lowered for keyword in ("policy", "return", "warranty", "shipping")
+    ) or any(keyword in message for keyword in ("政策", "退货", "退款", "保修", "配送")):
         tool_name = "search_policy_docs"
     else:
         tool_name = "search_product_docs"

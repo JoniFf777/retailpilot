@@ -10,9 +10,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
-RUNTIME_CLEANUP_EVIDENCE_SCHEMA_VERSION = (
-    "shopmind.runtime-cleanup-evidence.v1"
-)
+RUNTIME_CLEANUP_EVIDENCE_SCHEMA_VERSION = "shopmind.runtime-cleanup-evidence.v1"
 
 
 class RuntimeCleanupEvidence(BaseModel):

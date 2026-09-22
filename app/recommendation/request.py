@@ -14,7 +14,10 @@ from app.recommendation.categories import (
 from app.recommendation.categories.models import CategoryAttributeDefinition
 from app.recommendation.categories.registry import alias_in_text
 from app.recommendation.constraints import normalize_constraint
-from app.schemas.recommendation import CategoryAttributeConstraint, RecommendationRequest
+from app.schemas.recommendation import (
+    CategoryAttributeConstraint,
+    RecommendationRequest,
+)
 
 
 _AMOUNT_TOKEN = r"(?:\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万亿]+(?:点[零〇一二两三四五六七八九]+)?)"
@@ -45,17 +48,40 @@ _EXPLICIT_CATEGORY_TOKEN = re.compile(
 )
 _GENERIC_CATEGORY_TOKENS = {"商品", "产品", "东西", "设备", "一个", "一台", "一种"}
 _NEGATION_MARKERS = (
-    "不要", "不想", "不喜欢", "避免", "排除", "拒绝", "不是", "无", "不支持", "不需要",
+    "不要",
+    "不想",
+    "不喜欢",
+    "避免",
+    "排除",
+    "拒绝",
+    "不是",
+    "无",
+    "不支持",
+    "不需要",
 )
 
 
 def _chinese_amount(value: str) -> Decimal | None:
     """Parse the bounded Chinese amount forms used in shopping requests."""
 
-    if not value or not any(char in "零〇一二两三四五六七八九十百千万亿" for char in value):
+    if not value or not any(
+        char in "零〇一二两三四五六七八九十百千万亿" for char in value
+    ):
         return None
-    digits = {"零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3,
-              "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+    digits = {
+        "零": 0,
+        "〇": 0,
+        "一": 1,
+        "二": 2,
+        "两": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9,
+    }
     if "点" in value:
         integer_part, fraction_part = value.split("点", 1)
         integer = _chinese_amount(integer_part) or Decimal("0")
@@ -110,8 +136,12 @@ def _budget(message: str) -> tuple[Decimal | None, Decimal | None, str | None]:
     # A marked budget is allowed to omit the currency and defaults to CNY.
     range_match = _BUDGET_RANGE.search(message)
     if range_match is not None:
-        lower = _parse_amount(range_match.group("lower"), range_match.group("lower_scale"))
-        upper = _parse_amount(range_match.group("upper"), range_match.group("upper_scale"))
+        lower = _parse_amount(
+            range_match.group("lower"), range_match.group("lower_scale")
+        )
+        upper = _parse_amount(
+            range_match.group("upper"), range_match.group("upper_scale")
+        )
         if lower is not None and upper is not None and lower <= upper:
             return lower, upper, range_match.group("currency") or "CNY"
     match = _BUDGET_MARKED.search(message)
@@ -122,11 +152,19 @@ def _budget(message: str) -> tuple[Decimal | None, Decimal | None, str | None]:
     amount = _parse_amount(match.group("amount"), match.group("scale"))
     if amount is None or amount <= 0:
         return None, None, None
-    return None, amount, match.group("currency") or match.group("currency_before") or "CNY"
+    return (
+        None,
+        amount,
+        match.group("currency") or match.group("currency_before") or "CNY",
+    )
 
 
 def _budget_provenance(message: str) -> tuple[str | None, tuple[int, int] | None]:
-    match = _BUDGET_RANGE.search(message) or _BUDGET_MARKED.search(message) or _BUDGET_CURRENCY.search(message)
+    match = (
+        _BUDGET_RANGE.search(message)
+        or _BUDGET_MARKED.search(message)
+        or _BUDGET_CURRENCY.search(message)
+    )
     if match is None:
         return None, None
     return match.group(0).strip(), (match.start(), match.end())
@@ -147,7 +185,9 @@ def _number_near_alias(
     """
 
     lowered = message.casefold()
-    aliases_sorted = sorted((alias for alias in aliases if alias), key=len, reverse=True)
+    aliases_sorted = sorted(
+        (alias for alias in aliases if alias), key=len, reverse=True
+    )
     after: list[tuple[int, Decimal]] = []
     before: list[tuple[int, Decimal]] = []
     unit_pattern = {
@@ -158,17 +198,21 @@ def _number_near_alias(
         "Wh": r"(?:Wh|瓦时)",
     }.get(unit or "")
 
-    def candidate_number(fragment: str, *, preceding: bool) -> tuple[int, Decimal] | None:
+    def candidate_number(
+        fragment: str, *, preceding: bool
+    ) -> tuple[int, Decimal] | None:
         matches = list(_NUMBER.finditer(fragment))
         if not matches:
             return None
         candidates = matches if preceding else matches[:1]
-        for match in (reversed(candidates) if preceding else candidates):
-            suffix = fragment[match.end():]
+        for match in reversed(candidates) if preceding else candidates:
+            suffix = fragment[match.end() :]
             if unit_pattern:
                 if preceding:
                     suffix_text = suffix.strip()
-                    if suffix_text and not re.fullmatch(unit_pattern, suffix_text, re.IGNORECASE):
+                    if suffix_text and not re.fullmatch(
+                        unit_pattern, suffix_text, re.IGNORECASE
+                    ):
                         continue
                 elif not re.match(rf"\s*{unit_pattern}", suffix, re.IGNORECASE):
                     continue
@@ -178,13 +222,22 @@ def _number_near_alias(
             except (InvalidOperation, TypeError, ValueError):
                 continue
         return None
+
     for alias in aliases_sorted:
         for occurrence in re.finditer(re.escape(alias.casefold()), lowered):
-            tail = re.split(r"[,，。；;\n]", message[occurrence.end(): occurrence.end() + 32], maxsplit=1)[0]
+            tail = re.split(
+                r"[,，。；;\n]",
+                message[occurrence.end() : occurrence.end() + 32],
+                maxsplit=1,
+            )[0]
             number = candidate_number(tail, preceding=False)
             if number:
                 after.append(number)
-            head = re.split(r"[,，。；;\n]", message[max(0, occurrence.start() - 20): occurrence.start()][::-1], maxsplit=1)[0][::-1]
+            head = re.split(
+                r"[,，。；;\n]",
+                message[max(0, occurrence.start() - 20) : occurrence.start()][::-1],
+                maxsplit=1,
+            )[0][::-1]
             number = candidate_number(head, preceding=True)
             if number:
                 before.append(number)
@@ -199,12 +252,17 @@ def _local_clauses_for(
     definition: CategoryAttributeDefinition, message: str
 ) -> list[str]:
     clauses: list[str] = []
-    for alias in sorted((item for item in definition.aliases if item), key=len, reverse=True):
+    for alias in sorted(
+        (item for item in definition.aliases if item), key=len, reverse=True
+    ):
         for occurrence in re.finditer(re.escape(alias), message, re.IGNORECASE):
-            start = max(
-                message.rfind(separator, 0, occurrence.start())
-                for separator in (",", "，", "。", ";", "；", "\n")
-            ) + 1
+            start = (
+                max(
+                    message.rfind(separator, 0, occurrence.start())
+                    for separator in (",", "，", "。", ";", "；", "\n")
+                )
+                + 1
+            )
             end_candidates = [
                 message.find(separator, occurrence.end())
                 for separator in (",", "，", "。", ";", "；", "\n")
@@ -218,18 +276,30 @@ def _local_clauses_for(
 def _polarity_for(definition: CategoryAttributeDefinition, message: str) -> str:
     clauses = _local_clauses_for(definition, message)
     text = " ".join(clauses) or message.casefold()
-    return "exclude" if any(marker in text for marker in _NEGATION_MARKERS) else "include"
+    return (
+        "exclude" if any(marker in text for marker in _NEGATION_MARKERS) else "include"
+    )
 
 
 def _operator_for(definition: CategoryAttributeDefinition, message: str) -> str:
     # Operators belong to the same clause as the attribute.  Looking at the
     # whole request makes ``刷新率至少144Hz，尺寸27英寸`` accidentally apply
     # ``gte`` to the size field as well.
-    clauses = [clause for clause in _local_clauses_for(definition, message) if _NUMBER.search(clause)]
+    clauses = [
+        clause
+        for clause in _local_clauses_for(definition, message)
+        if _NUMBER.search(clause)
+    ]
     text = " ".join(clauses) or message.casefold()
-    if any(token in text for token in ("至少", "不低于", "不少于", ">=", "以上")) and "gte" in definition.allowed_operators:
+    if (
+        any(token in text for token in ("至少", "不低于", "不少于", ">=", "以上"))
+        and "gte" in definition.allowed_operators
+    ):
         return "gte"
-    if any(token in text for token in ("不超过", "以内", "最多", "至多", "<=", "以下")) and "lte" in definition.allowed_operators:
+    if (
+        any(token in text for token in ("不超过", "以内", "最多", "至多", "<=", "以下"))
+        and "lte" in definition.allowed_operators
+    ):
         return "lte"
     return definition.default_operator or definition.allowed_operators[0]
 
@@ -241,7 +311,14 @@ def _enum_values_from_message(
     text = message.casefold()
     found: list[str] = []
     for canonical in definition.enum_values:
-        candidates = (canonical, *[alias for alias, value in definition.enum_aliases.items() if value == canonical])
+        candidates = (
+            canonical,
+            *[
+                alias
+                for alias, value in definition.enum_aliases.items()
+                if value == canonical
+            ],
+        )
         for alias in candidates:
             if not alias_in_text(text, alias):
                 continue
@@ -264,7 +341,10 @@ def _extract_attribute(
             # laptop/phone storage as TB. Only convert when the unit is in the
             # same local attribute clause; unrelated numbers stay untouched.
             clauses = _local_clauses_for(definition, message)
-            if any(re.search(r"(?:TB|T|太字节)", clause, re.IGNORECASE) for clause in clauses):
+            if any(
+                re.search(r"(?:TB|T|太字节)", clause, re.IGNORECASE)
+                for clause in clauses
+            ):
                 value *= Decimal("1024")
     elif definition.type == "enum":
         values = _enum_values_from_message(definition, message)
@@ -277,10 +357,15 @@ def _extract_attribute(
             return None
         value: Any = values if definition.multi_valued else values[0]
     elif definition.type == "string":
-        alias = next((alias for alias in definition.aliases if alias_in_text(message, alias)), None)
+        alias = next(
+            (alias for alias in definition.aliases if alias_in_text(message, alias)),
+            None,
+        )
         if alias is None:
             return None
-        match = re.search(re.escape(alias) + r"\s*[:：]?\s*([A-Za-z0-9_.-]+)", message, re.IGNORECASE)
+        match = re.search(
+            re.escape(alias) + r"\s*[:：]?\s*([A-Za-z0-9_.-]+)", message, re.IGNORECASE
+        )
         if match is None:
             return None
         value = match.group(1)
@@ -399,7 +484,9 @@ def parse_structured_extraction(
     if len(resolved) != 1:
         raise ValueError("category_ambiguous")
     category = next(iter(resolved))
-    normalized = active_registry.validate_request_attributes(category, extraction.attributes)
+    normalized = active_registry.validate_request_attributes(
+        category, extraction.attributes
+    )
     return RecommendationRequest(
         category=category,
         budget_min=extraction.budget_min,
@@ -411,7 +498,11 @@ def parse_structured_extraction(
             str(item)
             for constraint in normalized.values()
             if constraint.role == "soft"
-            for item in (constraint.value if isinstance(constraint.value, list) else [constraint.value])
+            for item in (
+                constraint.value
+                if isinstance(constraint.value, list)
+                else [constraint.value]
+            )
         ],
     )
 

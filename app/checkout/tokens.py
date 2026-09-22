@@ -14,7 +14,15 @@ from hashlib import sha256
 from typing import Any, Iterable, Mapping
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    StrictStr,
+    field_validator,
+    model_validator,
+)
 
 
 TOKEN_SCHEMA_VERSION = "shopmind.checkout-token.v1"
@@ -34,7 +42,9 @@ class CheckoutTokenError(ValueError):
 
 class CheckoutTokenUnavailable(CheckoutTokenError):
     def __init__(self) -> None:
-        super().__init__("checkout_unavailable", "Checkout is not configured on this server.")
+        super().__init__(
+            "checkout_unavailable", "Checkout is not configured on this server."
+        )
 
 
 class CheckoutPriceLine(BaseModel):
@@ -184,7 +194,9 @@ def _price_line_dict(line: CheckoutPriceLine | Mapping[str, Any]) -> dict[str, s
     }
 
 
-def build_price_fingerprint(lines: Iterable[CheckoutPriceLine | Mapping[str, Any]]) -> str:
+def build_price_fingerprint(
+    lines: Iterable[CheckoutPriceLine | Mapping[str, Any]],
+) -> str:
     normalized = [_price_line_dict(line) for line in lines]
     normalized.sort(key=lambda line: line["sku_id"])
     return sha256(_canonical_json(normalized)).hexdigest()
@@ -196,11 +208,17 @@ def _encode_segment(value: bytes) -> str:
 
 def _decode_segment(value: str) -> bytes:
     if not value or not _SEGMENT_RE.fullmatch(value):
-        raise CheckoutTokenError("checkout_invalid", "Checkout token encoding is invalid.")
+        raise CheckoutTokenError(
+            "checkout_invalid", "Checkout token encoding is invalid."
+        )
     try:
-        return base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
+        return base64.b64decode(
+            value + "=" * (-len(value) % 4), altchars=b"-_", validate=True
+        )
     except (ValueError, base64.binascii.Error) as exc:
-        raise CheckoutTokenError("checkout_invalid", "Checkout token encoding is invalid.") from exc
+        raise CheckoutTokenError(
+            "checkout_invalid", "Checkout token encoding is invalid."
+        ) from exc
 
 
 def _secret_bytes(secret: str | None) -> bytes:
@@ -222,7 +240,9 @@ def create_checkout_token(
 ) -> str:
     secret_bytes = _secret_bytes(secret)
     issued_at = int((now or datetime.now(timezone.utc)).timestamp())
-    payload_lines = [CheckoutPriceLine.model_validate(_price_line_dict(line)) for line in price_lines]
+    payload_lines = [
+        CheckoutPriceLine.model_validate(_price_line_dict(line)) for line in price_lines
+    ]
     payload_data = CheckoutTokenPayload(
         schema_version=TOKEN_SCHEMA_VERSION,
         owner_fingerprint=owner_fingerprint(user_id),
@@ -236,7 +256,9 @@ def create_checkout_token(
     )
     raw_payload = _canonical_json(payload_data.model_dump(mode="json"))
     signature = hmac.new(secret_bytes, raw_payload, hashlib.sha256).digest()
-    token = f"{TOKEN_PREFIX}.{_encode_segment(raw_payload)}.{_encode_segment(signature)}"
+    token = (
+        f"{TOKEN_PREFIX}.{_encode_segment(raw_payload)}.{_encode_segment(signature)}"
+    )
     if len(token) > MAX_TOKEN_LENGTH:
         raise CheckoutTokenError("checkout_invalid", "Checkout token is too large.")
     return token
@@ -258,17 +280,23 @@ def verify_checkout_token(
     raw_payload = _decode_segment(parts[1])
     signature = _decode_segment(parts[2])
     if len(signature) != hashlib.sha256().digest_size:
-        raise CheckoutTokenError("checkout_invalid", "Checkout token signature is invalid.")
+        raise CheckoutTokenError(
+            "checkout_invalid", "Checkout token signature is invalid."
+        )
     expected = hmac.new(_secret_bytes(secret), raw_payload, hashlib.sha256).digest()
     if not hmac.compare_digest(signature, expected):
-        raise CheckoutTokenError("checkout_invalid", "Checkout token signature is invalid.")
+        raise CheckoutTokenError(
+            "checkout_invalid", "Checkout token signature is invalid."
+        )
     try:
         decoded = json.loads(raw_payload.decode("utf-8"))
         payload = CheckoutTokenPayload.model_validate(decoded)
         if _canonical_json(payload.model_dump(mode="json")) != raw_payload:
             raise ValueError("non-canonical payload")
     except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
-        raise CheckoutTokenError("checkout_invalid", "Checkout token payload is invalid.") from exc
+        raise CheckoutTokenError(
+            "checkout_invalid", "Checkout token payload is invalid."
+        ) from exc
     if payload.owner_fingerprint != owner_fingerprint(user_id):
         raise CheckoutTokenError("checkout_invalid", "Checkout token owner is invalid.")
     current = int((now or datetime.now(timezone.utc)).timestamp())

@@ -147,9 +147,7 @@ def test_task_retry_policy_requires_plan_ownership_and_trusted_identity() -> Non
 
     assert task.retry_policy.owner == "plan_executor"
     assert task.retry_policy.max_attempts == 2
-    assert task.retry_policy.retryable_failure_codes == {
-        "agent.transport_unavailable"
-    }
+    assert task.retry_policy.retryable_failure_codes == {"agent.transport_unavailable"}
     assert task.idempotency_key == idempotency_key
 
     with pytest.raises(ValueError, match="trusted task idempotency key"):
@@ -280,9 +278,7 @@ def test_registry_rejects_duplicate_and_invalid_adapters() -> None:
     with pytest.raises(AgentAdapterError, match="already registered"):
         AgentAdapterRegistry([product, product])
     with pytest.raises(AgentAdapterError, match="normalized"):
-        AgentAdapterRegistry(
-            [ProtocolOnlyAdapter(" product_agent", completed_result)]
-        )
+        AgentAdapterRegistry([ProtocolOnlyAdapter(" product_agent", completed_result)])
     with pytest.raises(AgentAdapterError, match="satisfy AgentAdapter"):
         AgentAdapterRegistry([object()])  # type: ignore[list-item]
 
@@ -332,9 +328,7 @@ def test_policy_wrapper_enforces_budget_for_protocol_only_transport() -> None:
     transport = ProtocolOnlyAdapter("product_agent", completed_result)
     adapter = PolicyEnforcedAgentAdapter(
         adapter=transport,
-        delegation_guard=DelegationBudgetGuard(
-            trusted_budget=RunBudget(max_steps=1)
-        ),
+        delegation_guard=DelegationBudgetGuard(trusted_budget=RunBudget(max_steps=1)),
     )
     first = make_task()
 

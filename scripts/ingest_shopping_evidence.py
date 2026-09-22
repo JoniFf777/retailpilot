@@ -20,8 +20,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Ingest trusted ShopMind shopping evidence.")
-    parser.add_argument("--documents-dir", type=Path, default=PROJECT_ROOT / "data" / "documents")
+    parser = argparse.ArgumentParser(
+        description="Ingest trusted ShopMind shopping evidence."
+    )
+    parser.add_argument(
+        "--documents-dir", type=Path, default=PROJECT_ROOT / "data" / "documents"
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
     return parser

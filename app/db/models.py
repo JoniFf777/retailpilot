@@ -247,7 +247,9 @@ class CandidateContext(Base):
     thread_id: Mapped[str] = mapped_column(String, primary_key=True)
     product_ids: Mapped[list[str]] = mapped_column(JSONB_TYPE, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -422,7 +424,9 @@ class AgentRun(Base):
     metadata_json: Mapped[dict] = mapped_column(
         JSONB_TYPE, nullable=False, server_default="{}"
     )
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
@@ -505,7 +509,9 @@ class ConversationSummary(Base):
             name="uq_conversation_summaries_thread_range",
         ),
         Index("idx_conversation_summaries_user_created_at", "user_id", "created_at"),
-        Index("idx_conversation_summaries_thread_created_at", "thread_id", "created_at"),
+        Index(
+            "idx_conversation_summaries_thread_created_at", "thread_id", "created_at"
+        ),
         Index("idx_conversation_summaries_expires_at", "expires_at"),
     )
 
@@ -556,7 +562,12 @@ class MemoryRecord(Base):
         ),
         CheckConstraint("priority >= 0", name="ck_runtime_memory_priority"),
         CheckConstraint("token_count >= 0", name="ck_runtime_memory_token_count"),
-        Index("idx_runtime_memory_user_kind_created_at", "user_id", "memory_kind", "created_at"),
+        Index(
+            "idx_runtime_memory_user_kind_created_at",
+            "user_id",
+            "memory_kind",
+            "created_at",
+        ),
         Index("idx_runtime_memory_thread_created_at", "thread_id", "created_at"),
         Index("idx_runtime_memory_expires_at", "expires_at"),
     )

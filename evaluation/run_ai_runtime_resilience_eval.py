@@ -44,14 +44,23 @@ def run_cases() -> dict[str, object]:
         lease.release()
 
     gateway = ModelGateway([_candidate("primary", 1), _candidate("backup", 2)])
-    fallback = gateway.execute(
-        ModelOperation.PLANNER,
-        lambda model: (_ for _ in ()).throw(ConnectionError()) if model.candidate_id == "primary" else ModelInvocation("ok"),
-    ).value == "ok"
+    fallback = (
+        gateway.execute(
+            ModelOperation.PLANNER,
+            lambda model: (
+                (_ for _ in ()).throw(ConnectionError())
+                if model.candidate_id == "primary"
+                else ModelInvocation("ok")
+            ),
+        ).value
+        == "ok"
+    )
     try:
         ModelGateway([_candidate("stream", 1)]).execute(
             ModelOperation.PLANNER,
-            lambda _model: (_ for _ in ()).throw(ModelGatewayError(ModelFailureCode.TOTAL_TIMEOUT, stream_started=True)),
+            lambda _model: (_ for _ in ()).throw(
+                ModelGatewayError(ModelFailureCode.TOTAL_TIMEOUT, stream_started=True)
+            ),
         )
     except ModelGatewayError as error:
         stream_case = error.stream_started
@@ -62,15 +71,21 @@ def run_cases() -> dict[str, object]:
     try:
         budget_gateway.execute(
             ModelOperation.PLANNER,
-            lambda _model: ModelInvocation(value="too-large", prompt_tokens=2, completion_tokens=1),
+            lambda _model: ModelInvocation(
+                value="too-large", prompt_tokens=2, completion_tokens=1
+            ),
         )
     except ModelGatewayError as error:
         budget_case = error.code == ModelFailureCode.BUDGET_EXCEEDED
     else:
         budget_case = False
-    cancelled = ModelGateway([_candidate("cancelled", 1)], cancellation_check=lambda: True)
+    cancelled = ModelGateway(
+        [_candidate("cancelled", 1)], cancellation_check=lambda: True
+    )
     try:
-        cancelled.execute(ModelOperation.PLANNER, lambda _model: ModelInvocation(value="bad"))
+        cancelled.execute(
+            ModelOperation.PLANNER, lambda _model: ModelInvocation(value="bad")
+        )
     except ModelGatewayError as error:
         cancellation_case = error.code == ModelFailureCode.CANCELLED
     else:
@@ -91,7 +106,9 @@ def run_cases() -> dict[str, object]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run ShopMind AI resilience evaluation.")
+    parser = argparse.ArgumentParser(
+        description="Run ShopMind AI resilience evaluation."
+    )
     parser.add_argument("--output-json", type=Path)
     args = parser.parse_args(argv)
     report = run_cases()

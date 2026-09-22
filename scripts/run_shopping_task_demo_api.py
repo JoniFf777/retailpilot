@@ -22,7 +22,9 @@ def main() -> int:
     parts = urlsplit(base)
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     query["options"] = f"-csearch_path={args.schema},public"
-    os.environ["DATABASE_URL"] = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+    os.environ["DATABASE_URL"] = urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+    )
     os.environ["SHOPMIND_DEPLOYMENT_PROFILE"] = "development"
     os.environ["LANGSMITH_TRACING"] = "false"
     os.environ["SHOPMIND_SHOPPING_TASKS_ENABLED"] = "true"

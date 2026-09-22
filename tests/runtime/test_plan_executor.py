@@ -200,16 +200,16 @@ def test_executor_preserves_typed_transport_failure_classification(
     assert result.errors[0].code == failure_code.value
     assert result.errors[0].source == expected_source
     assert result.errors[0].retriable is True
-    assert result.errors[0].details == {
-        "exception_type": "AgentTransportError"
-    }
+    assert result.errors[0].details == {"exception_type": "AgentTransportError"}
     assert result.step_results[0].usage is not None
     assert result.usage.total_tokens == 4
     assert result.usage.cost_usd == pytest.approx(0.01)
     assert result.usage.step_count == 1
 
 
-def test_executor_replays_allowlisted_transport_failure_with_same_step_identity() -> None:
+def test_executor_replays_allowlisted_transport_failure_with_same_step_identity() -> (
+    None
+):
     retry_policy = AgentTaskRetryPolicy(
         owner=AgentTaskRetryOwner.PLAN_EXECUTOR,
         max_attempts=2,
@@ -532,9 +532,11 @@ def test_parallel_executor_propagates_independent_execution_contexts() -> None:
     finally:
         request_scope.reset(token)
 
-    assert [
-        output["request_scope"] for output in result.output_data.values()
-    ] == ["parent-run", "parent-run", "parent-run"]
+    assert [output["request_scope"] for output in result.output_data.values()] == [
+        "parent-run",
+        "parent-run",
+        "parent-run",
+    ]
 
 
 def test_parallel_executor_returns_partial_result_for_step_failure() -> None:

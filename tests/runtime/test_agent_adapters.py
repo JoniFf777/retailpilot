@@ -121,9 +121,7 @@ def test_delegation_guard_enforces_depth_and_child_task_limits() -> None:
         adapter.invoke(first_child.model_copy(update={"task_id": "child-2"}))
     with pytest.raises(DelegationBudgetError, match="delegation depth"):
         adapter.invoke(
-            first_child.model_copy(
-                update={"task_id": "child-3", "delegation_depth": 2}
-            )
+            first_child.model_copy(update={"task_id": "child-3", "delegation_depth": 2})
         )
 
 
@@ -200,9 +198,7 @@ def test_delegation_guard_aggregates_usage_and_enforces_trusted_ceiling() -> Non
     assert captured.value.error_code == "plan.usage_budget_exceeded"
     assert captured.value.budget_field == "max_total_tokens"
     assert captured.value.reason == "exceeded"
-    adapter.invoke(
-        first.model_copy(update={"run_id": "run-2", "task_id": "step-1"})
-    )
+    adapter.invoke(first.model_copy(update={"run_id": "run-2", "task_id": "step-1"}))
 
 
 def test_policy_adapter_accounts_failed_attempt_before_same_task_success() -> None:
@@ -278,9 +274,7 @@ def test_failed_transport_attempt_usage_fails_closed_before_replay(
 
 
 def test_delegation_guard_fails_closed_when_configured_usage_is_missing() -> None:
-    guard = DelegationBudgetGuard(
-        trusted_budget=RunBudget(max_prompt_tokens=100)
-    )
+    guard = DelegationBudgetGuard(trusted_budget=RunBudget(max_prompt_tokens=100))
     adapter = make_policy_adapter(
         guard=guard,
         handler=lambda task: AgentResult(
@@ -305,9 +299,7 @@ def test_delegation_guard_does_not_hide_prior_unmetered_usage() -> None:
             task_id=task.task_id,
             status=AgentTaskStatus.COMPLETED,
             usage=(
-                RunUsage()
-                if task.task_id == "unmetered"
-                else RunUsage(input_tokens=5)
+                RunUsage() if task.task_id == "unmetered" else RunUsage(input_tokens=5)
             ),
         ),
     )
@@ -347,9 +339,7 @@ def test_delegation_guard_rejects_expired_trusted_deadline_before_handler() -> N
         guard=guard,
         handler=handler,
     )
-    task = make_task().model_copy(
-        update={"deadline_at": now + timedelta(hours=1)}
-    )
+    task = make_task().model_copy(update={"deadline_at": now + timedelta(hours=1)})
 
     with pytest.raises(DelegationTimeBudgetError) as captured:
         adapter.invoke(task)
@@ -381,9 +371,7 @@ def test_delegation_guard_reconciles_stricter_task_duration_after_handler() -> N
         guard=guard,
         handler=handler,
     )
-    task = make_task().model_copy(
-        update={"budget": RunBudget(max_duration_ms=50)}
-    )
+    task = make_task().model_copy(update={"budget": RunBudget(max_duration_ms=50)})
 
     with pytest.raises(DelegationTimeBudgetError) as captured:
         adapter.invoke(task)

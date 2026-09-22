@@ -39,22 +39,55 @@ def test_evidence_version_links_documents_and_revoke_hides_them() -> None:
         with engine.connect() as connection:
             connection.execute(text(f'CREATE SCHEMA "{schema}"'))
             connection.execute(text(f'SET search_path TO "{schema}", public'))
-            connection.execute(text(f'CREATE TABLE "{schema}".alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)'))
+            connection.execute(
+                text(
+                    f'CREATE TABLE "{schema}".alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)'
+                )
+            )
             connection.commit()
             command.upgrade(_alembic(connection), "head")
-            assert "evidence_version_id" in {column["name"] for column in inspect(connection).get_columns("documents", schema=schema)}
+            assert "evidence_version_id" in {
+                column["name"]
+                for column in inspect(connection).get_columns(
+                    "documents", schema=schema
+                )
+            }
             session = sessionmaker(bind=connection, expire_on_commit=False)()
             try:
-                descriptor = classify_legacy_source("data/documents/products/TECH-LAP-001.md", "# Laptop\n\nA trusted versioned guide")
-                result = ShoppingEvidencePipeline(indexer=PostgreSQLEvidenceIndexer(session, _Embeddings(), embedding_provider="test", embedding_model="fixture-768")).run(session, descriptor, "# Laptop\n\nA trusted versioned guide")
+                descriptor = classify_legacy_source(
+                    "data/documents/products/TECH-LAP-001.md",
+                    "# Laptop\n\nA trusted versioned guide",
+                )
+                result = ShoppingEvidencePipeline(
+                    indexer=PostgreSQLEvidenceIndexer(
+                        session,
+                        _Embeddings(),
+                        embedding_provider="test",
+                        embedding_model="fixture-768",
+                    )
+                ).run(session, descriptor, "# Laptop\n\nA trusted versioned guide")
                 session.commit()
-                document = session.scalar(select(Document).where(Document.evidence_version_id == result.evidence_version_id))
+                document = session.scalar(
+                    select(Document).where(
+                        Document.evidence_version_id == result.evidence_version_id
+                    )
+                )
                 assert document is not None
-                assert document.metadata_json["evidence_version_id"] == result.evidence_version_id
-                assert list_current_evidence(session, evidence_type=EvidenceType.PRODUCT_GUIDE.value)
+                assert (
+                    document.metadata_json["evidence_version_id"]
+                    == result.evidence_version_id
+                )
+                assert list_current_evidence(
+                    session, evidence_type=EvidenceType.PRODUCT_GUIDE.value
+                )
                 assert revoke_evidence(session, descriptor.source_path)
                 session.commit()
-                assert list_current_evidence(session, evidence_type=EvidenceType.PRODUCT_GUIDE.value) == []
+                assert (
+                    list_current_evidence(
+                        session, evidence_type=EvidenceType.PRODUCT_GUIDE.value
+                    )
+                    == []
+                )
             finally:
                 session.close()
     finally:

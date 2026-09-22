@@ -126,12 +126,14 @@ def test_gateway_rejects_duplicate_or_blank_capability_during_initialization() -
     with pytest.raises(ToolGatewayError, match="already registered"):
         ToolGateway((capability, capability))
     with pytest.raises(ToolGatewayError, match="name is required"):
-        ToolGateway((
-            ToolCapability(
-                name=" ",
-                allowed_agents=frozenset({"preference_agent"}),
-            ),
-        ))
+        ToolGateway(
+            (
+                ToolCapability(
+                    name=" ",
+                    allowed_agents=frozenset({"preference_agent"}),
+                ),
+            )
+        )
 
 
 def test_gateway_assigns_database_resource_policy_to_registered_v3_tools() -> None:
@@ -147,18 +149,18 @@ def test_gateway_assigns_database_resource_policy_to_registered_v3_tools() -> No
         }
     )
 
-    assert gateway.capability_for("search_products").resource_policy.database_access == (
-        DatabaseAccess.READ
-    )
-    assert gateway.capability_for("compare_products").resource_policy.database_access == (
-        DatabaseAccess.READ
-    )
-    assert gateway.capability_for("prepare_add_to_cart").resource_policy.database_access == (
-        DatabaseAccess.WRITE
-    )
-    assert gateway.capability_for("confirm_add_to_cart").resource_policy.database_access == (
-        DatabaseAccess.WRITE
-    )
+    assert gateway.capability_for(
+        "search_products"
+    ).resource_policy.database_access == (DatabaseAccess.READ)
+    assert gateway.capability_for(
+        "compare_products"
+    ).resource_policy.database_access == (DatabaseAccess.READ)
+    assert gateway.capability_for(
+        "prepare_add_to_cart"
+    ).resource_policy.database_access == (DatabaseAccess.WRITE)
+    assert gateway.capability_for(
+        "confirm_add_to_cart"
+    ).resource_policy.database_access == (DatabaseAccess.WRITE)
 
 
 def test_strict_gateway_requires_explicit_policy_for_every_registered_tool() -> None:
@@ -174,9 +176,9 @@ def test_strict_gateway_requires_explicit_policy_for_every_registered_tool() -> 
     )
 
     assert set(V3_TOOL_CAPABILITY_POLICIES) == registered_tools
-    assert {gateway.capability_for(tool_name).name for tool_name in registered_tools} == (
-        registered_tools
-    )
+    assert {
+        gateway.capability_for(tool_name).name for tool_name in registered_tools
+    } == (registered_tools)
     for tool_name, policy in V3_TOOL_CAPABILITY_POLICIES.items():
         expected_agents = frozenset(
             agent_name
@@ -204,7 +206,9 @@ def test_strict_gateway_requires_explicit_policy_for_every_registered_tool() -> 
         )
 
 
-def test_gateway_rejects_resource_policy_that_conflicts_with_side_effect_class() -> None:
+def test_gateway_rejects_resource_policy_that_conflicts_with_side_effect_class() -> (
+    None
+):
     with pytest.raises(ToolGatewayError, match="Database write capabilities"):
         ToolGateway(
             (
@@ -257,7 +261,9 @@ def test_network_resource_policy_requires_bare_https_host_allowlist() -> None:
     with pytest.raises(ValueError, match="require an HTTPS host allowlist"):
         ToolResourcePolicy(network_access=True)
     with pytest.raises(ValueError, match="bare lowercase hosts"):
-        ToolResourcePolicy(network_access=True, allowed_https_hosts={"https://api.example.com"})
+        ToolResourcePolicy(
+            network_access=True, allowed_https_hosts={"https://api.example.com"}
+        )
 
     policy = ToolResourcePolicy(
         network_access=True,
@@ -438,7 +444,9 @@ def test_gateway_skips_tool_when_cancellation_was_requested() -> None:
     assert tool.calls == 0
     assert record.status == ToolCallStatus.SKIPPED
     assert record.result_metadata["error_code"] == "tool.cancelled"
-    assert context.metadata["tool_call_records"][0]["tool_call_id"] == record.tool_call_id
+    assert (
+        context.metadata["tool_call_records"][0]["tool_call_id"] == record.tool_call_id
+    )
 
 
 def test_gateway_audits_capability_duration_without_rewriting_success() -> None:
@@ -473,9 +481,7 @@ def test_gateway_audits_capability_duration_without_rewriting_success() -> None:
 
 def test_gateway_requires_policy_for_sensitive_tools() -> None:
     tool = SensitiveTool()
-    gateway = ToolGateway.from_allowlist(
-        {"write_agent": {"confirm_add_to_cart"}}
-    )
+    gateway = ToolGateway.from_allowlist({"write_agent": {"confirm_add_to_cart"}})
     arguments = {"user_id": "user-1", "thread_id": "thread-1"}
 
     with pytest.raises(ToolGatewayError, match="approved runtime policy"):
@@ -566,7 +572,9 @@ def test_gateway_records_failed_tool_attempt_without_leaking_exception_detail() 
         "exception_type": "RuntimeError",
     }
     assert context.metadata["tool_gateway_call_count"] == 1
-    assert context.metadata["tool_call_records"][0]["tool_call_id"] == record.tool_call_id
+    assert (
+        context.metadata["tool_call_records"][0]["tool_call_id"] == record.tool_call_id
+    )
 
 
 def test_gateway_rejects_unregistered_capability() -> None:

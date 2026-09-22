@@ -16,7 +16,9 @@ def merge_reviewer_supplement(
     if rules.status in {"rejected", "needs_input", "repairable"}:
         return rules.model_copy(update={"issues": issues, "reviewer_used": True})
     status = supplement.status if supplement.status != "pass" else "pass"
-    return rules.model_copy(update={"status": status, "issues": issues, "reviewer_used": True})
+    return rules.model_copy(
+        update={"status": status, "issues": issues, "reviewer_used": True}
+    )
 
 
 __all__ = ["merge_reviewer_supplement"]

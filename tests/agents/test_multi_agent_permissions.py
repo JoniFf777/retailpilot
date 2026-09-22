@@ -67,7 +67,9 @@ def test_permissioned_tool_propagates_runtime_context_to_gateway() -> None:
     )
 
 
-@pytest.mark.parametrize("agent_name", ["product_agent", "rag_agent", "preference_agent"])
+@pytest.mark.parametrize(
+    "agent_name", ["product_agent", "rag_agent", "preference_agent"]
+)
 def test_agents_raise_for_unauthorized_cart_tool(agent_name: str) -> None:
     guarded = guard_tool(agent_name, add_to_cart)
 
@@ -90,7 +92,9 @@ def test_rag_agent_can_only_call_document_tools() -> None:
 
     assert allowed_names == {"search_product_docs", "search_policy_docs"}
     with pytest.raises(ToolPermissionError):
-        guard_tool("rag_agent", fake_get_user_preferences).invoke({"user_id": "USER-001"})
+        guard_tool("rag_agent", fake_get_user_preferences).invoke(
+            {"user_id": "USER-001"}
+        )
 
 
 def test_preference_agent_can_only_call_get_user_preferences() -> None:
@@ -98,7 +102,9 @@ def test_preference_agent_can_only_call_get_user_preferences() -> None:
 
     assert allowed_names == {"get_user_preferences"}
     with pytest.raises(ToolPermissionError):
-        guard_tool("preference_agent", fake_search_products).invoke({"query": "keyboard"})
+        guard_tool("preference_agent", fake_search_products).invoke(
+            {"query": "keyboard"}
+        )
 
 
 def test_supervisor_and_decision_agent_tool_lists_are_empty() -> None:
@@ -139,7 +145,10 @@ def test_prompt_injection_in_rag_does_not_create_write_or_pending_action() -> No
         }
     )
     assert decision["decision"]["answer_type"] == "safe_read_summary"
-    assert decision["decision"]["security_notes"] == result["rag_summary"]["security_notes"]
+    assert (
+        decision["decision"]["security_notes"]
+        == result["rag_summary"]["security_notes"]
+    )
     assert "add_to_cart" not in str(decision["decision"])
     assert "add_to_cart" not in str(decision["agent_steps"])
 

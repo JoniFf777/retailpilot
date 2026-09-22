@@ -15,7 +15,12 @@ from sqlalchemy import create_engine, event, inspect, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.core.settings import Settings, get_settings
 from app.orders.models import ShopMindInventoryReservation, ShopMindOrder
 from app.outbox.models import ShopMindOutboxEvent
@@ -53,14 +58,14 @@ def _bootstrap_schema(engine, schema: str) -> None:
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".alembic_version (
+                f"""CREATE TABLE "{schema}".alembic_version (
                     version_num VARCHAR(32) NOT NULL PRIMARY KEY
-                )'''
+                )"""
             )
         )
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".pending_actions (
+                f"""CREATE TABLE "{schema}".pending_actions (
                     id VARCHAR PRIMARY KEY,
                     user_id VARCHAR(128) NOT NULL,
                     thread_id VARCHAR,
@@ -73,7 +78,7 @@ def _bootstrap_schema(engine, schema: str) -> None:
                     metadata_json JSONB NOT NULL DEFAULT '{{}}'::jsonb,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                )'''
+                )"""
             )
         )
         connection.commit()
@@ -151,7 +156,9 @@ def _seed_order(
             category,
             product,
             sku,
-            CatalogInventory(sku=sku, on_hand_quantity=stock, reserved_quantity=0, version=0),
+            CatalogInventory(
+                sku=sku, on_hand_quantity=stock, reserved_quantity=0, version=0
+            ),
         ]
     )
     session.flush()
@@ -225,10 +232,13 @@ def test_expiration_migration_backfills_and_enforces_deadline_checks() -> None:
                 {"id": pending_id},
             ).scalar_one()
             assert pending == created_at + timedelta(seconds=1_800)
-            assert connection.execute(
-                text("SELECT expires_at FROM shopmind_orders WHERE id = :id"),
-                {"id": paid_id},
-            ).scalar_one_or_none() is None
+            assert (
+                connection.execute(
+                    text("SELECT expires_at FROM shopmind_orders WHERE id = :id"),
+                    {"id": paid_id},
+                ).scalar_one_or_none()
+                is None
+            )
             checks = {
                 row["name"]
                 for row in inspect(connection).get_check_constraints(
@@ -237,7 +247,9 @@ def test_expiration_migration_backfills_and_enforces_deadline_checks() -> None:
             }
             indexes = {
                 row["name"]
-                for row in inspect(connection).get_indexes("shopmind_orders", schema=schema)
+                for row in inspect(connection).get_indexes(
+                    "shopmind_orders", schema=schema
+                )
             }
             assert "ck_shopmind_orders_expiration_deadline" in checks
             assert "idx_shopmind_orders_expiration" in indexes
@@ -270,7 +282,9 @@ def test_expiration_migration_backfills_and_enforces_deadline_checks() -> None:
         engine.dispose()
 
 
-def test_two_expiry_workers_use_skip_locked_and_release_once(expiration_factory, monkeypatch) -> None:
+def test_two_expiry_workers_use_skip_locked_and_release_once(
+    expiration_factory, monkeypatch
+) -> None:
     factory, engine = expiration_factory
     order_id, _sku_id, settings = _seed_order(factory, user_id="two-workers", stock=1)
     now = datetime.now(timezone.utc)
@@ -285,12 +299,16 @@ def test_two_expiry_workers_use_skip_locked_and_release_once(expiration_factory,
         assert release.wait(timeout=15)
         return original_release(*args, **kwargs)
 
-    monkeypatch.setattr(order_expiration, "release_active_reservations", blocked_release)
+    monkeypatch.setattr(
+        order_expiration, "release_active_reservations", blocked_release
+    )
     result_one: list[dict[str, int]] = []
     result_two: list[dict[str, int]] = []
 
     def worker(target: list[dict[str, int]]) -> None:
-        target.append(expire_orders_once(factory, settings, now=now, batch_size=1).as_dict())
+        target.append(
+            expire_orders_once(factory, settings, now=now, batch_size=1).as_dict()
+        )
 
     first = threading.Thread(target=worker, args=(result_one,))
     first.start()
@@ -301,29 +319,55 @@ def test_two_expiry_workers_use_skip_locked_and_release_once(expiration_factory,
     release.set()
     first.join(timeout=15)
     assert not first.is_alive() and not second.is_alive()
-    assert result_two == [{"attempted": 0, "expired": 0, "deferred_payment": 0, "inconsistent": 0, "failed": 0}]
-    assert result_one == [{"attempted": 1, "expired": 1, "deferred_payment": 0, "inconsistent": 0, "failed": 0}]
+    assert result_two == [
+        {
+            "attempted": 0,
+            "expired": 0,
+            "deferred_payment": 0,
+            "inconsistent": 0,
+            "failed": 0,
+        }
+    ]
+    assert result_one == [
+        {
+            "attempted": 1,
+            "expired": 1,
+            "deferred_payment": 0,
+            "inconsistent": 0,
+            "failed": 0,
+        }
+    ]
 
     session: Session = factory()
     inventory = session.get(CatalogInventory, _sku_id)
     event_count = session.scalar(
-        select(ShopMindOutboxEvent.id).where(
+        select(ShopMindOutboxEvent.id)
+        .where(
             ShopMindOutboxEvent.aggregate_id == order_id,
             ShopMindOutboxEvent.event_type == "shopmind.order.expired.v1",
-        ).with_only_columns(ShopMindOutboxEvent.id)
+        )
+        .with_only_columns(ShopMindOutboxEvent.id)
     )
     assert inventory is not None and inventory.reserved_quantity == 0
     assert event_count is not None
-    assert session.scalar(
-        select(ShopMindOutboxEvent.id).where(
-            ShopMindOutboxEvent.aggregate_id == order_id,
-            ShopMindOutboxEvent.event_type == "shopmind.order.expired.v1",
-        ).limit(2).offset(1)
-    ) is None
+    assert (
+        session.scalar(
+            select(ShopMindOutboxEvent.id)
+            .where(
+                ShopMindOutboxEvent.aggregate_id == order_id,
+                ShopMindOutboxEvent.event_type == "shopmind.order.expired.v1",
+            )
+            .limit(2)
+            .offset(1)
+        )
+        is None
+    )
     session.close()
 
 
-def test_provider_succeeded_defers_then_finalization_consumes(expiration_factory) -> None:
+def test_provider_succeeded_defers_then_finalization_consumes(
+    expiration_factory,
+) -> None:
     factory, _engine = expiration_factory
     order_id, sku_id, settings = _seed_order(factory, user_id="provider-success")
     session: Session = factory()
@@ -365,13 +409,19 @@ def test_provider_succeeded_defers_then_finalization_consumes(expiration_factory
     inventory = session.get(CatalogInventory, sku_id)
     assert order is not None and order.status == "paid"
     assert reservation is not None and reservation.status == "consumed"
-    assert inventory is not None and inventory.on_hand_quantity == 4 and inventory.reserved_quantity == 0
+    assert (
+        inventory is not None
+        and inventory.on_hand_quantity == 4
+        and inventory.reserved_quantity == 0
+    )
     session.close()
 
 
 def test_provider_succeeded_blocks_cancel_without_release(expiration_factory) -> None:
     factory, _engine = expiration_factory
-    order_id, sku_id, _settings = _seed_order(factory, user_id="cancel-provider-success")
+    order_id, sku_id, _settings = _seed_order(
+        factory, user_id="cancel-provider-success"
+    )
     session: Session = factory()
     claim = claim_payment_attempt(
         session,
@@ -462,7 +512,9 @@ def test_payment_finalization_lock_wins_over_expiry(expiration_factory) -> None:
     expiry_summary: list[dict[str, int]] = []
 
     def expiry_worker() -> None:
-        expiry_summary.append(expire_orders_once(factory, settings, now=now, batch_size=1).as_dict())
+        expiry_summary.append(
+            expire_orders_once(factory, settings, now=now, batch_size=1).as_dict()
+        )
 
     expiry_thread = threading.Thread(target=expiry_worker)
     expiry_thread.start()
@@ -470,7 +522,15 @@ def test_payment_finalization_lock_wins_over_expiry(expiration_factory) -> None:
     release_lock.set()
     finalizer_thread.join(timeout=15)
     assert not expiry_thread.is_alive() and not finalizer_thread.is_alive()
-    assert expiry_summary == [{"attempted": 0, "expired": 0, "deferred_payment": 0, "inconsistent": 0, "failed": 0}]
+    assert expiry_summary == [
+        {
+            "attempted": 0,
+            "expired": 0,
+            "deferred_payment": 0,
+            "inconsistent": 0,
+            "failed": 0,
+        }
+    ]
     assert finalization_result == ["paid"]
     session = factory()
     order = session.get(ShopMindOrder, order_id)
@@ -518,7 +578,9 @@ def test_succeeded_pending_payment_blocks_cancel_and_expiry(expiration_factory) 
             {"order_id": order_id},
         ).scalar_one()
         reserved = connection.execute(
-            text("SELECT reserved_quantity FROM shopmind_inventory WHERE sku_id = :sku_id"),
+            text(
+                "SELECT reserved_quantity FROM shopmind_inventory WHERE sku_id = :sku_id"
+            ),
             {"sku_id": sku_id},
         ).scalar_one()
         cancelled_events = connection.execute(

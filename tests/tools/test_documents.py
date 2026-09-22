@@ -103,7 +103,9 @@ def test_search_product_docs_returns_empty_message(document_session):
     assert artifacts == []
 
 
-def test_keyword_document_search_is_bounded_and_returns_bm25_style_score(document_session):
+def test_keyword_document_search_is_bounded_and_returns_bm25_style_score(
+    document_session,
+):
     seed_documents(document_session)
 
     results = search_keyword_documents(
@@ -118,15 +120,21 @@ def test_keyword_document_search_is_bounded_and_returns_bm25_style_score(documen
     assert results[0]["id"]
     assert results[0]["product_id"] == "TECH-KEY-010"
     assert results[0]["score"] > 0
-    assert search_keyword_documents(
-        document_session,
-        "keyboard specs",
-        doc_type="product",
-        product_ids=["OTHER-PRODUCT"],
-    ) == []
-    assert search_keyword_documents(
-        document_session,
-        "keyboard specs",
-        doc_type="product",
-        product_ids=[],
-    ) == []
+    assert (
+        search_keyword_documents(
+            document_session,
+            "keyboard specs",
+            doc_type="product",
+            product_ids=["OTHER-PRODUCT"],
+        )
+        == []
+    )
+    assert (
+        search_keyword_documents(
+            document_session,
+            "keyboard specs",
+            doc_type="product",
+            product_ids=[],
+        )
+        == []
+    )

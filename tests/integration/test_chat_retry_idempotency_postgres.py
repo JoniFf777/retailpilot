@@ -43,14 +43,14 @@ def _bootstrap_schema(engine, schema: str) -> None:
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".alembic_version (
+                f"""CREATE TABLE "{schema}".alembic_version (
                     version_num VARCHAR(32) NOT NULL PRIMARY KEY
-                )'''
+                )"""
             )
         )
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".pending_actions (
+                f"""CREATE TABLE "{schema}".pending_actions (
                     id VARCHAR PRIMARY KEY,
                     user_id VARCHAR(128) NOT NULL,
                     thread_id VARCHAR,
@@ -63,7 +63,7 @@ def _bootstrap_schema(engine, schema: str) -> None:
                     metadata_json JSONB NOT NULL DEFAULT '{{}}'::jsonb,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                )'''
+                )"""
             )
         )
         connection.commit()
@@ -163,7 +163,9 @@ def test_concurrent_same_key_has_one_winner_run_and_thread(pg_factory) -> None:
     assert len(results) == 2
     winner_run_id = executor_runs[0]
     assert {result.run_id for result in results} == {winner_run_id}
-    assert any(result.metadata.get("retry_state") == "in_progress" for result in results)
+    assert any(
+        result.metadata.get("retry_state") == "in_progress" for result in results
+    )
     assert any(result.answer == "authoritative" for result in results)
 
     with engine.connect() as connection:

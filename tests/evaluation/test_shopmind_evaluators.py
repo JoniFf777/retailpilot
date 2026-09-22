@@ -278,9 +278,7 @@ def test_summarize_debug_events_reports_counts_and_rates() -> None:
             },
             {
                 "debug": {
-                    "confirmation": {
-                        "events": [{"event": "pending_action_cancelled"}]
-                    }
+                    "confirmation": {"events": [{"event": "pending_action_cancelled"}]}
                 }
             },
             {"debug": {}},
@@ -326,9 +324,7 @@ def test_event_summary_metric_rows_flatten_operational_counters() -> None:
             },
             {
                 "debug": {
-                    "confirmation": {
-                        "events": [{"event": "pending_action_failed"}]
-                    }
+                    "confirmation": {"events": [{"event": "pending_action_failed"}]}
                 }
             },
         ]
@@ -395,9 +391,7 @@ def test_event_health_report_checks_required_events_and_groups() -> None:
                             "events": [{"event": "candidate_context_stored"}]
                         }
                     },
-                    "confirmation": {
-                        "events": [{"event": "pending_action_confirmed"}]
-                    },
+                    "confirmation": {"events": [{"event": "pending_action_confirmed"}]},
                 }
             },
             {"debug": {}},
@@ -441,9 +435,7 @@ def test_format_event_dashboard_markdown_includes_counts_and_metrics() -> None:
         [
             {
                 "debug": {
-                    "confirmation": {
-                        "events": [{"event": "pending_action_confirmed"}]
-                    }
+                    "confirmation": {"events": [{"event": "pending_action_confirmed"}]}
                 }
             }
         ]
@@ -499,13 +491,11 @@ def test_write_event_artifacts_creates_ci_friendly_files(tmp_path) -> None:
     }
     summary_json = json.loads((tmp_path / "event_summary.json").read_text())
     assert summary_json["event_counts"] == {"candidate_context_stored": 1}
-    assert "shopmind_test_events_total 1" in (
-        tmp_path / "event_metrics.prom"
-    ).read_text()
+    assert (
+        "shopmind_test_events_total 1" in (tmp_path / "event_metrics.prom").read_text()
+    )
     assert "status: pass" in (tmp_path / "event_health.txt").read_text()
-    assert "# ShopMind V3 event health" in (
-        tmp_path / "event_dashboard.md"
-    ).read_text()
+    assert "# ShopMind V3 event health" in (tmp_path / "event_dashboard.md").read_text()
 
 
 def test_generate_sample_event_artifacts_writes_stable_bundle(tmp_path) -> None:
@@ -523,9 +513,10 @@ def test_generate_sample_event_artifacts_writes_stable_bundle(tmp_path) -> None:
         "pending_action_confirmed": 1,
     }
     assert "status: pass" in (tmp_path / "event_health.txt").read_text()
-    assert "# ShopMind V3 sample event health" in (
-        tmp_path / "event_dashboard.md"
-    ).read_text()
+    assert (
+        "# ShopMind V3 sample event health"
+        in (tmp_path / "event_dashboard.md").read_text()
+    )
 
 
 def test_ci_workflow_uploads_v3_event_artifacts() -> None:
@@ -534,10 +525,15 @@ def test_ci_workflow_uploads_v3_event_artifacts() -> None:
     assert "Generate V3 event artifacts" in workflow
     assert "evaluation/generate_event_artifacts.py" in workflow
     assert "Publish V3 event summary" in workflow
-    assert 'cat artifacts/v3-events/event_dashboard.md >> "$GITHUB_STEP_SUMMARY"' in workflow
+    assert (
+        'cat artifacts/v3-events/event_dashboard.md >> "$GITHUB_STEP_SUMMARY"'
+        in workflow
+    )
     assert "pull-requests: write" in workflow
     assert "Comment V3 event summary on PR" in workflow
-    assert "github.event.pull_request.head.repo.full_name == github.repository" in workflow
+    assert (
+        "github.event.pull_request.head.repo.full_name == github.repository" in workflow
+    )
     assert "actions/github-script@v8" in workflow
     assert "<!-- v3-event-summary -->" in workflow
     assert "github.rest.issues.updateComment" in workflow
@@ -576,9 +572,7 @@ def test_postgres_workflow_runs_v3_handoff_smoke_suite() -> None:
 
     assert "Run V3 PostgreSQL handoff smoke suite" in workflow
     assert "python scripts/smoke_v3_handoff.py --json" in workflow
-    assert (
-        "python scripts/smoke_v3_handoff.py --json --include-tool-smoke" in workflow
-    )
+    assert "python scripts/smoke_v3_handoff.py --json --include-tool-smoke" in workflow
     assert "python scripts/smoke_postgres.py" not in workflow
 
 
@@ -676,15 +670,20 @@ def test_run_router_eval_target_mode_scores_fake_target(capsys, monkeypatch) -> 
             },
         }
 
-    monkeypatch.setattr("evaluation.run_router_eval.ROUTER_EVAL_CASES", (
-        {
-            "name": "fake_product",
-            "message": "推荐键盘",
-            "user_id": "USER-001",
-            "expected_routes": ["product_agent"],
-        },
-    ))
-    monkeypatch.setattr("evaluation.run_router_eval.shopmind_v3_router_target", fake_target)
+    monkeypatch.setattr(
+        "evaluation.run_router_eval.ROUTER_EVAL_CASES",
+        (
+            {
+                "name": "fake_product",
+                "message": "推荐键盘",
+                "user_id": "USER-001",
+                "expected_routes": ["product_agent"],
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "evaluation.run_router_eval.shopmind_v3_router_target", fake_target
+    )
 
     exit_code = main(["--mode", "target"])
 
@@ -781,9 +780,7 @@ def test_run_router_eval_handoff_mode_prints_event_report(
                         "debug": {
                             "write_handoff_debug": {
                                 "candidate_context": {
-                                    "events": [
-                                        {"event": "candidate_context_stored"}
-                                    ]
+                                    "events": [{"event": "candidate_context_stored"}]
                                 }
                             },
                             "confirmation": {
@@ -826,9 +823,7 @@ def test_run_router_eval_handoff_mode_writes_event_artifacts(
                         "debug": {
                             "write_handoff_debug": {
                                 "candidate_context": {
-                                    "events": [
-                                        {"event": "candidate_context_stored"}
-                                    ]
+                                    "events": [{"event": "candidate_context_stored"}]
                                 }
                             },
                             "confirmation": {
@@ -861,9 +856,7 @@ def test_run_router_eval_handoff_mode_writes_event_artifacts(
     assert (tmp_path / "event_metrics.prom").exists()
     assert (tmp_path / "event_health.txt").exists()
     assert (tmp_path / "event_dashboard.md").exists()
-    assert "pending_action_confirmed" in (
-        tmp_path / "event_dashboard.md"
-    ).read_text()
+    assert "pending_action_confirmed" in (tmp_path / "event_dashboard.md").read_text()
 
 
 def test_evaluate_v3_router_target_reports_evaluator_failure() -> None:
@@ -939,9 +932,7 @@ def test_evaluate_v3_router_target_includes_event_summary() -> None:
     )
 
     assert summary["event_summary"]["total_outputs"] == 1
-    assert summary["event_summary"]["event_counts"] == {
-        "candidate_context_stored": 1
-    }
+    assert summary["event_summary"]["event_counts"] == {"candidate_context_stored": 1}
 
 
 def test_run_handoff_case_confirms_pending_action_with_events() -> None:
@@ -967,9 +958,7 @@ def test_run_handoff_case_confirms_pending_action_with_events() -> None:
             "status": "completed",
             "pending_action_id": pending_action_id,
             "debug": {
-                "confirmation": {
-                    "events": [{"event": "pending_action_confirmed"}]
-                }
+                "confirmation": {"events": [{"event": "pending_action_confirmed"}]}
             },
         }
 
@@ -1025,9 +1014,7 @@ def test_evaluate_v3_handoff_target_aggregates_cases_and_events() -> None:
             "status": "completed",
             "pending_action_id": pending_action_id,
             "debug": {
-                "confirmation": {
-                    "events": [{"event": "pending_action_confirmed"}]
-                }
+                "confirmation": {"events": [{"event": "pending_action_confirmed"}]}
             },
         }
 
@@ -1224,9 +1211,7 @@ def test_handoff_debug_events_evaluator_checks_chat_and_confirm_events() -> None
             },
             "confirm_output": {
                 "debug": {
-                    "confirmation": {
-                        "events": [{"event": "pending_action_confirmed"}]
-                    }
+                    "confirmation": {"events": [{"event": "pending_action_confirmed"}]}
                 }
             },
         },
@@ -1312,9 +1297,7 @@ def test_v3_handoff_langsmith_target_runs_chat_and_confirm(
             "status": "completed",
             "pending_action_id": pending_action_id,
             "debug": {
-                "confirmation": {
-                    "events": [{"event": "pending_action_confirmed"}]
-                }
+                "confirmation": {"events": [{"event": "pending_action_confirmed"}]}
             },
         }
 

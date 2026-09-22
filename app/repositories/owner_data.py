@@ -21,7 +21,13 @@ from app.db.models import (
     PendingAction,
     UserPreference,
 )
-from app.shopping_tasks.models import AfterSalesDraft, ShoppingTask, ShoppingTaskAction, ShoppingTaskArtifact, ShoppingTaskCommand
+from app.shopping_tasks.models import (
+    AfterSalesDraft,
+    ShoppingTask,
+    ShoppingTaskAction,
+    ShoppingTaskArtifact,
+    ShoppingTaskCommand,
+)
 
 
 MAX_OWNER_MEMORY_INSPECTION_RECORDS = 100
@@ -32,9 +38,7 @@ def _now() -> datetime:
 
 
 def _memory_to_dict(record: MemoryRecord) -> dict[str, Any]:
-    confidence = (
-        float(record.confidence) if record.confidence is not None else None
-    )
+    confidence = float(record.confidence) if record.confidence is not None else None
     return {
         "memory_id": record.id,
         "thread_id": record.thread_id,
@@ -55,8 +59,7 @@ def _memory_to_dict(record: MemoryRecord) -> dict[str, Any]:
 
 def _count(session: Session, model: type, condition) -> int:
     return int(
-        session.scalar(select(func.count()).select_from(model).where(condition))
-        or 0
+        session.scalar(select(func.count()).select_from(model).where(condition)) or 0
     )
 
 
@@ -80,10 +83,26 @@ def inspect_owner_data(
         )
     )
     counts = {
-        "shopping_tasks": _count(session, ShoppingTask, ShoppingTask.owner_id == owner_id),
-        "shopping_task_artifacts": _count(session, ShoppingTaskArtifact, ShoppingTaskArtifact.task_id.in_(select(ShoppingTask.id).where(ShoppingTask.owner_id == owner_id))),
-        "shopping_task_actions": _count(session, ShoppingTaskAction, ShoppingTaskAction.task_id.in_(select(ShoppingTask.id).where(ShoppingTask.owner_id == owner_id))),
-        "after_sales_drafts": _count(session, AfterSalesDraft, AfterSalesDraft.owner_id == owner_id),
+        "shopping_tasks": _count(
+            session, ShoppingTask, ShoppingTask.owner_id == owner_id
+        ),
+        "shopping_task_artifacts": _count(
+            session,
+            ShoppingTaskArtifact,
+            ShoppingTaskArtifact.task_id.in_(
+                select(ShoppingTask.id).where(ShoppingTask.owner_id == owner_id)
+            ),
+        ),
+        "shopping_task_actions": _count(
+            session,
+            ShoppingTaskAction,
+            ShoppingTaskAction.task_id.in_(
+                select(ShoppingTask.id).where(ShoppingTask.owner_id == owner_id)
+            ),
+        ),
+        "after_sales_drafts": _count(
+            session, AfterSalesDraft, AfterSalesDraft.owner_id == owner_id
+        ),
         "preferences": _count(
             session,
             UserPreference,
@@ -148,8 +167,7 @@ def inspect_owner_data(
         "memory_records": _count(
             session,
             MemoryRecord,
-            (MemoryRecord.user_id == owner_id)
-            & (MemoryRecord.scope != "operational"),
+            (MemoryRecord.user_id == owner_id) & (MemoryRecord.scope != "operational"),
         ),
     }
     memories = list(
@@ -242,9 +260,7 @@ def delete_owner_memory_record(
 
 def _delete_count(session: Session, model: type, condition) -> int:
     result = session.execute(
-        delete(model)
-        .where(condition)
-        .execution_options(synchronize_session=False)
+        delete(model).where(condition).execution_options(synchronize_session=False)
     )
     return int(result.rowcount or 0)
 
@@ -258,16 +274,18 @@ def delete_all_owner_data(
 
     thread_ids = list(
         session.scalars(
-            select(ConversationThread.id).where(
-                ConversationThread.user_id == owner_id
-            )
+            select(ConversationThread.id).where(ConversationThread.user_id == owner_id)
         )
     )
     run_scope = AgentRun.user_id == owner_id
     if thread_ids:
         run_scope = or_(run_scope, AgentRun.thread_id.in_(thread_ids))
     run_ids = list(session.scalars(select(AgentRun.id).where(run_scope)))
-    task_ids = list(session.scalars(select(ShoppingTask.id).where(ShoppingTask.owner_id == owner_id)))
+    task_ids = list(
+        session.scalars(
+            select(ShoppingTask.id).where(ShoppingTask.owner_id == owner_id)
+        )
+    )
 
     event_scope = AgentRunEvent.user_id == owner_id
     message_scope = ConversationMessage.user_id == owner_id
@@ -298,11 +316,31 @@ def delete_all_owner_data(
         # Drafts reference actions with RESTRICT, so remove owner drafts and
         # actions before the task cascade. This also fences a live worker via
         # the task row disappearing from its owner-scoped claim query.
-        "after_sales_drafts": _delete_count(session, AfterSalesDraft, AfterSalesDraft.owner_id == owner_id),
-        "shopping_task_actions": _delete_count(session, ShoppingTaskAction, ShoppingTaskAction.task_id.in_(task_ids)) if task_ids else 0,
-        "shopping_task_artifacts": _delete_count(session, ShoppingTaskArtifact, ShoppingTaskArtifact.task_id.in_(task_ids)) if task_ids else 0,
-        "shopping_task_commands": _delete_count(session, ShoppingTaskCommand, ShoppingTaskCommand.owner_id == owner_id),
-        "shopping_tasks": _delete_count(session, ShoppingTask, ShoppingTask.owner_id == owner_id),
+        "after_sales_drafts": _delete_count(
+            session, AfterSalesDraft, AfterSalesDraft.owner_id == owner_id
+        ),
+        "shopping_task_actions": (
+            _delete_count(
+                session, ShoppingTaskAction, ShoppingTaskAction.task_id.in_(task_ids)
+            )
+            if task_ids
+            else 0
+        ),
+        "shopping_task_artifacts": (
+            _delete_count(
+                session,
+                ShoppingTaskArtifact,
+                ShoppingTaskArtifact.task_id.in_(task_ids),
+            )
+            if task_ids
+            else 0
+        ),
+        "shopping_task_commands": _delete_count(
+            session, ShoppingTaskCommand, ShoppingTaskCommand.owner_id == owner_id
+        ),
+        "shopping_tasks": _delete_count(
+            session, ShoppingTask, ShoppingTask.owner_id == owner_id
+        ),
         "agent_run_events": _delete_count(
             session,
             AgentRunEvent,

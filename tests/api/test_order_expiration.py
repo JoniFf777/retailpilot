@@ -11,10 +11,19 @@ from sqlalchemy import select, update
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.core.settings import Settings
 from app.db.base import Base
-from app.orders.models import ShopMindInventoryReservation, ShopMindOrder, ShopMindOrderItem
+from app.orders.models import (
+    ShopMindInventoryReservation,
+    ShopMindOrder,
+    ShopMindOrderItem,
+)
 from app.outbox.models import ShopMindOutboxEvent
 from app.payments.models import ShopMindPaymentAttempt
 from app.repositories.shopmind_cart import upsert_cart_item
@@ -62,7 +71,9 @@ def store():
             category,
             product,
             sku,
-            CatalogInventory(sku=sku, on_hand_quantity=20, reserved_quantity=0, version=0),
+            CatalogInventory(
+                sku=sku, on_hand_quantity=20, reserved_quantity=0, version=0
+            ),
         ]
     )
     session.commit()
@@ -216,11 +227,19 @@ def test_expiry_releases_reservation_and_emits_one_event(store) -> None:
     session.close()
 
 
-@pytest.mark.parametrize("payment_status", ["processing", "unknown", "provider_succeeded"])
-def test_active_or_uncertain_payment_defers_cancel_and_expiry(store, payment_status: str) -> None:
+@pytest.mark.parametrize(
+    "payment_status", ["processing", "unknown", "provider_succeeded"]
+)
+def test_active_or_uncertain_payment_defers_cancel_and_expiry(
+    store, payment_status: str
+) -> None:
     factory, settings, sku_id = store
-    order_id = _create_order(factory, settings, sku_id, user_id=f"{payment_status}-user")
-    _add_attempt(factory, order_id, user_id=f"{payment_status}-user", status=payment_status)
+    order_id = _create_order(
+        factory, settings, sku_id, user_id=f"{payment_status}-user"
+    )
+    _add_attempt(
+        factory, order_id, user_id=f"{payment_status}-user", status=payment_status
+    )
     session: Session = factory()
     with pytest.raises(OrderServiceError) as error:
         cancel_order(session, user_id=f"{payment_status}-user", order_id=order_id)
@@ -259,12 +278,18 @@ def test_succeeded_pending_payment_fails_closed_for_cancel_and_expiry(store) -> 
     ).all()
     assert order is not None and order.status == "pending_payment"
     assert inventory is not None and inventory.reserved_quantity == before_inventory
-    assert not [event for event in events if event.event_type == "shopmind.order.cancelled.v1"]
-    assert not [event for event in events if event.event_type == "shopmind.order.expired.v1"]
+    assert not [
+        event for event in events if event.event_type == "shopmind.order.cancelled.v1"
+    ]
+    assert not [
+        event for event in events if event.event_type == "shopmind.order.expired.v1"
+    ]
     session.close()
 
 
-def test_payment_deadline_exact_boundary_rejects_new_key_but_replays_existing_key(store) -> None:
+def test_payment_deadline_exact_boundary_rejects_new_key_but_replays_existing_key(
+    store,
+) -> None:
     factory, settings, sku_id = store
     order_id = _create_order(factory, settings, sku_id, user_id="payment-boundary")
     _set_expiry(factory, order_id, datetime.now(timezone.utc) + timedelta(hours=1))

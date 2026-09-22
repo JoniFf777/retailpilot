@@ -95,12 +95,20 @@ class CategoryAttributeDefinition(BaseModel):
             raise ValueError(
                 f"operators {sorted(invalid)} are invalid for attribute type {self.type}"
             )
-        if self.default_operator and self.default_operator not in self.allowed_operators:
+        if (
+            self.default_operator
+            and self.default_operator not in self.allowed_operators
+        ):
             raise ValueError("default_operator must be one of allowed_operators")
-        if self.type == "number" and self.bounds is None and self.ranking in {
-            "higher_is_better",
-            "lower_is_better",
-        }:
+        if (
+            self.type == "number"
+            and self.bounds is None
+            and self.ranking
+            in {
+                "higher_is_better",
+                "lower_is_better",
+            }
+        ):
             # Snapshot bounds are valid only when the definition explicitly
             # permits them through the bounded generic default.
             pass
@@ -109,7 +117,9 @@ class CategoryAttributeDefinition(BaseModel):
                 raise ValueError("enum attributes require enum_values")
             unknown = set(self.enum_aliases.values()) - set(self.enum_values)
             if unknown:
-                raise ValueError(f"enum aliases reference unknown values: {sorted(unknown)}")
+                raise ValueError(
+                    f"enum aliases reference unknown values: {sorted(unknown)}"
+                )
         elif self.enum_values or self.enum_aliases:
             raise ValueError("enum values/aliases are only valid for enum attributes")
         if self.multi_valued and self.type != "enum":
@@ -121,7 +131,9 @@ class CategoryAttributeDefinition(BaseModel):
         if self.role == "display_only" and self.ranking != "neutral":
             raise ValueError("display_only attributes must use neutral ranking")
         if self.required and self.missing != "reject_if_hard":
-            raise ValueError("required attributes must use reject_if_hard missing semantics")
+            raise ValueError(
+                "required attributes must use reject_if_hard missing semantics"
+            )
         return self
 
     @property
@@ -171,18 +183,35 @@ class CategoryDefinition(BaseModel):
         key_set = set(keys)
         missing_display = set(self.display_fields) - key_set
         if missing_display:
-            raise ValueError(f"display_fields reference unknown attributes: {sorted(missing_display)}")
+            raise ValueError(
+                f"display_fields reference unknown attributes: {sorted(missing_display)}"
+            )
         missing_request = set(self.request_requires_any) - key_set
         if missing_request:
-            raise ValueError(f"request_requires_any reference unknown attributes: {sorted(missing_request)}")
+            raise ValueError(
+                f"request_requires_any reference unknown attributes: {sorted(missing_request)}"
+            )
         if not self.display_fields:
-            object.__setattr__(self, "display_fields", tuple(attribute.key for attribute in sorted(self.attributes, key=lambda item: (item.display_order, item.key))))
+            object.__setattr__(
+                self,
+                "display_fields",
+                tuple(
+                    attribute.key
+                    for attribute in sorted(
+                        self.attributes, key=lambda item: (item.display_order, item.key)
+                    )
+                ),
+            )
         return self
 
     def attribute_for(self, key: str) -> CategoryAttributeDefinition | None:
-        return next((attribute for attribute in self.attributes if attribute.key == key), None)
+        return next(
+            (attribute for attribute in self.attributes if attribute.key == key), None
+        )
 
-    def attributes_for_catalog_key(self, catalog_key: str) -> tuple[CategoryAttributeDefinition, ...]:
+    def attributes_for_catalog_key(
+        self, catalog_key: str
+    ) -> tuple[CategoryAttributeDefinition, ...]:
         return tuple(
             attribute
             for attribute in self.attributes
@@ -219,6 +248,10 @@ class StructuredRecommendationExtraction(BaseModel):
 
     @model_validator(mode="after")
     def validate_budget_range(self) -> "StructuredRecommendationExtraction":
-        if self.budget_min is not None and self.budget_max is not None and self.budget_min > self.budget_max:
+        if (
+            self.budget_min is not None
+            and self.budget_max is not None
+            and self.budget_min > self.budget_max
+        ):
             raise ValueError("budget_min must not exceed budget_max")
         return self

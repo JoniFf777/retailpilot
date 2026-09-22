@@ -34,9 +34,7 @@ def make_session_factory():
 def make_record():
     return GovernanceAuditFactory(
         clock=lambda: NOW,
-        audit_id_factory=lambda: UUID(
-            "00000000-0000-0000-0000-000000000301"
-        ),
+        audit_id_factory=lambda: UUID("00000000-0000-0000-0000-000000000301"),
     ).action_decision(
         operation=AuditOperation.ACTION_CONFIRM,
         decision=AuditDecision.SUCCEEDED,

@@ -308,9 +308,7 @@ class RedisRuntimeCoordinationBackend:
         )
         return self._release(released)
 
-    def renew_admission(
-        self, lease_id: str, *, lease_ttl_ms: int
-    ) -> AdmissionRenewal:
+    def renew_admission(self, lease_id: str, *, lease_ttl_ms: int) -> AdmissionRenewal:
         if lease_ttl_ms < 1 or lease_ttl_ms > 300_000:
             raise ValueError("Admission lease TTL is outside the supported range.")
         renewed = bool(
@@ -327,9 +325,7 @@ class RedisRuntimeCoordinationBackend:
             backend=self.backend_name,
             renewed=renewed,
             reason=(
-                CoordinationReason.ACCEPTED
-                if renewed
-                else CoordinationReason.NOT_FOUND
+                CoordinationReason.ACCEPTED if renewed else CoordinationReason.NOT_FOUND
             ),
         )
 
@@ -360,9 +356,7 @@ class RedisRuntimeCoordinationBackend:
             retry_after_ms=retry_after_ms if code == 0 else None,
         )
 
-    def claim_duplicate(
-        self, request: DeduplicationRequest
-    ) -> DeduplicationDecision:
+    def claim_duplicate(self, request: DeduplicationRequest) -> DeduplicationDecision:
         from uuid import uuid4
 
         claim_id = str(uuid4())

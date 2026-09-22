@@ -47,7 +47,9 @@ def get_active_payment_attempt(
             ShopMindPaymentAttempt.order_id == order_id,
             ShopMindPaymentAttempt.status.in_(PAYMENT_ACTIVE_STATUSES),
         )
-        .order_by(ShopMindPaymentAttempt.created_at.asc(), ShopMindPaymentAttempt.id.asc())
+        .order_by(
+            ShopMindPaymentAttempt.created_at.asc(), ShopMindPaymentAttempt.id.asc()
+        )
         .limit(1)
     )
     if for_update:

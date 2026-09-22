@@ -77,9 +77,10 @@ def _answer_type(used_summaries: list[str], security_notes: list[str]) -> str:
 
 
 def _is_write_path_handoff(state: ShopMindMultiAgentState) -> bool:
-    return (
-        state.get("intent") == "write_path_unsupported"
-        or WRITE_INTENT_SAFETY_FLAG in state.get("safety_flags", [])
+    return state.get(
+        "intent"
+    ) == "write_path_unsupported" or WRITE_INTENT_SAFETY_FLAG in state.get(
+        "safety_flags", []
     )
 
 
@@ -102,8 +103,7 @@ def _evidence_conflicts(state: ShopMindMultiAgentState) -> list[EvidenceConflict
         and reference["metadata"].get("product_id")
     ]
     evidence_product_ids = {
-        str(reference["metadata"]["product_id"])
-        for reference in evidence_references
+        str(reference["metadata"]["product_id"]) for reference in evidence_references
     }
     if not evidence_product_ids or product_ids.intersection(evidence_product_ids):
         return []
@@ -128,9 +128,7 @@ def _evidence_resolution(
     if not conflicts:
         return None
     return EvidenceResolution(
-        action=(
-            EvidenceResolutionAction.EXCLUDE_EVIDENCE_AND_REQUEST_CLARIFICATION
-        ),
+        action=(EvidenceResolutionAction.EXCLUDE_EVIDENCE_AND_REQUEST_CLARIFICATION),
         excluded_summaries=["rag_summary"],
         followup_reason=EvidenceConflictType.PRODUCT_SCOPE_MISMATCH,
     )
@@ -192,7 +190,9 @@ def decision_agent_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
     rag_summary = state.get("rag_summary") or {}
     security_notes = rag_summary.get("security_notes") or []
     if security_notes:
-        answer_parts.append("\u5b89\u5168\u63d0\u793a\uff1a" + "\uff1b".join(security_notes))
+        answer_parts.append(
+            "\u5b89\u5168\u63d0\u793a\uff1a" + "\uff1b".join(security_notes)
+        )
     if evidence_resolution:
         answer_parts.append(PRODUCT_EVIDENCE_SCOPE_MISMATCH_RESPONSE)
 
@@ -208,7 +208,9 @@ def decision_agent_node(state: ShopMindMultiAgentState) -> dict[str, Any]:
         if evidence_resolution
         else _answer_type(used_summaries, security_notes)
     )
-    final_response = "\n".join(answer_parts) if answer_parts else INSUFFICIENT_CONTEXT_RESPONSE
+    final_response = (
+        "\n".join(answer_parts) if answer_parts else INSUFFICIENT_CONTEXT_RESPONSE
+    )
 
     return {
         "decision": {

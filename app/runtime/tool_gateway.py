@@ -417,9 +417,11 @@ class ToolGateway:
             if isinstance(records, list):
                 records.append(record.model_dump(mode="json"))
                 records.sort(
-                    key=lambda item: int(item.get("audit_sequence") or 0)
-                    if isinstance(item, dict)
-                    else 0
+                    key=lambda item: (
+                        int(item.get("audit_sequence") or 0)
+                        if isinstance(item, dict)
+                        else 0
+                    )
                 )
 
     @staticmethod
@@ -508,11 +510,10 @@ class ToolGateway:
             raise ToolGatewayError(
                 "Sensitive write capabilities must require confirmation."
             )
-        if (
-            capability.requires_confirmation
-            and capability.side_effect_class
-            not in {ToolSideEffectClass.WRITE, ToolSideEffectClass.SENSITIVE_WRITE}
-        ):
+        if capability.requires_confirmation and capability.side_effect_class not in {
+            ToolSideEffectClass.WRITE,
+            ToolSideEffectClass.SENSITIVE_WRITE,
+        }:
             raise ToolGatewayError(
                 "Confirmation requirements are only valid for write capabilities."
             )

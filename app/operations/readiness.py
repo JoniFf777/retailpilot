@@ -120,9 +120,7 @@ class DeploymentReadinessReport(BaseModel):
             raise ValueError("Deployment readiness check count is invalid.")
         passed = sum(check.status == "passed" for check in self.checks)
         failed = sum(check.status == "failed" for check in self.checks)
-        not_applicable = sum(
-            check.status == "not_applicable" for check in self.checks
-        )
+        not_applicable = sum(check.status == "not_applicable" for check in self.checks)
         if (
             self.passed_checks != passed
             or self.failed_checks != failed
@@ -431,10 +429,7 @@ def _retention_check(
             DeploymentReadinessCheckStatus.FAILED,
             DeploymentReadinessReason.CLEANUP_EVIDENCE_INVALID,
         )
-    recent = (
-        age_seconds
-        <= settings.shopmind_runtime_cleanup_evidence_max_age_seconds
-    )
+    recent = age_seconds <= settings.shopmind_runtime_cleanup_evidence_max_age_seconds
     return _check(
         "retention.cleanup",
         DeploymentReadinessCategory.RETENTION,
@@ -468,9 +463,7 @@ def evaluate_deployment_readiness(
         from app.db.session import SessionLocal
 
         session_factory = SessionLocal
-    resolved_preflight = preflight_report or evaluate_production_preflight(
-        settings
-    )
+    resolved_preflight = preflight_report or evaluate_production_preflight(settings)
     postgres_checks = _postgres_checks(
         session_factory,
         shopping_tasks_enabled=settings.shopmind_shopping_tasks_enabled,
@@ -496,9 +489,7 @@ def evaluate_deployment_readiness(
     )
     failed = sum(check.status == "failed" for check in checks)
     passed = sum(check.status == "passed" for check in checks)
-    not_applicable = sum(
-        check.status == "not_applicable" for check in checks
-    )
+    not_applicable = sum(check.status == "not_applicable" for check in checks)
     return DeploymentReadinessReport(
         profile=settings.shopmind_deployment_profile,
         status="ready" if failed == 0 else "blocked",

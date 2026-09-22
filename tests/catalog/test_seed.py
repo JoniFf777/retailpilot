@@ -19,10 +19,21 @@ def make_session():
 
 def test_catalog_seed_is_idempotent_and_does_not_modify_legacy_products() -> None:
     session = make_session()
-    session.add(Product(product_id="TECH-LAP-001", name="Legacy name", category="Laptops", price=1, in_stock=True)); session.commit()
+    session.add(
+        Product(
+            product_id="TECH-LAP-001",
+            name="Legacy name",
+            category="Laptops",
+            price=1,
+            in_stock=True,
+        )
+    )
+    session.commit()
     seed = load_catalog_seed()
-    first = seed_catalog(session, seed); session.commit()
-    second = seed_catalog(session, seed); session.commit()
+    first = seed_catalog(session, seed)
+    session.commit()
+    second = seed_catalog(session, seed)
+    session.commit()
     assert first.inserted["products"] == 9
     assert second.inserted["products"] == 0
     assert session.get(Product, "TECH-LAP-001").name == "Legacy name"
@@ -31,21 +42,39 @@ def test_catalog_seed_is_idempotent_and_does_not_modify_legacy_products() -> Non
 
 
 def test_replace_only_updates_managed_seed_and_never_resets_inventory() -> None:
-    session = make_session(); seed = load_catalog_seed()
-    seed_catalog(session, seed); session.commit()
-    product = session.scalars(select(CatalogProduct)).first(); sku = session.scalars(select(CatalogSku)).first()
-    product.name = "Manual product"; product.managed_by_seed = False
-    inventory = session.get(CatalogInventory, sku.id); inventory.on_hand_quantity = 1; session.commit()
-    report = seed_catalog(session, seed, replace_managed_seed=True); session.commit()
+    session = make_session()
+    seed = load_catalog_seed()
+    seed_catalog(session, seed)
+    session.commit()
+    product = session.scalars(select(CatalogProduct)).first()
+    sku = session.scalars(select(CatalogSku)).first()
+    product.name = "Manual product"
+    product.managed_by_seed = False
+    inventory = session.get(CatalogInventory, sku.id)
+    inventory.on_hand_quantity = 1
+    session.commit()
+    report = seed_catalog(session, seed, replace_managed_seed=True)
+    session.commit()
     assert product.name == "Manual product"
     assert session.get(CatalogInventory, sku.id).on_hand_quantity == 1
     assert report.skipped["inventory"] == 9
 
 
-def test_seed_reports_dangling_legacy_mapping_without_rejecting_catalog_product() -> None:
-    session = make_session(); report = seed_catalog(session, load_catalog_seed()); session.commit()
+def test_seed_reports_dangling_legacy_mapping_without_rejecting_catalog_product() -> (
+    None
+):
+    session = make_session()
+    report = seed_catalog(session, load_catalog_seed())
+    session.commit()
     assert "TECH-LAP-001" in report.dangling_legacy_ids
-    assert session.scalar(select(CatalogProduct).where(CatalogProduct.legacy_product_id == "TECH-LAP-001")) is not None
+    assert (
+        session.scalar(
+            select(CatalogProduct).where(
+                CatalogProduct.legacy_product_id == "TECH-LAP-001"
+            )
+        )
+        is not None
+    )
 
 
 def test_seed_script_prints_change_plan_before_dry_run(capsys) -> None:
@@ -58,13 +87,20 @@ def test_seed_script_prints_change_plan_before_dry_run(capsys) -> None:
 
 def test_monitor_seed_contains_real_second_category_attributes() -> None:
     session = make_session()
-    monitor_path = Path(__file__).resolve().parents[2] / "data" / "catalog" / "monitor_catalog.json"
+    monitor_path = (
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "catalog"
+        / "monitor_catalog.json"
+    )
 
     report = seed_catalog(session, load_catalog_seed(monitor_path))
 
     assert report.inserted["products"] == 7
     assert report.inserted["skus"] == 7
-    monitor = session.scalar(select(CatalogProduct).where(CatalogProduct.product_code == "MON-DELL-U4K-27"))
+    monitor = session.scalar(
+        select(CatalogProduct).where(CatalogProduct.product_code == "MON-DELL-U4K-27")
+    )
     assert monitor is not None
     assert monitor.category.code == "monitor"
     assert monitor.attributes_json["resolution"] == "4k"

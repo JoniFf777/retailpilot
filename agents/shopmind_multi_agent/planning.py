@@ -357,12 +357,16 @@ class ValidatedProviderPlanner:
         if proposed_steps != baseline_steps:
             return "step_contract_outside_policy"
         for step in proposal.steps:
-            unexpected = set(step.metadata).difference({"routing_reason", "query_focus"})
+            unexpected = set(step.metadata).difference(
+                {"routing_reason", "query_focus"}
+            )
             if unexpected:
                 return "step_metadata_outside_policy"
             query_focus = step.metadata.get("query_focus")
             if query_focus is not None and (
-                not isinstance(query_focus, str) or not query_focus.strip() or len(query_focus) > 240
+                not isinstance(query_focus, str)
+                or not query_focus.strip()
+                or len(query_focus) > 240
             ):
                 return "query_focus_outside_policy"
         return None

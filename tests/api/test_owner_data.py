@@ -256,9 +256,7 @@ async def test_owner_run_api_inspects_by_run_or_trace_without_payloads(
     assert payload["run_id"] == run_id
     assert payload["trace_id"] == trace_id
     assert payload["client_event_count"] == 1
-    assert [event["event_type"] for event in payload["events"]] == [
-        "run.started"
-    ]
+    assert [event["event_type"] for event in payload["events"]] == ["run.started"]
     assert payload == by_trace.json()
     serialized = by_run.text
     for forbidden in (
@@ -348,9 +346,7 @@ async def test_full_owner_data_api_requires_explicit_confirmation_and_is_bounded
     try:
         retained = list(
             session.scalars(
-                select(UserPreference).where(
-                    UserPreference.user_id == other_owner
-                )
+                select(UserPreference).where(UserPreference.user_id == other_owner)
             )
         )
     finally:
@@ -378,9 +374,7 @@ async def test_owner_data_api_rejects_cross_owner_before_storage(
         ) as client:
             response = await client.post(
                 "/api/owner-data/inspect",
-                headers={
-                    "X-ShopMind-Authenticated-User": "trusted-private-owner"
-                },
+                headers={"X-ShopMind-Authenticated-User": "trusted-private-owner"},
                 json={"user_id": "different-private-owner"},
             )
     finally:

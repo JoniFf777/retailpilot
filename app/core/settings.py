@@ -74,7 +74,9 @@ MAX_SHOPMIND_AGENT_TASK_MAX_ATTEMPTS = 3
 DEFAULT_SHOPMIND_RAG_AGENT_TRANSPORT = "in_process"
 DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED = False
 DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER = "none"
-DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL = (
+    "cross-encoder/ms-marco-MiniLM-L-6-v2"
+)
 DEFAULT_SHOPMIND_RECOMMENDATION_RETRIEVAL_MODE = "legacy"
 DEFAULT_SHOPMIND_AI_PLATFORM_ENABLED = False
 DEFAULT_SHOPMIND_AI_OPERATIONS_ENABLED = False
@@ -211,9 +213,7 @@ def _get_identity_signature_timing() -> tuple[int, int]:
 def _get_host_set_env(name: str) -> frozenset[str]:
     raw_value = os.getenv(name, "")
     return frozenset(
-        host.strip().lower()
-        for host in raw_value.split(",")
-        if host.strip()
+        host.strip().lower() for host in raw_value.split(",") if host.strip()
     )
 
 
@@ -240,16 +240,16 @@ class Settings(BaseModel):
     shopmind_recommendation_evidence_enabled: bool = Field(
         default=DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED
     )
-    shopmind_recommendation_evidence_reranker: Literal["none", "lexical", "semantic"] = Field(
-        default=DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER
-    )
+    shopmind_recommendation_evidence_reranker: Literal[
+        "none", "lexical", "semantic"
+    ] = Field(default=DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER)
     shopmind_recommendation_evidence_reranker_model: str = Field(
         default=DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL,
         min_length=1,
         max_length=256,
     )
-    shopmind_recommendation_retrieval_mode: Literal["legacy", "shadow", "shared"] = Field(
-        default=DEFAULT_SHOPMIND_RECOMMENDATION_RETRIEVAL_MODE
+    shopmind_recommendation_retrieval_mode: Literal["legacy", "shadow", "shared"] = (
+        Field(default=DEFAULT_SHOPMIND_RECOMMENDATION_RETRIEVAL_MODE)
     )
     shopmind_ai_platform_enabled: bool = Field(
         default=DEFAULT_SHOPMIND_AI_PLATFORM_ENABLED
@@ -257,19 +257,35 @@ class Settings(BaseModel):
     shopmind_ai_operations_enabled: bool = Field(
         default=DEFAULT_SHOPMIND_AI_OPERATIONS_ENABLED
     )
-    shopmind_shopping_tasks_enabled: bool = Field(default=DEFAULT_SHOPMIND_SHOPPING_TASKS_ENABLED)
-    shopmind_shopping_task_mode: Literal["offline", "agent"] = Field(default=DEFAULT_SHOPMIND_SHOPPING_TASK_MODE)
+    shopmind_shopping_tasks_enabled: bool = Field(
+        default=DEFAULT_SHOPMIND_SHOPPING_TASKS_ENABLED
+    )
+    shopmind_shopping_task_mode: Literal["offline", "agent"] = Field(
+        default=DEFAULT_SHOPMIND_SHOPPING_TASK_MODE
+    )
     shopmind_shopping_task_worker_max_age_seconds: int = Field(
         default=DEFAULT_SHOPMIND_SHOPPING_TASK_WORKER_MAX_AGE_SECONDS,
         ge=1,
         le=3_600,
     )
-    shopmind_ai_max_concurrency: int = Field(default=DEFAULT_SHOPMIND_AI_MAX_CONCURRENCY, ge=1, le=1_000)
-    shopmind_ai_rate_limit: int = Field(default=DEFAULT_SHOPMIND_AI_RATE_LIMIT, ge=1, le=100_000)
-    shopmind_ai_rate_window_ms: int = Field(default=DEFAULT_SHOPMIND_AI_RATE_WINDOW_MS, ge=1, le=3_600_000)
-    shopmind_ai_lease_ttl_ms: int = Field(default=DEFAULT_SHOPMIND_AI_LEASE_TTL_MS, ge=1, le=300_000)
-    shopmind_ai_circuit_failure_threshold: int = Field(default=DEFAULT_SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD, ge=1, le=100)
-    shopmind_ai_circuit_open_seconds: float = Field(default=DEFAULT_SHOPMIND_AI_CIRCUIT_OPEN_SECONDS, gt=0, le=3_600)
+    shopmind_ai_max_concurrency: int = Field(
+        default=DEFAULT_SHOPMIND_AI_MAX_CONCURRENCY, ge=1, le=1_000
+    )
+    shopmind_ai_rate_limit: int = Field(
+        default=DEFAULT_SHOPMIND_AI_RATE_LIMIT, ge=1, le=100_000
+    )
+    shopmind_ai_rate_window_ms: int = Field(
+        default=DEFAULT_SHOPMIND_AI_RATE_WINDOW_MS, ge=1, le=3_600_000
+    )
+    shopmind_ai_lease_ttl_ms: int = Field(
+        default=DEFAULT_SHOPMIND_AI_LEASE_TTL_MS, ge=1, le=300_000
+    )
+    shopmind_ai_circuit_failure_threshold: int = Field(
+        default=DEFAULT_SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD, ge=1, le=100
+    )
+    shopmind_ai_circuit_open_seconds: float = Field(
+        default=DEFAULT_SHOPMIND_AI_CIRCUIT_OPEN_SECONDS, gt=0, le=3_600
+    )
     shopmind_deployment_profile: DeploymentProfile = Field(
         default=DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE
     )
@@ -354,7 +370,9 @@ class Settings(BaseModel):
         ge=1,
         le=MAX_SHOPMIND_GOVERNANCE_AUDIT_ALERT_FAILURE_THRESHOLD,
     )
-    shopmind_runtime_max_retries: int = Field(default=DEFAULT_SHOPMIND_RUNTIME_MAX_RETRIES)
+    shopmind_runtime_max_retries: int = Field(
+        default=DEFAULT_SHOPMIND_RUNTIME_MAX_RETRIES
+    )
     shopmind_agent_task_max_attempts: int = Field(
         default=DEFAULT_SHOPMIND_AGENT_TASK_MAX_ATTEMPTS,
         ge=1,
@@ -396,12 +414,18 @@ class Settings(BaseModel):
     shopmind_outbox_enabled: bool = Field(default=DEFAULT_SHOPMIND_OUTBOX_ENABLED)
     shopmind_outbox_rocketmq_endpoint: str | None = Field(default=None)
     shopmind_outbox_rocketmq_topic: str = Field(default=DEFAULT_SHOPMIND_OUTBOX_TOPIC)
-    shopmind_outbox_rocketmq_access_key: SecretStr | None = Field(default=None, repr=False)
-    shopmind_outbox_rocketmq_secret_key: SecretStr | None = Field(default=None, repr=False)
+    shopmind_outbox_rocketmq_access_key: SecretStr | None = Field(
+        default=None, repr=False
+    )
+    shopmind_outbox_rocketmq_secret_key: SecretStr | None = Field(
+        default=None, repr=False
+    )
     shopmind_outbox_lease_seconds: int = Field(
         default=DEFAULT_SHOPMIND_OUTBOX_LEASE_SECONDS, ge=1, le=3_600
     )
-    shopmind_outbox_batch_size: int = Field(default=DEFAULT_SHOPMIND_OUTBOX_BATCH_SIZE, ge=1, le=100)
+    shopmind_outbox_batch_size: int = Field(
+        default=DEFAULT_SHOPMIND_OUTBOX_BATCH_SIZE, ge=1, le=100
+    )
     shopmind_outbox_poll_interval_seconds: float = Field(
         default=DEFAULT_SHOPMIND_OUTBOX_POLL_INTERVAL_SECONDS, gt=0, le=60
     )
@@ -434,15 +458,8 @@ class Settings(BaseModel):
                 raise ValueError(
                     "Signed-header identity requires a server-owned signing secret."
                 )
-            if (
-                len(
-                    self.shopmind_identity_signing_secret.get_secret_value()
-                )
-                < 32
-            ):
-                raise ValueError(
-                    "Signed-header identity signing secret is too short."
-                )
+            if len(self.shopmind_identity_signing_secret.get_secret_value()) < 32:
+                raise ValueError("Signed-header identity signing secret is too short.")
             if (
                 self.shopmind_identity_signature_clock_skew_seconds
                 >= self.shopmind_identity_signature_max_age_seconds
@@ -455,8 +472,13 @@ class Settings(BaseModel):
             and len(self.shopmind_checkout_signing_secret.get_secret_value()) < 32
         ):
             raise ValueError("Checkout signing secret is too short.")
-        if self.shopmind_outbox_max_backoff_seconds < self.shopmind_outbox_base_backoff_seconds:
-            raise ValueError("Outbox maximum backoff must be at least its base backoff.")
+        if (
+            self.shopmind_outbox_max_backoff_seconds
+            < self.shopmind_outbox_base_backoff_seconds
+        ):
+            raise ValueError(
+                "Outbox maximum backoff must be at least its base backoff."
+            )
         return self
 
     @classmethod
@@ -577,22 +599,30 @@ class Settings(BaseModel):
                 3_600,
             ),
             shopmind_ai_max_concurrency=_get_bounded_positive_int_env(
-                "SHOPMIND_AI_MAX_CONCURRENCY", DEFAULT_SHOPMIND_AI_MAX_CONCURRENCY, 1_000
+                "SHOPMIND_AI_MAX_CONCURRENCY",
+                DEFAULT_SHOPMIND_AI_MAX_CONCURRENCY,
+                1_000,
             ),
             shopmind_ai_rate_limit=_get_bounded_positive_int_env(
                 "SHOPMIND_AI_RATE_LIMIT", DEFAULT_SHOPMIND_AI_RATE_LIMIT, 100_000
             ),
             shopmind_ai_rate_window_ms=_get_bounded_positive_int_env(
-                "SHOPMIND_AI_RATE_WINDOW_MS", DEFAULT_SHOPMIND_AI_RATE_WINDOW_MS, 3_600_000
+                "SHOPMIND_AI_RATE_WINDOW_MS",
+                DEFAULT_SHOPMIND_AI_RATE_WINDOW_MS,
+                3_600_000,
             ),
             shopmind_ai_lease_ttl_ms=_get_bounded_positive_int_env(
                 "SHOPMIND_AI_LEASE_TTL_MS", DEFAULT_SHOPMIND_AI_LEASE_TTL_MS, 300_000
             ),
             shopmind_ai_circuit_failure_threshold=_get_bounded_positive_int_env(
-                "SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD", DEFAULT_SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD, 100
+                "SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD",
+                DEFAULT_SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD,
+                100,
             ),
             shopmind_ai_circuit_open_seconds=_get_bounded_positive_float_env(
-                "SHOPMIND_AI_CIRCUIT_OPEN_SECONDS", DEFAULT_SHOPMIND_AI_CIRCUIT_OPEN_SECONDS, 3_600
+                "SHOPMIND_AI_CIRCUIT_OPEN_SECONDS",
+                DEFAULT_SHOPMIND_AI_CIRCUIT_OPEN_SECONDS,
+                3_600,
             ),
             shopmind_deployment_profile=langsmith_runtime.profile,
             shopmind_deployment_replicas=_get_bounded_positive_int_env(
@@ -609,9 +639,7 @@ class Settings(BaseModel):
                 DEFAULT_SHOPMIND_RUNTIME_CLEANUP_SCHEDULED,
             ),
             shopmind_runtime_cleanup_evidence_path=(
-                (
-                    os.getenv("SHOPMIND_RUNTIME_CLEANUP_EVIDENCE_PATH") or ""
-                ).strip()
+                (os.getenv("SHOPMIND_RUNTIME_CLEANUP_EVIDENCE_PATH") or "").strip()
                 or None
             ),
             shopmind_runtime_cleanup_evidence_max_age_seconds=(
@@ -706,7 +734,9 @@ class Settings(BaseModel):
                 if os.getenv(
                     "SHOPMIND_RAG_AGENT_TRANSPORT",
                     DEFAULT_SHOPMIND_RAG_AGENT_TRANSPORT,
-                ).strip().lower()
+                )
+                .strip()
+                .lower()
                 == "http"
                 else DEFAULT_SHOPMIND_RAG_AGENT_TRANSPORT
             ),
@@ -806,7 +836,9 @@ class Settings(BaseModel):
                 86_400,
             ),
             shopmind_outbox_max_attempts=_get_bounded_positive_int_env(
-                "SHOPMIND_OUTBOX_MAX_ATTEMPTS", DEFAULT_SHOPMIND_OUTBOX_MAX_ATTEMPTS, 100
+                "SHOPMIND_OUTBOX_MAX_ATTEMPTS",
+                DEFAULT_SHOPMIND_OUTBOX_MAX_ATTEMPTS,
+                100,
             ),
             shopmind_order_payment_ttl_seconds=_get_bounded_positive_int_env(
                 "SHOPMIND_ORDER_PAYMENT_TTL_SECONDS",

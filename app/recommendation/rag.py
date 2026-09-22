@@ -22,10 +22,23 @@ from app.schemas.catalog import CatalogSkuCandidate
 from app.schemas.recommendation import EvidenceView, RecommendationResult
 
 
-_INJECTION_MARKERS = ("ignore previous", "add_to_cart", "confirm_add_to_cart", "系统提示")
+_INJECTION_MARKERS = (
+    "ignore previous",
+    "add_to_cart",
+    "confirm_add_to_cart",
+    "系统提示",
+)
 _POLICY_TERMS = (
-    "policy", "return", "refund", "warranty", "shipping",
-    "退货", "退款", "保修", "配送", "政策",
+    "policy",
+    "return",
+    "refund",
+    "warranty",
+    "shipping",
+    "退货",
+    "退款",
+    "保修",
+    "配送",
+    "政策",
 )
 
 
@@ -47,13 +60,16 @@ class RetrievalBudget:
     channel_call_limit: int = 24
 
     def __post_init__(self) -> None:
-        if min(
-            self.recall_per_scope,
-            self.candidate_limit,
-            self.context_per_candidate,
-            self.subquestion_limit,
-            self.channel_call_limit,
-        ) <= 0:
+        if (
+            min(
+                self.recall_per_scope,
+                self.candidate_limit,
+                self.context_per_candidate,
+                self.subquestion_limit,
+                self.channel_call_limit,
+            )
+            <= 0
+        ):
             raise ValueError("retrieval budgets must be positive")
         if self.candidate_limit < self.context_per_candidate:
             raise ValueError("candidate_limit must cover context_per_candidate")
@@ -85,7 +101,9 @@ def build_retrieval_query_plan(message: str, *, limit: int = 3) -> dict[str, lis
     """
 
     limit = max(1, min(int(limit), 3))
-    clauses = [part.strip() for part in re.split(r"[,，。；;\n]", message) if part.strip()]
+    clauses = [
+        part.strip() for part in re.split(r"[,，。；;\n]", message) if part.strip()
+    ]
     plans: dict[str, list[str]] = {"product": [], "policy": []}
     for scope, policy in (("product", False), ("policy", True)):
         selected = [
@@ -155,12 +173,17 @@ class SemanticEvidenceReranker:
 
                 self._model = CrossEncoder(self._model_name)
         bounded_documents = list(documents[: self._max_documents])
-        pairs = [(query, str(document.get("content") or "")) for document in bounded_documents]
+        pairs = [
+            (query, str(document.get("content") or ""))
+            for document in bounded_documents
+        ]
 
         def predict() -> Any:
             return self._model.predict(pairs, show_progress_bar=False)
 
-        executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="shopmind-rerank")
+        executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="shopmind-rerank"
+        )
         future = executor.submit(predict)
         try:
             scores = future.result(timeout=self._timeout_seconds)
@@ -183,7 +206,9 @@ class SemanticEvidenceReranker:
 def _query_for_type(message: str, *, policy: bool) -> str:
     """Keep product and policy query clauses focused on their own intent."""
 
-    clauses = [part.strip() for part in re.split(r"[,，。；;\n]", message) if part.strip()]
+    clauses = [
+        part.strip() for part in re.split(r"[,，。；;\n]", message) if part.strip()
+    ]
     selected = [
         clause
         for clause in clauses
@@ -192,18 +217,33 @@ def _query_for_type(message: str, *, policy: bool) -> str:
     return "，".join(selected) if selected else message
 
 
-def _safe_excerpt(content: object, max_chars: int = 240, query: str | None = None) -> str:
+def _safe_excerpt(
+    content: object, max_chars: int = 240, query: str | None = None
+) -> str:
     text = re.sub(r"\s+", " ", str(content or "")).strip()
     lowered = text.lower()
     if any(marker.lower() in lowered for marker in _INJECTION_MARKERS):
         return "Untrusted document content was excluded."
     if query and len(text) > max_chars:
-        terms = [term for term in re.findall(r"[A-Za-z0-9_-]+|[\u4e00-\u9fff]{2,}", query.casefold()) if term]
-        sentences = [part.strip() for part in re.split(r"(?<=[。！？.!?])\s*", text) if part.strip()]
+        terms = [
+            term
+            for term in re.findall(
+                r"[A-Za-z0-9_-]+|[\u4e00-\u9fff]{2,}", query.casefold()
+            )
+            if term
+        ]
+        sentences = [
+            part.strip()
+            for part in re.split(r"(?<=[。！？.!?])\s*", text)
+            if part.strip()
+        ]
         if terms and sentences:
             scored = sorted(
                 enumerate(sentences),
-                key=lambda item: (-sum(term in item[1].casefold() for term in terms), item[0]),
+                key=lambda item: (
+                    -sum(term in item[1].casefold() for term in terms),
+                    item[0],
+                ),
             )
             selected = sentences[scored[0][0]]
             if any(term in selected.casefold() for term in terms):
@@ -212,7 +252,11 @@ def _safe_excerpt(content: object, max_chars: int = 240, query: str | None = Non
 
 
 def _evidence(
-    document: dict[str, object], *, source: str, evidence_type: str, query: str | None = None
+    document: dict[str, object],
+    *,
+    source: str,
+    evidence_type: str,
+    query: str | None = None,
 ) -> EvidenceView:
     return EvidenceView(
         source=source,
@@ -220,18 +264,28 @@ def _evidence(
         field="document_excerpt",
         value=_safe_excerpt(document.get("content"), query=query),
         ref=str(document.get("id")) if document.get("id") is not None else None,
-        document_version=str(
-            (document.get("metadata") or {}).get("document_version")
-            or document.get("document_version")
-        )
-        if ((document.get("metadata") or {}).get("document_version") or document.get("document_version"))
-        else None,
-        section=str(
-            (document.get("metadata") or {}).get("section_title")
-            or document.get("section_title")
-        )
-        if ((document.get("metadata") or {}).get("section_title") or document.get("section_title"))
-        else None,
+        document_version=(
+            str(
+                (document.get("metadata") or {}).get("document_version")
+                or document.get("document_version")
+            )
+            if (
+                (document.get("metadata") or {}).get("document_version")
+                or document.get("document_version")
+            )
+            else None
+        ),
+        section=(
+            str(
+                (document.get("metadata") or {}).get("section_title")
+                or document.get("section_title")
+            )
+            if (
+                (document.get("metadata") or {}).get("section_title")
+                or document.get("section_title")
+            )
+            else None
+        ),
     )
 
 
@@ -249,7 +303,9 @@ def _policy_scope(document: Mapping[str, object], allowed_product_ids: set[str])
     if not isinstance(raw_ids, (list, tuple, set)):
         return "unknown"
     scoped_ids = {str(value) for value in raw_ids if value}
-    return "applicable" if scoped_ids.intersection(allowed_product_ids) else "inapplicable"
+    return (
+        "applicable" if scoped_ids.intersection(allowed_product_ids) else "inapplicable"
+    )
 
 
 def _select_current_policy_documents(
@@ -282,7 +338,11 @@ def _select_current_policy_documents(
     for records in grouped.values():
         versions = {
             str(
-                ((record.get("metadata") or {}).get("document_version") if isinstance(record.get("metadata") or {}, Mapping) else None)
+                (
+                    (record.get("metadata") or {}).get("document_version")
+                    if isinstance(record.get("metadata") or {}, Mapping)
+                    else None
+                )
                 or ""
             )
             for record in records
@@ -295,7 +355,11 @@ def _select_current_policy_documents(
             for record in records
             if not current_version
             or str(
-                ((record.get("metadata") or {}).get("document_version") if isinstance(record.get("metadata") or {}, Mapping) else None)
+                (
+                    (record.get("metadata") or {}).get("document_version")
+                    if isinstance(record.get("metadata") or {}, Mapping)
+                    else None
+                )
                 or ""
             )
             == current_version
@@ -376,8 +440,12 @@ class SqlAlchemyRecommendationEvidenceProvider:
                 shadow = self._retrieve_shared(message=message, top_k=top_k)
                 legacy.diagnostics["shared_shadow"] = {
                     "evidence_status": shadow.diagnostics.get("evidence_status"),
-                    "product_document_count": shadow.diagnostics.get("product_document_count", 0),
-                    "policy_document_count": shadow.diagnostics.get("policy_document_count", 0),
+                    "product_document_count": shadow.diagnostics.get(
+                        "product_document_count", 0
+                    ),
+                    "policy_document_count": shadow.diagnostics.get(
+                        "policy_document_count", 0
+                    ),
                 }
             except Exception:
                 legacy.diagnostics["shared_shadow"] = {"evidence_status": "unavailable"}
@@ -394,7 +462,11 @@ class SqlAlchemyRecommendationEvidenceProvider:
         )
         product_query = _query_for_type(message, policy=False)
         policy_query = _query_for_type(message, policy=True)
-        legacy_ids = [candidate.legacy_product_id for candidate in top_k if candidate.legacy_product_id]
+        legacy_ids = [
+            candidate.legacy_product_id
+            for candidate in top_k
+            if candidate.legacy_product_id
+        ]
         policy_requested = any(
             keyword in message.casefold() for keyword in _POLICY_TERMS
         )
@@ -459,17 +531,27 @@ class SqlAlchemyRecommendationEvidenceProvider:
                         session.rollback()
                         keyword_failures += 1
                 product_vector_status = (
-                    "degraded" if vector_failures and product_vector_docs
-                    else "unavailable" if (vector_failures or embedding_failures) and not product_vector_docs
-                    else "degraded" if embedding_failures
-                    else "ok" if product_vector_docs
-                    else "empty"
+                    "degraded"
+                    if vector_failures and product_vector_docs
+                    else (
+                        "unavailable"
+                        if (vector_failures or embedding_failures)
+                        and not product_vector_docs
+                        else (
+                            "degraded"
+                            if embedding_failures
+                            else "ok" if product_vector_docs else "empty"
+                        )
+                    )
                 )
                 product_keyword_status = (
-                    "degraded" if keyword_failures and product_keyword_docs
-                    else "unavailable" if keyword_failures and not product_keyword_docs
-                    else "ok" if product_keyword_docs
-                    else "empty"
+                    "degraded"
+                    if keyword_failures and product_keyword_docs
+                    else (
+                        "unavailable"
+                        if keyword_failures and not product_keyword_docs
+                        else "ok" if product_keyword_docs else "empty"
+                    )
                 )
             if policy_requested:
                 policy_vector_failures = 0
@@ -505,16 +587,22 @@ class SqlAlchemyRecommendationEvidenceProvider:
                         session.rollback()
                         policy_keyword_failures += 1
                 policy_vector_status = (
-                    "degraded" if policy_vector_failures and policy_vector_docs
-                    else "unavailable" if policy_vector_failures and not policy_vector_docs
-                    else "ok" if policy_vector_docs
-                    else "empty"
+                    "degraded"
+                    if policy_vector_failures and policy_vector_docs
+                    else (
+                        "unavailable"
+                        if policy_vector_failures and not policy_vector_docs
+                        else "ok" if policy_vector_docs else "empty"
+                    )
                 )
                 policy_keyword_status = (
-                    "degraded" if policy_keyword_failures and policy_keyword_docs
-                    else "unavailable" if policy_keyword_failures and not policy_keyword_docs
-                    else "ok" if policy_keyword_docs
-                    else "empty"
+                    "degraded"
+                    if policy_keyword_failures and policy_keyword_docs
+                    else (
+                        "unavailable"
+                        if policy_keyword_failures and not policy_keyword_docs
+                        else "ok" if policy_keyword_docs else "empty"
+                    )
                 )
 
         def fuse(
@@ -529,9 +617,14 @@ class SqlAlchemyRecommendationEvidenceProvider:
         product_docs = fuse(
             product_vector_docs,
             product_keyword_docs,
-            min(self._budget.candidate_limit, max(1, len(legacy_ids) * self._budget.recall_per_scope * 2)),
+            min(
+                self._budget.candidate_limit,
+                max(1, len(legacy_ids) * self._budget.recall_per_scope * 2),
+            ),
         )
-        policy_docs = fuse(policy_vector_docs, policy_keyword_docs, self._budget.candidate_limit)
+        policy_docs = fuse(
+            policy_vector_docs, policy_keyword_docs, self._budget.candidate_limit
+        )
         policy_docs, policy_inapplicable_count, policy_version_conflicts = (
             _select_current_policy_documents(policy_docs, set(legacy_ids))
         )
@@ -546,7 +639,10 @@ class SqlAlchemyRecommendationEvidenceProvider:
             ) -> list[dict[str, object]]:
                 proposed = self._reranker.rerank(query, documents, limit)
                 allowed_by_key = {
-                    str(document.get("id") or f"{document.get('source_path') or 'anonymous'}:{document.get('chunk_index') or index}"): document
+                    str(
+                        document.get("id")
+                        or f"{document.get('source_path') or 'anonymous'}:{document.get('chunk_index') or index}"
+                    ): document
                     for index, document in enumerate(documents, start=1)
                 }
                 allowed = set(allowed_by_key)
@@ -554,7 +650,10 @@ class SqlAlchemyRecommendationEvidenceProvider:
                 selected: list[dict[str, object]] = []
                 invalid_output = False
                 for index, document in enumerate(proposed, start=1):
-                    key = str(document.get("id") or f"{document.get('source_path') or 'anonymous'}:{document.get('chunk_index') or index}")
+                    key = str(
+                        document.get("id")
+                        or f"{document.get('source_path') or 'anonymous'}:{document.get('chunk_index') or index}"
+                    )
                     if key in allowed and key not in seen:
                         # Keep the original fused object. A reranker may return
                         # a score or a copied dict, but it cannot replace the
@@ -564,7 +663,10 @@ class SqlAlchemyRecommendationEvidenceProvider:
                     elif key not in allowed:
                         invalid_output = True
                 for index, document in enumerate(documents, start=1):
-                    key = str(document.get("id") or f"{document.get('source_path') or 'anonymous'}:{document.get('chunk_index') or index}")
+                    key = str(
+                        document.get("id")
+                        or f"{document.get('source_path') or 'anonymous'}:{document.get('chunk_index') or index}"
+                    )
                     if key not in seen:
                         selected.append(document)
                         seen.add(key)
@@ -596,18 +698,24 @@ class SqlAlchemyRecommendationEvidenceProvider:
         ]
         if product_docs or policy_docs:
             evidence_status = "available"
-        elif requested_statuses and all(status == "unavailable" for status in requested_statuses):
+        elif requested_statuses and all(
+            status == "unavailable" for status in requested_statuses
+        ):
             evidence_status = "unavailable"
         elif "unavailable" in requested_statuses:
             evidence_status = "degraded"
         else:
             evidence_status = "unknown"
         allowed = set(legacy_ids)
-        grouped: dict[str, list[EvidenceView]] = {candidate.sku_code: [] for candidate in top_k}
+        grouped: dict[str, list[EvidenceView]] = {
+            candidate.sku_code: [] for candidate in top_k
+        }
         by_legacy: dict[str, list[str]] = {}
         for candidate in top_k:
             if candidate.legacy_product_id:
-                by_legacy.setdefault(candidate.legacy_product_id, []).append(candidate.sku_code)
+                by_legacy.setdefault(candidate.legacy_product_id, []).append(
+                    candidate.sku_code
+                )
         for document in product_docs:
             product_id = str(document.get("product_id") or "")
             if product_id in allowed and product_id in by_legacy:
@@ -651,7 +759,9 @@ class SqlAlchemyRecommendationEvidenceProvider:
                 "fusion": "rrf",
                 "product_retrieval_scope": "per_legacy_product",
                 "reranker": (
-                    self._reranker.__class__.__name__ if self._reranker is not None else None
+                    self._reranker.__class__.__name__
+                    if self._reranker is not None
+                    else None
                 ),
                 "reranker_status": reranker_status,
                 "retrieval_budget": {
@@ -677,45 +787,127 @@ class SqlAlchemyRecommendationEvidenceProvider:
         This path never falls back to raw legacy chunks: the pipeline's gate
         owns scope/version validation, and a failure is visible as unavailable.
         """
-        legacy_ids = tuple(sorted({candidate.legacy_product_id for candidate in top_k if candidate.legacy_product_id}))
-        policy_requested = any(keyword in message.casefold() for keyword in _POLICY_TERMS)
-        pipeline = RetrievalPipeline([
-            RepositoryVectorChannel(SessionLocal, self._embedding),
-            RepositoryLexicalChannel(SessionLocal),
-        ])
-        query_plan = build_retrieval_query_plan(message, limit=self._budget.subquestion_limit)
+        legacy_ids = tuple(
+            sorted(
+                {
+                    candidate.legacy_product_id
+                    for candidate in top_k
+                    if candidate.legacy_product_id
+                }
+            )
+        )
+        policy_requested = any(
+            keyword in message.casefold() for keyword in _POLICY_TERMS
+        )
+        pipeline = RetrievalPipeline(
+            [
+                RepositoryVectorChannel(SessionLocal, self._embedding),
+                RepositoryLexicalChannel(SessionLocal),
+            ]
+        )
+        query_plan = build_retrieval_query_plan(
+            message, limit=self._budget.subquestion_limit
+        )
         product_docs: list[dict[str, object]] = []
         statuses: dict[str, str] = {}
         if legacy_ids:
             for query in query_plan["product"]:
-                docs, current = pipeline.search(SearchRequest(query=query, evidence_type="product_document", product_ids=legacy_ids, limit=self._budget.candidate_limit, rrf_k=60))
+                docs, current = pipeline.search(
+                    SearchRequest(
+                        query=query,
+                        evidence_type="product_document",
+                        product_ids=legacy_ids,
+                        limit=self._budget.candidate_limit,
+                        rrf_k=60,
+                    )
+                )
                 product_docs.extend(docs)
-                statuses.update({f"product.{key}": value for key, value in current.items()})
+                statuses.update(
+                    {f"product.{key}": value for key, value in current.items()}
+                )
         policy_docs: list[dict[str, object]] = []
         if policy_requested:
             for query in query_plan["policy"]:
-                docs, current = pipeline.search(SearchRequest(query=query, evidence_type="store_policy", product_ids=legacy_ids, limit=self._budget.candidate_limit, rrf_k=60))
+                docs, current = pipeline.search(
+                    SearchRequest(
+                        query=query,
+                        evidence_type="store_policy",
+                        product_ids=legacy_ids,
+                        limit=self._budget.candidate_limit,
+                        rrf_k=60,
+                    )
+                )
                 policy_docs.extend(docs)
-                statuses.update({f"policy.{key}": value for key, value in current.items()})
-        product_docs = rrf_fuse([product_docs], limit=self._budget.candidate_limit, rrf_k=60)
-        policy_docs = rrf_fuse([policy_docs], limit=self._budget.candidate_limit, rrf_k=60)
-        policy_docs, inapplicable, conflicts = _select_current_policy_documents(policy_docs, set(legacy_ids))
-        grouped: dict[str, list[EvidenceView]] = {candidate.sku_code: [] for candidate in top_k}
+                statuses.update(
+                    {f"policy.{key}": value for key, value in current.items()}
+                )
+        product_docs = rrf_fuse(
+            [product_docs], limit=self._budget.candidate_limit, rrf_k=60
+        )
+        policy_docs = rrf_fuse(
+            [policy_docs], limit=self._budget.candidate_limit, rrf_k=60
+        )
+        policy_docs, inapplicable, conflicts = _select_current_policy_documents(
+            policy_docs, set(legacy_ids)
+        )
+        grouped: dict[str, list[EvidenceView]] = {
+            candidate.sku_code: [] for candidate in top_k
+        }
         by_legacy: dict[str, list[str]] = {}
         for candidate in top_k:
             if candidate.legacy_product_id:
-                by_legacy.setdefault(candidate.legacy_product_id, []).append(candidate.sku_code)
+                by_legacy.setdefault(candidate.legacy_product_id, []).append(
+                    candidate.sku_code
+                )
         for document in product_docs:
-            product_id = str(document.get("product_id") or (document.get("metadata") or {}).get("product_id") or "")
+            product_id = str(
+                document.get("product_id")
+                or (document.get("metadata") or {}).get("product_id")
+                or ""
+            )
             for sku_code in by_legacy.get(product_id, []):
                 if len(grouped[sku_code]) < self._budget.context_per_candidate:
-                    grouped[sku_code].append(_evidence(document, source="product_rag", evidence_type="product_document", query=message))
+                    grouped[sku_code].append(
+                        _evidence(
+                            document,
+                            source="product_rag",
+                            evidence_type="product_document",
+                            query=message,
+                        )
+                    )
         all_statuses = set(statuses.values())
-        evidence_status = "available" if product_docs or policy_docs else ("unavailable" if all_statuses and all_statuses <= {"unavailable", "degraded"} else "unknown")
+        evidence_status = (
+            "available"
+            if product_docs or policy_docs
+            else (
+                "unavailable"
+                if all_statuses and all_statuses <= {"unavailable", "degraded"}
+                else "unknown"
+            )
+        )
         return RecommendationEvidence(
             product_evidence=grouped,
-            policy_evidence=[_evidence(document, source="policy_rag", evidence_type="policy_document", query=message) for document in policy_docs],
-            diagnostics={"retrieval_path": "shared", "requested_legacy_product_ids": list(legacy_ids), "product_document_count": len(product_docs), "policy_document_count": len(policy_docs), "policy_requested": policy_requested, "policy_inapplicable_count": inapplicable, "policy_version_conflicts": conflicts, "evidence_status": evidence_status, "channels": statuses, "query_plan": query_plan},
+            policy_evidence=[
+                _evidence(
+                    document,
+                    source="policy_rag",
+                    evidence_type="policy_document",
+                    query=message,
+                )
+                for document in policy_docs
+            ],
+            diagnostics={
+                "retrieval_path": "shared",
+                "requested_legacy_product_ids": list(legacy_ids),
+                "product_document_count": len(product_docs),
+                "policy_document_count": len(policy_docs),
+                "policy_requested": policy_requested,
+                "policy_inapplicable_count": inapplicable,
+                "policy_version_conflicts": conflicts,
+                "evidence_status": evidence_status,
+                "channels": statuses,
+                "query_plan": query_plan,
+            },
         )
 
 
@@ -724,7 +916,9 @@ class FakeRecommendationEvidenceProvider:
         self.evidence = evidence or RecommendationEvidence({}, [], {})
         self.calls: list[list[str]] = []
 
-    def retrieve(self, *, message: str, top_k: Sequence[CatalogSkuCandidate]) -> RecommendationEvidence:
+    def retrieve(
+        self, *, message: str, top_k: Sequence[CatalogSkuCandidate]
+    ) -> RecommendationEvidence:
         del message
         self.calls.append([candidate.sku_code for candidate in top_k])
         return self.evidence

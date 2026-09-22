@@ -250,8 +250,7 @@ def run_planner_eval_case(case: PlannerEvalCase) -> PlannerEvalCaseResult:
         "provider_calls": len(provider_calls) == case["expected_provider_calls"],
         "step_contract": _step_contract(plan) == _step_contract(baseline),
         "execution_mode": plan.execution_mode == case["expected_execution_mode"],
-        "max_parallelism": plan.max_parallelism
-        == case["expected_max_parallelism"],
+        "max_parallelism": plan.max_parallelism == case["expected_max_parallelism"],
         "provider_skip": plan.metadata.get("planner_provider_skipped")
         == case.get("expected_provider_skip"),
     }

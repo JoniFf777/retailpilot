@@ -185,8 +185,7 @@ def resolve_eval_config(target: str) -> dict[str, Any]:
             "dataset": V3_ROUTER_DATASET_NAME,
             "experiment_prefix": "shopmind-v3-router",
             "description": (
-                "ShopMind V3 read-only router evaluation for routes and "
-                "debug metadata."
+                "ShopMind V3 read-only router evaluation for routes and debug metadata."
             ),
         }
     return {

@@ -38,9 +38,7 @@ from app.security.audit import (
 from app.security.identity import AuthenticatedPrincipal
 
 
-_OWNER_DELETION_AUDIT_NAMESPACE = UUID(
-    "790ea7ad-e41c-4cdf-bca2-89f6e7ea2478"
-)
+_OWNER_DELETION_AUDIT_NAMESPACE = UUID("790ea7ad-e41c-4cdf-bca2-89f6e7ea2478")
 MAX_OWNER_RUN_INSPECTION_EVENTS = 100
 
 
@@ -258,16 +256,10 @@ class OwnerDataService:
                 trace_id=trace_id,
                 event_limit=event_limit,
             )
-            result = (
-                None
-                if raw is None
-                else OwnerRunInspection.model_validate(raw)
-            )
+            result = None if raw is None else OwnerRunInspection.model_validate(raw)
         except Exception as exc:
             self._rollback(session)
-            raise OwnerDataStorageError(
-                "Owner data storage unavailable."
-            ) from exc
+            raise OwnerDataStorageError("Owner data storage unavailable.") from exc
         finally:
             self._close(session)
         return result
@@ -300,9 +292,7 @@ class OwnerDataService:
                         owner_id=owner_id,
                     )
                 return None
-            result = OwnerMemoryCorrection(
-                memory=OwnerMemoryRecord.model_validate(raw)
-            )
+            result = OwnerMemoryCorrection(memory=OwnerMemoryRecord.model_validate(raw))
             session.commit()
         except Exception as exc:
             self._rollback(session)
@@ -414,9 +404,7 @@ class OwnerDataService:
             counts = OwnerDataCounts.model_validate(raw_counts)
             records_affected = sum(raw_counts.values())
             result = OwnerDataDeletion(
-                status=(
-                    "deleted" if records_affected else "already_deleted"
-                ),
+                status=("deleted" if records_affected else "already_deleted"),
                 deletion_request_id=deletion_request_id,
                 records_affected=records_affected,
                 counts=counts,

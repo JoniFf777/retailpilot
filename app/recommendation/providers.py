@@ -74,7 +74,11 @@ class SqlAlchemyRecommendationPreferenceProvider:
             preferences = get_user_preferences(session, user_id)
         # The summary is display metadata; ranking inputs are returned through
         # preference_constraints_for_user so the public summary stays PII-free.
-        return {"source": "preferences", "preference_count": len(preferences), "informational_only": True}
+        return {
+            "source": "preferences",
+            "preference_count": len(preferences),
+            "informational_only": True,
+        }
 
     def preference_constraints_for_user(
         self, user_id: str | None, category: str
@@ -98,7 +102,9 @@ class SqlAlchemyRecommendationPreferenceProvider:
             for key, constraint in request.category_attributes.items():
                 if constraint.role == "soft":
                     if preference_type == "avoid" and constraint.polarity == "include":
-                        constraint = constraint.model_copy(update={"polarity": "exclude"})
+                        constraint = constraint.model_copy(
+                            update={"polarity": "exclude"}
+                        )
                     # Avoid constraints take precedence over positive defaults;
                     # within one type the repository returns newest first.
                     priority = (2 if constraint.polarity == "exclude" else 1, -index)

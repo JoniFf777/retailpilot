@@ -263,9 +263,10 @@ def format_adapter_equivalence_summary(
         f"- pass rate: {summary['pass_rate']:.1%}",
     ]
     if summary["failures"]:
-        lines.append("- failures: " + ", ".join(
-            failure["name"] for failure in summary["failures"]
-        ))
+        lines.append(
+            "- failures: "
+            + ", ".join(failure["name"] for failure in summary["failures"])
+        )
     else:
         lines.append("- failures: none")
     return "\n".join(lines)

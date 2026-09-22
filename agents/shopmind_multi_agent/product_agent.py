@@ -92,7 +92,9 @@ def product_agent_node(
     if ("对比" in message or "比较" in message or "compare" in lowered) and product_ids:
         tool_name = "compare_products"
         result = tool_map[tool_name].invoke({"product_identifiers": product_ids})
-    elif product_ids and ("详情" in message or "detail" in lowered or "价格" in message):
+    elif product_ids and (
+        "详情" in message or "detail" in lowered or "价格" in message
+    ):
         tool_name = "get_product_detail"
         result = tool_map[tool_name].invoke({"product_identifier": product_ids[0]})
     else:

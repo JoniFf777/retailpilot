@@ -76,9 +76,7 @@ def test_run_cleanup_deletes_expired_runtime_rows(
         cleanup_runtime_persistence,
         "get_settings",
         lambda: SimpleNamespace(
-            database_url=(
-                "postgresql+psycopg://user:secret@127.0.0.1:5432/app"
-            ),
+            database_url=("postgresql+psycopg://user:secret@127.0.0.1:5432/app"),
             shopmind_runtime_cleanup_evidence_path=str(
                 tmp_path / "cleanup-evidence.json"
             ),
@@ -96,8 +94,6 @@ def test_run_cleanup_deletes_expired_runtime_rows(
     assert report.deleted_governance_audit_records == 0
     assert report.deleted_total == 4
     assert "user:***" in output
-    evidence = load_runtime_cleanup_evidence(
-        tmp_path / "cleanup-evidence.json"
-    )
+    evidence = load_runtime_cleanup_evidence(tmp_path / "cleanup-evidence.json")
     assert evidence is not None
     assert evidence.status == "succeeded"

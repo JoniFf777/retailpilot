@@ -147,13 +147,17 @@ def test_parallel_fan_in_maps_outputs_in_plan_order() -> None:
 
 def test_parallel_fan_in_rejects_plan_identity_mismatch() -> None:
     plan = build_deterministic_agent_plan(["product_agent"], run_id="run-1")
-    result = BoundedPlanExecutor().execute(
-        plan,
-        lambda step: AgentResult(
-            task_id=step.step_id,
-            status=AgentTaskStatus.COMPLETED,
-        ),
-    ).model_copy(update={"plan_id": "wrong-plan"})
+    result = (
+        BoundedPlanExecutor()
+        .execute(
+            plan,
+            lambda step: AgentResult(
+                task_id=step.step_id,
+                status=AgentTaskStatus.COMPLETED,
+            ),
+        )
+        .model_copy(update={"plan_id": "wrong-plan"})
+    )
 
     with pytest.raises(ParallelStateError, match="identity"):
         merge_parallel_step_results({}, plan, result)

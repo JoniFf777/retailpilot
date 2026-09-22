@@ -44,7 +44,9 @@ def test_pipeline_publishes_only_after_all_nodes_complete() -> None:
     descriptor = classify_legacy_source(
         "data/documents/products/TECH-LAP-001.md", "# Laptop\n\nBattery details"
     )
-    result = ShoppingEvidencePipeline().run(session, descriptor, "# Laptop\n\nBattery details")
+    result = ShoppingEvidencePipeline().run(
+        session, descriptor, "# Laptop\n\nBattery details"
+    )
     session.commit()
     current = list_current_evidence(session, product_ids=["TECH-LAP-001"])
     assert result.status == "completed"
@@ -96,7 +98,11 @@ def test_pipeline_failure_is_recorded_before_retry() -> None:
     else:
         raise AssertionError("pipeline should fail")
     session.flush()
-    task = session.query(__import__("app.ai_platform.models", fromlist=["ShoppingIngestionTask"]).ShoppingIngestionTask).one()
+    task = session.query(
+        __import__(
+            "app.ai_platform.models", fromlist=["ShoppingIngestionTask"]
+        ).ShoppingIngestionTask
+    ).one()
     assert task.status == "pending"
     assert task.last_error_code == "pipeline_failed"
 

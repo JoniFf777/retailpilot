@@ -135,13 +135,7 @@ def _audit_health(
     attempts = 3 if degraded else int(warning)
     failures = attempts
     monitor = GovernanceAuditMonitorSnapshot(
-        status=(
-            "alerting"
-            if degraded
-            else "warning"
-            if warning
-            else "idle"
-        ),
+        status=("alerting" if degraded else "warning" if warning else "idle"),
         alert_active=degraded,
         alert_failure_threshold=3,
         emission_calls_total=attempts,
@@ -221,9 +215,7 @@ def test_deployment_holds_for_warmup_and_blocks_failed_boundaries() -> None:
     warmup = evaluate_release_operation(
         _input("deployment", service_status="insufficient_data")
     )
-    warning = evaluate_release_operation(
-        _input("deployment", audit_status="warning")
-    )
+    warning = evaluate_release_operation(_input("deployment", audit_status="warning"))
     blocked = evaluate_release_operation(
         _input(
             "deployment",
@@ -233,9 +225,7 @@ def test_deployment_holds_for_warmup_and_blocks_failed_boundaries() -> None:
     development = evaluate_release_operation(
         _input(
             "deployment",
-            readiness=_readiness().model_copy(
-                update={"profile": "development"}
-            ),
+            readiness=_readiness().model_copy(update={"profile": "development"}),
         )
     )
 
@@ -250,9 +240,7 @@ def test_deployment_holds_for_warmup_and_blocks_failed_boundaries() -> None:
     assert blocked.failed_checks == 2
     assert development.status == "blocked"
     assert {
-        check.reason
-        for check in development.checks
-        if check.status == "failed"
+        check.reason for check in development.checks if check.status == "failed"
     } == {"readiness_blocked"}
 
 
@@ -284,9 +272,7 @@ def test_rollback_fails_closed_without_target_and_migration_proof() -> None:
     assert incompatible.status == "blocked"
     assert incompatible.recommended_action == "block_rollback"
     assert {
-        check.reason
-        for check in incompatible.checks
-        if check.status == "failed"
+        check.reason for check in incompatible.checks if check.status == "failed"
     } == {"rollback_migration_incompatible"}
 
 
@@ -372,10 +358,7 @@ def test_release_operations_cli_writes_artifact_and_sanitizes_invalid_input(
         json.dumps({"schema_version": private_value}),
         encoding="utf-8",
     )
-    assert (
-        check_release_operations.main(["--input-json", str(input_path)])
-        == 1
-    )
+    assert check_release_operations.main(["--input-json", str(input_path)]) == 1
     failure_output = capsys.readouterr().out
     assert "input_invalid" in failure_output
     assert private_value not in failure_output

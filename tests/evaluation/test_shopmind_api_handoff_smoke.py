@@ -312,8 +312,7 @@ def test_cleanup_api_handoff_smoke_state_deletes_only_smoke_owned_rows() -> None
             "candidate_contexts": 1,
         }
         assert [
-            item.user_id
-            for item in verify_session.scalars(select(CartItem)).all()
+            item.user_id for item in verify_session.scalars(select(CartItem)).all()
         ] == ["REAL-USER"]
         assert [
             action.user_id

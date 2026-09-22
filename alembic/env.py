@@ -46,7 +46,9 @@ def run_migrations_online() -> None:
     """Run migrations with a live database connection."""
     external_connection = config.attributes.get("connection")
     if external_connection is not None:
-        context.configure(connection=external_connection, target_metadata=target_metadata)
+        context.configure(
+            connection=external_connection, target_metadata=target_metadata
+        )
         with context.begin_transaction():
             context.run_migrations()
         return

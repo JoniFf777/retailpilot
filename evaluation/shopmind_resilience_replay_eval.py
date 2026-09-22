@@ -169,8 +169,7 @@ class _Observation:
 def _make_stores() -> _Stores:
     database_name = f"shopmind-resilience-{uuid4()}"
     database_url = (
-        f"sqlite+pysqlite:///file:{database_name}"
-        "?mode=memory&cache=shared&uri=true"
+        f"sqlite+pysqlite:///file:{database_name}?mode=memory&cache=shared&uri=true"
     )
     writer_engine = create_engine(database_url)
     Base.metadata.create_all(writer_engine)
@@ -256,9 +255,7 @@ def _provider_fallback(stores: _Stores) -> _Observation:
         stores,
         result,
         invocations=calls,
-        specific_invariant=(
-            fallback_reason == "provider_error_or_invalid_contract"
-        ),
+        specific_invariant=(fallback_reason == "provider_error_or_invalid_contract"),
     )
 
 
@@ -351,7 +348,9 @@ def _retry_observation(stores: _Stores, *, cancel_before_retry: bool) -> _Observ
         }
 
     scenario_id = (
-        "transport_retry_cancelled" if cancel_before_retry else "transport_retry_success"
+        "transport_retry_cancelled"
+        if cancel_before_retry
+        else "transport_retry_success"
     )
     result = ShopMindRuntimeHarness(stores.writer_factory).run(
         _request(scenario_id), executor

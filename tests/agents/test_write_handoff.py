@@ -14,7 +14,12 @@ from agents.shopmind_multi_agent.write_handoff import (
     invoke_write_handoff,
 )
 from app.db.base import Base
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.db.models import PendingAction, Product, UserPreference
 from app.runtime import RunContext, RunRequest
 from app.runtime.actions import ActionRegistryError
@@ -47,7 +52,15 @@ def _seed_catalog_for_legacy_products(session, product_ids: list[str]) -> None:
             sale_status="active",
             variant_attributes_json={},
         )
-        session.add_all([product, sku, CatalogInventory(sku=sku, on_hand_quantity=20, reserved_quantity=0, version=0)])
+        session.add_all(
+            [
+                product,
+                sku,
+                CatalogInventory(
+                    sku=sku, on_hand_quantity=20, reserved_quantity=0, version=0
+                ),
+            ]
+        )
 
 
 def _candidate_context_events(result: dict) -> list[dict]:
@@ -91,7 +104,9 @@ def test_write_handoff_requires_explicit_product_id_when_no_candidate() -> None:
     assert "商品 ID" in result["answer"]
 
 
-def test_write_handoff_rejects_action_when_registry_validation_fails(monkeypatch) -> None:
+def test_write_handoff_rejects_action_when_registry_validation_fails(
+    monkeypatch,
+) -> None:
     def reject_action(request):
         raise ActionRegistryError("blocked")
 
@@ -146,9 +161,7 @@ def test_write_handoff_suggests_candidates_without_creating_action(monkeypatch) 
     )
 
     result = invoke_write_handoff("帮我把这个键盘加入购物车", user_id=TEST_USER_ID)
-    pending_count = session.scalar(
-        select(func.count()).select_from(PendingAction)
-    )
+    pending_count = session.scalar(select(func.count()).select_from(PendingAction))
 
     assert result["status"] == "completed"
     assert result["tool_calls"] == []
@@ -216,7 +229,10 @@ def test_write_handoff_resolves_same_thread_candidate_selection(monkeypatch) -> 
     assert second_result["tool_calls"] == ["prepare_add_to_cart"]
     assert pending_action is not None
     assert pending_action.thread_id == thread_id
-    assert pending_action.payload_json["schema_version"] == "shopmind.pending_action.add_to_cart.v1"
+    assert (
+        pending_action.payload_json["schema_version"]
+        == "shopmind.pending_action.add_to_cart.v1"
+    )
     assert pending_action.payload_json["origin"] == "legacy_chat"
     assert pending_action.payload_json["origin_identifier"] == TEST_PRODUCT_ID
 
@@ -386,7 +402,10 @@ def test_write_handoff_prepares_add_to_cart(monkeypatch) -> None:
     assert pending_action is not None
     assert pending_action.thread_id == "thread-write-native"
     assert pending_action.status == "pending"
-    assert pending_action.payload_json["schema_version"] == "shopmind.pending_action.add_to_cart.v1"
+    assert (
+        pending_action.payload_json["schema_version"]
+        == "shopmind.pending_action.add_to_cart.v1"
+    )
     assert pending_action.payload_json["origin"] == "legacy_chat"
 
     session.close()
@@ -502,7 +521,9 @@ def test_write_handoff_reports_candidate_context_debug_events(monkeypatch) -> No
         "ttl_seconds": 600,
         "max_contexts": 100,
     }
-    assert [event["event"] for event in _candidate_context_events(selection_result)] == [
+    assert [
+        event["event"] for event in _candidate_context_events(selection_result)
+    ] == [
         "candidate_context_selected",
         "candidate_context_cleared",
     ]

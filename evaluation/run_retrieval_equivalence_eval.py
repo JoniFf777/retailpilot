@@ -17,7 +17,9 @@ def _legacy_fuse(*lists: list[dict[str, object]], limit: int) -> list[str]:
             key = str(document.get("id"))
             records.setdefault(key, document)
             scores[key] = scores.get(key, 0.0) + 1.0 / (60.0 + rank)
-    return [key for key in sorted(records, key=lambda item: (-scores[item], item))[:limit]]
+    return [
+        key for key in sorted(records, key=lambda item: (-scores[item], item))[:limit]
+    ]
 
 
 def run_cases() -> dict[str, object]:
@@ -38,7 +40,9 @@ def run_cases() -> dict[str, object]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Compare ShopMind retrieval implementations.")
+    parser = argparse.ArgumentParser(
+        description="Compare ShopMind retrieval implementations."
+    )
     parser.add_argument("--output-json", type=Path)
     args = parser.parse_args(argv)
     report = run_cases()

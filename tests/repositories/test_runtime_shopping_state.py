@@ -36,7 +36,12 @@ def test_shopping_session_state_is_owner_scoped_and_monotonic() -> None:
         state=state,
     )
     assert persisted.version == 1
-    assert session.get(ConversationThread, "runtime-1").metadata_json["shopping_session_state"]["version"] == 1
+    assert (
+        session.get(ConversationThread, "runtime-1").metadata_json[
+            "shopping_session_state"
+        ]["version"]
+        == 1
+    )
 
     with pytest.raises(ShoppingSessionStateConflict):
         persist_shopping_session_state(
@@ -56,7 +61,9 @@ def test_shopping_session_state_rejects_cross_owner_thread() -> None:
             session,
             runtime_thread_id="runtime-2",
             user_id="owner-b",
-            state=ShoppingSessionState(owner_id="owner-b", version=1, category="laptop"),
+            state=ShoppingSessionState(
+                owner_id="owner-b", version=1, category="laptop"
+            ),
         )
 
 
@@ -92,7 +99,10 @@ def test_shopping_session_state_keeps_bounded_patch_log_and_expiry() -> None:
     )
     metadata = session.get(ConversationThread, "runtime-3").metadata_json
     assert second.version == 2
-    assert [item["version"] for item in metadata["shopping_session_state_patches"]] == [1, 2]
+    assert [item["version"] for item in metadata["shopping_session_state_patches"]] == [
+        1,
+        2,
+    ]
     assert metadata["shopping_session_state_patches"][1]["changed_fields"] == [
         "budget_max",
         "candidate_sku_codes",
@@ -108,5 +118,7 @@ def test_shopping_session_state_rejects_mismatched_owner_identity() -> None:
             session,
             runtime_thread_id="runtime-4",
             user_id="owner-a",
-            state=ShoppingSessionState(owner_id="owner-b", thread_id="other", version=1),
+            state=ShoppingSessionState(
+                owner_id="owner-b", thread_id="other", version=1
+            ),
         )

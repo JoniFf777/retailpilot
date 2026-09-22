@@ -222,9 +222,7 @@ def _run_step(
                             failure_code=exc.failure_code,
                             error_code=exc.error_code,
                             retriable=True,
-                            reason=(
-                                AgentPlanRetryReason.CANCELLATION_BEFORE_RETRY
-                            ),
+                            reason=(AgentPlanRetryReason.CANCELLATION_BEFORE_RETRY),
                             usage=exc.usage,
                         ),
                     )
@@ -242,24 +240,16 @@ def _run_step(
                 and exc.failure_code.value in retry_policy.retryable_failure_codes
                 and attempt_count >= retry_policy.max_attempts
             ):
-                decision_lifecycle = (
-                    AgentPlanAttemptLifecycle.ATTEMPTS_EXHAUSTED
-                )
+                decision_lifecycle = AgentPlanAttemptLifecycle.ATTEMPTS_EXHAUSTED
                 decision_reason = AgentPlanRetryReason.ATTEMPTS_EXHAUSTED
             else:
-                decision_lifecycle = (
-                    AgentPlanAttemptLifecycle.RETRY_NON_RETRIABLE
-                )
+                decision_lifecycle = AgentPlanAttemptLifecycle.RETRY_NON_RETRIABLE
                 if retry_policy.owner != AgentTaskRetryOwner.PLAN_EXECUTOR:
                     decision_reason = AgentPlanRetryReason.RETRY_POLICY_DISABLED
                 elif not exc.retriable:
-                    decision_reason = (
-                        AgentPlanRetryReason.TRANSPORT_NON_RETRIABLE
-                    )
+                    decision_reason = AgentPlanRetryReason.TRANSPORT_NON_RETRIABLE
                 else:
-                    decision_reason = (
-                        AgentPlanRetryReason.FAILURE_CODE_NOT_ALLOWLISTED
-                    )
+                    decision_reason = AgentPlanRetryReason.FAILURE_CODE_NOT_ALLOWLISTED
             _notify_attempt(
                 attempt_observer,
                 _attempt_event(
@@ -437,7 +427,9 @@ def _topological_steps(plan: AgentExecutionPlan) -> list[AgentPlanStep]:
             step for step in remaining if set(step.depends_on).issubset(completed_ids)
         ]
         if not ready:
-            raise PlanExecutionError("Agent plan has no executable dependency frontier.")
+            raise PlanExecutionError(
+                "Agent plan has no executable dependency frontier."
+            )
         for step in ready:
             ordered.append(step)
             completed_ids.add(step.step_id)

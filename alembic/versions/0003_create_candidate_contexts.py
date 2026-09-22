@@ -23,7 +23,9 @@ def upgrade() -> None:
         "candidate_contexts",
         sa.Column("user_id", sa.String(), nullable=False),
         sa.Column("thread_id", sa.String(), nullable=False),
-        sa.Column("product_ids", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "product_ids", postgresql.JSONB(astext_type=sa.Text()), nullable=False
+        ),
         sa.Column("quantity", sa.Integer(), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(

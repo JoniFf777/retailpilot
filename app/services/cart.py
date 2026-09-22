@@ -87,7 +87,9 @@ def update_cart_item(
             "Catalog SKU is no longer available.",
         )
     if product.sale_status != "active":
-        raise CartServiceError("product_inactive", "Catalog product is no longer active.")
+        raise CartServiceError(
+            "product_inactive", "Catalog product is no longer active."
+        )
     if sku.sale_status != "active":
         raise CartServiceError("sku_inactive", "Catalog SKU is no longer active.")
     if inventory is None:
@@ -110,7 +112,9 @@ def update_cart_item(
     update_cart_item_quantity(session, item=item, quantity=quantity)
     item_view = get_cart_item_view(session, user_id=user_id, sku_id=item.sku_id)
     if item_view is None:  # pragma: no cover - defensive after owned lock
-        raise CartServiceError("cart_item_not_found", "Cart item was not found.", status_code=404)
+        raise CartServiceError(
+            "cart_item_not_found", "Cart item was not found.", status_code=404
+        )
     return CartMutationResponse(
         item=item_view,
         cart=get_cart_response(session, user_id=user_id),

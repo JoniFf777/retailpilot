@@ -15,11 +15,19 @@ def run_cases() -> dict[str, object]:
     now = datetime.now(timezone.utc)
     product_a = {
         "id": "product-a",
-        "metadata": {"evidence_type": "product_guide", "product_ids": ["A"], "authority": "evidence_only"},
+        "metadata": {
+            "evidence_type": "product_guide",
+            "product_ids": ["A"],
+            "authority": "evidence_only",
+        },
     }
     product_b = {
         "id": "product-b",
-        "metadata": {"evidence_type": "product_guide", "product_ids": ["B"], "authority": "evidence_only"},
+        "metadata": {
+            "evidence_type": "product_guide",
+            "product_ids": ["B"],
+            "authority": "evidence_only",
+        },
     }
     expired_policy = {
         "id": "old-policy",
@@ -32,20 +40,36 @@ def run_cases() -> dict[str, object]:
     }
     cases = {
         "candidate_scope": EvidenceGate().process(
-            [product_a, product_b], SearchRequest(query="A", evidence_type="product_guide", product_ids=("A",))
-        ) == [product_a],
+            [product_a, product_b],
+            SearchRequest(query="A", evidence_type="product_guide", product_ids=("A",)),
+        )
+        == [product_a],
         "expired_policy": EvidenceGate().process(
-            [expired_policy], SearchRequest(query="return", evidence_type="store_policy", policy_type="return")
-        ) == [],
+            [expired_policy],
+            SearchRequest(
+                query="return", evidence_type="store_policy", policy_type="return"
+            ),
+        )
+        == [],
         "catalog_authority": catalog_authority("6299", "5999") == ("6299", True),
-        "rrf_deterministic": [item["id"] for item in rrf_fuse([[product_a], [product_a]], limit=1)] == ["product-a"],
+        "rrf_deterministic": [
+            item["id"] for item in rrf_fuse([[product_a], [product_a]], limit=1)
+        ]
+        == ["product-a"],
     }
     passed = sum(bool(value) for value in cases.values())
-    return {"schema_version": "shopmind.shopping-evidence-eval.v1", "passed": passed, "total": len(cases), "cases": cases}
+    return {
+        "schema_version": "shopmind.shopping-evidence-eval.v1",
+        "passed": passed,
+        "total": len(cases),
+        "cases": cases,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run offline shopping evidence contract evaluation.")
+    parser = argparse.ArgumentParser(
+        description="Run offline shopping evidence contract evaluation."
+    )
     parser.add_argument("--output-json", type=Path)
     args = parser.parse_args(argv)
     report = run_cases()

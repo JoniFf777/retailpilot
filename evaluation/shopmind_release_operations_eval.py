@@ -18,9 +18,7 @@ from app.runtime import (
 )
 
 
-RELEASE_OPERATIONS_EVAL_SCHEMA_VERSION = (
-    "shopmind.release-operations-eval.v1"
-)
+RELEASE_OPERATIONS_EVAL_SCHEMA_VERSION = "shopmind.release-operations-eval.v1"
 RELEASE_OPERATIONS_SCENARIOS: tuple[str, ...] = (
     "deployment_ready",
     "deployment_warmup",
@@ -133,13 +131,7 @@ def _audit_health(status: str) -> GovernanceAuditHealthEvidence:
     warning = status == "warning"
     failures = 3 if degraded else int(warning)
     monitor = GovernanceAuditMonitorSnapshot(
-        status=(
-            "alerting"
-            if degraded
-            else "warning"
-            if warning
-            else "idle"
-        ),
+        status=("alerting" if degraded else "warning" if warning else "idle"),
         alert_active=degraded,
         alert_failure_threshold=3,
         emission_calls_total=failures,
@@ -204,9 +196,7 @@ def _case_result(
             report.schema_version == "shopmind.release-operation-check.v1"
         ),
         "status": report.status == expected_status,
-        "recommended_action": (
-            report.recommended_action == expected_action
-        ),
+        "recommended_action": (report.recommended_action == expected_action),
         "failed_count": report.failed_checks == expected_failed,
         "waiting_count": report.waiting_checks == expected_waiting,
         "ordered_boundaries": check_ids
@@ -336,11 +326,7 @@ def format_release_operations_summary(summary: Mapping[str, Any]) -> str:
             f"- checks: {summary['checks_passed']}/{summary['total_checks']}",
             (
                 "- failures: "
-                + (
-                    ", ".join(summary["failures"])
-                    if summary["failures"]
-                    else "none"
-                )
+                + (", ".join(summary["failures"]) if summary["failures"] else "none")
             ),
         )
     )

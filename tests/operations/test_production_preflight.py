@@ -80,13 +80,9 @@ def test_production_profile_reports_all_unsafe_defaults_without_values() -> None
     assert report.status == "blocked"
     assert report.ready is False
     assert report.failed_checks == 4
-    assert checks["identity.boundary"].reason == (
-        "development_identity_forbidden"
-    )
+    assert checks["identity.boundary"].reason == ("development_identity_forbidden")
     assert checks["governance.audit"].reason == "governance_audit_disabled"
-    assert checks["retention.cleanup"].reason == (
-        "retention_cleanup_unscheduled"
-    )
+    assert checks["retention.cleanup"].reason == ("retention_cleanup_unscheduled")
     assert checks["runtime.limits"].reason == "runtime_limits_unbounded"
     for forbidden in (
         "database_url",
@@ -178,9 +174,7 @@ def test_application_creation_fails_closed_only_for_production() -> None:
     assert development.state.production_preflight.status == "not_applicable"
     assert ready.state.production_preflight.status == "ready"
     health_report = asyncio.run(
-        health.production_preflight_health_check(
-            SimpleNamespace(app=ready)
-        )
+        health.production_preflight_health_check(SimpleNamespace(app=ready))
     )
     assert health_report["profile"] == "production"
     assert health_report["status"] == "ready"
@@ -205,9 +199,7 @@ def test_preflight_cli_writes_safe_artifact_and_sanitizes_settings_failure(
         lambda *args: _ready_settings(),
     )
 
-    assert (
-        check_production_config.main(["--output-json", str(output)]) == 0
-    )
+    assert check_production_config.main(["--output-json", str(output)]) == 0
     assert "status: ready" in capsys.readouterr().out
     artifact = json.loads(output.read_text(encoding="utf-8"))
     assert artifact["schema_version"] == "shopmind.production-preflight.v1"
@@ -258,6 +250,7 @@ def test_shopping_task_agent_mode_requires_platform_configuration() -> None:
     assert _check_map(agent)["shopping_tasks.configuration"].reason == (
         "shopping_tasks_agent_configured"
     )
+
 
 def test_ci_gates_and_uploads_production_preflight_before_evaluations() -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")

@@ -41,7 +41,9 @@ class LocalStreamConcurrencyLimiter:
     def release(self) -> None:
         with self._lock:
             if self._active <= 0:
-                raise RuntimeError("stream concurrency limiter released without an admission")
+                raise RuntimeError(
+                    "stream concurrency limiter released without an admission"
+                )
             self._active -= 1
 
     @property

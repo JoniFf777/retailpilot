@@ -10,9 +10,7 @@ from evaluation.shopmind_release_operations_eval import (
 def test_release_operations_gate_covers_closed_operational_trajectories() -> None:
     summary = evaluate_release_operations()
 
-    assert summary["schema_version"] == (
-        "shopmind.release-operations-eval.v1"
-    )
+    assert summary["schema_version"] == ("shopmind.release-operations-eval.v1")
     assert summary["total_cases"] == summary["passed_cases"] == 7
     assert summary["checks_passed"] == summary["total_checks"] == 42
     assert summary["failures"] == []
@@ -20,16 +18,10 @@ def test_release_operations_gate_covers_closed_operational_trajectories() -> Non
         RELEASE_OPERATIONS_SCENARIOS
     )
 
-    outcomes = {
-        case["name"]: case["outcome"] for case in summary["cases"]
-    }
+    outcomes = {case["name"]: case["outcome"] for case in summary["cases"]}
     assert outcomes["deployment_warmup"]["status"] == "hold"
-    assert outcomes["rollback_unverified"]["recommended_action"] == (
-        "block_rollback"
-    )
-    assert outcomes["incident_escalation"]["status"] == (
-        "action_required"
-    )
+    assert outcomes["rollback_unverified"]["recommended_action"] == ("block_rollback")
+    assert outcomes["incident_escalation"]["status"] == ("action_required")
     serialized = json.dumps(summary, sort_keys=True)
     for forbidden in (
         "user_id",

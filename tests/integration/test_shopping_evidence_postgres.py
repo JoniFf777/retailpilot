@@ -35,7 +35,11 @@ def test_shopping_evidence_migrations_and_pipeline_acceptance():
         with engine.connect() as connection:
             connection.execute(text(f'CREATE SCHEMA "{schema}"'))
             connection.execute(text(f'SET search_path TO "{schema}", public'))
-            connection.execute(text(f'CREATE TABLE "{schema}".alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)'))
+            connection.execute(
+                text(
+                    f'CREATE TABLE "{schema}".alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)'
+                )
+            )
             connection.commit()
             command.upgrade(_alembic(connection), "0017_ai_extension_registry")
             tables = set(inspect(connection).get_table_names(schema=schema))
@@ -53,13 +57,20 @@ def test_shopping_evidence_migrations_and_pipeline_acceptance():
                 descriptor = classify_legacy_source(
                     "data/documents/products/TECH-LAP-001.md", "# Laptop\n\nBattery"
                 )
-                result = ShoppingEvidencePipeline().run(session, descriptor, "# Laptop\n\nBattery")
+                result = ShoppingEvidencePipeline().run(
+                    session, descriptor, "# Laptop\n\nBattery"
+                )
                 session.commit()
-                evidence = session.get(ShoppingEvidenceVersion, result.evidence_version_id)
+                evidence = session.get(
+                    ShoppingEvidenceVersion, result.evidence_version_id
+                )
                 publication = session.scalar(select(ShoppingEvidencePublication))
                 nodes = session.scalars(select(ShoppingIngestionNode)).all()
                 assert evidence is not None and evidence.status == "published"
-                assert publication is not None and publication.evidence_version_id == evidence.id
+                assert (
+                    publication is not None
+                    and publication.evidence_version_id == evidence.id
+                )
                 assert {node.status for node in nodes} == {"completed"}
             finally:
                 session.close()

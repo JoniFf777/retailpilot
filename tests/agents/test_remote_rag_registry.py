@@ -39,9 +39,7 @@ def remote_settings(**overrides) -> Settings:
     values = {
         "shopmind_rag_agent_transport": "http",
         "shopmind_rag_agent_http_endpoint": ENDPOINT,
-        "shopmind_rag_agent_http_allowed_hosts": frozenset(
-            {"rag.internal.example"}
-        ),
+        "shopmind_rag_agent_http_allowed_hosts": frozenset({"rag.internal.example"}),
         "shopmind_rag_agent_http_bearer_token": "server-token",
     }
     values.update(overrides)

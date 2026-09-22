@@ -18,6 +18,7 @@ from typing import Optional
 # Archetype Definitions
 # ============================================================================
 
+
 @dataclass
 class Archetype:
     archetype_id: str
@@ -39,7 +40,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=True,
         primary_agent="DB/SQL",
         sentiment_weights=[60, 25, 15],
-        typical_queries=["Where is my order?", "Has my package shipped?", "When will I receive my order?"],
+        typical_queries=[
+            "Where is my order?",
+            "Has my package shipped?",
+            "When will I receive my order?",
+        ],
         tags=["order_status", "shipping"],
         hint="Ask about a specific recent order by product name.",
     ),
@@ -49,7 +54,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=True,
         primary_agent="DB/SQL",
         sentiment_weights=[10, 0, 90],
-        typical_queries=["My order is late!", "Where is my package?", "This is unacceptable!"],
+        typical_queries=[
+            "My order is late!",
+            "Where is my package?",
+            "This is unacceptable!",
+        ],
         tags=["complaint", "shipping", "delay"],
         hint="Express frustration about an order that seems overdue or still in processing.",
     ),
@@ -59,7 +68,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=True,
         primary_agent="DB+Docs",
         sentiment_weights=[20, 0, 80],
-        typical_queries=["How do I return this?", "Can I exchange my order?", "I need a refund"],
+        typical_queries=[
+            "How do I return this?",
+            "Can I exchange my order?",
+            "I need a refund",
+        ],
         tags=["return", "exchange", "refund"],
         hint="Reference a specific product from a recent order and ask about the return process.",
     ),
@@ -69,7 +82,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=True,
         primary_agent="SQL",
         sentiment_weights=[80, 20, 0],
-        typical_queries=["How much have I spent?", "Can I see my order history?", "What have I purchased?"],
+        typical_queries=[
+            "How much have I spent?",
+            "Can I see my order history?",
+            "What have I purchased?",
+        ],
         tags=["account", "history", "spending"],
         hint="Ask to see a summary of past purchases or spending.",
     ),
@@ -79,7 +96,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=False,
         primary_agent="Docs",
         sentiment_weights=[60, 40, 0],
-        typical_queries=["What are the specs?", "Which laptop is best for me?", "Compare these products"],
+        typical_queries=[
+            "What are the specs?",
+            "Which laptop is best for me?",
+            "Compare these products",
+        ],
         tags=["product_research", "pre_purchase"],
         hint="Ask about specific product features or comparisons — no personal account needed.",
     ),
@@ -89,7 +110,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=False,
         primary_agent="Docs",
         sentiment_weights=[70, 30, 0],
-        typical_queries=["What is your return policy?", "How long is the warranty?", "Do you offer free shipping?"],
+        typical_queries=[
+            "What is your return policy?",
+            "How long is the warranty?",
+            "Do you offer free shipping?",
+        ],
         tags=["policy", "information"],
         hint="Ask a general policy question that doesn't require account access.",
     ),
@@ -99,7 +124,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=False,
         primary_agent="Docs",
         sentiment_weights=[50, 50, 0],
-        typical_queries=["What are the RAM options?", "Does it support 4K?", "What ports does it have?"],
+        typical_queries=[
+            "What are the RAM options?",
+            "Does it support 4K?",
+            "What ports does it have?",
+        ],
         tags=["specs", "technical", "product_research"],
         hint="Ask detailed technical questions about a specific product category (laptop, monitor, keyboard, etc.).",
     ),
@@ -109,7 +138,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=True,
         primary_agent="SQL",
         sentiment_weights=[90, 10, 0],
-        typical_queries=["We need 20 units", "Do you offer bulk pricing?", "What's the lead time for large orders?"],
+        typical_queries=[
+            "We need 20 units",
+            "Do you offer bulk pricing?",
+            "What's the lead time for large orders?",
+        ],
         tags=["corporate", "bulk", "b2b"],
         segment_filter="Corporate",
         hint="Mention needing multiple units for a business/team and ask about availability or pricing.",
@@ -120,7 +153,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=True,
         primary_agent="DB+Docs",
         sentiment_weights=[25, 0, 75],
-        typical_queries=["My product stopped working", "I need to file a warranty claim", "The screen is broken"],
+        typical_queries=[
+            "My product stopped working",
+            "I need to file a warranty claim",
+            "The screen is broken",
+        ],
         tags=["warranty", "support", "complaint"],
         hint="Describe a product issue with something from a recent order and ask about warranty coverage.",
     ),
@@ -130,7 +167,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=True,
         primary_agent="DB",
         sentiment_weights=[15, 0, 85],
-        typical_queries=["Why was my order cancelled?", "I didn't cancel that!", "Can you reinstate my order?"],
+        typical_queries=[
+            "Why was my order cancelled?",
+            "I didn't cancel that!",
+            "Can you reinstate my order?",
+        ],
         tags=["cancellation", "complaint", "order_issue"],
         hint="Ask about a cancelled order — express confusion or frustration about why it was cancelled.",
     ),
@@ -140,7 +181,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=False,
         primary_agent="Docs",
         sentiment_weights=[40, 60, 0],
-        typical_queries=["Best monitor for home office?", "What keyboard do you recommend?", "Setting up ergonomic workspace"],
+        typical_queries=[
+            "Best monitor for home office?",
+            "What keyboard do you recommend?",
+            "Setting up ergonomic workspace",
+        ],
         tags=["home_office", "setup", "recommendations"],
         segment_filter="Home Office",
         hint="Ask for product recommendations to build or upgrade a home office setup.",
@@ -151,7 +196,11 @@ ARCHETYPES: list[Archetype] = [
         requires_verification=True,
         primary_agent="SQL",
         sentiment_weights=[50, 50, 0],
-        typical_queries=["Do I have any rewards?", "How many points do I have?", "What benefits do I get?"],
+        typical_queries=[
+            "Do I have any rewards?",
+            "How many points do I have?",
+            "What benefits do I get?",
+        ],
         tags=["loyalty", "account", "rewards"],
         hint="Ask about loyalty points or rewards based on total spending or order history.",
     ),
@@ -175,6 +224,7 @@ COMMUNICATION_STYLES: dict[tuple[str, str], str] = {
 # DB helpers
 # ============================================================================
 
+
 def _fetch_customer(db_path: Path, segment_filter: Optional[str] = None) -> dict:
     conn = sqlite3.connect(db_path)
     try:
@@ -187,7 +237,12 @@ def _fetch_customer(db_path: Path, segment_filter: Optional[str] = None) -> dict
             row = conn.execute(
                 "SELECT customer_id, name, email, segment FROM customers ORDER BY RANDOM() LIMIT 1"
             ).fetchone()
-        return {"customer_id": row[0], "name": row[1], "email": row[2], "segment": row[3]}
+        return {
+            "customer_id": row[0],
+            "name": row[1],
+            "email": row[2],
+            "segment": row[3],
+        }
     finally:
         conn.close()
 
@@ -231,6 +286,7 @@ def _fetch_order_count(db_path: Path, customer_id: str) -> int:
 # ============================================================================
 # Archetype selection
 # ============================================================================
+
 
 def _select_archetype(segment: str, has_orders: bool) -> Archetype:
     """
@@ -281,12 +337,15 @@ def _pick_sentiment(archetype: Archetype) -> str:
 # LLM query generation
 # ============================================================================
 
+
 def _format_orders(orders: list[dict]) -> str:
     if not orders:
         return "No recent orders."
     lines = []
     for o in orders:
-        lines.append(f"  {o['order_id']} ({o['status']}, {o['order_date']}): {o['products']}")
+        lines.append(
+            f"  {o['order_id']} ({o['status']}, {o['order_date']}): {o['products']}"
+        )
     return "\n".join(lines)
 
 
@@ -300,14 +359,14 @@ async def _generate_opening_query(
 ) -> str:
     prompt = f"""You are generating a realistic customer support opening message for a TechHub e-commerce customer.
 
-CUSTOMER: {customer['name']}, {customer['segment']} segment, {order_count} total orders
+CUSTOMER: {customer["name"]}, {customer["segment"]} segment, {order_count} total orders
 RECENT ORDERS:
 {_format_orders(orders)}
 
 CONVERSATION TYPE: {archetype.description}
 TONE: {sentiment}
 
-Generate a single realistic 1-3 sentence opening message. Reference specific order history when relevant. Match the communication style for a {customer['segment']} customer with {sentiment} sentiment. Do not include preamble or quotation marks.
+Generate a single realistic 1-3 sentence opening message. Reference specific order history when relevant. Match the communication style for a {customer["segment"]} customer with {sentiment} sentiment. Do not include preamble or quotation marks.
 Hint: {archetype.hint}
 
 Your response (just the customer's message):"""
@@ -319,6 +378,7 @@ Your response (just the customer's message):"""
 # ============================================================================
 # Public API
 # ============================================================================
+
 
 async def generate_dynamic_scenario(db_path: Path, llm) -> dict:
     """
@@ -349,7 +409,9 @@ async def generate_dynamic_scenario(db_path: Path, llm) -> dict:
     )
 
     # Build short hash for unique scenario_id
-    hash_input = f"{archetype.archetype_id}_{customer['customer_id']}_{initial_query[:30]}"
+    hash_input = (
+        f"{archetype.archetype_id}_{customer['customer_id']}_{initial_query[:30]}"
+    )
     short_hash = hashlib.md5(hash_input.encode()).hexdigest()[:6]
 
     communication_style = COMMUNICATION_STYLES.get(
@@ -373,7 +435,12 @@ async def generate_dynamic_scenario(db_path: Path, llm) -> dict:
         },
         "initial_query": initial_query,
         "requires_verification": archetype.requires_verification,
-        "tags": archetype.tags + [f"segment:{customer['segment']}", "dynamic", f"archetype:{archetype.archetype_id}"],
+        "tags": archetype.tags
+        + [
+            f"segment:{customer['segment']}",
+            "dynamic",
+            f"archetype:{archetype.archetype_id}",
+        ],
         # Extra keys for thread metadata enrichment (not read by run_scenario itself)
         "_archetype_id": archetype.archetype_id,
     }

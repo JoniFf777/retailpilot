@@ -10,7 +10,12 @@ from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.cart.models import ShopMindCartItem
-from app.catalog.models import CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.db.models import PendingAction, Product
 from app.dependencies import agent as agent_dependency
 from app.main import app
@@ -69,12 +74,16 @@ def cart_session(monkeypatch, tmp_path):
         sale_status="active",
         variant_attributes_json={},
     )
-    inspection_session.add_all([
-        category,
-        catalog_product,
-        catalog_sku,
-        CatalogInventory(sku=catalog_sku, on_hand_quantity=20, reserved_quantity=0, version=0),
-    ])
+    inspection_session.add_all(
+        [
+            category,
+            catalog_product,
+            catalog_sku,
+            CatalogInventory(
+                sku=catalog_sku, on_hand_quantity=20, reserved_quantity=0, version=0
+            ),
+        ]
+    )
     inspection_session.commit()
 
     @contextmanager
@@ -110,7 +119,9 @@ def cart_session(monkeypatch, tmp_path):
 
 def _cart_item_count(session, user_id: str) -> int:
     return session.scalar(
-        select(func.count()).select_from(ShopMindCartItem).where(ShopMindCartItem.user_id == user_id)
+        select(func.count())
+        .select_from(ShopMindCartItem)
+        .where(ShopMindCartItem.user_id == user_id)
     )
 
 
@@ -119,7 +130,9 @@ def _pending_action_count(session) -> int:
 
 
 def _cart_item_quantity(session, user_id: str) -> int:
-    return session.scalar(select(ShopMindCartItem.quantity).where(ShopMindCartItem.user_id == user_id))
+    return session.scalar(
+        select(ShopMindCartItem.quantity).where(ShopMindCartItem.user_id == user_id)
+    )
 
 
 @pytest.mark.anyio
@@ -182,13 +195,19 @@ async def test_multi_agent_write_handoff_can_confirm_add_to_cart(
     assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["intent"] == (
         "write_path_unsupported"
     )
-    assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
-    assert "write_intent_blocked" in chat_body["debug"]["multi_agent_debug"][
-        "safety_flags"
-    ]
+    assert (
+        chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
+    )
+    assert (
+        "write_intent_blocked"
+        in chat_body["debug"]["multi_agent_debug"]["safety_flags"]
+    )
     assert pending_action is not None
     assert pending_action.thread_id == "thread-write-smoke"
-    assert pending_action.payload_json["schema_version"] == "shopmind.pending_action.add_to_cart.v1"
+    assert (
+        pending_action.payload_json["schema_version"]
+        == "shopmind.pending_action.add_to_cart.v1"
+    )
     assert pending_action.payload_json["origin_identifier"] == TEST_PRODUCT_ID
     assert pending_action.status == "confirmed"
     assert confirm_response.status_code == 200
@@ -247,10 +266,13 @@ async def test_multi_agent_write_handoff_clarifies_missing_product_id(
     assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["intent"] == (
         "write_path_unsupported"
     )
-    assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
-    assert "write_intent_blocked" in chat_body["debug"]["multi_agent_debug"][
-        "safety_flags"
-    ]
+    assert (
+        chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
+    )
+    assert (
+        "write_intent_blocked"
+        in chat_body["debug"]["multi_agent_debug"]["safety_flags"]
+    )
     assert _pending_action_count(cart_session) == 0
     assert _cart_item_count(cart_session, TEST_USER_ID) == 0
 
@@ -296,16 +318,21 @@ async def test_multi_agent_write_handoff_selects_candidate_by_number(
 
     candidate_body = candidate_response.json()
     selection_body = selection_response.json()
-    pending_action = cart_session.get(PendingAction, selection_body["pending_action_id"])
+    pending_action = cart_session.get(
+        PendingAction, selection_body["pending_action_id"]
+    )
 
     assert candidate_response.status_code == 200
     assert candidate_body["status"] == "completed"
     assert candidate_body["tool_calls"] == []
     assert candidate_body["pending_action_id"] is None
     assert TEST_PRODUCT_ID in candidate_body["answer"]
-    assert candidate_body["debug"]["write_handoff_debug"]["candidate_context"][
-        "events"
-    ][-1]["event"] == "candidate_context_stored"
+    assert (
+        candidate_body["debug"]["write_handoff_debug"]["candidate_context"]["events"][
+            -1
+        ]["event"]
+        == "candidate_context_stored"
+    )
     assert selection_response.status_code == 200
     assert selection_body["status"] == "confirmation_required"
     assert selection_body["tool_calls"] == ["prepare_add_to_cart"]
@@ -315,12 +342,16 @@ async def test_multi_agent_write_handoff_selects_candidate_by_number(
             "candidate_context"
         ]["events"]
     ] == ["candidate_context_selected", "candidate_context_cleared"]
-    assert selection_body["debug"]["multi_agent_debug"]["supervisor_decision"][
-        "intent"
-    ] == "write_path_unsupported"
+    assert (
+        selection_body["debug"]["multi_agent_debug"]["supervisor_decision"]["intent"]
+        == "write_path_unsupported"
+    )
     assert pending_action is not None
     assert pending_action.thread_id == "thread-write-select-candidate"
-    assert pending_action.payload_json["schema_version"] == "shopmind.pending_action.add_to_cart.v1"
+    assert (
+        pending_action.payload_json["schema_version"]
+        == "shopmind.pending_action.add_to_cart.v1"
+    )
     assert pending_action.payload_json["origin_identifier"] == TEST_PRODUCT_ID
 
 
@@ -418,5 +449,7 @@ async def test_multi_agent_write_handoff_clarifies_missing_user_id(
     assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["intent"] == (
         "write_path_unsupported"
     )
-    assert chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
+    assert (
+        chat_body["debug"]["multi_agent_debug"]["supervisor_decision"]["routes"] == []
+    )
     assert _pending_action_count(cart_session) == 0

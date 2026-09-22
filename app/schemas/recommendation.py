@@ -6,11 +6,22 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictInt,
+    StrictStr,
+    field_validator,
+    model_validator,
+)
 
 
 Currency = str
-SpecificationValueType = Literal["string", "integer", "decimal", "boolean", "string_list"]
+SpecificationValueType = Literal[
+    "string", "integer", "decimal", "boolean", "string_list"
+]
 RecommendationCategory = str
 RecommendationOutcome = Literal["recommended", "no_match", "clarification_required"]
 CatalogSaleStatus = Literal["draft", "active", "inactive"]
@@ -72,7 +83,11 @@ class LaptopConstraints(BaseModel):
 
     @model_validator(mode="after")
     def default_budget_currency(self) -> "LaptopConstraints":
-        if self.budget_min is not None and self.budget_max is not None and self.budget_min > self.budget_max:
+        if (
+            self.budget_min is not None
+            and self.budget_max is not None
+            and self.budget_min > self.budget_max
+        ):
             raise ValueError("budget_min must not exceed budget_max")
         if self.budget_max is not None and self.budget_currency is None:
             self.budget_currency = "CNY"
@@ -101,7 +116,11 @@ class RecommendationRequest(BaseModel):
 
     @model_validator(mode="after")
     def default_budget_currency(self) -> "RecommendationRequest":
-        if self.budget_min is not None and self.budget_max is not None and self.budget_min > self.budget_max:
+        if (
+            self.budget_min is not None
+            and self.budget_max is not None
+            and self.budget_min > self.budget_max
+        ):
             raise ValueError("budget_min must not exceed budget_max")
         if self.budget_max is not None and self.budget_currency is None:
             self.budget_currency = "CNY"
@@ -163,8 +182,12 @@ class ProductSpecificationView(BaseModel):
             try:
                 Decimal(self.value)
             except InvalidOperation as exc:
-                raise ValueError("decimal specification must be a decimal string") from exc
-        if self.value_type == "string_list" and not all(isinstance(item, str) for item in self.value):
+                raise ValueError(
+                    "decimal specification must be a decimal string"
+                ) from exc
+        if self.value_type == "string_list" and not all(
+            isinstance(item, str) for item in self.value
+        ):
             raise ValueError("string_list must contain strings")
         return self
 
@@ -205,7 +228,9 @@ class AlternativeSkuView(BaseModel):
     sku_code: str
     sku_name: str
     money: Money
-    differing_specifications: list[ProductSpecificationView] = Field(default_factory=list)
+    differing_specifications: list[ProductSpecificationView] = Field(
+        default_factory=list
+    )
     availability: AvailabilityView
 
 
@@ -243,14 +268,18 @@ class RecommendationResult(BaseModel):
     structured_constraints: LaptopConstraints
     recommendation_request: RecommendationRequest | None = None
     category_attributes: dict[str, Any] = Field(default_factory=dict)
-    recognized_constraints: dict[str, CategoryAttributeConstraint] = Field(default_factory=dict)
+    recognized_constraints: dict[str, CategoryAttributeConstraint] = Field(
+        default_factory=dict
+    )
     constraint_fields: list[ComparisonField] = Field(default_factory=list)
     comparison_fields: list[ComparisonField] = Field(default_factory=list)
     error_code: str | None = None
     no_match_reason: str | None = None
     missing_fields: list[str] = Field(default_factory=list)
     clarification_question: str | None = None
-    evidence_status: Literal["available", "unknown", "unavailable", "degraded"] | None = None
+    evidence_status: (
+        Literal["available", "unknown", "unavailable", "degraded"] | None
+    ) = None
     policy_evidence: list[EvidenceView] = Field(default_factory=list)
     recommendations: list[Recommendation] = Field(default_factory=list, max_length=3)
 
@@ -258,8 +287,16 @@ class RecommendationResult(BaseModel):
     def validate_outcome(self) -> "RecommendationResult":
         if self.outcome == "recommended" and not self.recommendations:
             raise ValueError("recommended outcome needs at least one recommendation")
-        if self.outcome == "no_match" and (self.recommendations or not self.no_match_reason):
+        if self.outcome == "no_match" and (
+            self.recommendations or not self.no_match_reason
+        ):
             raise ValueError("no_match needs a reason and no recommendations")
-        if self.outcome == "clarification_required" and (self.recommendations or not self.missing_fields or not self.clarification_question):
-            raise ValueError("clarification_required needs fields, question, and no recommendations")
+        if self.outcome == "clarification_required" and (
+            self.recommendations
+            or not self.missing_fields
+            or not self.clarification_question
+        ):
+            raise ValueError(
+                "clarification_required needs fields, question, and no recommendations"
+            )
         return self

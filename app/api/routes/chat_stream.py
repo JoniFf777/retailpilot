@@ -177,8 +177,7 @@ async def chat_stream(
     async def generate():
         last_sequence = 0
         next_renewal_at = (
-            monotonic()
-            + settings.shopmind_stream_admission_renew_interval_ms / 1_000
+            monotonic() + settings.shopmind_stream_admission_renew_interval_ms / 1_000
         )
         try:
             while True:
@@ -206,9 +205,16 @@ async def chat_stream(
                 if item is _STREAM_END:
                     break
                 if isinstance(item, AgentEvent):
-                    if item.visibility != EventVisibility.CLIENT or item.event_type in {
-                        "run.completed", "run.failed", "run.cancelled", "run.timed_out"
-                    }:
+                    if (
+                        item.visibility != EventVisibility.CLIENT
+                        or item.event_type
+                        in {
+                            "run.completed",
+                            "run.failed",
+                            "run.cancelled",
+                            "run.timed_out",
+                        }
+                    ):
                         continue
                     last_sequence = max(last_sequence, item.sequence)
                     yield encode_sse_event(item)

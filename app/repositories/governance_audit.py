@@ -69,9 +69,7 @@ def _to_persisted(
         thread_fingerprint=row.thread_fingerprint,
         run_fingerprint=row.run_fingerprint,
         resource_fingerprint=row.resource_fingerprint,
-        metadata=GovernanceAuditMetadata.model_validate(
-            dict(row.metadata_json or {})
-        ),
+        metadata=GovernanceAuditMetadata.model_validate(dict(row.metadata_json or {})),
     )
     return PersistedGovernanceAuditRecord(
         record=record,

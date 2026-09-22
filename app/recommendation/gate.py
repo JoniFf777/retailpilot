@@ -48,7 +48,9 @@ _RECOMMENDATION_TERMS = (
 
 def _is_recommendation(message: str) -> bool:
     lowered = message.casefold()
-    return any(term.casefold() in lowered or term in message for term in _RECOMMENDATION_TERMS)
+    return any(
+        term.casefold() in lowered or term in message for term in _RECOMMENDATION_TERMS
+    )
 
 
 def classify_recommendation_request(
@@ -63,9 +65,13 @@ def classify_recommendation_request(
     decision = supervisor_decision or {}
     if decision.get("intent") == "write_path_unsupported":
         return RecommendationGateDecision("write_handoff", "supervisor_write_handoff")
-    legacy_read_route = decision.get("intent") == "read_path" and bool(decision.get("routes"))
+    legacy_read_route = decision.get("intent") == "read_path" and bool(
+        decision.get("routes")
+    )
     if not _is_recommendation(message):
-        return RecommendationGateDecision("legacy_read", "outside_structured_recommendation_scope")
+        return RecommendationGateDecision(
+            "legacy_read", "outside_structured_recommendation_scope"
+        )
     active_registry = registry or default_category_registry()
     if structured_extraction is not None:
         resolved = {
@@ -123,4 +129,6 @@ def classify_recommendation_request(
             "category_not_resolved",
             code="category_ambiguous",
         )
-    return RecommendationGateDecision("legacy_read", "read_route_outside_structured_recommendation")
+    return RecommendationGateDecision(
+        "legacy_read", "read_route_outside_structured_recommendation"
+    )

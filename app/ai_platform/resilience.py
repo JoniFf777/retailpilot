@@ -30,8 +30,12 @@ T = TypeVar("T")
 class AdmissionRejected(RuntimeError):
     """An AI operation was rejected before expensive work started."""
 
-    def __init__(self, reason: CoordinationReason | str, retry_after_ms: int | None = None):
-        super().__init__(str(reason.value if isinstance(reason, CoordinationReason) else reason))
+    def __init__(
+        self, reason: CoordinationReason | str, retry_after_ms: int | None = None
+    ):
+        super().__init__(
+            str(reason.value if isinstance(reason, CoordinationReason) else reason)
+        )
         self.reason = reason
         self.retry_after_ms = retry_after_ms
 
@@ -48,7 +52,9 @@ class ModelGatewayError(RuntimeError):
 class SharedAIBudget:
     """Thread-safe cumulative token/cost ceiling shared by candidate attempts."""
 
-    def __init__(self, *, max_total_tokens: int | None = None, max_cost_usd: float | None = None) -> None:
+    def __init__(
+        self, *, max_total_tokens: int | None = None, max_cost_usd: float | None = None
+    ) -> None:
         if max_total_tokens is not None and max_total_tokens <= 0:
             raise ValueError("AI token budget must be positive.")
         if max_cost_usd is not None and max_cost_usd <= 0:
@@ -63,9 +69,15 @@ class SharedAIBudget:
         tokens = (result.prompt_tokens or 0) + (result.completion_tokens or 0)
         cost = result.cost_usd or 0.0
         with self._lock:
-            if self.max_total_tokens is not None and self.total_tokens + tokens > self.max_total_tokens:
+            if (
+                self.max_total_tokens is not None
+                and self.total_tokens + tokens > self.max_total_tokens
+            ):
                 raise ModelGatewayError(ModelFailureCode.BUDGET_EXCEEDED)
-            if self.max_cost_usd is not None and self.total_cost_usd + cost > self.max_cost_usd:
+            if (
+                self.max_cost_usd is not None
+                and self.total_cost_usd + cost > self.max_cost_usd
+            ):
                 raise ModelGatewayError(ModelFailureCode.BUDGET_EXCEEDED)
             self.total_tokens += tokens
             self.total_cost_usd += cost
@@ -148,7 +160,9 @@ class ModelInvocation(Generic[T]):
 
 
 class _Circuit:
-    def __init__(self, *, failure_threshold: int, open_seconds: float, clock=time.monotonic):
+    def __init__(
+        self, *, failure_threshold: int, open_seconds: float, clock=time.monotonic
+    ):
         self.failure_threshold = failure_threshold
         self.open_seconds = open_seconds
         self.clock = clock
@@ -186,7 +200,8 @@ class _Circuit:
     def snapshot(self, candidate: ModelCandidate) -> ModelHealthSnapshot:
         with self.lock:
             opened_until = (
-                datetime.now(timezone.utc) + timedelta(seconds=max(0, self.opened_until - self.clock()))
+                datetime.now(timezone.utc)
+                + timedelta(seconds=max(0, self.opened_until - self.clock()))
                 if self.opened_until is not None and self.state == "open"
                 else None
             )
@@ -219,7 +234,16 @@ class ModelGateway(Generic[T]):
             raise ValueError("ModelGateway requires at least one candidate.")
         if failure_threshold <= 0 or open_seconds <= 0:
             raise ValueError("Circuit settings must be positive.")
-        self._candidates = tuple(sorted(candidates, key=lambda item: (str(item.operation), item.priority, item.candidate_id)))
+        self._candidates = tuple(
+            sorted(
+                candidates,
+                key=lambda item: (
+                    str(item.operation),
+                    item.priority,
+                    item.candidate_id,
+                ),
+            )
+        )
         self._circuits = {
             candidate.candidate_id: _Circuit(
                 failure_threshold=failure_threshold,
@@ -233,7 +257,11 @@ class ModelGateway(Generic[T]):
         self._cancellation_check = cancellation_check
 
     def candidates_for(self, operation: ModelOperation) -> tuple[ModelCandidate, ...]:
-        return tuple(candidate for candidate in self._candidates if candidate.operation == operation)
+        return tuple(
+            candidate
+            for candidate in self._candidates
+            if candidate.operation == operation
+        )
 
     def execute(
         self,
@@ -262,17 +290,26 @@ class ModelGateway(Generic[T]):
                     )
                 )
                 try:
-                    if self._cancellation_check is not None and self._cancellation_check():
+                    if (
+                        self._cancellation_check is not None
+                        and self._cancellation_check()
+                    ):
                         raise ModelGatewayError(ModelFailureCode.CANCELLED)
                     result = invoker(candidate)
                     if not isinstance(result, ModelInvocation):
                         raise ModelGatewayError(ModelFailureCode.PROTOCOL_ERROR)
-                    if result.first_token_ms is not None and result.first_token_ms > candidate.first_token_timeout_ms:
+                    if (
+                        result.first_token_ms is not None
+                        and result.first_token_ms > candidate.first_token_timeout_ms
+                    ):
                         raise ModelGatewayError(
                             ModelFailureCode.FIRST_TOKEN_TIMEOUT,
                             stream_started=result.first_token_emitted,
                         )
-                    if result.duration_ms is not None and result.duration_ms > candidate.total_timeout_ms:
+                    if (
+                        result.duration_ms is not None
+                        and result.duration_ms > candidate.total_timeout_ms
+                    ):
                         raise ModelGatewayError(
                             ModelFailureCode.TOTAL_TIMEOUT,
                             stream_started=result.first_token_emitted,
@@ -294,7 +331,9 @@ class ModelGateway(Generic[T]):
                             attempt=_attempt + 1,
                             status="failed",
                             failure_code=exc.code,
-                            duration_ms=max(0, int((time.monotonic() - started_at) * 1000)),
+                            duration_ms=max(
+                                0, int((time.monotonic() - started_at) * 1000)
+                            ),
                         )
                     )
                     if exc.stream_started:
@@ -317,7 +356,9 @@ class ModelGateway(Generic[T]):
                             attempt=_attempt + 1,
                             status="failed",
                             failure_code=ModelFailureCode.TOTAL_TIMEOUT,
-                            duration_ms=max(0, int((time.monotonic() - started_at) * 1000)),
+                            duration_ms=max(
+                                0, int((time.monotonic() - started_at) * 1000)
+                            ),
                         )
                     )
                     continue
@@ -331,7 +372,9 @@ class ModelGateway(Generic[T]):
                             attempt=_attempt + 1,
                             status="failed",
                             failure_code=ModelFailureCode.CONNECTION,
-                            duration_ms=max(0, int((time.monotonic() - started_at) * 1000)),
+                            duration_ms=max(
+                                0, int((time.monotonic() - started_at) * 1000)
+                            ),
                         )
                     )
                     continue
@@ -345,7 +388,9 @@ class ModelGateway(Generic[T]):
                             attempt=_attempt + 1,
                             status="failed",
                             failure_code=ModelFailureCode.UNAVAILABLE,
-                            duration_ms=max(0, int((time.monotonic() - started_at) * 1000)),
+                            duration_ms=max(
+                                0, int((time.monotonic() - started_at) * 1000)
+                            ),
                         )
                     )
                     break
@@ -372,7 +417,9 @@ class ModelGateway(Generic[T]):
             for candidate in self._candidates
         )
 
-    def set_attempt_observer(self, observer: Callable[[ModelAttempt], None] | None) -> None:
+    def set_attempt_observer(
+        self, observer: Callable[[ModelAttempt], None] | None
+    ) -> None:
         self._attempt_observer = observer
 
     def _notify_attempt(self, attempt: ModelAttempt) -> None:

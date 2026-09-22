@@ -33,9 +33,13 @@ def phase3a_session() -> Generator:
 
 
 @pytest.mark.anyio
-async def test_cart_patch_delete_and_clear_use_authenticated_owner(phase3a_session) -> None:
+async def test_cart_patch_delete_and_clear_use_authenticated_owner(
+    phase3a_session,
+) -> None:
     sku_id = seed_recommendation(phase3a_session)
-    item = upsert_cart_item(phase3a_session, user_id="user-1", sku_id=sku_id, quantity=1)
+    item = upsert_cart_item(
+        phase3a_session, user_id="user-1", sku_id=sku_id, quantity=1
+    )
     phase3a_session.commit()
 
     def override_db():
@@ -85,7 +89,9 @@ async def test_cart_patch_delete_and_clear_use_authenticated_owner(phase3a_sessi
 @pytest.mark.anyio
 async def test_cart_mutation_has_no_user_id_request_field(phase3a_session) -> None:
     sku_id = seed_recommendation(phase3a_session)
-    item = upsert_cart_item(phase3a_session, user_id="user-1", sku_id=sku_id, quantity=1)
+    item = upsert_cart_item(
+        phase3a_session, user_id="user-1", sku_id=sku_id, quantity=1
+    )
     phase3a_session.commit()
 
     def override_db():
@@ -111,12 +117,19 @@ async def test_cart_mutation_has_no_user_id_request_field(phase3a_session) -> No
 def test_cart_openapi_contract_is_typed_and_ownerless_request() -> None:
     schema = app.openapi()
     schemas = schema["components"]["schemas"]
-    assert {"CartResponse", "CartMutationResponse", "CartWarning", "CartErrorResponse"}.issubset(schemas)
+    assert {
+        "CartResponse",
+        "CartMutationResponse",
+        "CartWarning",
+        "CartErrorResponse",
+    }.issubset(schemas)
     request_properties = schemas["UpdateCartItemRequest"]["properties"]
     assert set(request_properties) == {"expected_version", "quantity"}
     assert schemas["CartErrorResponse"]["properties"]["code"]["enum"]
     patch = schema["paths"]["/api/cart/items/{cart_item_id}"]["patch"]
-    assert patch["responses"]["409"]["content"]["application/json"]["schema"]["$ref"].endswith("/CartErrorResponse")
+    assert patch["responses"]["409"]["content"]["application/json"]["schema"][
+        "$ref"
+    ].endswith("/CartErrorResponse")
 
 
 @pytest.mark.anyio
@@ -132,14 +145,22 @@ async def test_cart_read_order_remains_updated_at_then_id(phase3a_session) -> No
         sale_status="active",
         variant_attributes_json={},
     )
-    phase3a_session.add_all([
-        second,
-        CatalogInventory(sku=second, on_hand_quantity=5, reserved_quantity=0, version=0),
-    ])
+    phase3a_session.add_all(
+        [
+            second,
+            CatalogInventory(
+                sku=second, on_hand_quantity=5, reserved_quantity=0, version=0
+            ),
+        ]
+    )
     phase3a_session.flush()
     second_sku = second.id
-    later = upsert_cart_item(phase3a_session, user_id="user-1", sku_id=first_sku, quantity=1)
-    earlier = upsert_cart_item(phase3a_session, user_id="user-1", sku_id=second_sku, quantity=1)
+    later = upsert_cart_item(
+        phase3a_session, user_id="user-1", sku_id=first_sku, quantity=1
+    )
+    earlier = upsert_cart_item(
+        phase3a_session, user_id="user-1", sku_id=second_sku, quantity=1
+    )
     later.updated_at = datetime.now(timezone.utc)
     earlier.updated_at = later.updated_at - timedelta(seconds=1)
     phase3a_session.commit()

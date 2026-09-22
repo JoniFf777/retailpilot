@@ -219,9 +219,7 @@ def test_owner_run_inspection_is_exact_scoped_bounded_and_payload_free():
     assert by_run is not None
     assert by_run["client_event_count"] == 2
     assert by_run["events_truncated"] is True
-    assert [event["event_type"] for event in by_run["events"]] == [
-        "run.started"
-    ]
+    assert [event["event_type"] for event in by_run["events"]] == ["run.started"]
     assert by_trace is not None
     assert [event["event_type"] for event in by_trace["events"]] == [
         "run.started",

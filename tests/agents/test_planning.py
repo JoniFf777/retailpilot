@@ -66,7 +66,9 @@ def test_deterministic_plan_rejects_unknown_or_duplicate_routes() -> None:
         build_deterministic_agent_plan(["rag_agent", "rag_agent"])
 
 
-def test_deterministic_plan_requires_opt_in_and_multiple_routes_for_parallelism() -> None:
+def test_deterministic_plan_requires_opt_in_and_multiple_routes_for_parallelism() -> (
+    None
+):
     parallel = build_deterministic_agent_plan(
         ["product_agent", "rag_agent", "preference_agent"],
         parallel_enabled=True,
@@ -153,9 +155,7 @@ def test_validated_provider_planner_accepts_bounded_query_focus_metadata() -> No
     ("mutate", "reason"),
     [
         (
-            lambda plan: plan["steps"][0].update(
-                {"recipient": "decision_agent"}
-            ),
+            lambda plan: plan["steps"][0].update({"recipient": "decision_agent"}),
             "routes_outside_supervisor_decision",
         ),
         (
@@ -225,8 +225,7 @@ def test_provider_planner_falls_back_without_leaking_provider_error() -> None:
 
     assert plan.planner_type == "provider_fallback"
     assert (
-        plan.metadata["planner_fallback_reason"]
-        == "provider_error_or_invalid_contract"
+        plan.metadata["planner_fallback_reason"] == "provider_error_or_invalid_contract"
     )
     assert "private provider detail" not in str(plan.model_dump(mode="json"))
 
@@ -257,10 +256,7 @@ def test_supervisor_records_validated_planner_fallback_metadata() -> None:
     assert result["execution_plan"]["execution_mode"] == "sequential"
     supervisor_step = result["agent_steps"][0]
     assert supervisor_step["planner_provider"] == "test_provider"
-    assert (
-        supervisor_step["planner_fallback_reason"]
-        == "execution_mode_outside_policy"
-    )
+    assert supervisor_step["planner_fallback_reason"] == "execution_mode_outside_policy"
     assert supervisor_step["fallback_planner_type"] == "deterministic_route_plan"
 
 

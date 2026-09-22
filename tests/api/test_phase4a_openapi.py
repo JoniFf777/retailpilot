@@ -16,9 +16,13 @@ def test_phase4a_openapi_paths_and_body_boundaries() -> None:
     create = paths["/api/orders"]["post"]
     create_schema = create["requestBody"]["content"]["application/json"]["schema"]
     assert create_schema["$ref"].endswith("/CreateOrderRequest")
-    assert any(parameter["name"] == "Idempotency-Key" for parameter in create["parameters"])
+    assert any(
+        parameter["name"] == "Idempotency-Key" for parameter in create["parameters"]
+    )
     cancel = paths["/api/orders/{order_id}/cancel"]["post"]
-    assert not any(parameter["name"] == "Idempotency-Key" for parameter in cancel["parameters"])
+    assert not any(
+        parameter["name"] == "Idempotency-Key" for parameter in cancel["parameters"]
+    )
     assert "Money" in str(schema["components"]["schemas"]["OrderView"])
     assert "410" in create["responses"]
     assert "503" in create["responses"]

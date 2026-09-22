@@ -44,8 +44,11 @@ async def test_structured_pending_action_and_sku_cart_api(phase2a_session) -> No
             created = await client.post(
                 "/api/pending-actions/add-to-cart",
                 json={
-                    "user_id": "user-1", "thread_id": "thread-1", "source_run_id": "run-1",
-                    "sku_id": str(sku_id), "quantity": 2,
+                    "user_id": "user-1",
+                    "thread_id": "thread-1",
+                    "source_run_id": "run-1",
+                    "sku_id": str(sku_id),
+                    "quantity": 2,
                 },
             )
             assert created.status_code == 201
@@ -54,7 +57,11 @@ async def test_structured_pending_action_and_sku_cart_api(phase2a_session) -> No
 
             confirmed = await client.post(
                 f"/api/pending-actions/{action['pending_action_id']}/confirm",
-                json={"user_id": "user-1", "thread_id": "thread-1", "expected_version": 1},
+                json={
+                    "user_id": "user-1",
+                    "thread_id": "thread-1",
+                    "expected_version": 1,
+                },
             )
             assert confirmed.status_code == 200
             assert confirmed.json()["cart_item"]["quantity"] == 2
@@ -65,7 +72,11 @@ async def test_structured_pending_action_and_sku_cart_api(phase2a_session) -> No
 
             replay = await client.post(
                 f"/api/pending-actions/{action['pending_action_id']}/confirm",
-                json={"user_id": "user-1", "thread_id": "thread-1", "expected_version": 1},
+                json={
+                    "user_id": "user-1",
+                    "thread_id": "thread-1",
+                    "expected_version": 1,
+                },
             )
             assert replay.status_code == 200
             assert replay.json()["idempotent_replay"] is True

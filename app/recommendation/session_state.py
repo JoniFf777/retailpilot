@@ -26,8 +26,8 @@ class ShoppingSessionState(BaseModel):
     budget_max: Decimal | None = Field(default=None, gt=0)
     budget_currency: str | None = None
     category_attributes: dict[str, Any] = Field(default_factory=dict)
-    field_sources: dict[str, Literal["user", "preference", "inherited", "system"]] = Field(
-        default_factory=dict
+    field_sources: dict[str, Literal["user", "preference", "inherited", "system"]] = (
+        Field(default_factory=dict)
     )
     pending_questions: list[str] = Field(default_factory=list, max_length=5)
     candidate_sku_codes: list[str] = Field(default_factory=list, max_length=3)
@@ -44,8 +44,13 @@ class ShoppingSessionState(BaseModel):
             raise ValueError("shopping session budget_min must not exceed budget_max")
         if self.updated_at is not None and self.updated_at.tzinfo is None:
             raise ValueError("shopping session updated_at must be timezone-aware")
-        if self.candidate_expires_at is not None and self.candidate_expires_at.tzinfo is None:
-            raise ValueError("shopping session candidate_expires_at must be timezone-aware")
+        if (
+            self.candidate_expires_at is not None
+            and self.candidate_expires_at.tzinfo is None
+        ):
+            raise ValueError(
+                "shopping session candidate_expires_at must be timezone-aware"
+            )
         return self
 
     @property

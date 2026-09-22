@@ -7,7 +7,18 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, UniqueConstraint, Uuid, func, text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    UniqueConstraint,
+    Uuid,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.orders import models as _order_models  # noqa: F401
@@ -81,12 +92,18 @@ class ShopMindPaymentAttempt(Base):
             "uq_shopmind_payment_attempts_order_active",
             "order_id",
             unique=True,
-            postgresql_where=text("status IN ('processing', 'unknown', 'provider_succeeded')"),
-            sqlite_where=text("status IN ('processing', 'unknown', 'provider_succeeded')"),
+            postgresql_where=text(
+                "status IN ('processing', 'unknown', 'provider_succeeded')"
+            ),
+            sqlite_where=text(
+                "status IN ('processing', 'unknown', 'provider_succeeded')"
+            ),
         ),
     )
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
     order_id: Mapped[UUID] = mapped_column(
         ForeignKey("shopmind_orders.id", ondelete="RESTRICT"), nullable=False
     )
@@ -94,7 +111,9 @@ class ShopMindPaymentAttempt(Base):
     provider: Mapped[str] = mapped_column(String(32), nullable=False, default="mock")
     provider_payment_id: Mapped[Optional[str]] = mapped_column(String(128))
     provider_idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="processing")
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="processing"
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -104,7 +123,12 @@ class ShopMindPaymentAttempt(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
-    provider_result_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    provider_result_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

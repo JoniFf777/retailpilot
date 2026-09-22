@@ -9,22 +9,52 @@ import json
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictInt,
+    StrictStr,
+    field_validator,
+    model_validator,
+)
 
 
-TaskKind = Literal["bundle_selection", "compatibility_diagnosis", "after_sales_assessment"]
+TaskKind = Literal[
+    "bundle_selection", "compatibility_diagnosis", "after_sales_assessment"
+]
 TaskStatus = Literal[
-    "queued", "running", "waiting_input", "awaiting_approval", "succeeded",
-    "failed", "cancelled", "expired",
+    "queued",
+    "running",
+    "waiting_input",
+    "awaiting_approval",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "expired",
 ]
-StepStatus = Literal["pending", "running", "completed", "failed", "skipped", "superseded"]
+StepStatus = Literal[
+    "pending", "running", "completed", "failed", "skipped", "superseded"
+]
 Outcome = Literal[
-    "recommended", "no_solution", "needs_information", "resolved", "unresolved",
-    "eligible", "ineligible", "conditional", "unknown",
+    "recommended",
+    "no_solution",
+    "needs_information",
+    "resolved",
+    "unresolved",
+    "eligible",
+    "ineligible",
+    "conditional",
+    "unknown",
 ]
-SourceKind = Literal["user_reported", "catalog", "order", "policy", "evidence", "derived"]
+SourceKind = Literal[
+    "user_reported", "catalog", "order", "policy", "evidence", "derived"
+]
 Role = Literal["coordinator", "catalog_analyst", "evidence_researcher", "reviewer"]
-EvidenceStatus = Literal["ok", "degraded", "empty", "unavailable", "timeout", "disabled"]
+EvidenceStatus = Literal[
+    "ok", "degraded", "empty", "unavailable", "timeout", "disabled"
+]
 
 MAX_PLAN_STEPS = 12
 MAX_PARALLEL_STEPS = 3
@@ -40,15 +70,33 @@ DEFAULT_RESULT_RETENTION_DAYS = 7
 
 CAPABILITIES: dict[Role, frozenset[str]] = {
     "coordinator": frozenset({"extract_goal", "verify_result", "compose_result"}),
-    "catalog_analyst": frozenset({"catalog_candidates", "lookup_compatibility", "solve_bundle", "read_owned_order"}),
-    "evidence_researcher": frozenset({"retrieve_evidence", "suggest_diagnostic_check", "assess_policy"}),
+    "catalog_analyst": frozenset(
+        {
+            "catalog_candidates",
+            "lookup_compatibility",
+            "solve_bundle",
+            "read_owned_order",
+        }
+    ),
+    "evidence_researcher": frozenset(
+        {"retrieve_evidence", "suggest_diagnostic_check", "assess_policy"}
+    ),
     "reviewer": frozenset({"verify_result"}),
 }
-READ_ONLY_CAPABILITIES = frozenset({
-    "extract_goal", "catalog_candidates", "lookup_compatibility", "retrieve_evidence",
-    "solve_bundle", "read_owned_order", "assess_policy", "suggest_diagnostic_check",
-    "verify_result", "compose_result",
-})
+READ_ONLY_CAPABILITIES = frozenset(
+    {
+        "extract_goal",
+        "catalog_candidates",
+        "lookup_compatibility",
+        "retrieve_evidence",
+        "solve_bundle",
+        "read_owned_order",
+        "assess_policy",
+        "suggest_diagnostic_check",
+        "verify_result",
+        "compose_result",
+    }
+)
 REQUIRED_VERIFY = "verify_result"
 
 
@@ -84,7 +132,16 @@ class ShoppingTaskRequest(StrictModel):
     def reject_control_fields(self) -> "ShoppingTaskRequest":
         # These names are intentionally not represented by this request model;
         # accepting them in a nested dict would let callers choose execution.
-        forbidden = {"owner", "owner_id", "model", "endpoint", "mode", "tools", "role", "url"}
+        forbidden = {
+            "owner",
+            "owner_id",
+            "model",
+            "endpoint",
+            "mode",
+            "tools",
+            "role",
+            "url",
+        }
         keys = {fact.key.casefold() for fact in self.known_facts}
         if keys.intersection(forbidden):
             raise ValueError("control_fields_are_server_owned")
@@ -102,7 +159,15 @@ class GoalSpec(StrictModel):
     excluded_skus: list[StrictStr] = Field(default_factory=list, max_length=32)
     open_questions: list[StrictStr] = Field(default_factory=list, max_length=16)
     facts: list[Fact] = Field(default_factory=list, max_length=64)
-    diagnosis_state: dict[str, Any] = Field(default_factory=lambda: {"round": 0, "answered_check_ids": [], "ruled_out": [], "observations": []}, max_length=16)
+    diagnosis_state: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "round": 0,
+            "answered_check_ids": [],
+            "ruled_out": [],
+            "observations": [],
+        },
+        max_length=16,
+    )
     version: StrictInt = Field(default=1, ge=1)
 
 
@@ -126,8 +191,12 @@ class PlanProposal(StrictModel):
 
     @model_validator(mode="after")
     def validate_fingerprint(self) -> "PlanProposal":
-        payload = [step.model_dump(mode="json", exclude_none=True) for step in self.steps]
-        expected = sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        payload = [
+            step.model_dump(mode="json", exclude_none=True) for step in self.steps
+        ]
+        expected = sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
         if self.fingerprint and self.fingerprint != expected:
             raise ValueError("plan_fingerprint_mismatch")
         object.__setattr__(self, "fingerprint", expected)
@@ -140,7 +209,9 @@ class PlanRevision(StrictModel):
     parent_revision: StrictInt | None = Field(default=None, ge=1)
     proposal: PlanProposal
     repair_reason: StrictStr | None = Field(default=None, max_length=500)
-    invalidated_steps: list[StrictStr] = Field(default_factory=list, max_length=MAX_PLAN_STEPS)
+    invalidated_steps: list[StrictStr] = Field(
+        default_factory=list, max_length=MAX_PLAN_STEPS
+    )
 
 
 class StepResult(StrictModel):
@@ -188,7 +259,9 @@ class Artifact(StrictModel):
     input_fingerprint: StrictStr
     source_refs: list[SourceRef] = Field(default_factory=list, max_length=32)
     evidence_versions: list[StrictStr] = Field(default_factory=list, max_length=32)
-    verification_status: Literal["pending", "passed", "failed", "superseded"] = "pending"
+    verification_status: Literal["pending", "passed", "failed", "superseded"] = (
+        "pending"
+    )
 
 
 class ActionPreview(StrictModel):
@@ -202,7 +275,9 @@ class ActionPreview(StrictModel):
     action_version: StrictInt = Field(default=1, ge=1)
     expires_at: datetime
     payload: dict[str, Any]
-    status: Literal["pending", "confirmed", "cancelled", "expired", "rejected"] = "pending"
+    status: Literal["pending", "confirmed", "cancelled", "expired", "rejected"] = (
+        "pending"
+    )
 
 
 class TaskStepView(StrictModel):
@@ -324,7 +399,9 @@ class TaskActionPreviewResult(StrictModel):
 
 
 class TaskActionResolution(StrictModel):
-    schema_version: Literal["shopmind.task-action-resolution.v1"] = "shopmind.task-action-resolution.v1"
+    schema_version: Literal["shopmind.task-action-resolution.v1"] = (
+        "shopmind.task-action-resolution.v1"
+    )
     task_id: StrictStr
     action_id: StrictStr
     action_version: StrictInt
@@ -339,7 +416,9 @@ def utcnow() -> datetime:
 
 
 def canonical_fingerprint(value: Any) -> str:
-    return sha256(json.dumps(value, sort_keys=True, default=str, separators=(",", ":")).encode()).hexdigest()
+    return sha256(
+        json.dumps(value, sort_keys=True, default=str, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
 def money(value: Any) -> Decimal:

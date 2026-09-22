@@ -36,9 +36,7 @@ def test_mock_provider_unknown_reconcile_resolves_without_second_charge() -> Non
 
 
 def test_mock_provider_unknown_result_is_stable_until_provider_changes_it() -> None:
-    provider = MockPaymentProvider(
-        scenarios_by_method={"stuck": ("unknown",)}
-    )
+    provider = MockPaymentProvider(scenarios_by_method={"stuck": ("unknown",)})
     first = provider.charge(_request("stuck-provider-key", "stuck"))
     second = provider.get_result("stuck-provider-key")
 

@@ -102,9 +102,7 @@ def test_confirm_add_to_cart_expires_action_before_cart_write():
         expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
     )
 
-    result = confirm_add_to_cart(
-        session, prepare_result["pending_action_id"], "user-1"
-    )
+    result = confirm_add_to_cart(session, prepare_result["pending_action_id"], "user-1")
 
     assert result == {"status": "error", "message": "pending action expired"}
     assert get_cart_items(session, "user-1") == []
@@ -167,7 +165,9 @@ def test_clear_cart_items_removes_cart_and_pending_actions():
     session = make_session()
     seed_product(session)
     prepare_add_to_cart(session, user_id="user-1", product_id="TECH-KEY-010")
-    confirmed = prepare_add_to_cart(session, user_id="user-1", product_id="TECH-KEY-010")
+    confirmed = prepare_add_to_cart(
+        session, user_id="user-1", product_id="TECH-KEY-010"
+    )
     confirm_add_to_cart(session, confirmed["pending_action_id"], "user-1")
     session.commit()
 
@@ -231,24 +231,39 @@ def test_save_preference_action_rejects_scope_duplicate_and_expiry():
     )
     session.commit()
 
-    assert resolve_pending_action(
-        session, scoped["pending_action_id"], "user-2"
-    )["message"] == "user mismatch"
-    assert confirm_save_preference(
-        session,
-        scoped["pending_action_id"],
-        "user-1",
-        thread_id="wrong-thread",
-    )["message"] == "thread mismatch"
-    assert confirm_save_preference(
-        session, scoped["pending_action_id"], "user-1", thread_id="thread-1"
-    )["status"] == CONFIRMED_STATUS
-    assert confirm_save_preference(
-        session, scoped["pending_action_id"], "user-1", thread_id="thread-1"
-    )["current_status"] == CONFIRMED_STATUS
-    assert confirm_save_preference(
-        session, expired["pending_action_id"], "user-1"
-    )["message"] == "pending action expired"
+    assert (
+        resolve_pending_action(session, scoped["pending_action_id"], "user-2")[
+            "message"
+        ]
+        == "user mismatch"
+    )
+    assert (
+        confirm_save_preference(
+            session,
+            scoped["pending_action_id"],
+            "user-1",
+            thread_id="wrong-thread",
+        )["message"]
+        == "thread mismatch"
+    )
+    assert (
+        confirm_save_preference(
+            session, scoped["pending_action_id"], "user-1", thread_id="thread-1"
+        )["status"]
+        == CONFIRMED_STATUS
+    )
+    assert (
+        confirm_save_preference(
+            session, scoped["pending_action_id"], "user-1", thread_id="thread-1"
+        )["current_status"]
+        == CONFIRMED_STATUS
+    )
+    assert (
+        confirm_save_preference(session, expired["pending_action_id"], "user-1")[
+            "message"
+        ]
+        == "pending action expired"
+    )
     assert session.get(PendingAction, expired["pending_action_id"]).status == (
         EXPIRED_STATUS
     )

@@ -15,7 +15,12 @@ from app.cart.models import ShopMindCartItem
 from app.catalog.models import CatalogInventory, CatalogProduct, CatalogSku
 from app.db.models import Order
 
-from .models import AfterSalesDraft, ShoppingTask, ShoppingTaskAction, ShoppingTaskCommand
+from .models import (
+    AfterSalesDraft,
+    ShoppingTask,
+    ShoppingTaskAction,
+    ShoppingTaskCommand,
+)
 from .repository import CommandConflict, append_event, find_command
 
 

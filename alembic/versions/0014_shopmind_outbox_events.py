@@ -31,13 +31,28 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=16), nullable=False),
         sa.Column("attempt_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("redrive_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("available_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "available_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
         sa.Column("lease_owner", sa.Uuid(as_uuid=True), nullable=True),
         sa.Column("lease_until", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_error", sa.String(length=1024), nullable=True),
         sa.Column("broker_message_id", sa.String(length=128), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
         sa.CheckConstraint(
             "aggregate_sequence >= 1",
@@ -90,6 +105,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("idx_shopmind_outbox_aggregate_order", table_name="shopmind_outbox_events")
+    op.drop_index(
+        "idx_shopmind_outbox_aggregate_order", table_name="shopmind_outbox_events"
+    )
     op.drop_index("idx_shopmind_outbox_claim", table_name="shopmind_outbox_events")
     op.drop_table("shopmind_outbox_events")

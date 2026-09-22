@@ -39,11 +39,17 @@ def normalize_constraint(
         constraint = CategoryAttributeConstraint(value=raw, operator=operator)
     role = constraint.role or definition.role
     if definition.role == "hard_or_soft" and constraint.role is None:
-        raise ValueError(f"attribute {definition.key} requires an explicit constraint role")
+        raise ValueError(
+            f"attribute {definition.key} requires an explicit constraint role"
+        )
     if role == "hard_or_soft":
-        raise ValueError(f"attribute {definition.key} cannot use unresolved hard_or_soft role")
+        raise ValueError(
+            f"attribute {definition.key} cannot use unresolved hard_or_soft role"
+        )
     if constraint.operator not in definition.allowed_operators:
-        raise ValueError(f"operator {constraint.operator} is not allowed for {definition.key}")
+        raise ValueError(
+            f"operator {constraint.operator} is not allowed for {definition.key}"
+        )
     value = constraint.value
     if definition.type == "number":
         value = _decimal(value)
@@ -59,7 +65,9 @@ def normalize_constraint(
         if not isinstance(values, (list, tuple, set)):
             values = [values]
         canonical = tuple(definition.canonicalize_enum(item) for item in values)
-        value = list(dict.fromkeys(canonical)) if definition.multi_valued else canonical[0]
+        value = (
+            list(dict.fromkeys(canonical)) if definition.multi_valued else canonical[0]
+        )
     return CategoryAttributeConstraint(
         value=value,
         operator=constraint.operator,
@@ -102,11 +110,21 @@ def _ordered_enum_value(definition: CategoryAttributeDefinition, value: Any) -> 
     return definition.enum_values.index(canonical)
 
 
-def _enum_match(definition: CategoryAttributeDefinition, candidate: Any, requested: Any) -> bool:
-    candidate_values = set(candidate if isinstance(candidate, (list, tuple, set)) else [candidate])
-    requested_values = set(requested if isinstance(requested, (list, tuple, set)) else [requested])
-    candidate_canonical = {definition.canonicalize_enum(item) for item in candidate_values}
-    requested_canonical = {definition.canonicalize_enum(item) for item in requested_values}
+def _enum_match(
+    definition: CategoryAttributeDefinition, candidate: Any, requested: Any
+) -> bool:
+    candidate_values = set(
+        candidate if isinstance(candidate, (list, tuple, set)) else [candidate]
+    )
+    requested_values = set(
+        requested if isinstance(requested, (list, tuple, set)) else [requested]
+    )
+    candidate_canonical = {
+        definition.canonicalize_enum(item) for item in candidate_values
+    }
+    requested_canonical = {
+        definition.canonicalize_enum(item) for item in requested_values
+    }
     return requested_canonical <= candidate_canonical
 
 
@@ -144,18 +162,31 @@ def _evaluate_constraint_inclusion(
             if operator == "enum_match":
                 return _enum_match(definition, candidate, requested)
             if operator == "eq":
-                candidate_values = candidate if isinstance(candidate, (list, tuple, set)) else [candidate]
+                candidate_values = (
+                    candidate
+                    if isinstance(candidate, (list, tuple, set))
+                    else [candidate]
+                )
                 return any(
-                    definition.canonicalize_enum(item) == definition.canonicalize_enum(requested)
+                    definition.canonicalize_enum(item)
+                    == definition.canonicalize_enum(requested)
                     for item in candidate_values
                 )
-            candidate_values = candidate if isinstance(candidate, (list, tuple, set)) else [candidate]
-            actual_orders = [_ordered_enum_value(definition, item) for item in candidate_values]
+            candidate_values = (
+                candidate if isinstance(candidate, (list, tuple, set)) else [candidate]
+            )
+            actual_orders = [
+                _ordered_enum_value(definition, item) for item in candidate_values
+            ]
             expected_order = _ordered_enum_value(definition, requested)
             if operator == "gte":
-                return any(actual_order >= expected_order for actual_order in actual_orders)
+                return any(
+                    actual_order >= expected_order for actual_order in actual_orders
+                )
             if operator == "lte":
-                return any(actual_order <= expected_order for actual_order in actual_orders)
+                return any(
+                    actual_order <= expected_order for actual_order in actual_orders
+                )
     except (ValueError, TypeError, InvalidOperation):
         return False
     return False
@@ -205,17 +236,29 @@ def preference_signal(
     if definition.type == "enum" and constraint.operator == "enum_match":
         candidate_values = {
             definition.canonicalize_enum(item)
-            for item in (candidate if isinstance(candidate, (list, tuple, set)) else [candidate])
+            for item in (
+                candidate if isinstance(candidate, (list, tuple, set)) else [candidate]
+            )
         }
         requested_values = {
             definition.canonicalize_enum(item)
-            for item in (constraint.value if isinstance(constraint.value, (list, tuple, set)) else [constraint.value])
+            for item in (
+                constraint.value
+                if isinstance(constraint.value, (list, tuple, set))
+                else [constraint.value]
+            )
         }
         if not requested_values:
             return Decimal("0.5")
-        overlap = Decimal(len(candidate_values & requested_values)) / Decimal(len(requested_values))
+        overlap = Decimal(len(candidate_values & requested_values)) / Decimal(
+            len(requested_values)
+        )
         return Decimal("1") - overlap if constraint.polarity == "exclude" else overlap
-    return Decimal("1") if evaluate_constraint(definition, constraint, candidate) else Decimal("0")
+    return (
+        Decimal("1")
+        if evaluate_constraint(definition, constraint, candidate)
+        else Decimal("0")
+    )
 
 
 def parse_laptop_constraints(message: str):
@@ -224,4 +267,6 @@ def parse_laptop_constraints(message: str):
     from app.recommendation.compatibility import laptop_constraints_from_request
     from app.recommendation.request import parse_recommendation_request
 
-    return laptop_constraints_from_request(parse_recommendation_request(message, "laptop"))
+    return laptop_constraints_from_request(
+        parse_recommendation_request(message, "laptop")
+    )

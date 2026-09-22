@@ -142,8 +142,7 @@ def evaluate_v3_handoff_target(
     """Run V3 API handoff cases and aggregate event metrics."""
 
     case_results = [
-        run_handoff_case(case, chat_fn=chat_fn, confirm_fn=confirm_fn)
-        for case in cases
+        run_handoff_case(case, chat_fn=chat_fn, confirm_fn=confirm_fn) for case in cases
     ]
     output_events = []
     for result in case_results:

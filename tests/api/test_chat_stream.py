@@ -52,7 +52,9 @@ async def test_chat_stream_emits_runtime_events_and_final_result(monkeypatch) ->
             "pending_action_id": None,
         }
 
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -74,9 +76,11 @@ async def test_chat_stream_emits_runtime_events_and_final_result(monkeypatch) ->
         assert "event: run.started" in response.text
         assert "event: agent.completed" in response.text
         assert "event: run.result" in response.text
-        assert response.text.index("event: run.started") < response.text.index(
-            "event: agent.completed"
-        ) < response.text.index("event: run.result")
+        assert (
+            response.text.index("event: run.started")
+            < response.text.index("event: agent.completed")
+            < response.text.index("event: run.result")
+        )
         assert "Try MX Keys." in response.text
         assert "search_products" in response.text
 
@@ -113,7 +117,9 @@ async def test_chat_stream_debug_result_includes_runtime_identity(
 
 
 @pytest.mark.anyio
-async def test_chat_stream_rejects_when_local_concurrency_limit_is_reached(monkeypatch) -> None:
+async def test_chat_stream_rejects_when_local_concurrency_limit_is_reached(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         chat_stream,
         "get_settings",
@@ -162,7 +168,9 @@ async def test_chat_stream_forwards_optional_idempotency_header(monkeypatch) -> 
         assert idempotency_key == "stream-idem-1"
         return {"answer": "ok", "status": "completed", "tool_calls": []}
 
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -177,7 +185,9 @@ async def test_chat_stream_forwards_optional_idempotency_header(monkeypatch) -> 
 
 
 @pytest.mark.anyio
-async def test_chat_stream_disconnect_detaches_delivery_without_runtime_cancellation(monkeypatch) -> None:
+async def test_chat_stream_disconnect_detaches_delivery_without_runtime_cancellation(
+    monkeypatch,
+) -> None:
     entered = threading.Event()
     release = threading.Event()
     finished = threading.Event()
@@ -186,7 +196,9 @@ async def test_chat_stream_disconnect_detaches_delivery_without_runtime_cancella
     monkeypatch.setattr(
         chat_stream,
         "bind_request_user",
-        lambda *_args, **_kwargs: type("Binding", (), {"effective_user_id": "stream-user"})(),
+        lambda *_args, **_kwargs: type(
+            "Binding", (), {"effective_user_id": "stream-user"}
+        )(),
     )
 
     def fake_call_shopmind_agent(
@@ -210,7 +222,9 @@ async def test_chat_stream_disconnect_detaches_delivery_without_runtime_cancella
         finished.set()
         return {"answer": "authoritative", "status": "completed", "tool_calls": []}
 
-    monkeypatch.setattr(agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent)
+    monkeypatch.setattr(
+        agent_dependency, "call_shopmind_agent", fake_call_shopmind_agent
+    )
 
     class DisconnectingRequest:
         checks = 0

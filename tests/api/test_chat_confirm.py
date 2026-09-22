@@ -34,7 +34,9 @@ async def test_chat_confirm_confirmed_true_returns_completed(monkeypatch) -> Non
             "pending_action_id": pending_action_id,
         }
 
-    monkeypatch.setattr(agent_dependency, "confirm_pending_action", fake_confirm_pending_action)
+    monkeypatch.setattr(
+        agent_dependency, "confirm_pending_action", fake_confirm_pending_action
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -77,7 +79,9 @@ async def test_chat_confirm_confirmed_false_returns_cancelled(monkeypatch) -> No
             "pending_action_id": pending_action_id,
         }
 
-    monkeypatch.setattr(agent_dependency, "confirm_pending_action", fake_confirm_pending_action)
+    monkeypatch.setattr(
+        agent_dependency, "confirm_pending_action", fake_confirm_pending_action
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -116,7 +120,9 @@ async def test_chat_confirm_forwards_optional_idempotency_header(monkeypatch) ->
             "pending_action_id": pending_action_id,
         }
 
-    monkeypatch.setattr(agent_dependency, "confirm_pending_action", fake_confirm_pending_action)
+    monkeypatch.setattr(
+        agent_dependency, "confirm_pending_action", fake_confirm_pending_action
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -135,7 +141,9 @@ async def test_chat_confirm_forwards_optional_idempotency_header(monkeypatch) ->
 
 
 @pytest.mark.anyio
-async def test_chat_confirm_forwards_optional_server_validated_edits(monkeypatch) -> None:
+async def test_chat_confirm_forwards_optional_server_validated_edits(
+    monkeypatch,
+) -> None:
     def fake_confirm_pending_action(
         pending_action_id: str,
         user_id: str,
@@ -191,7 +199,9 @@ async def test_chat_confirm_forwards_client_expected_version(monkeypatch) -> Non
             "pending_action_id": pending_action_id,
         }
 
-    monkeypatch.setattr(agent_dependency, "confirm_pending_action", fake_confirm_pending_action)
+    monkeypatch.setattr(
+        agent_dependency, "confirm_pending_action", fake_confirm_pending_action
+    )
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
@@ -223,7 +233,9 @@ async def test_chat_confirm_returns_chinese_error_answer(monkeypatch) -> None:
             "pending_action_id": pending_action_id,
         }
 
-    monkeypatch.setattr(agent_dependency, "confirm_pending_action", fake_confirm_pending_action)
+    monkeypatch.setattr(
+        agent_dependency, "confirm_pending_action", fake_confirm_pending_action
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -384,7 +396,9 @@ def test_confirm_boundary_dispatches_registered_preference_handler(monkeypatch) 
     assert result["debug"]["confirmation"]["events"][0]["action_type"] == (
         "save_preference"
     )
-    action_event = next(event for event in events if event.event_type == "action.confirmed")
+    action_event = next(
+        event for event in events if event.event_type == "action.confirmed"
+    )
     assert action_event.payload == {
         "action_id": "pending-preference",
         "action_type": "save_preference",
@@ -394,7 +408,9 @@ def test_confirm_boundary_dispatches_registered_preference_handler(monkeypatch) 
     assert [event.sequence for event in events] == list(range(1, len(events) + 1))
 
 
-def test_confirm_boundary_orders_resumed_edited_and_confirmed_events(monkeypatch) -> None:
+def test_confirm_boundary_orders_resumed_edited_and_confirmed_events(
+    monkeypatch,
+) -> None:
     class FakeGateway:
         def invoke(self, *, agent_name, tool, arguments, context):
             assert arguments["updated_arguments"] == {
@@ -436,9 +452,7 @@ def test_confirm_boundary_orders_resumed_edited_and_confirmed_events(monkeypatch
         event_sink=events.append,
     )
 
-    lifecycle = [
-        event for event in events if event.event_type.startswith("action.")
-    ]
+    lifecycle = [event for event in events if event.event_type.startswith("action.")]
     assert result["status"] == "completed"
     assert [event.event_type for event in lifecycle] == [
         "action.resumed",
@@ -477,9 +491,7 @@ def test_confirm_boundary_rejects_forbidden_edit_before_gateway(monkeypatch) -> 
     assert result["status"] == "failed"
     assert result["tool_calls"] == []
     assert [
-        event.event_type
-        for event in events
-        if event.event_type.startswith("action.")
+        event.event_type for event in events if event.event_type.startswith("action.")
     ] == ["action.resumed", "action.failed"]
     assert events[-2].payload["reason"] == "invalid_edit"
 
@@ -565,7 +577,9 @@ async def test_chat_confirm_can_include_confirmation_debug(monkeypatch) -> None:
             },
         }
 
-    monkeypatch.setattr(agent_dependency, "confirm_pending_action", fake_confirm_pending_action)
+    monkeypatch.setattr(
+        agent_dependency, "confirm_pending_action", fake_confirm_pending_action
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

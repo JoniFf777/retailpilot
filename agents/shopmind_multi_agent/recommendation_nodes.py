@@ -7,8 +7,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.recommendation.categories import CategoryRegistry
-from app.recommendation.gate import RecommendationGateDecision, classify_recommendation_request
-from app.recommendation.providers import CatalogCandidateProvider, RecommendationPreferenceProvider
+from app.recommendation.gate import (
+    RecommendationGateDecision,
+    classify_recommendation_request,
+)
+from app.recommendation.providers import (
+    CatalogCandidateProvider,
+    RecommendationPreferenceProvider,
+)
 from app.recommendation.rag import (
     RecommendationEvidence,
     RecommendationEvidenceProvider,
@@ -44,9 +50,14 @@ def _context_category(
     for item in reversed(state.get("context_items", [])):
         provenance = item.get("provenance") or {}
         recommendation_state = provenance.get("recommendation_state")
-        if isinstance(recommendation_state, dict) and recommendation_state.get("category"):
+        if isinstance(recommendation_state, dict) and recommendation_state.get(
+            "category"
+        ):
             return str(recommendation_state["category"])
-        if provenance.get("role") != "user" and provenance.get("source") != "conversation_summary":
+        if (
+            provenance.get("role") != "user"
+            and provenance.get("source") != "conversation_summary"
+        ):
             continue
         message = str(item.get("content") or "")
         decision = classify_recommendation_request(
@@ -64,9 +75,14 @@ def _cleared_request_fields(message: str) -> set[str]:
 
     lowered = message.casefold()
     cleared: set[str] = set()
-    if any(token in lowered for token in ("预算不限", "不设预算", "无预算限制", "不限预算")):
+    if any(
+        token in lowered for token in ("预算不限", "不设预算", "无预算限制", "不限预算")
+    ):
         cleared.add("__budget__")
-    if any(token in lowered for token in ("不再要求轻薄", "不要求轻薄", "不限重量", "重量不限")):
+    if any(
+        token in lowered
+        for token in ("不再要求轻薄", "不要求轻薄", "不限重量", "重量不限")
+    ):
         cleared.add("weight_max_kg")
     if any(token in lowered for token in ("不再要求内存", "不要求内存", "内存不限")):
         cleared.add("memory_min_gb")
@@ -83,8 +99,24 @@ def _needs_document_evidence(message: str) -> bool:
     return any(
         term in message.casefold()
         for term in (
-            "兼容", "接口", "静音", "噪音", "风扇", "防水", "防泼", "安装",
-            "policy", "return", "refund", "warranty", "shipping", "退货", "退款", "保修", "配送", "政策",
+            "兼容",
+            "接口",
+            "静音",
+            "噪音",
+            "风扇",
+            "防水",
+            "防泼",
+            "安装",
+            "policy",
+            "return",
+            "refund",
+            "warranty",
+            "shipping",
+            "退货",
+            "退款",
+            "保修",
+            "配送",
+            "政策",
         )
     )
 
@@ -109,12 +141,27 @@ def recommendation_gate_node(
     registry: CategoryRegistry | None = None,
 ) -> dict[str, Any]:
     decision = classify_recommendation_request(
-        get_last_user_message(state), state.get("supervisor_decision"), registry=registry
+        get_last_user_message(state),
+        state.get("supervisor_decision"),
+        registry=registry,
     )
     current_message = get_last_user_message(state)
     if decision.mode == "legacy_read" and any(
         term in current_message.casefold()
-        for term in ("预算", "改成", "其他不变", "保持不变", "换成", "再推荐", "提高", "降低", "轻一点", "重一点", "排除", "去掉")
+        for term in (
+            "预算",
+            "改成",
+            "其他不变",
+            "保持不变",
+            "换成",
+            "再推荐",
+            "提高",
+            "降低",
+            "轻一点",
+            "重一点",
+            "排除",
+            "去掉",
+        )
     ):
         prior_category = _context_category(state, registry=registry)
         if prior_category:
@@ -150,7 +197,11 @@ def next_graph_path_after_recommendation_gate(state: ShopMindMultiAgentState) ->
     """Resolve the legacy planner path only when the gate did not claim the run."""
 
     mode = next_after_recommendation_gate(state)
-    if mode in {"catalog_candidates", "recommendation_task_executor", "recommendation_resolution"}:
+    if mode in {
+        "catalog_candidates",
+        "recommendation_task_executor",
+        "recommendation_resolution",
+    }:
         return mode
     from .graph import next_execution_path
 
@@ -200,9 +251,11 @@ def recommendation_preference_node(
         else {}
     )
     serialized_constraints = {
-        key: value.model_dump(mode="json")
-        if hasattr(value, "model_dump")
-        else dict(value)
+        key: (
+            value.model_dump(mode="json")
+            if hasattr(value, "model_dump")
+            else dict(value)
+        )
         for key, value in preference_constraints.items()
     }
     return {
@@ -216,7 +269,11 @@ def recommendation_preference_node(
         "agent_steps": append_agent_step(
             state,
             node="recommendation_preference",
-            event="applied_soft_constraints" if serialized_constraints else "no_applicable_constraints",
+            event=(
+                "applied_soft_constraints"
+                if serialized_constraints
+                else "no_applicable_constraints"
+            ),
             preference_summary_present=bool(summary),
             preference_constraint_count=len(serialized_constraints),
         ),
@@ -282,8 +339,12 @@ def deterministic_ranking_node(
             merged_attributes.pop(key, None)
         merged_attributes.update(request.category_attributes)
         inherited_budget = None if "__budget__" in cleared_fields else inherited_budget
-        inherited_budget_min = None if "__budget__" in cleared_fields else inherited_budget_min
-        inherited_currency = None if "__budget__" in cleared_fields else inherited_currency
+        inherited_budget_min = (
+            None if "__budget__" in cleared_fields else inherited_budget_min
+        )
+        inherited_currency = (
+            None if "__budget__" in cleared_fields else inherited_currency
+        )
         request = request.model_copy(
             update={
                 "budget_max": request.budget_max or inherited_budget,
@@ -308,8 +369,14 @@ def deterministic_ranking_node(
         for item in state.get("catalog_candidates", [])
     ]
     newly_excluded: list[str] = []
-    exclusion_match = re.search(r"(?:排除|去掉|移除)\s*(?:第)?(\d+)\s*(?:个|项|款)?", message)
-    if prior_session_state is not None and prior_session_state.candidates_are_current and exclusion_match:
+    exclusion_match = re.search(
+        r"(?:排除|去掉|移除)\s*(?:第)?(\d+)\s*(?:个|项|款)?", message
+    )
+    if (
+        prior_session_state is not None
+        and prior_session_state.candidates_are_current
+        and exclusion_match
+    ):
         index = int(exclusion_match.group(1)) - 1
         current_candidates = prior_session_state.current_candidate_sku_codes()
         if 0 <= index < len(current_candidates):
@@ -344,9 +411,9 @@ def deterministic_ranking_node(
         budget_max=request.budget_max,
         budget_currency=request.budget_currency,
         category_attributes={
-            key: value.model_dump(mode="json")
-            if hasattr(value, "model_dump")
-            else value
+            key: (
+                value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+            )
             for key, value in request.category_attributes.items()
         },
         field_sources={
@@ -362,17 +429,12 @@ def deterministic_ranking_node(
                     for key in preference_constraints
                     if key not in current_turn_request.category_attributes
                 },
-                **{
-                    key: "user"
-                    for key in current_turn_request.category_attributes
-                },
+                **{key: "user" for key in current_turn_request.category_attributes},
             }.items()
             if key in request.category_attributes
         },
         pending_questions=(
-            [result.clarification_question]
-            if result.clarification_question
-            else []
+            [result.clarification_question] if result.clarification_question else []
         ),
         candidate_sku_codes=[
             candidate.sku_code
@@ -396,7 +458,9 @@ def deterministic_ranking_node(
             "top_k_sku_codes": [
                 candidate.sku_code
                 for candidate in candidates
-                if any(candidate.sku_id == item.sku_id for item in result.recommendations)
+                if any(
+                    candidate.sku_id == item.sku_id for item in result.recommendations
+                )
             ],
             "category": category,
         },
@@ -415,7 +479,9 @@ def recommendation_evidence_node(
     *,
     provider: RecommendationEvidenceProvider,
 ) -> dict[str, Any]:
-    result = RecommendationResult.model_validate(state.get("recommendation_result") or {})
+    result = RecommendationResult.model_validate(
+        state.get("recommendation_result") or {}
+    )
     candidates = [
         CatalogSkuCandidate.model_validate(item)
         for item in state.get("catalog_candidates", [])
@@ -430,7 +496,10 @@ def recommendation_evidence_node(
     if not top_k:
         return {
             "recommendation": result.model_dump(mode="json"),
-            "recommendation_diagnostics": {**diagnostics, "evidence_skipped": "no_top_k"},
+            "recommendation_diagnostics": {
+                **diagnostics,
+                "evidence_skipped": "no_top_k",
+            },
             "top_k_product_evidence": {},
             "policy_evidence": [],
         }
@@ -443,7 +512,10 @@ def recommendation_evidence_node(
         evidence = RecommendationEvidence(
             product_evidence={candidate.sku_code: [] for candidate in top_k},
             policy_evidence=[],
-            diagnostics={"evidence_unavailable": True, "evidence_status": "unavailable"},
+            diagnostics={
+                "evidence_unavailable": True,
+                "evidence_status": "unavailable",
+            },
         )
     evidence_status = str(evidence.diagnostics.get("evidence_status") or "unknown")
     if (
@@ -459,17 +531,25 @@ def recommendation_evidence_node(
                 message=f"{get_last_user_message(state)} 请核实必要事实并返回文档引用",
                 top_k=top_k,
             )
-            recheck_status = str(recheck.diagnostics.get("evidence_status") or "unknown")
-            evidence = recheck if recheck_status == "available" else RecommendationEvidence(
-                product_evidence=evidence.product_evidence,
-                policy_evidence=evidence.policy_evidence,
-                diagnostics={
-                    **evidence.diagnostics,
-                    "business_recheck_attempted": True,
-                    "business_recheck_status": recheck_status,
-                },
+            recheck_status = str(
+                recheck.diagnostics.get("evidence_status") or "unknown"
             )
-            evidence_status = str(evidence.diagnostics.get("evidence_status") or evidence_status)
+            evidence = (
+                recheck
+                if recheck_status == "available"
+                else RecommendationEvidence(
+                    product_evidence=evidence.product_evidence,
+                    policy_evidence=evidence.policy_evidence,
+                    diagnostics={
+                        **evidence.diagnostics,
+                        "business_recheck_attempted": True,
+                        "business_recheck_status": recheck_status,
+                    },
+                )
+            )
+            evidence_status = str(
+                evidence.diagnostics.get("evidence_status") or evidence_status
+            )
         except Exception:
             evidence = RecommendationEvidence(
                 product_evidence=evidence.product_evidence,
@@ -490,7 +570,9 @@ def recommendation_evidence_node(
                 "outcome": "clarification_required",
                 "recommendations": [],
                 "evidence_status": evidence_status,
-                "policy_evidence": [item.model_dump(mode="json") for item in evidence.policy_evidence],
+                "policy_evidence": [
+                    item.model_dump(mode="json") for item in evidence.policy_evidence
+                ],
                 "error_code": (
                     "evidence_unavailable"
                     if evidence_status == "unavailable"
@@ -512,7 +594,10 @@ def recommendation_evidence_node(
             "policy_evidence": evidence.policy_evidence,
         }
     )
-    if _needs_document_evidence(get_last_user_message(state)) and validated.recommendations:
+    if (
+        _needs_document_evidence(get_last_user_message(state))
+        and validated.recommendations
+    ):
         # For document-dependent requests, supported candidates get a stable
         # evidence-coverage tie-break. Catalog score remains the secondary
         # order, and no new SKU can enter through this enrichment step.
@@ -532,7 +617,9 @@ def recommendation_evidence_node(
         item.sku_name: len(item.evidence) for item in validated.recommendations
     }
     return {
-        "recommendation": RecommendationResult.model_validate(validated).model_dump(mode="json"),
+        "recommendation": RecommendationResult.model_validate(validated).model_dump(
+            mode="json"
+        ),
         "recommendation_diagnostics": {
             **diagnostics,
             **evidence.diagnostics,
@@ -543,7 +630,9 @@ def recommendation_evidence_node(
             sku_code: [item.model_dump(mode="json") for item in items]
             for sku_code, items in evidence.product_evidence.items()
         },
-        "policy_evidence": [item.model_dump(mode="json") for item in evidence.policy_evidence],
+        "policy_evidence": [
+            item.model_dump(mode="json") for item in evidence.policy_evidence
+        ],
         "agent_steps": append_agent_step(
             state,
             node="recommendation_evidence",
@@ -568,10 +657,18 @@ def recommendation_task_executor_node(
 
     default_steps = [
         RecommendationTaskStep(step_id="catalog", stage="catalog", depends_on=[]),
-        RecommendationTaskStep(step_id="preference", stage="preference", depends_on=["catalog"]),
-        RecommendationTaskStep(step_id="ranking", stage="ranking", depends_on=["preference"]),
-        RecommendationTaskStep(step_id="evidence", stage="evidence", depends_on=["ranking"]),
-        RecommendationTaskStep(step_id="decision", stage="decision", depends_on=["evidence"]),
+        RecommendationTaskStep(
+            step_id="preference", stage="preference", depends_on=["catalog"]
+        ),
+        RecommendationTaskStep(
+            step_id="ranking", stage="ranking", depends_on=["preference"]
+        ),
+        RecommendationTaskStep(
+            step_id="evidence", stage="evidence", depends_on=["ranking"]
+        ),
+        RecommendationTaskStep(
+            step_id="decision", stage="decision", depends_on=["evidence"]
+        ),
     ]
     proposed_steps = state.get("recommendation_task_plan")
     try:
@@ -588,14 +685,22 @@ def recommendation_task_executor_node(
             raise ValueError("recommendation task stage is not allowed")
     except Exception:
         plan = RecommendationTaskPlan(
-        plan_id=f"{state.get('thread_id') or 'local'}:recommendation-task-v1",
-        steps=default_steps,
+            plan_id=f"{state.get('thread_id') or 'local'}:recommendation-task-v1",
+            steps=default_steps,
         )
     handlers = {
-        "catalog": lambda current: catalog_candidates_node(current, provider=catalog_provider),
-        "preference": lambda current: recommendation_preference_node(current, provider=preference_provider),
-        "ranking": lambda current: deterministic_ranking_node(current, registry=registry),
-        "evidence": lambda current: recommendation_evidence_node(current, provider=evidence_provider),
+        "catalog": lambda current: catalog_candidates_node(
+            current, provider=catalog_provider
+        ),
+        "preference": lambda current: recommendation_preference_node(
+            current, provider=preference_provider
+        ),
+        "ranking": lambda current: deterministic_ranking_node(
+            current, registry=registry
+        ),
+        "evidence": lambda current: recommendation_evidence_node(
+            current, provider=evidence_provider
+        ),
         "decision": recommendation_decision_node,
     }
     execution = StructuredRecommendationExecutor().execute(
@@ -608,7 +713,9 @@ def recommendation_task_executor_node(
     output = {
         key: value
         for key, value in execution.state.items()
-        if key not in initial_keys or key in {
+        if key not in initial_keys
+        or key
+        in {
             "catalog_candidates",
             "preference_summary",
             "preference_constraints",
@@ -624,7 +731,9 @@ def recommendation_task_executor_node(
         }
     }
     output["recommendation_task"] = execution.result.model_dump(mode="json")
-    output["agent_steps"] = execution.state.get("agent_steps", state.get("agent_steps", []))
+    output["agent_steps"] = execution.state.get(
+        "agent_steps", state.get("agent_steps", [])
+    )
     return output
 
 
@@ -648,7 +757,9 @@ def recommendation_decision_node(state: ShopMindMultiAgentState) -> dict[str, An
                 answer += f"（依据：{'、'.join(refs)}）。"
             else:
                 answer += "。"
-        evidence_status = (state.get("recommendation_diagnostics") or {}).get("evidence_status")
+        evidence_status = (state.get("recommendation_diagnostics") or {}).get(
+            "evidence_status"
+        )
         if evidence_status == "unavailable":
             answer += "文档证据服务本次不可用，以上结论仅依据目录字段。"
         elif evidence_status == "unknown":
@@ -663,7 +774,11 @@ def recommendation_decision_node(state: ShopMindMultiAgentState) -> dict[str, An
         "decision": {
             "status": "completed",
             "answer_type": "structured_recommendation",
-            "used_routes": ["catalog_candidates", "deterministic_ranking", "recommendation_evidence"],
+            "used_routes": [
+                "catalog_candidates",
+                "deterministic_ranking",
+                "recommendation_evidence",
+            ],
             "recommendation_outcome": recommendation.outcome,
             "recommendation_count": len(recommendation.recommendations),
         },

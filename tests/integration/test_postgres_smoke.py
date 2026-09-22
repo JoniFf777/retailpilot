@@ -294,9 +294,7 @@ def test_postgres_owner_data_lifecycle_deletes_raw_rows_but_retains_audit() -> N
             persisted_memory = fresh_session.get(MemoryRecord, memory_id)
             preferences = list(
                 fresh_session.scalars(
-                    select(UserPreference).where(
-                        UserPreference.user_id == user_id
-                    )
+                    select(UserPreference).where(UserPreference.user_id == user_id)
                 )
             )
             audits = list_owner_governance_audit_records(
@@ -316,18 +314,13 @@ def test_postgres_owner_data_lifecycle_deletes_raw_rows_but_retains_audit() -> N
         assert deleted.records_affected == 2
         assert persisted_memory is None
         assert preferences == []
-        assert {
-            (item.record.category, item.record.operation)
-            for item in audits
-        } == {
+        assert {(item.record.category, item.record.operation) for item in audits} == {
             ("memory", "memory.inspect"),
             ("memory", "memory.correct"),
             ("deletion", "deletion.request"),
             ("deletion", "deletion.execute"),
         }
-        serialized = "".join(
-            item.record.model_dump_json() for item in audits
-        )
+        serialized = "".join(item.record.model_dump_json() for item in audits)
         assert user_id not in serialized
         assert "private integration memory" not in serialized
         assert "private explicit correction" not in serialized

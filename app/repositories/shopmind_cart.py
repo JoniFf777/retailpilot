@@ -71,7 +71,9 @@ def upsert_cart_item(
         raise ValueError("cart quantity is out of bounds")
     item = get_cart_item_for_update(session, user_id=user_id, sku_id=sku_id)
     if item is None:
-        item = ShopMindCartItem(user_id=user_id, sku_id=sku_id, quantity=quantity, version=1)
+        item = ShopMindCartItem(
+            user_id=user_id, sku_id=sku_id, quantity=quantity, version=1
+        )
         session.add(item)
     else:
         item.quantity = quantity
@@ -83,7 +85,10 @@ def upsert_cart_item(
 
 def list_cart_items(session: Session, *, user_id: str) -> list[CartItemView]:
     rows = list_cart_catalog_rows(session, user_id=user_id)
-    return [_to_view(item, sku, product, inventory) for item, sku, product, inventory in rows]
+    return [
+        _to_view(item, sku, product, inventory)
+        for item, sku, product, inventory in rows
+    ]
 
 
 def list_cart_catalog_rows(
@@ -103,13 +108,17 @@ def list_cart_catalog_rows(
     if stable_sku_order:
         query = query.order_by(ShopMindCartItem.sku_id.asc(), ShopMindCartItem.id.asc())
     else:
-        query = query.order_by(ShopMindCartItem.updated_at.asc(), ShopMindCartItem.id.asc())
+        query = query.order_by(
+            ShopMindCartItem.updated_at.asc(), ShopMindCartItem.id.asc()
+        )
     if for_update:
         query = query.with_for_update(of=ShopMindCartItem)
     return list(session.execute(query).all())
 
 
-def list_cart_rows_for_update(session: Session, *, user_id: str) -> list[ShopMindCartItem]:
+def list_cart_rows_for_update(
+    session: Session, *, user_id: str
+) -> list[ShopMindCartItem]:
     return list(
         session.scalars(
             select(ShopMindCartItem)
@@ -148,7 +157,12 @@ def get_cart_response(session: Session, *, user_id: str) -> CartResponse:
     currencies = {item.unit_money.currency for item in items}
     for item in items:
         reason = item.availability.reason_code
-        if reason in {"product_inactive", "sku_inactive", "inventory_missing", "out_of_stock"}:
+        if reason in {
+            "product_inactive",
+            "sku_inactive",
+            "inventory_missing",
+            "out_of_stock",
+        }:
             warnings.append(
                 CartWarning(
                     code=reason,
@@ -214,7 +228,11 @@ def _to_view(
     product: CatalogProduct,
     inventory: CatalogInventory | None,
 ) -> CartItemView:
-    available = 0 if inventory is None else max(0, inventory.on_hand_quantity - inventory.reserved_quantity)
+    available = (
+        0
+        if inventory is None
+        else max(0, inventory.on_hand_quantity - inventory.reserved_quantity)
+    )
     product_active = product.sale_status == "active"
     sku_active = sku.sale_status == "active"
     if product_active and sku_active:

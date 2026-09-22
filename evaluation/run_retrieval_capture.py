@@ -13,7 +13,11 @@ from evaluation.retrieval_capture import capture_retrieval_cases
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Capture ShopMind retrieval facts.")
-    parser.add_argument("input", type=Path, help="JSON file containing cases with message and top_k candidates")
+    parser.add_argument(
+        "input",
+        type=Path,
+        help="JSON file containing cases with message and top_k candidates",
+    )
     parser.add_argument("--output-json", type=Path, required=True)
     parser.add_argument("--code-version", default="workspace")
     parser.add_argument("--model-version")
@@ -33,7 +37,15 @@ def main(argv: list[str] | None = None) -> int:
         config_version=args.config_version,
     )
     write_json_artifact(report, args.output_json)
-    print(json.dumps({"schema_version": report["schema_version"], "case_count": report["case_count"]}, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "schema_version": report["schema_version"],
+                "case_count": report["case_count"],
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 

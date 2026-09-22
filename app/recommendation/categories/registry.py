@@ -25,8 +25,16 @@ def normalize_category_token(value: str) -> str:
 def alias_in_text(text: str, alias: str) -> bool:
     normalized_text = normalize_category_token(text)
     normalized_alias = normalize_category_token(alias)
-    if normalized_alias.isascii() and normalized_alias.replace("_", "").replace("-", "").isalnum():
-        return bool(re.search(rf"(?<![a-z0-9]){re.escape(normalized_alias)}(?![a-z0-9])", normalized_text))
+    if (
+        normalized_alias.isascii()
+        and normalized_alias.replace("_", "").replace("-", "").isalnum()
+    ):
+        return bool(
+            re.search(
+                rf"(?<![a-z0-9]){re.escape(normalized_alias)}(?![a-z0-9])",
+                normalized_text,
+            )
+        )
     return normalized_alias in normalized_text
 
 
@@ -40,14 +48,30 @@ class CategoryRegistry:
         aliases: dict[str, str] = {}
         for definition in ordered:
             if definition.code in by_code:
-                issues.append(CategoryValidationIssue(code="duplicate_category_code", path=definition.code, detail=definition.code))
+                issues.append(
+                    CategoryValidationIssue(
+                        code="duplicate_category_code",
+                        path=definition.code,
+                        detail=definition.code,
+                    )
+                )
                 continue
             by_code[definition.code] = definition
-            for alias in (definition.code, definition.display_name, *definition.aliases):
+            for alias in (
+                definition.code,
+                definition.display_name,
+                *definition.aliases,
+            ):
                 normalized = normalize_category_token(alias)
                 existing = aliases.get(normalized)
                 if existing is not None and existing != definition.code:
-                    issues.append(CategoryValidationIssue(code="conflicting_category_alias", path=f"{definition.code}.aliases", detail=alias))
+                    issues.append(
+                        CategoryValidationIssue(
+                            code="conflicting_category_alias",
+                            path=f"{definition.code}.aliases",
+                            detail=alias,
+                        )
+                    )
                 else:
                     aliases[normalized] = definition.code
             for attribute in definition.attributes:
@@ -57,9 +81,17 @@ class CategoryRegistry:
                     # validate missing fields according to missing semantics.
                     continue
                 if attribute.required and attribute.missing != "reject_if_hard":
-                    issues.append(CategoryValidationIssue(code="invalid_required_missing_strategy", path=f"{definition.code}.{attribute.key}", detail=attribute.missing))
+                    issues.append(
+                        CategoryValidationIssue(
+                            code="invalid_required_missing_strategy",
+                            path=f"{definition.code}.{attribute.key}",
+                            detail=attribute.missing,
+                        )
+                    )
         if issues:
-            ordered_issues = sorted(issues, key=lambda issue: (issue.code, issue.path, issue.detail))
+            ordered_issues = sorted(
+                issues, key=lambda issue: (issue.code, issue.path, issue.detail)
+            )
             raise ValueError(
                 "invalid CategoryRegistry: "
                 + "; ".join(f"{issue.code}:{issue.detail}" for issue in ordered_issues)
@@ -68,7 +100,9 @@ class CategoryRegistry:
         self._aliases = aliases
 
     @classmethod
-    def from_directory(cls, directory: Path = DEFAULT_DEFINITION_DIR) -> "CategoryRegistry":
+    def from_directory(
+        cls, directory: Path = DEFAULT_DEFINITION_DIR
+    ) -> "CategoryRegistry":
         path = Path(directory).resolve()
         if path != DEFAULT_DEFINITION_DIR and not path.is_dir():
             raise ValueError("category definition directory does not exist")
@@ -78,7 +112,9 @@ class CategoryRegistry:
                 payload = json.loads(file.read_text(encoding="utf-8"))
                 definitions.append(CategoryDefinition.model_validate(payload))
             except (OSError, json.JSONDecodeError, ValueError) as exc:
-                raise ValueError(f"invalid category definition {file.name}: {exc}") from exc
+                raise ValueError(
+                    f"invalid category definition {file.name}: {exc}"
+                ) from exc
         if not definitions:
             raise ValueError("CategoryRegistry has no definitions")
         return cls(definitions)
@@ -124,14 +160,17 @@ class CategoryRegistry:
                     normalize_category_token(alias)
                     for alias in (*attribute.aliases, *attribute.enum_aliases)
                     if len(normalize_category_token(alias)) >= 2
-                    and len(alias_owners.get(normalize_category_token(alias), set())) == 1
+                    and len(alias_owners.get(normalize_category_token(alias), set()))
+                    == 1
                 ]
                 if any(alias_in_text(text, alias) for alias in strong_aliases):
                     matches.add(definition.code)
                     break
         return tuple(sorted(matches))
 
-    def validate_request_attributes(self, code: str, attributes: dict[str, Any]) -> dict[str, Any]:
+    def validate_request_attributes(
+        self, code: str, attributes: dict[str, Any]
+    ) -> dict[str, Any]:
         definition = self.get(code)
         normalized: dict[str, Any] = {}
         for key, raw in attributes.items():
@@ -152,22 +191,41 @@ class CategoryRegistry:
     ) -> list[CategoryValidationIssue]:
         definition = self.get(code)
         issues: list[CategoryValidationIssue] = []
-        declared = {attribute.canonical_catalog_key: attribute for attribute in definition.attributes}
+        declared = {
+            attribute.canonical_catalog_key: attribute
+            for attribute in definition.attributes
+        }
         for key in sorted(attributes):
             if key not in declared:
-                issues.append(CategoryValidationIssue(code="unknown_attribute", path=f"{path}.{key}", detail=code))
+                issues.append(
+                    CategoryValidationIssue(
+                        code="unknown_attribute", path=f"{path}.{key}", detail=code
+                    )
+                )
         from app.recommendation.constraints import validate_catalog_value
 
         for attribute in definition.attributes:
             catalog_key = attribute.canonical_catalog_key
             if catalog_key not in attributes:
                 if attribute.required or attribute.missing == "reject_if_hard":
-                    issues.append(CategoryValidationIssue(code="required_attribute_missing", path=f"{path}.{catalog_key}", detail=code))
+                    issues.append(
+                        CategoryValidationIssue(
+                            code="required_attribute_missing",
+                            path=f"{path}.{catalog_key}",
+                            detail=code,
+                        )
+                    )
                 continue
             try:
                 validate_catalog_value(attribute, attributes[catalog_key])
             except ValueError as exc:
-                issues.append(CategoryValidationIssue(code="attribute_type_invalid", path=f"{path}.{catalog_key}", detail=str(exc)))
+                issues.append(
+                    CategoryValidationIssue(
+                        code="attribute_type_invalid",
+                        path=f"{path}.{catalog_key}",
+                        detail=str(exc),
+                    )
+                )
         return issues
 
 

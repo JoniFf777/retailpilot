@@ -40,11 +40,16 @@ class TraceProjectionRequest(BaseModel):
 
 def _require_admin(request: Request) -> None:
     settings = getattr(request.app.state, "runtime_settings", None) or get_settings()
-    if not settings.shopmind_ai_platform_enabled or not settings.shopmind_ai_operations_enabled:
+    if (
+        not settings.shopmind_ai_platform_enabled
+        or not settings.shopmind_ai_operations_enabled
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     authorizer = getattr(request.app.state, "admin_authorizer", AdminAuthorizer())
     if not callable(authorizer) or not bool(authorizer(request)):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
 
 
 def _evidence_row(row) -> dict[str, Any]:
@@ -70,7 +75,9 @@ def _evidence_row(row) -> dict[str, Any]:
 @router.get("/health")
 async def ai_operations_health(request: Request) -> dict[str, Any]:
     _require_admin(request)
-    resolved_settings = getattr(request.app.state, "runtime_settings", None) or get_settings()
+    resolved_settings = (
+        getattr(request.app.state, "runtime_settings", None) or get_settings()
+    )
 
     def read() -> dict[str, Any]:
         session = SessionLocal()
@@ -86,10 +93,7 @@ async def ai_operations_health(request: Request) -> dict[str, Any]:
                 model_health=model_health,
             ).value,
             "evidence": snapshot,
-            "models": [
-                item.model_dump(mode="json")
-                for item in model_health
-            ],
+            "models": [item.model_dump(mode="json") for item in model_health],
             "rocketmq": "independent_outbox_publisher",
         }
 
@@ -106,7 +110,9 @@ async def list_evidence(
     limit: int = Query(default=50, ge=1, le=100),
 ) -> dict[str, Any]:
     _require_admin(request)
-    if evidence_type is not None and evidence_type not in {item.value for item in EvidenceType}:
+    if evidence_type is not None and evidence_type not in {
+        item.value for item in EvidenceType
+    }:
         raise HTTPException(status_code=400, detail="Unsupported evidence type")
 
     def read() -> dict[str, Any]:
@@ -120,7 +126,11 @@ async def list_evidence(
                 policy_type=policy_type,
                 limit=limit,
             )
-            return {"items": [_evidence_row(row) for row in rows], "limit": limit, "bounded": True}
+            return {
+                "items": [_evidence_row(row) for row in rows],
+                "limit": limit,
+                "bounded": True,
+            }
         finally:
             session.close()
 
@@ -128,15 +138,21 @@ async def list_evidence(
 
 
 @router.get("/evidence/coverage")
-async def evidence_coverage(request: Request, category_code: str | None = Query(default=None, max_length=64)) -> dict[str, Any]:
+async def evidence_coverage(
+    request: Request, category_code: str | None = Query(default=None, max_length=64)
+) -> dict[str, Any]:
     _require_admin(request)
 
     def read() -> dict[str, Any]:
         session = SessionLocal()
         try:
-            rows = list_current_evidence(session, category_code=category_code, limit=100)
+            rows = list_current_evidence(
+                session, category_code=category_code, limit=100
+            )
             all_versions = session.scalars(
-                select(ShoppingEvidenceVersion).order_by(ShoppingEvidenceVersion.id.desc()).limit(100)
+                select(ShoppingEvidenceVersion)
+                .order_by(ShoppingEvidenceVersion.id.desc())
+                .limit(100)
             ).all()
             by_type: dict[str, int] = {}
             product_ids: set[str] = set()
@@ -146,8 +162,19 @@ async def evidence_coverage(request: Request, category_code: str | None = Query(
                 product_ids.update(str(value) for value in (row.product_ids or []))
                 if row.policy_type:
                     policy_types.add(row.policy_type)
-            expired_versions = sum(1 for row in all_versions if row.status == "published" and row.valid_until is not None and row.valid_until <= datetime.now(timezone.utc))
-            invalid_references = sum(1 for row in all_versions if row.status == "failed" or (row.metadata_json or {}).get("validation_error"))
+            expired_versions = sum(
+                1
+                for row in all_versions
+                if row.status == "published"
+                and row.valid_until is not None
+                and row.valid_until <= datetime.now(timezone.utc)
+            )
+            invalid_references = sum(
+                1
+                for row in all_versions
+                if row.status == "failed"
+                or (row.metadata_json or {}).get("validation_error")
+            )
             return {
                 "category_code": category_code,
                 "active_evidence_versions": len(rows),
@@ -173,7 +200,9 @@ async def activate_extension(
     request: Request,
 ) -> dict[str, Any]:
     _require_admin(request)
-    resolved_settings = getattr(request.app.state, "runtime_settings", None) or get_settings()
+    resolved_settings = (
+        getattr(request.app.state, "runtime_settings", None) or get_settings()
+    )
 
     def write() -> dict[str, Any]:
         session = SessionLocal()
@@ -182,7 +211,9 @@ async def activate_extension(
             if row is None:
                 raise HTTPException(status_code=404, detail="Extension not found")
             if row.version != body.expected_version:
-                raise HTTPException(status_code=409, detail="Extension version is stale")
+                raise HTTPException(
+                    status_code=409, detail="Extension version is stale"
+                )
             published = publish_extension(session, definition_id)
             session.commit()
             record_admin_operation(
@@ -190,10 +221,18 @@ async def activate_extension(
                 resource_type="extension",
                 resource_key=f"{published.extension_type}:{published.extension_key}",
                 version=published.version,
-                audit_enabled=bool(getattr(resolved_settings, "shopmind_governance_audit_enabled", False)),
+                audit_enabled=bool(
+                    getattr(
+                        resolved_settings, "shopmind_governance_audit_enabled", False
+                    )
+                ),
                 session_factory=SessionLocal,
             )
-            return {"status": "published", "version": published.version, "bounded": True}
+            return {
+                "status": "published",
+                "version": published.version,
+                "bounded": True,
+            }
         except HTTPException:
             session.rollback()
             raise
@@ -213,13 +252,17 @@ async def revoke_evidence_version(
     evidence_key: str = Query(min_length=1, max_length=160),
 ) -> dict[str, Any]:
     _require_admin(request)
-    resolved_settings = getattr(request.app.state, "runtime_settings", None) or get_settings()
+    resolved_settings = (
+        getattr(request.app.state, "runtime_settings", None) or get_settings()
+    )
 
     def write() -> dict[str, Any]:
         session = SessionLocal()
         try:
             rows = list_current_evidence(session, limit=100)
-            current = next((row for row in rows if row.evidence_key == evidence_key), None)
+            current = next(
+                (row for row in rows if row.evidence_key == evidence_key), None
+            )
             if current is None:
                 raise HTTPException(status_code=404, detail="Evidence not found")
             if current.version != body.expected_version:
@@ -231,10 +274,18 @@ async def revoke_evidence_version(
                 resource_type="evidence",
                 resource_key=evidence_key,
                 version=body.expected_version,
-                audit_enabled=bool(getattr(resolved_settings, "shopmind_governance_audit_enabled", False)),
+                audit_enabled=bool(
+                    getattr(
+                        resolved_settings, "shopmind_governance_audit_enabled", False
+                    )
+                ),
                 session_factory=SessionLocal,
             )
-            return {"status": "revoked" if changed else "not_found", "version": body.expected_version, "bounded": True}
+            return {
+                "status": "revoked" if changed else "not_found",
+                "version": body.expected_version,
+                "bounded": True,
+            }
         except HTTPException:
             session.rollback()
             raise
@@ -245,6 +296,8 @@ async def revoke_evidence_version(
 
 
 @router.post("/trace/project")
-async def project_trace_endpoint(body: TraceProjectionRequest, request: Request) -> dict[str, Any]:
+async def project_trace_endpoint(
+    body: TraceProjectionRequest, request: Request
+) -> dict[str, Any]:
     _require_admin(request)
     return {"events": project_trace(body.events), "bounded": True}

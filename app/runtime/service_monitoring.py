@@ -68,12 +68,15 @@ class ServiceMetricsSnapshot(BaseModel):
     latency_p50_ms: float | None = Field(default=None, ge=0)
     latency_p95_ms: float | None = Field(default=None, ge=0)
     latency_max_ms: float | None = Field(default=None, ge=0)
-    last_status: Literal[
-        "completed",
-        "confirmation_required",
-        "cancelled",
-        "failed",
-    ] | None = None
+    last_status: (
+        Literal[
+            "completed",
+            "confirmation_required",
+            "cancelled",
+            "failed",
+        ]
+        | None
+    ) = None
     last_observed_at: datetime | None = None
 
     @model_validator(mode="after")
@@ -101,8 +104,7 @@ class ServiceMetricsSnapshot(BaseModel):
             raise ValueError("Service latency window is invalid.")
         if (
             self.slo_window_eligible_runs > self.latency_window_runs
-            or self.slo_window_successful_runs
-            > self.slo_window_eligible_runs
+            or self.slo_window_successful_runs > self.slo_window_eligible_runs
         ):
             raise ValueError("Service SLO window counts are invalid.")
         percentiles = (
@@ -159,9 +161,7 @@ class ServiceSloReport(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True, use_enum_values=True)
 
-    schema_version: Literal["shopmind.service-slo.v1"] = (
-        SERVICE_SLO_SCHEMA_VERSION
-    )
+    schema_version: Literal["shopmind.service-slo.v1"] = SERVICE_SLO_SCHEMA_VERSION
     process_scope: Literal["in_process"] = "in_process"
     status: Literal["insufficient_data", "met", "breached"]
     eligible_runs_total: int = Field(ge=0)
@@ -224,9 +224,7 @@ class RuntimeServiceMonitor:
         self._latency_window_capacity = latency_window_capacity
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._lock = Lock()
-        self._latencies: deque[float] = deque(
-            maxlen=latency_window_capacity
-        )
+        self._latencies: deque[float] = deque(maxlen=latency_window_capacity)
         self._statuses: deque[str] = deque(maxlen=latency_window_capacity)
         self._runs_total = 0
         self._chat_runs_total = 0
@@ -299,13 +297,9 @@ class RuntimeServiceMonitor:
         if not math.isfinite(duration_ms) or duration_ms < 0:
             raise ValueError("Service duration must be finite and non-negative.")
         now = now.astimezone(timezone.utc)
-        status_value = (
-            status.value if isinstance(status, RunStatus) else str(status)
-        )
+        status_value = status.value if isinstance(status, RunStatus) else str(status)
         operation_value = (
-            operation.value
-            if isinstance(operation, RunOperation)
-            else str(operation)
+            operation.value if isinstance(operation, RunOperation) else str(operation)
         )
         if operation_value not in {
             RunOperation.CHAT.value,
@@ -384,15 +378,9 @@ class RuntimeServiceMonitor:
                 latency_window_runs=len(latencies),
                 slo_window_eligible_runs=eligible_window,
                 slo_window_successful_runs=successful_window,
-                latency_p50_ms=(
-                    _nearest_rank(latencies, 0.5) if latencies else None
-                ),
-                latency_p95_ms=(
-                    _nearest_rank(latencies, 0.95) if latencies else None
-                ),
-                latency_max_ms=(
-                    round(max(latencies), 3) if latencies else None
-                ),
+                latency_p50_ms=(_nearest_rank(latencies, 0.5) if latencies else None),
+                latency_p95_ms=(_nearest_rank(latencies, 0.95) if latencies else None),
+                latency_max_ms=(round(max(latencies), 3) if latencies else None),
                 last_status=self._last_status,
                 last_observed_at=self._last_observed_at,
             )
@@ -402,12 +390,8 @@ def evaluate_service_slo(
     metrics: ServiceMetricsSnapshot,
     *,
     minimum_runs: int = DEFAULT_SHOPMIND_SERVICE_SLO_MIN_RUNS,
-    success_rate_target: float = (
-        DEFAULT_SHOPMIND_SERVICE_SLO_SUCCESS_RATE_TARGET
-    ),
-    p95_latency_target_ms: int = (
-        DEFAULT_SHOPMIND_SERVICE_SLO_P95_LATENCY_MS
-    ),
+    success_rate_target: float = (DEFAULT_SHOPMIND_SERVICE_SLO_SUCCESS_RATE_TARGET),
+    p95_latency_target_ms: int = (DEFAULT_SHOPMIND_SERVICE_SLO_P95_LATENCY_MS),
 ) -> ServiceSloReport:
     """Evaluate closed availability/latency checks over a metrics snapshot."""
 
@@ -425,9 +409,7 @@ def evaluate_service_slo(
         and metrics.latency_window_runs >= minimum_runs
         and metrics.latency_p95_ms is not None
     )
-    success_rate = (
-        round(successful / eligible, 6) if eligible else None
-    )
+    success_rate = round(successful / eligible, 6) if eligible else None
     if not sample_sufficient:
         checks = (
             ServiceSloCheck(
@@ -448,10 +430,7 @@ def evaluate_service_slo(
         )
         status = "insufficient_data"
     else:
-        success_met = (
-            success_rate is not None
-            and success_rate >= success_rate_target
-        )
+        success_met = success_rate is not None and success_rate >= success_rate_target
         latency_met = metrics.latency_p95_ms <= p95_latency_target_ms
         checks = (
             ServiceSloCheck(
@@ -486,11 +465,7 @@ def evaluate_service_slo(
                 ),
             ),
         )
-        status = (
-            "met"
-            if success_met and latency_met
-            else "breached"
-        )
+        status = "met" if success_met and latency_met else "breached"
     return ServiceSloReport(
         status=status,
         eligible_runs_total=eligible,

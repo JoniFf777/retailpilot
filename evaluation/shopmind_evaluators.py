@@ -132,7 +132,9 @@ def expected_keywords_evaluator(
     answer = str(outputs.get("answer") or "")
 
     missing_keywords = [
-        keyword for keyword in expected_keywords if keyword.lower() not in answer.lower()
+        keyword
+        for keyword in expected_keywords
+        if keyword.lower() not in answer.lower()
     ]
     score = not missing_keywords
 
@@ -185,16 +187,16 @@ def debug_metadata_evaluator(
                 f"actual={supervisor_decision.get('intent')}."
             )
 
-        expected_safety_flags = _as_list(
-            reference_outputs.get("expected_safety_flags")
-        )
+        expected_safety_flags = _as_list(reference_outputs.get("expected_safety_flags"))
         if expected_safety_flags:
             actual_safety_flags = set(_as_list(metadata.get("safety_flags")))
             actual_safety_flags.update(
                 _as_list(supervisor_decision.get("safety_flags"))
             )
             missing_flags = [
-                flag for flag in expected_safety_flags if flag not in actual_safety_flags
+                flag
+                for flag in expected_safety_flags
+                if flag not in actual_safety_flags
             ]
             if missing_flags:
                 problems.append(f"Missing safety flags: {missing_flags}.")
@@ -245,9 +247,7 @@ def handoff_chat_status_evaluator(
     """Check the initial /api/chat status for V3 handoff examples."""
     expected_status = reference_outputs.get("expected_chat_status")
     chat_output = outputs.get("chat_output")
-    actual_status = (
-        chat_output.get("status") if isinstance(chat_output, dict) else None
-    )
+    actual_status = chat_output.get("status") if isinstance(chat_output, dict) else None
     score = expected_status == actual_status
 
     return {

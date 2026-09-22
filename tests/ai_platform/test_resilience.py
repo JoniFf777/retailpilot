@@ -78,7 +78,10 @@ def test_gateway_reports_each_attempt_to_observer():
     attempts = []
     gateway = ModelGateway([candidate("primary", 1)], attempt_observer=attempts.append)
 
-    result = gateway.execute(ModelOperation.PLANNER, lambda _model: ModelInvocation(value="ok", duration_ms=3))
+    result = gateway.execute(
+        ModelOperation.PLANNER,
+        lambda _model: ModelInvocation(value="ok", duration_ms=3),
+    )
     assert result.value == "ok"
     assert [attempt.status for attempt in attempts] == ["started", "succeeded"]
 
@@ -98,21 +101,33 @@ def test_gateway_retries_a_candidate_within_its_server_bound():
 
     assert gateway.execute(ModelOperation.PLANNER, invoke).value == "ok"
     assert calls == 2
-    assert [attempt.status for attempt in attempts] == ["started", "failed", "started", "succeeded"]
+    assert [attempt.status for attempt in attempts] == [
+        "started",
+        "failed",
+        "started",
+        "succeeded",
+    ]
 
 
 def test_shared_budget_is_accounted_across_attempts():
     budget = SharedAIBudget(max_total_tokens=3)
     gateway = ModelGateway([candidate("primary", 1)], budget=budget)
-    assert gateway.execute(
-        ModelOperation.PLANNER,
-        lambda _model: ModelInvocation(value="ok", prompt_tokens=1, completion_tokens=2),
-    ).value == "ok"
+    assert (
+        gateway.execute(
+            ModelOperation.PLANNER,
+            lambda _model: ModelInvocation(
+                value="ok", prompt_tokens=1, completion_tokens=2
+            ),
+        ).value
+        == "ok"
+    )
     assert budget.total_tokens == 3
 
 
 def test_cancellation_stops_before_invocation():
     gateway = ModelGateway([candidate("primary", 1)], cancellation_check=lambda: True)
     with pytest.raises(ModelGatewayError) as error:
-        gateway.execute(ModelOperation.PLANNER, lambda _model: ModelInvocation(value="bad"))
+        gateway.execute(
+            ModelOperation.PLANNER, lambda _model: ModelInvocation(value="bad")
+        )
     assert error.value.code == ModelFailureCode.CANCELLED

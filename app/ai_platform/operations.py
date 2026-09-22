@@ -14,15 +14,21 @@ def project_trace_event(event: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "sequence": int(event.get("sequence", 0)),
         "event_type": str(event.get("event_type", "unknown"))[:128],
-        "agent_name": str(event.get("agent_name"))[:64] if event.get("agent_name") else None,
+        "agent_name": (
+            str(event.get("agent_name"))[:64] if event.get("agent_name") else None
+        ),
         "visibility": str(event.get("visibility", "internal"))[:32],
-        "status": str((event.get("payload") or {}).get("status", "unknown"))[:32]
-        if isinstance(event.get("payload"), Mapping)
-        else "unknown",
+        "status": (
+            str((event.get("payload") or {}).get("status", "unknown"))[:32]
+            if isinstance(event.get("payload"), Mapping)
+            else "unknown"
+        ),
     }
 
 
-def project_trace(events: Iterable[Mapping[str, Any]], *, limit: int = 100) -> list[dict[str, Any]]:
+def project_trace(
+    events: Iterable[Mapping[str, Any]], *, limit: int = 100
+) -> list[dict[str, Any]]:
     if limit <= 0 or limit > 100:
         raise ValueError("Trace projection limit must be between 1 and 100.")
     return [project_trace_event(event) for event in list(events)[:limit]]

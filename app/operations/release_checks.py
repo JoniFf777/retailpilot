@@ -16,12 +16,8 @@ from app.runtime.service_monitoring import (
 from .readiness import DeploymentReadinessReport
 
 
-RELEASE_OPERATION_INPUT_SCHEMA_VERSION = (
-    "shopmind.release-operation-input.v1"
-)
-RELEASE_OPERATION_REPORT_SCHEMA_VERSION = (
-    "shopmind.release-operation-check.v1"
-)
+RELEASE_OPERATION_INPUT_SCHEMA_VERSION = "shopmind.release-operation-input.v1"
+RELEASE_OPERATION_REPORT_SCHEMA_VERSION = "shopmind.release-operation-check.v1"
 
 ReleaseOperation = Literal["deployment", "rollback", "incident"]
 ReleaseOperationCheckId = Literal[
@@ -95,7 +91,9 @@ class ReleaseOperationInput(BaseModel):
         "incompatible",
         "unverified",
     ] = "not_applicable"
-    ai_platform_status: Literal["disabled", "ready", "degraded", "not_ready"] = "disabled"
+    ai_platform_status: Literal["disabled", "ready", "degraded", "not_ready"] = (
+        "disabled"
+    )
 
     @model_validator(mode="after")
     def validate_operation_evidence(self) -> "ReleaseOperationInput":
@@ -103,9 +101,7 @@ class ReleaseOperationInput(BaseModel):
             self.service_health.metrics,
             minimum_runs=self.service_health.slo.minimum_runs,
             success_rate_target=self.service_health.slo.success_rate_target,
-            p95_latency_target_ms=(
-                self.service_health.slo.p95_latency_target_ms
-            ),
+            p95_latency_target_ms=(self.service_health.slo.p95_latency_target_ms),
         )
         if (
             self.service_health.status != expected_slo.status
@@ -121,9 +117,7 @@ class ReleaseOperationInput(BaseModel):
             self.rollback_target_status != "not_applicable"
             or self.rollback_migration_status != "not_applicable"
         ):
-            raise ValueError(
-                "Rollback evidence is invalid for this operation."
-            )
+            raise ValueError("Rollback evidence is invalid for this operation.")
         return self
 
 
@@ -394,21 +388,13 @@ def _rollback_checks(
             else ReleaseOperationReason.ROLLBACK_TARGET_UNVERIFIED
         ),
     )
-    migration_compatible = (
-        evidence.rollback_migration_status == "compatible"
-    )
+    migration_compatible = evidence.rollback_migration_status == "compatible"
     if migration_compatible:
-        migration_reason = (
-            ReleaseOperationReason.ROLLBACK_MIGRATION_COMPATIBLE
-        )
+        migration_reason = ReleaseOperationReason.ROLLBACK_MIGRATION_COMPATIBLE
     elif evidence.rollback_migration_status == "incompatible":
-        migration_reason = (
-            ReleaseOperationReason.ROLLBACK_MIGRATION_INCOMPATIBLE
-        )
+        migration_reason = ReleaseOperationReason.ROLLBACK_MIGRATION_INCOMPATIBLE
     else:
-        migration_reason = (
-            ReleaseOperationReason.ROLLBACK_MIGRATION_UNVERIFIED
-        )
+        migration_reason = ReleaseOperationReason.ROLLBACK_MIGRATION_UNVERIFIED
     migration = _check(
         "rollback.migration",
         (
@@ -468,9 +454,7 @@ def evaluate_release_operation(
     failed = sum(check.status == "failed" for check in checks)
     waiting = sum(check.status == "waiting" for check in checks)
     passed = sum(check.status == "passed" for check in checks)
-    not_applicable = sum(
-        check.status == "not_applicable" for check in checks
-    )
+    not_applicable = sum(check.status == "not_applicable" for check in checks)
 
     if evidence.operation == "incident":
         if failed:

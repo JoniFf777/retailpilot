@@ -35,7 +35,9 @@ async def chat(
     # Keep it off the Uvicorn event loop so health checks and other requests
     # remain responsive while a chat run is in progress.
     try:
-        result = await run_in_threadpool(agent_dependency.call_shopmind_agent, **call_kwargs)
+        result = await run_in_threadpool(
+            agent_dependency.call_shopmind_agent, **call_kwargs
+        )
     except Exception as exc:
         log_public_exception(
             "chat.json_execution_failed",

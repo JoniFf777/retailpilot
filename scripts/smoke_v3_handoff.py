@@ -42,11 +42,7 @@ def build_v3_handoff_smoke_summary(
 ) -> dict[str, Any]:
     """Build a compact aggregate summary for the V3 handoff smoke suite."""
     api_failures = list(api_summary.get("failures") or []) if api_summary else []
-    status = (
-        "fail"
-        if postgres_error or api_error or api_failures
-        else "pass"
-    )
+    status = "fail" if postgres_error or api_error or api_failures else "pass"
     postgres_summary: dict[str, Any] = {
         "status": "fail" if postgres_error else "pass",
         "error": postgres_error,
@@ -147,9 +143,7 @@ def run_v3_handoff_smoke_suite(
             cleanup_runtime_state=not preserve_runtime_state,
         )
         api_summary = (
-            asyncio.run(api_result)
-            if hasattr(api_result, "__await__")
-            else api_result
+            asyncio.run(api_result) if hasattr(api_result, "__await__") else api_result
         )
     except Exception as exc:
         return build_v3_handoff_smoke_summary(
@@ -213,13 +207,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(summary, ensure_ascii=False, indent=2))
     else:
         if summary["api_handoff"]["total_cases"]:
-            print(format_api_handoff_smoke_summary({
-                "passed_cases": summary["api_handoff"]["passed_cases"],
-                "total_cases": summary["api_handoff"]["total_cases"],
-                "pass_rate": summary["api_handoff"]["pass_rate"],
-                "event_summary": summary["api_handoff"]["event_summary"],
-                "failures": summary["api_handoff"]["failures"],
-            }))
+            print(
+                format_api_handoff_smoke_summary(
+                    {
+                        "passed_cases": summary["api_handoff"]["passed_cases"],
+                        "total_cases": summary["api_handoff"]["total_cases"],
+                        "pass_rate": summary["api_handoff"]["pass_rate"],
+                        "event_summary": summary["api_handoff"]["event_summary"],
+                        "failures": summary["api_handoff"]["failures"],
+                    }
+                )
+            )
         print(format_v3_handoff_smoke_summary(summary))
     return 0 if summary["status"] == "pass" else 1
 

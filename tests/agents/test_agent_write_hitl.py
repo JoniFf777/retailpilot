@@ -83,14 +83,18 @@ def test_single_agent_preference_intent_uses_shared_write_handoff(monkeypatch) -
     monkeypatch.setattr(
         agent_dependency,
         "get_settings",
-        lambda: SimpleNamespace(shopmind_agent_mode="single", shopmind_agent_task_max_attempts=1),
+        lambda: SimpleNamespace(
+            shopmind_agent_mode="single", shopmind_agent_task_max_attempts=1
+        ),
     )
     monkeypatch.setattr(agent_dependency, "runtime_harness", FakeHarness())
     monkeypatch.setattr(agent_dependency, "invoke_write_handoff", fake_handoff)
     monkeypatch.setattr(
         agent_dependency,
         "invoke_shopmind_agent",
-        lambda **_kwargs: pytest.fail("Single Agent must not execute a direct preference writer"),
+        lambda **_kwargs: pytest.fail(
+            "Single Agent must not execute a direct preference writer"
+        ),
     )
 
     result = agent_dependency.execute_shopmind_agent_run(
@@ -103,7 +107,9 @@ def test_single_agent_preference_intent_uses_shared_write_handoff(monkeypatch) -
     assert calls == [("记住我喜欢安静键盘", "single-user", "single-thread")]
 
 
-def test_prepare_preference_is_canonical_and_does_not_write(preference_session: Session) -> None:
+def test_prepare_preference_is_canonical_and_does_not_write(
+    preference_session: Session,
+) -> None:
     outcome = _prepare()
 
     assert outcome["status"] == "prepared"
@@ -118,12 +124,17 @@ def test_prepare_preference_is_canonical_and_does_not_write(preference_session: 
     assert action.user_id == "hitl-user"
     assert action.thread_id == "hitl-thread"
     assert action.version == 1
-    assert preference_session.scalar(
-        select(UserPreference).where(UserPreference.user_id == "hitl-user")
-    ) is None
+    assert (
+        preference_session.scalar(
+            select(UserPreference).where(UserPreference.user_id == "hitl-user")
+        )
+        is None
+    )
 
 
-def test_confirm_writes_once_and_replay_does_not_duplicate(preference_session: Session) -> None:
+def test_confirm_writes_once_and_replay_does_not_duplicate(
+    preference_session: Session,
+) -> None:
     prepared = _prepare()
     args = {
         "pending_action_id": prepared["pending_action_id"],
@@ -141,7 +152,9 @@ def test_confirm_writes_once_and_replay_does_not_duplicate(preference_session: S
     assert preference_session.query(UserPreference).count() == 1
 
 
-def test_missing_version_owner_mismatch_and_cancel_do_not_write(preference_session: Session) -> None:
+def test_missing_version_owner_mismatch_and_cancel_do_not_write(
+    preference_session: Session,
+) -> None:
     prepared = _prepare()
     pending_id = prepared["pending_action_id"]
 
@@ -181,7 +194,9 @@ def test_missing_version_owner_mismatch_and_cancel_do_not_write(preference_sessi
     assert preference_session.query(UserPreference).count() == 0
 
 
-def test_legacy_preference_action_fails_closed_on_confirm(preference_session: Session) -> None:
+def test_legacy_preference_action_fails_closed_on_confirm(
+    preference_session: Session,
+) -> None:
     legacy = PendingAction(
         id="legacy-preference-action",
         user_id="hitl-user",

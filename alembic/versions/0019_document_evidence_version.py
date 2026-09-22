@@ -17,9 +17,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("documents", sa.Column("evidence_version_id", sa.BigInteger(), nullable=True))
-    op.create_foreign_key("fk_documents_evidence_version", "documents", "shopmind_evidence_versions", ["evidence_version_id"], ["id"], ondelete="SET NULL")
-    op.create_index("idx_documents_evidence_version", "documents", ["evidence_version_id"])
+    op.add_column(
+        "documents", sa.Column("evidence_version_id", sa.BigInteger(), nullable=True)
+    )
+    op.create_foreign_key(
+        "fk_documents_evidence_version",
+        "documents",
+        "shopmind_evidence_versions",
+        ["evidence_version_id"],
+        ["id"],
+        ondelete="SET NULL",
+    )
+    op.create_index(
+        "idx_documents_evidence_version", "documents", ["evidence_version_id"]
+    )
 
 
 def downgrade() -> None:

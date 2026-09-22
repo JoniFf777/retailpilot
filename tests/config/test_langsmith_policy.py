@@ -99,12 +99,8 @@ def test_process_environment_beats_dotenv_values(monkeypatch):
 
     def fake_dotenv_loader(**_kwargs):
         langsmith_policy.os.environ.setdefault("LANGSMITH_TRACING", "true")
-        langsmith_policy.os.environ.setdefault(
-            "LANGSMITH_PROJECT", "dotenv-project"
-        )
-        langsmith_policy.os.environ.setdefault(
-            "LANGSMITH_TRACING_SAMPLING_RATE", "0.9"
-        )
+        langsmith_policy.os.environ.setdefault("LANGSMITH_PROJECT", "dotenv-project")
+        langsmith_policy.os.environ.setdefault("LANGSMITH_TRACING_SAMPLING_RATE", "0.9")
 
     runtime = initialize_langsmith_runtime(dotenv_loader=fake_dotenv_loader)
 

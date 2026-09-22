@@ -38,7 +38,9 @@ class CatalogSkuCandidate(BaseModel):
     currency: str
     product_attributes: dict[str, object] = Field(default_factory=dict)
     variant_attributes: dict[str, object] = Field(default_factory=dict)
-    attribute_definitions: list[CatalogAttributeDefinition] = Field(default_factory=list)
+    attribute_definitions: list[CatalogAttributeDefinition] = Field(
+        default_factory=list
+    )
     available_quantity: int
 
     @property
@@ -55,11 +57,14 @@ class CatalogIdentifierResolution(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     status: Literal["resolved", "not_found", "ambiguous"]
-    code: Literal[
-        "catalog_not_found",
-        "catalog_identifier_ambiguous",
-        "sku_ambiguous",
-    ] | None = None
+    code: (
+        Literal[
+            "catalog_not_found",
+            "catalog_identifier_ambiguous",
+            "sku_ambiguous",
+        ]
+        | None
+    ) = None
     product_id: UUID | None = None
     sku_id: UUID | None = None
     matched_namespaces: tuple[IdentifierNamespace, ...] = ()

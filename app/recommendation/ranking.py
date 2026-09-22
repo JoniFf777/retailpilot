@@ -6,7 +6,10 @@ from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
-from app.recommendation.categories.models import CategoryAttributeDefinition, CategoryDefinition
+from app.recommendation.categories.models import (
+    CategoryAttributeDefinition,
+    CategoryDefinition,
+)
 from app.recommendation.constraints import (
     candidate_value,
     evaluate_constraint,
@@ -46,7 +49,11 @@ def _normalization_bounds(
         if value is None:
             continue
         try:
-            values.append(_enum_numeric(definition, value) if definition.type == "enum" else _decimal(value))
+            values.append(
+                _enum_numeric(definition, value)
+                if definition.type == "enum"
+                else _decimal(value)
+            )
         except (TypeError, ValueError, ArithmeticError):
             continue
     if not values:
@@ -64,7 +71,11 @@ def _intrinsic_signal(
     if definition.ranking in {"exact_match", "preference_match"}:
         return Decimal("0.5")
     try:
-        numeric = _enum_numeric(definition, value) if definition.type == "enum" else _decimal(value)
+        numeric = (
+            _enum_numeric(definition, value)
+            if definition.type == "enum"
+            else _decimal(value)
+        )
     except (TypeError, ValueError, ArithmeticError):
         return Decimal("0")
     bounds = _normalization_bounds(definition, candidates)
@@ -106,7 +117,11 @@ def _score_candidate(
     for attribute in definition.attributes:
         value = candidate_value(attribute, attributes)
         constraint = constraints.get(attribute.key)
-        role = constraint.role if constraint is not None and constraint.role is not None else attribute.role
+        role = (
+            constraint.role
+            if constraint is not None and constraint.role is not None
+            else attribute.role
+        )
         if role == "display_only":
             continue
         if value is None and constraint is not None and role == "soft":
@@ -137,7 +152,9 @@ def _score_candidate(
         active_weight += weight
         weighted_total += weight * signal
         max_points = max(1, int(weight.to_integral_value(rounding=ROUND_HALF_UP)))
-        points = int((Decimal(max_points) * signal).to_integral_value(rounding=ROUND_HALF_UP))
+        points = int(
+            (Decimal(max_points) * signal).to_integral_value(rounding=ROUND_HALF_UP)
+        )
         breakdown.append(
             ScoreBreakdownItem(
                 code=attribute.key,
@@ -150,7 +167,11 @@ def _score_candidate(
     if active_weight == 0:
         score = 50
     else:
-        score = int((Decimal("100") * weighted_total / active_weight).to_integral_value(rounding=ROUND_HALF_UP))
+        score = int(
+            (Decimal("100") * weighted_total / active_weight).to_integral_value(
+                rounding=ROUND_HALF_UP
+            )
+        )
     return RankedCandidate(
         candidate=candidate,
         score=max(0, min(100, score)),
@@ -185,7 +206,9 @@ def filter_candidates(
         rejected = False
         for attribute in definition.attributes:
             value = candidate_value(attribute, candidate_attributes)
-            if value is None and (attribute.required or attribute.missing == "reject_if_hard"):
+            if value is None and (
+                attribute.required or attribute.missing == "reject_if_hard"
+            ):
                 rejected = True
                 break
             constraint = constraints.get(attribute.key)
@@ -222,4 +245,11 @@ def rank_candidates(
         _score_candidate(candidate, definition, constraints, eligible)
         for candidate in eligible
     ]
-    return sorted(ranked, key=lambda item: (-item.score, item.candidate.money_amount, item.candidate.sku_code))
+    return sorted(
+        ranked,
+        key=lambda item: (
+            -item.score,
+            item.candidate.money_amount,
+            item.candidate.sku_code,
+        ),
+    )

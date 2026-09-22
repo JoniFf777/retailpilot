@@ -10,10 +10,7 @@ class InterruptHandler:
     """Detects and responds to LangGraph interrupts during simulation."""
 
     def generate_email_response(
-        self,
-        interrupt_msg: str,
-        customer_email: str,
-        persona: Dict
+        self, interrupt_msg: str, customer_email: str, persona: Dict
     ) -> str:
         """
         Generate natural-sounding email response based on persona.

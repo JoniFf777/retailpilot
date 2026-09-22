@@ -20,19 +20,61 @@ from app.recommendation.rag import (
 )
 from app.recommendation.providers import SqlAlchemyRecommendationPreferenceProvider
 from app.schemas.catalog import CatalogAttributeDefinition, CatalogSkuCandidate
-from app.schemas.recommendation import CategoryAttributeConstraint, EvidenceView, RecommendationResult
+from app.schemas.recommendation import (
+    CategoryAttributeConstraint,
+    EvidenceView,
+    RecommendationResult,
+)
 
 
 def _candidate(code: str, *, price: str, use_cases: list[str]) -> CatalogSkuCandidate:
     return CatalogSkuCandidate(
-        product_id=uuid4(), product_code=f"P-{code}", product_name=f"Laptop {code}",
-        brand="Test", sku_id=uuid4(), sku_code=code, sku_name=code,
-        money_amount=Decimal(price), currency="CNY", available_quantity=4,
-        product_attributes={"cpu_tier": "i7", "gpu_tier": "entry", "memory_gb": 16, "storage_gb": 512, "weight_kg": 1.3, "screen_inches": 14, "use_cases": use_cases, "internal": "hidden"},
+        product_id=uuid4(),
+        product_code=f"P-{code}",
+        product_name=f"Laptop {code}",
+        brand="Test",
+        sku_id=uuid4(),
+        sku_code=code,
+        sku_name=code,
+        money_amount=Decimal(price),
+        currency="CNY",
+        available_quantity=4,
+        product_attributes={
+            "cpu_tier": "i7",
+            "gpu_tier": "entry",
+            "memory_gb": 16,
+            "storage_gb": 512,
+            "weight_kg": 1.3,
+            "screen_inches": 14,
+            "use_cases": use_cases,
+            "internal": "hidden",
+        },
         attribute_definitions=[
-            CatalogAttributeDefinition(code="memory_gb", name="Memory", scope="spu", data_type="integer", unit="GB", comparable=True, display_order=10),
-            CatalogAttributeDefinition(code="storage_gb", name="Storage", scope="spu", data_type="integer", unit="GB", comparable=True, display_order=20),
-            CatalogAttributeDefinition(code="use_cases", name="Use cases", scope="spu", data_type="string_list", display_order=30),
+            CatalogAttributeDefinition(
+                code="memory_gb",
+                name="Memory",
+                scope="spu",
+                data_type="integer",
+                unit="GB",
+                comparable=True,
+                display_order=10,
+            ),
+            CatalogAttributeDefinition(
+                code="storage_gb",
+                name="Storage",
+                scope="spu",
+                data_type="integer",
+                unit="GB",
+                comparable=True,
+                display_order=20,
+            ),
+            CatalogAttributeDefinition(
+                code="use_cases",
+                name="Use cases",
+                scope="spu",
+                data_type="string_list",
+                display_order=30,
+            ),
         ],
     )
 
@@ -43,8 +85,19 @@ def test_structured_laptop_graph_uses_catalog_top_k_before_exact_rag() -> None:
     candidates = FakeCatalogCandidateProvider([second, first])
     evidence = FakeRecommendationEvidenceProvider(
         RecommendationEvidence(
-            product_evidence={"LAP-A": [EvidenceView(source="product_rag", type="product_document", field="document_excerpt", value="safe", ref="doc-1")]},
-            policy_evidence=[], diagnostics={"product_document_count": 1},
+            product_evidence={
+                "LAP-A": [
+                    EvidenceView(
+                        source="product_rag",
+                        type="product_document",
+                        field="document_excerpt",
+                        value="safe",
+                        ref="doc-1",
+                    )
+                ]
+            },
+            policy_evidence=[],
+            diagnostics={"product_document_count": 1},
         )
     )
     result = invoke_shopmind_multi_agent(
@@ -57,19 +110,30 @@ def test_structured_laptop_graph_uses_catalog_top_k_before_exact_rag() -> None:
     recommendation = RecommendationResult.model_validate(result["recommendation"])
     assert candidates.calls == 1
     assert evidence.calls == [["LAP-A", "LAP-B"]]
-    assert [item.sku_id for item in recommendation.recommendations] == [first.sku_id, second.sku_id]
+    assert [item.sku_id for item in recommendation.recommendations] == [
+        first.sku_id,
+        second.sku_id,
+    ]
     assert recommendation.recommendations[0].evidence[0].source == "product_rag"
     assert result["shopping_session_state"]["field_sources"]["memory_min_gb"] == "user"
-    assert [spec.code for spec in recommendation.recommendations[0].specifications] == ["memory_gb", "storage_gb", "use_cases"]
+    assert [spec.code for spec in recommendation.recommendations[0].specifications] == [
+        "memory_gb",
+        "storage_gb",
+        "use_cases",
+    ]
     assert "internal" not in str(recommendation.model_dump())
     assert result["raw_result"]["agent_steps"][-1]["node"] == "recommendation_decision"
 
 
-def test_incomplete_laptop_request_returns_structured_clarification_without_rag() -> None:
+def test_incomplete_laptop_request_returns_structured_clarification_without_rag() -> (
+    None
+):
     evidence = FakeRecommendationEvidenceProvider()
     result = invoke_shopmind_multi_agent(
         "推荐一台笔记本",
-        catalog_candidate_provider=FakeCatalogCandidateProvider([_candidate("LAP-A", price="4999", use_cases=[])]),
+        catalog_candidate_provider=FakeCatalogCandidateProvider(
+            [_candidate("LAP-A", price="4999", use_cases=[])]
+        ),
         recommendation_preference_provider=FakeRecommendationPreferenceProvider(),
         recommendation_evidence_provider=evidence,
     )
@@ -95,7 +159,10 @@ def test_recommendation_evidence_failure_keeps_catalog_result() -> None:
     recommendation = RecommendationResult.model_validate(result["recommendation"])
     assert recommendation.outcome == "recommended"
     assert recommendation.recommendations[0].evidence == []
-    assert result["raw_result"]["recommendation_diagnostics"]["evidence_unavailable"] is True
+    assert (
+        result["raw_result"]["recommendation_diagnostics"]["evidence_unavailable"]
+        is True
+    )
 
 
 def test_rag_agent_without_local_tools_returns_safe_summary() -> None:
@@ -150,10 +217,17 @@ def test_confirmed_soft_preference_changes_recommendation_ranking() -> None:
 
     recommendation = RecommendationResult.model_validate(result["recommendation"])
     assert recommendation.recommendations[0].sku_name == "LAP-JAVA"
-    assert result["raw_result"]["recommendation_diagnostics"]["preference_used_for_ranking"] is True
+    assert (
+        result["raw_result"]["recommendation_diagnostics"][
+            "preference_used_for_ranking"
+        ]
+        is True
+    )
 
 
-def test_recommendation_follow_up_inherits_thread_context_and_overrides_budget() -> None:
+def test_recommendation_follow_up_inherits_thread_context_and_overrides_budget() -> (
+    None
+):
     candidate = _candidate("LAP-CONTEXT", price="6500", use_cases=["java_development"])
     result = invoke_shopmind_multi_agent(
         "预算改成7000元，其他要求不变",
@@ -162,7 +236,11 @@ def test_recommendation_follow_up_inherits_thread_context_and_overrides_budget()
         context_items=[
             {
                 "content": "预算6000元以内，推荐一台用于Java开发的笔记本，内存至少16GB",
-                "provenance": {"source": "conversation_message", "role": "user", "sequence": 1},
+                "provenance": {
+                    "source": "conversation_message",
+                    "role": "user",
+                    "sequence": 1,
+                },
             }
         ],
         catalog_candidate_provider=FakeCatalogCandidateProvider([candidate]),
@@ -173,13 +251,25 @@ def test_recommendation_follow_up_inherits_thread_context_and_overrides_budget()
     assert recommendation.outcome == "recommended"
     assert recommendation.recommendation_request is not None
     assert recommendation.recommendation_request.budget_max == Decimal("7000")
-    assert str(recommendation.recommendation_request.category_attributes["memory_min_gb"]["value"]) == "16"
-    assert result["raw_result"]["recommendation_gate"]["reason"] == "category_inherited_from_thread_context"
+    assert (
+        str(
+            recommendation.recommendation_request.category_attributes["memory_min_gb"][
+                "value"
+            ]
+        )
+        == "16"
+    )
+    assert (
+        result["raw_result"]["recommendation_gate"]["reason"]
+        == "category_inherited_from_thread_context"
+    )
     assert result["shopping_session_state"]["version"] == 1
 
 
 def test_recommendation_follow_up_can_clear_an_inherited_budget() -> None:
-    candidate = _candidate("LAP-CLEAR-BUDGET", price="6500", use_cases=["java_development"])
+    candidate = _candidate(
+        "LAP-CLEAR-BUDGET", price="6500", use_cases=["java_development"]
+    )
     result = invoke_shopmind_multi_agent(
         "预算不限，其他要求不变",
         user_id="context-user",
@@ -187,7 +277,11 @@ def test_recommendation_follow_up_can_clear_an_inherited_budget() -> None:
         context_items=[
             {
                 "content": "预算6000元以内，推荐一台用于Java开发的笔记本，内存至少16GB",
-                "provenance": {"source": "conversation_message", "role": "user", "sequence": 1},
+                "provenance": {
+                    "source": "conversation_message",
+                    "role": "user",
+                    "sequence": 1,
+                },
             }
         ],
         catalog_candidate_provider=FakeCatalogCandidateProvider([candidate]),
@@ -198,7 +292,14 @@ def test_recommendation_follow_up_can_clear_an_inherited_budget() -> None:
     assert recommendation.outcome == "recommended"
     assert recommendation.recommendation_request is not None
     assert recommendation.recommendation_request.budget_max is None
-    assert str(recommendation.recommendation_request.category_attributes["memory_min_gb"]["value"]) == "16"
+    assert (
+        str(
+            recommendation.recommendation_request.category_attributes["memory_min_gb"][
+                "value"
+            ]
+        )
+        == "16"
+    )
 
 
 def test_recommendation_can_resume_from_persisted_structured_state() -> None:
@@ -218,7 +319,11 @@ def test_recommendation_can_resume_from_persisted_structured_state() -> None:
                         "budget_max": "6000",
                         "budget_currency": "CNY",
                         "category_attributes": {
-                            "memory_min_gb": {"value": "16", "operator": "gte", "role": "hard"}
+                            "memory_min_gb": {
+                                "value": "16",
+                                "operator": "gte",
+                                "role": "hard",
+                            }
                         },
                     },
                 },
@@ -234,7 +339,9 @@ def test_recommendation_can_resume_from_persisted_structured_state() -> None:
     assert recommendation.recommendation_request.budget_max == Decimal("7000")
 
 
-def test_recommendation_follow_up_excludes_an_item_from_previous_ordered_candidates() -> None:
+def test_recommendation_follow_up_excludes_an_item_from_previous_ordered_candidates() -> (
+    None
+):
     first = _candidate("LAP-ONE", price="5000", use_cases=["java_development"])
     second = _candidate("LAP-TWO", price="5100", use_cases=["java_development"])
     result = invoke_shopmind_multi_agent(
@@ -256,7 +363,11 @@ def test_recommendation_follow_up_excludes_an_item_from_previous_ordered_candida
                         "budget_max": "6000",
                         "budget_currency": "CNY",
                         "category_attributes": {
-                            "memory_min_gb": {"value": "16", "operator": "gte", "role": "hard"}
+                            "memory_min_gb": {
+                                "value": "16",
+                                "operator": "gte",
+                                "role": "hard",
+                            }
                         },
                         "candidate_sku_codes": ["LAP-ONE", "LAP-TWO"],
                     },
@@ -272,10 +383,12 @@ def test_recommendation_follow_up_excludes_an_item_from_previous_ordered_candida
     assert [item.sku_name for item in recommendation.recommendations] == ["LAP-ONE"]
 
 
-def test_lexical_retrieval_survives_embedding_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    candidate = _candidate("LAP-LEXICAL", price="5000", use_cases=["office"]).model_copy(
-        update={"legacy_product_id": "LEGACY-LAP-LEXICAL"}
-    )
+def test_lexical_retrieval_survives_embedding_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    candidate = _candidate(
+        "LAP-LEXICAL", price="5000", use_cases=["office"]
+    ).model_copy(update={"legacy_product_id": "LEGACY-LAP-LEXICAL"})
 
     class Session:
         def rollback(self) -> None:
@@ -291,17 +404,25 @@ def test_lexical_retrieval_survives_embedding_failure(monkeypatch: pytest.Monkey
     monkeypatch.setattr(
         document_repository,
         "search_product_documents_for_product_ids",
-        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("embedding unavailable")),
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("embedding unavailable")
+        ),
     )
     monkeypatch.setattr(
         document_repository,
         "search_keyword_documents",
         lambda *args, **kwargs: [
-            {"id": "doc-lexical", "product_id": "LEGACY-LAP-LEXICAL", "content": "Office keyboard details."}
+            {
+                "id": "doc-lexical",
+                "product_id": "LEGACY-LAP-LEXICAL",
+                "content": "Office keyboard details.",
+            }
         ],
     )
     provider = SqlAlchemyRecommendationEvidenceProvider(
-        embed_query=lambda _query: (_ for _ in ()).throw(RuntimeError("embedding unavailable"))
+        embed_query=lambda _query: (_ for _ in ()).throw(
+            RuntimeError("embedding unavailable")
+        )
     )
 
     evidence = provider.retrieve(message="office keyboard", top_k=[candidate])
@@ -328,7 +449,10 @@ def test_document_dependent_recommendation_does_not_claim_unknown_evidence() -> 
     recommendation = RecommendationResult.model_validate(result["recommendation"])
     assert recommendation.outcome == "clarification_required"
     assert recommendation.error_code == "evidence_unknown"
-    assert result["raw_result"]["recommendation_diagnostics"]["evidence_status"] == "unknown"
+    assert (
+        result["raw_result"]["recommendation_diagnostics"]["evidence_status"]
+        == "unknown"
+    )
 
 
 def test_document_evidence_breaks_catalog_ties_for_document_dependent_request() -> None:
@@ -361,7 +485,9 @@ def test_document_evidence_breaks_catalog_ties_for_document_dependent_request() 
     assert recommendation.recommendations[0].sku_name == "LAP-WITH-EVIDENCE"
 
 
-def test_avoid_preference_is_converted_to_exclusion(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_avoid_preference_is_converted_to_exclusion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from contextlib import contextmanager
     import app.recommendation.providers as providers_module
 
@@ -382,8 +508,10 @@ def test_avoid_preference_is_converted_to_exclusion(monkeypatch: pytest.MonkeyPa
         ],
     )
 
-    constraints = SqlAlchemyRecommendationPreferenceProvider().preference_constraints_for_user(
-        "user-1", "laptop"
+    constraints = (
+        SqlAlchemyRecommendationPreferenceProvider().preference_constraints_for_user(
+            "user-1", "laptop"
+        )
     )
     assert constraints["primary_use_cases"].value == ["gaming"]
     assert constraints["primary_use_cases"].polarity == "exclude"
@@ -391,10 +519,15 @@ def test_avoid_preference_is_converted_to_exclusion(monkeypatch: pytest.MonkeyPa
 
 def test_excluded_soft_preference_does_not_reward_the_excluded_candidate() -> None:
     from app.recommendation.categories import default_category_registry
-    from app.recommendation.constraints import evaluate_constraint_status, preference_signal
+    from app.recommendation.constraints import (
+        evaluate_constraint_status,
+        preference_signal,
+    )
 
-    definition = default_category_registry().schema_for("laptop").attribute_for(
-        "primary_use_cases"
+    definition = (
+        default_category_registry()
+        .schema_for("laptop")
+        .attribute_for("primary_use_cases")
     )
     assert definition is not None
     excluded = CategoryAttributeConstraint(
@@ -403,12 +536,20 @@ def test_excluded_soft_preference_does_not_reward_the_excluded_candidate() -> No
     assert preference_signal(definition, excluded, ["gaming"]) == 0
     assert preference_signal(definition, excluded, ["office"]) == 1
     assert evaluate_constraint_status(definition, excluded, None) == "unknown"
-    assert evaluate_constraint_status(definition, excluded, ["gaming", "office"]) == "mismatch"
-    assert evaluate_constraint_status(definition, excluded, ["not-a-known-use-case"]) == "unknown"
+    assert (
+        evaluate_constraint_status(definition, excluded, ["gaming", "office"])
+        == "mismatch"
+    )
+    assert (
+        evaluate_constraint_status(definition, excluded, ["not-a-known-use-case"])
+        == "unknown"
+    )
 
 
 def test_retrieval_budget_keeps_recall_fusion_and_context_limits_distinct() -> None:
-    budget = RetrievalBudget(recall_per_scope=3, candidate_limit=8, context_per_candidate=2)
+    budget = RetrievalBudget(
+        recall_per_scope=3, candidate_limit=8, context_per_candidate=2
+    )
     assert budget.recall_per_scope == 3
     assert budget.candidate_limit == 8
     assert budget.context_per_candidate == 2
@@ -465,7 +606,11 @@ def test_structured_recommendation_accepts_a_server_owned_short_dynamic_plan() -
     assert recommendation.outcome == "recommended"
     task = result["raw_result"]["recommendation_task"]
     assert task["status"] == "completed"
-    assert [event["stage"] for event in task["stage_events"] if event["status"] == "completed"] == [
+    assert [
+        event["stage"]
+        for event in task["stage_events"]
+        if event["status"] == "completed"
+    ] == [
         "catalog",
         "ranking",
         "decision",

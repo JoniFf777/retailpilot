@@ -10,7 +10,14 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 SHOPPING_CAPABILITIES = frozenset(
-    {"shopping", "product_selection", "comparison", "compatibility", "store_policy", "commerce_action"}
+    {
+        "shopping",
+        "product_selection",
+        "comparison",
+        "compatibility",
+        "store_policy",
+        "commerce_action",
+    }
 )
 
 
@@ -25,7 +32,9 @@ class ExtensionDefinition(BaseModel):
     enabled: bool = True
     content: str = Field(default="", max_length=100_000)
     tool_ids: tuple[str, ...] = ()
-    side_effect: str = Field(default="none", pattern=r"^(none|read|write|sensitive_write)$")
+    side_effect: str = Field(
+        default="none", pattern=r"^(none|read|write|sensitive_write)$"
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -34,7 +43,10 @@ class ExtensionDefinition(BaseModel):
             raise ValueError("Extension capability is outside ShopMind scope.")
         if self.extension_type == "skill" and not self.content.strip():
             raise ValueError("Skills require bounded instructions.")
-        if self.extension_type == "mcp_tool" and self.side_effect in {"write", "sensitive_write"}:
+        if self.extension_type == "mcp_tool" and self.side_effect in {
+            "write",
+            "sensitive_write",
+        }:
             raise ValueError("MCP business writers require an explicit Action mapping.")
         return self
 
@@ -66,7 +78,9 @@ class ExtensionRegistry:
             if definition_key in keys:
                 raise ValueError("Extension keys must be unique per type.")
             keys.add(definition_key)
-        self._snapshot = ExtensionSnapshot(snapshot.version, tuple(snapshot.definitions))
+        self._snapshot = ExtensionSnapshot(
+            snapshot.version, tuple(snapshot.definitions)
+        )
 
     def enabled_for(self, extension_type: str) -> tuple[ExtensionDefinition, ...]:
         return tuple(
@@ -86,7 +100,9 @@ def validate_mcp_tool(
     if definition.extension_key not in allowed_tool_ids:
         raise ValueError("MCP tool is not allowlisted.")
     if definition.side_effect != "read":
-        raise ValueError("Only read-only MCP tools are admitted by the first registry slice.")
+        raise ValueError(
+            "Only read-only MCP tools are admitted by the first registry slice."
+        )
     return definition
 
 

@@ -198,7 +198,11 @@ def run_result_to_legacy_response(
         "pending_action_id": result.pending_action_id,
         "run_id": result.run_id,
         "trace_id": result.trace_id,
-        "retry_state": public_failure.retry_state if public_failure else result.metadata.get("retry_state", "terminal"),
+        "retry_state": (
+            public_failure.retry_state
+            if public_failure
+            else result.metadata.get("retry_state", "terminal")
+        ),
         "runtime_error_code": public_failure.code if public_failure else error_code,
         "authoritative_run_id": (
             public_failure.authoritative_run_id
@@ -230,7 +234,9 @@ class ShopMindRuntimeHarness:
         from .service_monitoring import runtime_service_monitor
 
         self._session_factory = session_factory
-        self._context_manager = context_manager or RuntimeContextManager(session_factory)
+        self._context_manager = context_manager or RuntimeContextManager(
+            session_factory
+        )
         self._governance_audit_emitter = (
             governance_audit_emitter
             if governance_audit_emitter is not None
@@ -274,9 +280,7 @@ class ShopMindRuntimeHarness:
                 result,
                 operation=request.operation,
                 duration_ms=max(0.0, (perf_counter() - started) * 1000),
-                replayed=bool(
-                    result.metadata.get("idempotency_replayed", False)
-                ),
+                replayed=bool(result.metadata.get("idempotency_replayed", False)),
             )
         except Exception:
             pass
@@ -304,9 +308,7 @@ class ShopMindRuntimeHarness:
             replay_event = self._build_event(
                 sequence=1,
                 event_type=(
-                    "run.replayed"
-                    if replay_result.error is None
-                    else "run.rejected"
+                    "run.replayed" if replay_result.error is None else "run.rejected"
                 ),
                 visibility=EventVisibility.CLIENT,
                 trace_id=replay_result.trace_id,
@@ -341,7 +343,9 @@ class ShopMindRuntimeHarness:
         if start_result is not None:
             recovery_event = self._build_event(
                 sequence=1,
-                event_type="run.replayed" if start_result.error is None else "run.rejected",
+                event_type=(
+                    "run.replayed" if start_result.error is None else "run.rejected"
+                ),
                 visibility=EventVisibility.CLIENT,
                 trace_id=start_result.trace_id,
                 payload={
@@ -371,7 +375,10 @@ class ShopMindRuntimeHarness:
                 runtime_error = self._as_runtime_error(exc)
                 if runtime_error.usage is not None:
                     failed_attempt_usages.append(runtime_error.usage)
-                if attempt < max(0, context.policy.max_retries) and runtime_error.retriable:
+                if (
+                    attempt < max(0, context.policy.max_retries)
+                    and runtime_error.retriable
+                ):
                     attempt += 1
                     events.append(
                         self._build_event(
@@ -458,7 +465,9 @@ class ShopMindRuntimeHarness:
                 idempotency_key=key,
             )
 
-            if record is None or self._idempotency_record_expired(record, context.started_at):
+            if record is None or self._idempotency_record_expired(
+                record, context.started_at
+            ):
                 return None
             if record["request_hash"] != self._request_hash(context.request):
                 return self._idempotency_error_result(
@@ -686,7 +695,10 @@ class ShopMindRuntimeHarness:
                 "runtime.step_budget_exceeded",
                 "run step budget has been exceeded",
                 source=ErrorSource.AGENT,
-                details={"max_steps": context.budget.max_steps, "actual_steps": len(agent_steps)},
+                details={
+                    "max_steps": context.budget.max_steps,
+                    "actual_steps": len(agent_steps),
+                },
             )
         if (
             context.budget.max_tool_calls is not None
@@ -916,12 +928,18 @@ class ShopMindRuntimeHarness:
         events: list[AgentEvent],
         raw_result: dict[str, Any],
     ) -> RunResult:
-        debug = raw_result.get("debug") if isinstance(raw_result.get("debug"), dict) else None
+        debug = (
+            raw_result.get("debug")
+            if isinstance(raw_result.get("debug"), dict)
+            else None
+        )
         status = _status_from_legacy(raw_result.get("status"))
         tool_calls = [str(tool_name) for tool_name in raw_result.get("tool_calls", [])]
         agent_steps = []
         if debug is not None and isinstance(debug.get("agent_steps"), list):
-            agent_steps = [step for step in debug["agent_steps"] if isinstance(step, dict)]
+            agent_steps = [
+                step for step in debug["agent_steps"] if isinstance(step, dict)
+            ]
 
         next_sequence = len(events) + 1
         for step in agent_steps:
@@ -950,7 +968,9 @@ class ShopMindRuntimeHarness:
             next_sequence += 1
 
         tool_status = (
-            ToolCallStatus.FAILED if status == RunStatus.FAILED else ToolCallStatus.COMPLETED
+            ToolCallStatus.FAILED
+            if status == RunStatus.FAILED
+            else ToolCallStatus.COMPLETED
         )
         tool_call_records = self._tool_call_records_from_result(
             raw_result,
@@ -1190,9 +1210,7 @@ class ShopMindRuntimeHarness:
         )
         failure_usage = usage or runtime_error.usage or RunUsage()
         if tool_call_record is not None and failure_usage.tool_call_count < 1:
-            failure_usage = failure_usage.model_copy(
-                update={"tool_call_count": 1}
-            )
+            failure_usage = failure_usage.model_copy(update={"tool_call_count": 1})
         return RunResult(
             run_id=context.run_id,
             runtime_thread_id=context.runtime_thread_id,
@@ -1333,9 +1351,7 @@ class ShopMindRuntimeHarness:
                         metadata={"request_id": context.request.request_id},
                     )
                     if not claim.claimed:
-                        return self._claim_record_result(
-                            context, session, claim.record
-                        )
+                        return self._claim_record_result(context, session, claim.record)
 
                 thread_expires_at = context.started_at + timedelta(
                     days=DEFAULT_THREAD_RETENTION_DAYS
@@ -1495,13 +1511,16 @@ class ShopMindRuntimeHarness:
                     output_text=result.answer,
                     result_json=result.output_data,
                     error_json=(
-                        None if result.error is None else result.error.model_dump(mode="json")
+                        None
+                        if result.error is None
+                        else result.error.model_dump(mode="json")
                     ),
                     usage_json=result.usage.model_dump(mode="json"),
                     debug_json=result.debug,
                     pending_action_id=result.pending_action_id,
                     tool_call_records_json=[
-                        record.model_dump(mode="json") for record in result.tool_call_records
+                        record.model_dump(mode="json")
+                        for record in result.tool_call_records
                     ],
                     metadata=result.metadata,
                 )
@@ -1538,7 +1557,9 @@ class ShopMindRuntimeHarness:
                 # already-computed business/runtime result.
                 pass
 
-    def _persist_or_fail_closed(self, context: RunContext, result: RunResult) -> RunResult:
+    def _persist_or_fail_closed(
+        self, context: RunContext, result: RunResult
+    ) -> RunResult:
         try:
             self._persist_finish(context, result)
         except RuntimeIdempotencyPersistenceError as exc:

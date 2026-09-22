@@ -267,10 +267,8 @@ def governance_fingerprint(
         or any(ord(character) < 32 for character in normalized)
     ):
         raise ValueError("Governance audit fingerprint input is invalid.")
-    encoded = (
-        f"shopmind.governance-audit.v1\0{namespace.value}\0{normalized}".encode(
-            "utf-8"
-        )
+    encoded = f"shopmind.governance-audit.v1\0{namespace.value}\0{normalized}".encode(
+        "utf-8"
     )
     return hashlib.sha256(encoded).hexdigest()
 
@@ -351,21 +349,19 @@ class GovernanceAuditRecord(BaseModel):
                 raise ValueError("Principal audit actors require a fingerprint.")
         elif self.actor_fingerprint is not None:
             raise ValueError("Only principal audit actors may carry a fingerprint.")
-        present_metadata = set(
-            self.metadata.model_dump(exclude_none=True, mode="json")
-        )
+        present_metadata = set(self.metadata.model_dump(exclude_none=True, mode="json"))
         if not present_metadata.issubset(_ALLOWED_METADATA_FIELDS[category]):
             raise ValueError("Governance audit metadata is invalid for category.")
         required_metadata = set(_REQUIRED_METADATA_FIELDS[category])
-        if (
-            category == AuditCategory.MEMORY
-            and decision == AuditDecision.NOT_FOUND
-        ):
+        if category == AuditCategory.MEMORY and decision == AuditDecision.NOT_FOUND:
             required_metadata.difference_update({"memory_kind", "memory_scope"})
         missing = required_metadata.difference(present_metadata)
         if missing:
             raise ValueError("Governance audit metadata is incomplete for category.")
-        if category != AuditCategory.AUTHENTICATION and self.resource_fingerprint is None:
+        if (
+            category != AuditCategory.AUTHENTICATION
+            and self.resource_fingerprint is None
+        ):
             raise ValueError("Governance resource decisions require a fingerprint.")
         if self.occurred_at.tzinfo is None or self.occurred_at.utcoffset() is None:
             raise ValueError("Governance audit timestamps must be timezone-aware.")

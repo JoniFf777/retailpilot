@@ -17,21 +17,32 @@ ALLOWED_PREFERENCE_TYPES = preference_repository.ALLOWED_PREFERENCE_TYPES
 
 
 class GetUserPreferencesInput(BaseModel):
-    user_id: str = Field(..., min_length=1, description="用户 ID，用于读取该用户已记录的购物偏好。")
+    user_id: str = Field(
+        ..., min_length=1, description="用户 ID，用于读取该用户已记录的购物偏好。"
+    )
 
 
 class AddUserPreferenceInput(BaseModel):
-    user_id: str = Field(..., min_length=1, description="用户 ID，用于保存该用户的购物偏好。")
+    user_id: str = Field(
+        ..., min_length=1, description="用户 ID，用于保存该用户的购物偏好。"
+    )
     preference_type: str = Field(
         ...,
         min_length=1,
         description="偏好类型。允许 budget、brand、avoid、usage、style、other；其他类型会自动归为 other。",
     )
-    preference_value: str = Field(..., min_length=1, max_length=2000, description="偏好内容，例如预算 1000 美元以内、偏好 Apple、避免缺货商品。")
+    preference_value: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="偏好内容，例如预算 1000 美元以内、偏好 Apple、避免缺货商品。",
+    )
 
 
 class ClearUserPreferencesInput(BaseModel):
-    user_id: str = Field(..., min_length=1, description="用户 ID，用于清空该用户的全部偏好记录。")
+    user_id: str = Field(
+        ..., min_length=1, description="用户 ID，用于清空该用户的全部偏好记录。"
+    )
 
 
 @contextmanager
@@ -98,7 +109,9 @@ def get_user_preferences(user_id: str) -> str:
 
 
 @tool(args_schema=AddUserPreferenceInput)
-def add_user_preference(user_id: str, preference_type: str, preference_value: str) -> str:
+def add_user_preference(
+    user_id: str, preference_type: str, preference_value: str
+) -> str:
     """新增一条用户购物偏好，适合在用户明确表达预算、品牌偏好、用途、风格或需要避免的商品特征时调用。
 
     输入字段含义：
@@ -129,8 +142,7 @@ def add_user_preference(user_id: str, preference_type: str, preference_value: st
         else f"偏好类型：{preference['preference_type']}。"
     )
     return (
-        f"已为用户 {user_id} 记录购物偏好：{preference_value.strip()}。\n"
-        f"{type_message}"
+        f"已为用户 {user_id} 记录购物偏好：{preference_value.strip()}。\n{type_message}"
     )
 
 

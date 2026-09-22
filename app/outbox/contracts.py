@@ -42,7 +42,10 @@ class OutboxEventEnvelope(BaseModel):
 
 
 def _money(value: Decimal, currency: str) -> dict[str, str]:
-    return {"amount": format(Decimal(value).quantize(Decimal("0.01")), ".2f"), "currency": currency}
+    return {
+        "amount": format(Decimal(value).quantize(Decimal("0.01")), ".2f"),
+        "currency": currency,
+    }
 
 
 def build_order_created_event(

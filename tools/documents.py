@@ -39,7 +39,9 @@ def get_embeddings():
     """Lazy load the configured embedding model."""
     global _embeddings
     if _embeddings is None:
-        from data.data_generation.build_vectorstore import get_embeddings as build_embeddings
+        from data.data_generation.build_vectorstore import (
+            get_embeddings as build_embeddings,
+        )
 
         settings = get_settings()
         _embeddings = build_embeddings(settings.embedding_provider)

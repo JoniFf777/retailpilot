@@ -74,9 +74,7 @@ def _build_query_embedding(dimension: int) -> list[float]:
 
 
 def get_database_identity(session: Session) -> tuple[str, str]:
-    row = session.execute(
-        text("select current_database(), current_user")
-    ).one()
+    row = session.execute(text("select current_database(), current_user")).one()
     return row[0], row[1]
 
 
@@ -94,9 +92,9 @@ def assert_required_tables_exist(session: Session) -> None:
 def get_structured_counts(session: Session) -> dict[str, int]:
     counts: dict[str, int] = {}
     for table_name, model in STRUCTURED_TABLES.items():
-        counts[table_name] = session.scalar(
-            select(func.count()).select_from(model)
-        ) or 0
+        counts[table_name] = (
+            session.scalar(select(func.count()).select_from(model)) or 0
+        )
     return counts
 
 
@@ -110,17 +108,15 @@ def get_document_counts(session: Session) -> dict[str, int]:
 
 
 def assert_seed_data_present(table_counts: dict[str, int]) -> None:
-    missing = [
-        table_name for table_name, count in table_counts.items()
-        if count <= 0
-    ]
+    missing = [table_name for table_name, count in table_counts.items() if count <= 0]
     if missing:
         raise RuntimeError(f"结构化 seed 数据为空：{', '.join(missing)}")
 
 
 def assert_documents_present(document_counts: dict[str, int]) -> None:
     missing = [
-        doc_type for doc_type in ("product", "policy")
+        doc_type
+        for doc_type in ("product", "policy")
         if document_counts.get(doc_type, 0) <= 0
     ]
     if missing:

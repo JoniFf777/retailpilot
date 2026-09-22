@@ -115,9 +115,9 @@ def build_recommendation(
             recognized=normalized,
         ).model_copy(update={"request_summary": request_summary})
     if (
-        (normalized_request.budget_min is not None or normalized_request.budget_max is not None)
-        and normalized_request.budget_currency != "CNY"
-    ):
+        normalized_request.budget_min is not None
+        or normalized_request.budget_max is not None
+    ) and normalized_request.budget_currency != "CNY":
         return _empty_result(
             normalized_request,
             definition=definition,
@@ -144,7 +144,9 @@ def build_recommendation(
             error_code="no_candidates",
             ranking_policy_version=_policy_version(definition),
             request_summary=request_summary,
-            structured_constraints=structured_constraints_compatibility(normalized_request),
+            structured_constraints=structured_constraints_compatibility(
+                normalized_request
+            ),
             recommendation_request=normalized_request,
             category_attributes=dict(normalized),
             recognized_constraints=normalized,
@@ -161,10 +163,7 @@ def build_recommendation(
         seen_products.add(item.candidate.product_id)
         if len(winners) == 3:
             break
-    recommendations = [
-        _to_recommendation(item, definition, ranked)
-        for item in winners
-    ]
+    recommendations = [_to_recommendation(item, definition, ranked) for item in winners]
     return RecommendationResult(
         category=definition.code,
         category_display_name=definition.display_name,
@@ -177,7 +176,9 @@ def build_recommendation(
         recognized_constraints=normalized,
         constraint_fields=_constraint_fields(definition, normalized),
         recommendations=recommendations,
-        comparison_fields=recommendations[0].comparison_fields if recommendations else [],
+        comparison_fields=(
+            recommendations[0].comparison_fields if recommendations else []
+        ),
     )
 
 
@@ -216,7 +217,9 @@ def _catalog_value(
     return candidate.attributes.get(catalog_key)
 
 
-def _constraint_fields(definition, constraints: dict[str, CategoryAttributeConstraint]) -> list[ComparisonField]:
+def _constraint_fields(
+    definition, constraints: dict[str, CategoryAttributeConstraint]
+) -> list[ComparisonField]:
     fields: list[ComparisonField] = []
     for key, constraint in constraints.items():
         attribute = definition.attribute_for(key)
@@ -226,7 +229,9 @@ def _constraint_fields(definition, constraints: dict[str, CategoryAttributeConst
         if attribute.type == "number":
             decimal = Decimal(str(value))
             public_value: str | int | bool | list[str] = (
-                int(decimal) if decimal == decimal.to_integral_value() else format(decimal.normalize(), "f")
+                int(decimal)
+                if decimal == decimal.to_integral_value()
+                else format(decimal.normalize(), "f")
             )
             value_type = "number"
         elif attribute.type == "enum":
@@ -253,7 +258,9 @@ def _constraint_fields(definition, constraints: dict[str, CategoryAttributeConst
     return sorted(fields, key=lambda item: (item.display_order, item.key))
 
 
-def _comparison_fields(candidate: CatalogSkuCandidate, definition) -> list[ComparisonField]:
+def _comparison_fields(
+    candidate: CatalogSkuCandidate, definition
+) -> list[ComparisonField]:
     fields: list[ComparisonField] = []
     seen_catalog_keys: set[str] = set()
     for key in definition.display_fields:
@@ -321,7 +328,9 @@ def _specification_value(
             raise ValueError(f"{definition.code} must be a decimal")
         return format(Decimal(str(value)).normalize(), "f")
     if definition.data_type == "string_list":
-        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        if not isinstance(value, list) or not all(
+            isinstance(item, str) for item in value
+        ):
             raise ValueError(f"{definition.code} must be a string list")
         return value
     return str(value)
@@ -330,7 +339,11 @@ def _specification_value(
 def _specifications(candidate: CatalogSkuCandidate) -> list[ProductSpecificationView]:
     result: list[ProductSpecificationView] = []
     for definition in candidate.attribute_definitions:
-        source = candidate.product_attributes if definition.scope == "spu" else candidate.variant_attributes
+        source = (
+            candidate.product_attributes
+            if definition.scope == "spu"
+            else candidate.variant_attributes
+        )
         if definition.code not in source:
             continue
         result.append(
@@ -363,7 +376,8 @@ def _differing_specifications(
     return [
         spec
         for spec in _specifications(alternative)
-        if spec.code not in primary_specs or spec.value != primary_specs[spec.code].value
+        if spec.code not in primary_specs
+        or spec.value != primary_specs[spec.code].value
     ]
 
 
@@ -375,7 +389,10 @@ def _to_recommendation(
     candidate = ranked.candidate
     alternatives: list[AlternativeSkuView] = []
     for other in eligible:
-        if other.candidate.product_id != candidate.product_id or other.candidate.sku_id == candidate.sku_id:
+        if (
+            other.candidate.product_id != candidate.product_id
+            or other.candidate.sku_id == candidate.sku_id
+        ):
             continue
         other_candidate = other.candidate
         alternatives.append(
@@ -383,8 +400,13 @@ def _to_recommendation(
                 sku_id=other_candidate.sku_id,
                 sku_code=other_candidate.sku_code,
                 sku_name=other_candidate.sku_name,
-                money=Money(amount=str(other_candidate.money_amount), currency=other_candidate.currency),
-                differing_specifications=_differing_specifications(candidate, other_candidate),
+                money=Money(
+                    amount=str(other_candidate.money_amount),
+                    currency=other_candidate.currency,
+                ),
+                differing_specifications=_differing_specifications(
+                    candidate, other_candidate
+                ),
                 availability=_availability(other_candidate),
             )
         )

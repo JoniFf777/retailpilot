@@ -41,8 +41,13 @@ def test_offline_demo_is_local_ready_and_does_not_run_production_preflight():
 
         engine = create_engine("sqlite:///:memory:")
         connection = engine.connect()
-        connection.execute(text("create table alembic_version (version_num varchar(64))"))
-        connection.execute(text("insert into alembic_version values (:version)"), {"version": MIGRATION_HEAD})
+        connection.execute(
+            text("create table alembic_version (version_num varchar(64))")
+        )
+        connection.execute(
+            text("insert into alembic_version values (:version)"),
+            {"version": MIGRATION_HEAD},
+        )
         return Session(bind=connection)
 
     readiness = evaluate_deployment_readiness(
@@ -56,7 +61,10 @@ def test_offline_demo_is_local_ready_and_does_not_run_production_preflight():
     assert preflight.profile == "offline-demo"
     assert readiness.profile == "offline-demo"
     assert readiness.ready is True
-    assert create_app(settings=settings).state.production_preflight.status == "not_applicable"
+    assert (
+        create_app(settings=settings).state.production_preflight.status
+        == "not_applicable"
+    )
 
 
 def test_offline_demo_evidence_provider_never_initializes_embeddings():

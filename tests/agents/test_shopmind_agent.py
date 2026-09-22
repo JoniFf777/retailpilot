@@ -8,7 +8,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import agents.shopmind_agent as shopmind_agent_module
-from agents.shopmind_agent import SHOPMIND_TOOLS, create_shopmind_agent, invoke_shopmind_agent
+from agents.shopmind_agent import (
+    SHOPMIND_TOOLS,
+    create_shopmind_agent,
+    invoke_shopmind_agent,
+)
 from app.db.base import Base
 from app.db.models import Product
 import tools.products as product_tools
@@ -69,7 +73,9 @@ def product_repository_session(monkeypatch):
 
 
 def test_create_shopmind_agent_can_create_with_mock_model() -> None:
-    model = ToolCallingFakeChatModel(responses=[AIMessage(content="你好，我是 ShopMind。")])
+    model = ToolCallingFakeChatModel(
+        responses=[AIMessage(content="你好，我是 ShopMind。")]
+    )
 
     agent = create_shopmind_agent(model=model)
 
@@ -107,7 +113,9 @@ def test_recommend_keyboard_returns_chinese_answer_with_mock_model(monkeypatch) 
                     }
                 ],
             ),
-            AIMessage(content="我建议你优先考虑 Logitech MX Keys，因为它有货，适合日常办公使用。"),
+            AIMessage(
+                content="我建议你优先考虑 Logitech MX Keys，因为它有货，适合日常办公使用。"
+            ),
         ]
     )
     agent = create_shopmind_agent(model=model)
@@ -133,7 +141,9 @@ def test_product_spec_question_tends_to_call_detail_or_docs_tool(monkeypatch) ->
                     }
                 ],
             ),
-            AIMessage(content="我先查询了商品信息。数据库中找到 Mechanical Gaming Keyboard。"),
+            AIMessage(
+                content="我先查询了商品信息。数据库中找到 Mechanical Gaming Keyboard。"
+            ),
         ]
     )
     agent = create_shopmind_agent(model=model)
@@ -152,7 +162,9 @@ def test_invoke_shopmind_agent_passes_user_and_thread_context(monkeypatch) -> No
     fake_agent = CapturingFakeAgent(
         raw_result={"messages": [AIMessage(content="我会结合你的偏好进行推荐。")]}
     )
-    monkeypatch.setattr(shopmind_agent_module, "create_shopmind_agent", lambda: fake_agent)
+    monkeypatch.setattr(
+        shopmind_agent_module, "create_shopmind_agent", lambda: fake_agent
+    )
 
     result = invoke_shopmind_agent(
         "推荐一个键盘",
@@ -169,7 +181,9 @@ def test_invoke_shopmind_agent_passes_user_and_thread_context(monkeypatch) -> No
     assert result["answer"] == "我会结合你的偏好进行推荐。"
 
 
-def test_long_term_preference_can_extract_add_user_preference_tool_call(monkeypatch) -> None:
+def test_long_term_preference_can_extract_add_user_preference_tool_call(
+    monkeypatch,
+) -> None:
     fake_agent = CapturingFakeAgent(
         raw_result={
             "messages": [
@@ -187,11 +201,15 @@ def test_long_term_preference_can_extract_add_user_preference_tool_call(monkeypa
                         }
                     ],
                 ),
-                AIMessage(content="已记录你的长期偏好：以后会避免推荐声音大的青轴键盘。"),
+                AIMessage(
+                    content="已记录你的长期偏好：以后会避免推荐声音大的青轴键盘。"
+                ),
             ]
         }
     )
-    monkeypatch.setattr(shopmind_agent_module, "create_shopmind_agent", lambda: fake_agent)
+    monkeypatch.setattr(
+        shopmind_agent_module, "create_shopmind_agent", lambda: fake_agent
+    )
 
     result = invoke_shopmind_agent(
         "我不喜欢声音大的键盘，以后别推荐青轴",
@@ -235,7 +253,9 @@ def test_pending_action_result_returns_confirmation_required(monkeypatch) -> Non
             ]
         }
     )
-    monkeypatch.setattr(shopmind_agent_module, "create_shopmind_agent", lambda: fake_agent)
+    monkeypatch.setattr(
+        shopmind_agent_module, "create_shopmind_agent", lambda: fake_agent
+    )
 
     result = invoke_shopmind_agent("帮我把这个键盘加入购物车", user_id="USER-001")
 

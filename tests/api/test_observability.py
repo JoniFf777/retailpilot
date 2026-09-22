@@ -23,7 +23,9 @@ def anyio_backend() -> str:
 
 @pytest.mark.anyio
 async def test_correlation_id_is_echoed_and_generated_when_missing() -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         supplied = await client.get(
             "/api/health",
             headers={"X-Correlation-ID": "demo-correlation-001"},
@@ -39,7 +41,9 @@ async def test_correlation_id_is_echoed_and_generated_when_missing() -> None:
 
 @pytest.mark.anyio
 async def test_invalid_or_oversized_correlation_id_is_replaced() -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get(
             "/api/health",
             headers={"X-Correlation-ID": "bad value with spaces"},
@@ -59,7 +63,9 @@ async def test_http_log_keeps_correlation_and_request_trace_ids(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     caplog.set_level(logging.INFO, logger="shopmind.observability")
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get(
             "/api/health",
             headers={"X-Correlation-ID": "request-correlation-7"},
@@ -131,7 +137,9 @@ def test_structured_log_is_json_and_redacts_non_allowlisted_fields(
         payload={"card": "never-log"},
     )
 
-    record = next(record for record in caplog.records if record.name == "shopmind.observability")
+    record = next(
+        record for record in caplog.records if record.name == "shopmind.observability"
+    )
     payload = json.loads(record.getMessage())
     assert payload["event"] == "payment.provider_outcome"
     assert payload["order_id"] == "order-1"

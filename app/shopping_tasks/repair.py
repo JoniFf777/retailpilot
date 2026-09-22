@@ -28,7 +28,14 @@ def targeted_bundle_repair(
                 right = str(fact.get("right") or "")
                 if right and right not in locked.values():
                     excluded.add(right)
-    return solve_bundle(candidates, rules, budget=budget, currency=currency, locked=locked, excluded_skus=sorted(excluded))
+    return solve_bundle(
+        candidates,
+        rules,
+        budget=budget,
+        currency=currency,
+        locked=locked,
+        excluded_skus=sorted(excluded),
+    )
 
 
 __all__ = ["targeted_bundle_repair", "revise_plan_locally"]
@@ -48,8 +55,18 @@ def revise_plan_locally(
     while changed:
         changed = False
         for step in plan.steps:
-            if step.key not in descendants and any(dep in descendants for dep in step.depends_on):
+            if step.key not in descendants and any(
+                dep in descendants for dep in step.depends_on
+            ):
                 descendants.add(step.key)
                 changed = True
-    proposal = plan.model_copy(update={"revision": plan.revision + 1, "reason": "local_repair"})
-    return PlanRevision(revision=proposal.revision, parent_revision=plan.revision, proposal=proposal, repair_reason="verification_directed_repair", invalidated_steps=sorted(descendants))
+    proposal = plan.model_copy(
+        update={"revision": plan.revision + 1, "reason": "local_repair"}
+    )
+    return PlanRevision(
+        revision=proposal.revision,
+        parent_revision=plan.revision,
+        proposal=proposal,
+        repair_reason="verification_directed_repair",
+        invalidated_steps=sorted(descendants),
+    )

@@ -90,7 +90,10 @@ class RuntimeContextManager:
             token_budget=budget,
             estimated_tokens=estimated_tokens,
             omitted_count=max(0, len(deduplicated) - len(selected)),
-            metadata={"candidate_count": len(candidates), "deduplicated_count": len(deduplicated)},
+            metadata={
+                "candidate_count": len(candidates),
+                "deduplicated_count": len(deduplicated),
+            },
         )
 
     def _current_turn_item(self, context: RunContext) -> list[MemoryItem]:
@@ -165,15 +168,20 @@ class RuntimeContextManager:
                 if isinstance(shopping_state, dict):
                     message_metadata["recommendation_state"] = shopping_state
                 recommendation = content_json.get("recommendation")
-                if isinstance(recommendation, dict) and "recommendation_state" not in message_metadata:
+                if (
+                    isinstance(recommendation, dict)
+                    and "recommendation_state" not in message_metadata
+                ):
                     request = recommendation.get("recommendation_request") or {}
                     if isinstance(request, dict):
                         message_metadata["recommendation_state"] = {
-                            "category": recommendation.get("category") or request.get("category"),
+                            "category": recommendation.get("category")
+                            or request.get("category"),
                             "budget_min": request.get("budget_min"),
                             "budget_max": request.get("budget_max"),
                             "budget_currency": request.get("budget_currency"),
-                            "category_attributes": request.get("category_attributes") or {},
+                            "category_attributes": request.get("category_attributes")
+                            or {},
                         }
             items.append(
                 MemoryItem(
@@ -235,7 +243,8 @@ class RuntimeContextManager:
                     thread_id=record["thread_id"],
                     content=record["content"],
                     priority=record["priority"],
-                    token_estimate=record["token_count"] or estimate_tokens(record["content"]),
+                    token_estimate=record["token_count"]
+                    or estimate_tokens(record["content"]),
                     provenance=record["provenance"],
                     confidence=record["confidence"],
                     created_at=self._as_utc(record["created_at"]),

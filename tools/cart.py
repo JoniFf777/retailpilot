@@ -34,9 +34,13 @@ SAVE_PREFERENCE_ACTION = cart_repository.SAVE_PREFERENCE_ACTION
 
 class PrepareAddToCartInput(BaseModel):
     user_id: str = Field(..., description="用户 ID，不能为空。")
-    product_id: str = Field(..., description="要加入购物车的商品 ID，例如 TECH-LAP-001。")
+    product_id: str = Field(
+        ..., description="要加入购物车的商品 ID，例如 TECH-LAP-001。"
+    )
     quantity: int = Field(default=1, description="加入购物车的数量，必须大于 0。")
-    thread_id: Optional[str] = Field(default=None, description="可选会话 ID，用于后续把确认动作关联到一次对话。")
+    thread_id: Optional[str] = Field(
+        default=None, description="可选会话 ID，用于后续把确认动作关联到一次对话。"
+    )
 
 
 class ConfirmAddToCartInput(BaseModel):
@@ -74,7 +78,9 @@ class GetCartItemsInput(BaseModel):
 
 
 class ClearCartItemsInput(BaseModel):
-    user_id: str = Field(..., description="用户 ID，用于清理测试购物车和 pending actions。")
+    user_id: str = Field(
+        ..., description="用户 ID，用于清理测试购物车和 pending actions。"
+    )
 
 
 ProductRow = Dict[str, Any]
@@ -133,7 +139,9 @@ def format_cart_action_outcome(outcome: CartActionOutcome) -> str:
         "pending_action_not_found": "待确认动作不存在或不属于当前用户/会话。",
     }
     if outcome.status == "clarification_required":
-        return messages.get(outcome.code or "sku_ambiguous", "请先明确要购买的具体规格。")
+        return messages.get(
+            outcome.code or "sku_ambiguous", "请先明确要购买的具体规格。"
+        )
     if outcome.status == "failed":
         return messages.get(outcome.code or "", "无法处理加购动作，请稍后重试。")
     if outcome.status == "prepared" and outcome.pending_action is not None:
@@ -245,9 +253,13 @@ def prepare_add_to_cart(
     status/code 后再生成用户展示文案。
     """
     if _is_blank(user_id):
-        return _outcome_json(CartActionOutcome(status="failed", code="invalid_action_payload"))
+        return _outcome_json(
+            CartActionOutcome(status="failed", code="invalid_action_payload")
+        )
     if _is_blank(product_id):
-        return _outcome_json(CartActionOutcome(status="failed", code="catalog_not_found"))
+        return _outcome_json(
+            CartActionOutcome(status="failed", code="catalog_not_found")
+        )
 
     with _get_cart_session() as session:
         try:
@@ -264,7 +276,9 @@ def prepare_add_to_cart(
                 session.rollback()
         except PendingActionServiceError as exc:
             session.rollback()
-            outcome = CartActionOutcome(status="failed", code=exc.code, details=exc.details)
+            outcome = CartActionOutcome(
+                status="failed", code=exc.code, details=exc.details
+            )
     return _outcome_json(outcome)
 
 
@@ -285,9 +299,13 @@ def confirm_add_to_cart(
     用户展示文案由调用边界在读取 typed status/code 后生成。
     """
     if _is_blank(pending_action_id):
-        return _outcome_json(CartActionOutcome(status="failed", code="invalid_action_payload"))
+        return _outcome_json(
+            CartActionOutcome(status="failed", code="invalid_action_payload")
+        )
     if _is_blank(user_id):
-        return _outcome_json(CartActionOutcome(status="failed", code="invalid_action_payload"))
+        return _outcome_json(
+            CartActionOutcome(status="failed", code="invalid_action_payload")
+        )
 
     with _get_cart_session() as session:
         try:
@@ -318,8 +336,16 @@ def confirm_add_to_cart(
             outcome = CartActionOutcome(
                 status="failed",
                 code=exc.code,
-                pending_action=(exc.resolution_record.pending_action if exc.resolution_record else None),
-                pending_action_id=(exc.resolution_record.pending_action.pending_action_id if exc.resolution_record else pending_action_id),
+                pending_action=(
+                    exc.resolution_record.pending_action
+                    if exc.resolution_record
+                    else None
+                ),
+                pending_action_id=(
+                    exc.resolution_record.pending_action.pending_action_id
+                    if exc.resolution_record
+                    else pending_action_id
+                ),
                 details=exc.details,
                 idempotent_replay=exc.idempotent_replay,
             )
@@ -366,10 +392,13 @@ def confirm_save_preference(
                 code=exc.code,
                 pending_action_id=(
                     exc.resolution_record.pending_action.pending_action_id
-                    if exc.resolution_record else pending_action_id
+                    if exc.resolution_record
+                    else pending_action_id
                 ),
                 pending_action=(
-                    exc.resolution_record.pending_action if exc.resolution_record else None
+                    exc.resolution_record.pending_action
+                    if exc.resolution_record
+                    else None
                 ),
                 details=exc.details,
                 idempotent_replay=exc.idempotent_replay,
@@ -429,10 +458,13 @@ def cancel_pending_action(
                     code=exc.code,
                     pending_action_id=(
                         exc.resolution_record.pending_action.pending_action_id
-                        if exc.resolution_record else pending_action_id
+                        if exc.resolution_record
+                        else pending_action_id
                     ),
                     pending_action=(
-                        exc.resolution_record.pending_action if exc.resolution_record else None
+                        exc.resolution_record.pending_action
+                        if exc.resolution_record
+                        else None
                     ),
                     details=exc.details,
                     idempotent_replay=exc.idempotent_replay,
@@ -450,7 +482,10 @@ def cancel_pending_action(
                 user_id,
                 thread_id=thread_id,
             )
-            if result["status"] == CANCELLED_STATUS or result.get("message") == "pending action expired":
+            if (
+                result["status"] == CANCELLED_STATUS
+                or result.get("message") == "pending action expired"
+            ):
                 session.commit()
             else:
                 session.rollback()

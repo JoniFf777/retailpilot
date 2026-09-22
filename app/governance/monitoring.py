@@ -19,9 +19,7 @@ if TYPE_CHECKING:
     from .emitter import GovernanceAuditEmissionResult
 
 
-GOVERNANCE_AUDIT_MONITOR_SCHEMA_VERSION = (
-    "shopmind.governance-audit-monitor.v1"
-)
+GOVERNANCE_AUDIT_MONITOR_SCHEMA_VERSION = "shopmind.governance-audit-monitor.v1"
 
 
 class GovernanceAuditMonitorSnapshot(BaseModel):
@@ -46,19 +44,25 @@ class GovernanceAuditMonitorSnapshot(BaseModel):
     consecutive_failures: int = Field(ge=0)
     alert_transitions_total: int = Field(ge=0)
     recovery_transitions_total: int = Field(ge=0)
-    last_status: Literal[
-        "persisted",
-        "duplicate",
-        "skipped",
-        "failed",
-    ] | None = None
-    last_reason: Literal[
-        "completed",
-        "already_exists",
-        "disabled",
-        "no_records",
-        "storage_unavailable",
-    ] | None = None
+    last_status: (
+        Literal[
+            "persisted",
+            "duplicate",
+            "skipped",
+            "failed",
+        ]
+        | None
+    ) = None
+    last_reason: (
+        Literal[
+            "completed",
+            "already_exists",
+            "disabled",
+            "no_records",
+            "storage_unavailable",
+        ]
+        | None
+    ) = None
     last_emission_at: datetime | None = None
     last_failure_at: datetime | None = None
     last_success_at: datetime | None = None
@@ -146,8 +150,7 @@ class GovernanceAuditEmissionMonitor:
                 self._last_failure_at = now
                 if (
                     not self._alert_active
-                    and self._consecutive_failures
-                    >= self._alert_failure_threshold
+                    and self._consecutive_failures >= self._alert_failure_threshold
                 ):
                     self._alert_active = True
                     self._alert_transitions_total += 1

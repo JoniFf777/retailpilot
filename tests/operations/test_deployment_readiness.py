@@ -237,9 +237,7 @@ def test_readiness_blocks_outdated_migration_without_exposing_version() -> None:
         clock=lambda: NOW,
     )
 
-    assert _check_map(report)["postgres.migration"].reason == (
-        "migration_outdated"
-    )
+    assert _check_map(report)["postgres.migration"].reason == ("migration_outdated")
 
 
 def test_disabled_shopping_tasks_accept_legacy_migration_head() -> None:
@@ -328,13 +326,15 @@ def test_readiness_health_endpoint_uses_status_code_and_closed_payload(
 
     blocked = {**ready, "status": "blocked", "ready": False}
     blocked["checks"] = [
-        {
-            **check,
-            "status": "failed",
-            "reason": "postgres_unavailable",
-        }
-        if check["check_id"] == "postgres.connectivity"
-        else check
+        (
+            {
+                **check,
+                "status": "failed",
+                "reason": "postgres_unavailable",
+            }
+            if check["check_id"] == "postgres.connectivity"
+            else check
+        )
         for check in ready["checks"]
     ]
     blocked["passed_checks"] -= 1
@@ -371,12 +371,7 @@ def test_readiness_cli_writes_artifact_and_sanitizes_settings_failure(
         lambda _settings: ready,
     )
 
-    assert (
-        check_deployment_readiness.main(
-            ["--output-json", str(output)]
-        )
-        == 0
-    )
+    assert check_deployment_readiness.main(["--output-json", str(output)]) == 0
     assert "status: ready" in capsys.readouterr().out
     assert json.loads(output.read_text(encoding="utf-8"))["ready"] is True
 
@@ -397,9 +392,9 @@ def test_readiness_cli_writes_artifact_and_sanitizes_settings_failure(
 
 
 def test_postgres_integration_ci_records_live_readiness_artifact() -> None:
-    workflow = Path(
-        ".github/workflows/postgres_integration.yml"
-    ).read_text(encoding="utf-8")
+    workflow = Path(".github/workflows/postgres_integration.yml").read_text(
+        encoding="utf-8"
+    )
 
     assert "Gate V6 deployment readiness" in workflow
     assert "python scripts/cleanup_runtime_persistence.py" in workflow

@@ -47,20 +47,37 @@ async def test_catalog_browse_is_registry_backed_and_generic(browse_overrides) -
         categories = await client.get("/api/catalog/categories")
         assert categories.status_code == 200
         assert [item["code"] for item in categories.json()["items"]] == [
-            "camera", "headphones", "keyboard", "laptop", "monitor", "mouse", "phone", "router", "speaker", "tablet"
+            "camera",
+            "headphones",
+            "keyboard",
+            "laptop",
+            "monitor",
+            "mouse",
+            "phone",
+            "router",
+            "speaker",
+            "tablet",
         ]
 
-        phone = await client.get("/api/catalog/products", params={"category": "智能手机"})
+        phone = await client.get(
+            "/api/catalog/products", params={"category": "智能手机"}
+        )
         assert phone.status_code == 200
         payload = phone.json()
         assert payload["category"]["code"] == "phone"
         assert payload["total"] == 9
         assert all(item["category"]["code"] == "phone" for item in payload["items"])
         assert all(item["specifications"] for item in payload["items"])
-        assert any(not item["skus"][0]["availability"]["in_stock"] for item in payload["items"])
+        assert any(
+            not item["skus"][0]["availability"]["in_stock"] for item in payload["items"]
+        )
 
-        keyboard = await client.get("/api/catalog/products", params={"category": "keyboard"})
-        router = await client.get("/api/catalog/products", params={"category": "router"})
+        keyboard = await client.get(
+            "/api/catalog/products", params={"category": "keyboard"}
+        )
+        router = await client.get(
+            "/api/catalog/products", params={"category": "router"}
+        )
         assert keyboard.status_code == router.status_code == 200
         assert keyboard.json()["items"][0]["specifications"]
         assert router.json()["items"][0]["specifications"]
@@ -76,18 +93,31 @@ async def test_catalog_browse_is_registry_backed_and_generic(browse_overrides) -
 async def test_catalog_browse_safe_errors_and_canonical_hitl(browse_overrides) -> None:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        unsupported = await client.get("/api/catalog/products", params={"category": "printer"})
+        unsupported = await client.get(
+            "/api/catalog/products", params={"category": "printer"}
+        )
         assert unsupported.status_code == 404
         assert unsupported.json() == {
             "code": "unsupported_category",
             "message": "This Catalog category is not supported.",
         }
 
-        products = (await client.get("/api/catalog/products", params={"category": "router"})).json()["items"]
-        sku = next(item["skus"][0] for item in products if item["skus"][0]["availability"]["in_stock"])
+        products = (
+            await client.get("/api/catalog/products", params={"category": "router"})
+        ).json()["items"]
+        sku = next(
+            item["skus"][0]
+            for item in products
+            if item["skus"][0]["availability"]["in_stock"]
+        )
         prepared = await client.post(
             "/api/pending-actions/catalog-add-to-cart",
-            json={"user_id": "browse-user", "thread_id": "browse-thread", "sku_id": sku["sku_id"], "quantity": 1},
+            json={
+                "user_id": "browse-user",
+                "thread_id": "browse-thread",
+                "sku_id": sku["sku_id"],
+                "quantity": 1,
+            },
         )
         assert prepared.status_code == 201
         action = prepared.json()
@@ -99,7 +129,11 @@ async def test_catalog_browse_safe_errors_and_canonical_hitl(browse_overrides) -
 
         confirmed = await client.post(
             f"/api/pending-actions/{action['pending_action_id']}/confirm",
-            json={"user_id": "browse-user", "thread_id": "browse-thread", "expected_version": action["version"]},
+            json={
+                "user_id": "browse-user",
+                "thread_id": "browse-thread",
+                "expected_version": action["version"],
+            },
         )
         assert confirmed.status_code == 200
         assert confirmed.json()["cart_item"]["sku_id"] == sku["sku_id"]

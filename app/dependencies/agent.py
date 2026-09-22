@@ -358,6 +358,7 @@ def confirm_pending_action(
             ),
         },
     )
+
     def executor(context) -> dict[str, Any]:
         resolved = resolve_pending_action(
             pending_action_id=pending_action_id,
@@ -513,7 +514,8 @@ def confirm_pending_action(
                     "thread_id": thread_id,
                     **(
                         {"expected_version": expected_version}
-                        if tool_call in {
+                        if tool_call
+                        in {
                             "confirm_add_to_cart",
                             "confirm_save_preference",
                             "cancel_pending_action",
@@ -554,7 +556,9 @@ def confirm_pending_action(
                     answer = "无法处理加购动作：确认边界未收到有效的 typed outcome。"
                     outcome_code = "invalid_action_payload"
                 else:
-                    status = "completed" if typed_outcome.status == "confirmed" else "failed"
+                    status = (
+                        "completed" if typed_outcome.status == "confirmed" else "failed"
+                    )
                     answer = format_cart_action_outcome(typed_outcome)
                     outcome_code = typed_outcome.code
                 lifecycle = (
@@ -565,10 +569,14 @@ def confirm_pending_action(
             elif action_type == "save_preference":
                 if typed_outcome is None:
                     status = "failed"
-                    answer = "无法处理保存偏好动作：确认边界未收到有效的 typed outcome。"
+                    answer = (
+                        "无法处理保存偏好动作：确认边界未收到有效的 typed outcome。"
+                    )
                     outcome_code = "invalid_action_payload"
                 else:
-                    status = "completed" if typed_outcome.status == "confirmed" else "failed"
+                    status = (
+                        "completed" if typed_outcome.status == "confirmed" else "failed"
+                    )
                     answer = format_preference_action_outcome(typed_outcome)
                     outcome_code = typed_outcome.code
                 lifecycle = (
@@ -626,7 +634,11 @@ def confirm_pending_action(
                         requested_confirmation=True,
                         status=status,
                         tool_call=tool_call,
-                        **({"action_type": action_type} if action_type != "add_to_cart" else {}),
+                        **(
+                            {"action_type": action_type}
+                            if action_type != "add_to_cart"
+                            else {}
+                        ),
                     )
                 ),
             }
@@ -684,7 +696,11 @@ def confirm_pending_action(
                     requested_confirmation=False,
                     status=status,
                     tool_call=tool_call,
-                    **({"action_type": action_type} if action_type != "add_to_cart" else {}),
+                    **(
+                        {"action_type": action_type}
+                        if action_type != "add_to_cart"
+                        else {}
+                    ),
                 )
             ),
         }

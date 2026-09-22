@@ -9,10 +9,14 @@ from typing import Any
 from app.ai_platform.ingestion import load_legacy_sources
 
 
-def audit_legacy_corpus(documents_dir: Path, overview_path: Path | None = None) -> dict[str, Any]:
+def audit_legacy_corpus(
+    documents_dir: Path, overview_path: Path | None = None
+) -> dict[str, Any]:
     product_paths = sorted((documents_dir / "products").glob("*.md"))
     policy_paths = sorted((documents_dir / "policies").glob("*.md"))
-    duplicate_names = [path.name for path in product_paths + policy_paths if path.name.count("/") > 1]
+    duplicate_names = [
+        path.name for path in product_paths + policy_paths if path.name.count("/") > 1
+    ]
     expected_product = expected_policy = None
     if overview_path and overview_path.exists():
         overview = overview_path.read_text(encoding="utf-8")
@@ -29,10 +33,18 @@ def audit_legacy_corpus(documents_dir: Path, overview_path: Path | None = None) 
         "overview_drift": (
             expected_product is not None
             and expected_policy is not None
-            and (expected_product != len(product_paths) or expected_policy != len(policy_paths))
+            and (
+                expected_product != len(product_paths)
+                or expected_policy != len(policy_paths)
+            )
         ),
         "duplicate_names": sorted(set(duplicate_names)),
-        "business_types": sorted({descriptor.evidence_type for descriptor, _ in load_legacy_sources(documents_dir)}),
+        "business_types": sorted(
+            {
+                descriptor.evidence_type
+                for descriptor, _ in load_legacy_sources(documents_dir)
+            }
+        ),
         "bounded": True,
     }
 

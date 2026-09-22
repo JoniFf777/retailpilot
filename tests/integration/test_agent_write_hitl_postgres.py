@@ -41,14 +41,14 @@ def pg_factory():
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".alembic_version (
+                f"""CREATE TABLE "{schema}".alembic_version (
                     version_num VARCHAR(32) NOT NULL PRIMARY KEY
-                )'''
+                )"""
             )
         )
         connection.execute(
             text(
-                f'''CREATE TABLE "{schema}".pending_actions (
+                f"""CREATE TABLE "{schema}".pending_actions (
                     id VARCHAR PRIMARY KEY,
                     user_id VARCHAR(128) NOT NULL,
                     thread_id VARCHAR,
@@ -61,7 +61,7 @@ def pg_factory():
                     metadata_json JSONB NOT NULL DEFAULT '{{}}'::jsonb,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                )'''
+                )"""
             )
         )
         connection.commit()
@@ -147,7 +147,9 @@ def test_concurrent_preference_confirmation_is_exactly_once(pg_factory) -> None:
 
     check: Session = pg_factory()
     try:
-        assert check.query(UserPreference).filter_by(user_id="pg-hitl-user").count() == 1
+        assert (
+            check.query(UserPreference).filter_by(user_id="pg-hitl-user").count() == 1
+        )
         stored = check.get(PendingAction, action.pending_action_id)
         assert stored is not None
         assert stored.status == "confirmed"

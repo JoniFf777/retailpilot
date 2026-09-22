@@ -227,9 +227,7 @@ class RuntimeTrajectoryRecorder:
                 error_code=error.get("code"),
                 error_source=error.get("source"),
                 error_retriable=(
-                    error.get("retriable")
-                    if error.get("code") is not None
-                    else None
+                    error.get("retriable") if error.get("code") is not None else None
                 ),
                 usage=RunUsage.model_validate(run.get("usage_json") or {}),
                 event_count=len(recorded_events),

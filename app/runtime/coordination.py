@@ -127,7 +127,9 @@ class DeduplicationDecision(_CoordinationModel):
     @model_validator(mode="after")
     def validate_claim(self) -> "DeduplicationDecision":
         if self.acquired != (self.claim_id is not None):
-            raise ValueError("Acquired deduplication decisions require exactly one claim.")
+            raise ValueError(
+                "Acquired deduplication decisions require exactly one claim."
+            )
         return self
 
 
@@ -296,9 +298,7 @@ class LocalRuntimeCoordinationBackend:
             ),
         )
 
-    def renew_admission(
-        self, lease_id: str, *, lease_ttl_ms: int
-    ) -> AdmissionRenewal:
+    def renew_admission(self, lease_id: str, *, lease_ttl_ms: int) -> AdmissionRenewal:
         if lease_ttl_ms < 1 or lease_ttl_ms > 300_000:
             raise ValueError("Admission lease TTL is outside the supported range.")
         now = self._clock()
@@ -351,9 +351,7 @@ class LocalRuntimeCoordinationBackend:
                 remaining=request.limit - state.used,
             )
 
-    def claim_duplicate(
-        self, request: DeduplicationRequest
-    ) -> DeduplicationDecision:
+    def claim_duplicate(self, request: DeduplicationRequest) -> DeduplicationDecision:
         now = self._clock()
         scope = (request.namespace, request.key_fingerprint)
         with self._lock:

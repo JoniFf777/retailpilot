@@ -16,10 +16,21 @@ def transition_task(task, target: TaskStatus) -> None:
     current = task.status
     allowed = {
         "queued": {"running", "cancelled", "expired", "failed"},
-        "running": {"queued", "waiting_input", "awaiting_approval", "succeeded", "failed", "cancelled", "expired"},
+        "running": {
+            "queued",
+            "waiting_input",
+            "awaiting_approval",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "expired",
+        },
         "waiting_input": {"queued", "cancelled", "expired"},
         "awaiting_approval": {"queued", "succeeded", "cancelled", "expired"},
-        "succeeded": set(), "failed": set(), "cancelled": set(), "expired": set(),
+        "succeeded": set(),
+        "failed": set(),
+        "cancelled": set(),
+        "expired": set(),
     }
     if target not in allowed.get(current, set()):
         raise InvalidTaskTransition(f"{current}_to_{target}_forbidden")

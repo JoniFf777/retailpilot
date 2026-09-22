@@ -42,11 +42,18 @@ def main(argv: list[str] | None = None) -> int:
             "schema_version": "shopmind.quality-eval.v1",
             "execution_ok": False,
             "quality_passed": False,
-            "error": {"code": "quality_eval_invalid", "message": "Quality evaluation input is invalid."},
+            "error": {
+                "code": "quality_eval_invalid",
+                "message": "Quality evaluation input is invalid.",
+            },
         }
     if args.output_json:
         write_json_artifact(report, args.output_json)
-    print(json.dumps(report, ensure_ascii=False, indent=2) if args.json else json.dumps(report.get("metrics", {}), ensure_ascii=False))
+    print(
+        json.dumps(report, ensure_ascii=False, indent=2)
+        if args.json
+        else json.dumps(report.get("metrics", {}), ensure_ascii=False)
+    )
     return 0 if report.get("execution_ok") else 1
 
 

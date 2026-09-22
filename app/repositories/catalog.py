@@ -5,7 +5,13 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.catalog.models import AttributeDefinition, CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
+from app.catalog.models import (
+    AttributeDefinition,
+    CatalogCategory,
+    CatalogInventory,
+    CatalogProduct,
+    CatalogSku,
+)
 from app.recommendation.categories import default_category_registry
 from app.shopping_tasks.category_registry import default_task_category_registry
 from app.db.models import Product
@@ -35,12 +41,18 @@ def list_active_skus(
         .order_by(CatalogSku.sku_code.asc())
     )
     rows = session.execute(statement).all()
-    definitions = list_catalog_attribute_definitions(session, category_code=category_code)
+    definitions = list_catalog_attribute_definitions(
+        session, category_code=category_code
+    )
     candidates = [
         _candidate(sku, product, inventory, definitions=definitions)
         for sku, product, inventory in rows
     ]
-    registry = default_task_category_registry() if category_code == "dock" else default_category_registry()
+    registry = (
+        default_task_category_registry()
+        if category_code == "dock"
+        else default_category_registry()
+    )
     invalid = [
         issue
         for candidate in candidates
@@ -51,7 +63,10 @@ def list_active_skus(
         )
     ]
     if invalid:
-        raise ValueError("invalid catalog candidate attributes: " + "; ".join(issue.detail for issue in invalid))
+        raise ValueError(
+            "invalid catalog candidate attributes: "
+            + "; ".join(issue.detail for issue in invalid)
+        )
     return candidates
 
 
@@ -96,7 +111,10 @@ def catalog_product_counts(session: Session) -> dict[str, tuple[int, int]]:
     for product, _sku, inventory in rows:
         code = product.category.code
         products.setdefault(code, set()).add(product.id)
-        if inventory is not None and inventory.on_hand_quantity > inventory.reserved_quantity:
+        if (
+            inventory is not None
+            and inventory.on_hand_quantity > inventory.reserved_quantity
+        ):
             available.setdefault(code, set()).add(product.id)
     return {
         code: (len(products.get(code, set())), len(available.get(code, set())))
@@ -120,8 +138,12 @@ def list_catalog_attribute_definitions(
     statement = (
         select(AttributeDefinition)
         .join(CatalogCategory, AttributeDefinition.category_id == CatalogCategory.id)
-        .where(CatalogCategory.code == category_code, CatalogCategory.status == "active")
-        .order_by(AttributeDefinition.display_order.asc(), AttributeDefinition.code.asc())
+        .where(
+            CatalogCategory.code == category_code, CatalogCategory.status == "active"
+        )
+        .order_by(
+            AttributeDefinition.display_order.asc(), AttributeDefinition.code.asc()
+        )
     )
     return [
         CatalogAttributeDefinition(
@@ -145,10 +167,18 @@ def _candidate(
     definitions: list[CatalogAttributeDefinition] | None = None,
 ) -> CatalogSkuCandidate:
     return CatalogSkuCandidate(
-        product_id=product.id, product_code=product.product_code, legacy_product_id=product.legacy_product_id,
-        product_name=product.name, brand=product.brand, sku_id=sku.id, sku_code=sku.sku_code,
-        sku_name=sku.name, money_amount=sku.money_amount, currency=sku.currency,
-        product_attributes=product.attributes_json, variant_attributes=sku.variant_attributes_json,
+        product_id=product.id,
+        product_code=product.product_code,
+        legacy_product_id=product.legacy_product_id,
+        product_name=product.name,
+        brand=product.brand,
+        sku_id=sku.id,
+        sku_code=sku.sku_code,
+        sku_name=sku.name,
+        money_amount=sku.money_amount,
+        currency=sku.currency,
+        product_attributes=product.attributes_json,
+        variant_attributes=sku.variant_attributes_json,
         attribute_definitions=definitions or [],
         available_quantity=inventory.on_hand_quantity - inventory.reserved_quantity,
     )
@@ -162,8 +192,14 @@ def get_catalog_sku(session: Session, sku_id: UUID) -> CatalogSku | None:
     return session.get(CatalogSku, sku_id)
 
 
-def resolve_legacy_product(session: Session, legacy_product_id: str) -> CatalogProduct | None:
-    return session.scalar(select(CatalogProduct).where(CatalogProduct.legacy_product_id == legacy_product_id))
+def resolve_legacy_product(
+    session: Session, legacy_product_id: str
+) -> CatalogProduct | None:
+    return session.scalar(
+        select(CatalogProduct).where(
+            CatalogProduct.legacy_product_id == legacy_product_id
+        )
+    )
 
 
 def resolve_catalog_identifier(
@@ -184,7 +220,9 @@ def resolve_catalog_identifier(
         ).all()
     )
     product_code_hits = list(
-        session.scalars(select(CatalogProduct).where(CatalogProduct.product_code == raw)).all()
+        session.scalars(
+            select(CatalogProduct).where(CatalogProduct.product_code == raw)
+        ).all()
     )
 
     matched_namespaces: list[str] = []
@@ -216,7 +254,9 @@ def resolve_catalog_identifier(
     identity_product_ids = {sku.product_id for sku in sku_hits}
     identity_product_ids.update(product.id for product in product_hits)
     product_ids = {product_id for product_id, _ in concrete_targets}
-    has_zero_sku_product = any(len(sku_ids) == 0 for sku_ids in product_sku_ids.values())
+    has_zero_sku_product = any(
+        len(sku_ids) == 0 for sku_ids in product_sku_ids.values()
+    )
     if has_zero_sku_product:
         if len(identity_product_ids) > 1:
             return CatalogIdentifierResolution(
@@ -232,9 +272,13 @@ def resolve_catalog_identifier(
             target_count=0,
         )
 
-    has_product_ambiguity = any(len(sku_ids) > 1 for sku_ids in product_sku_ids.values())
+    has_product_ambiguity = any(
+        len(sku_ids) > 1 for sku_ids in product_sku_ids.values()
+    )
     if has_product_ambiguity:
-        code = "catalog_identifier_ambiguous" if len(product_ids) > 1 else "sku_ambiguous"
+        code = (
+            "catalog_identifier_ambiguous" if len(product_ids) > 1 else "sku_ambiguous"
+        )
         return CatalogIdentifierResolution(
             status="ambiguous",
             code=code,
@@ -262,27 +306,50 @@ def resolve_catalog_identifier(
 
 def reconcile_legacy_mappings(session: Session) -> dict[str, list[str]]:
     """Report mapping health without changing either the legacy or Catalog table."""
-    catalog_ids = set(session.scalars(select(CatalogProduct.legacy_product_id).where(CatalogProduct.legacy_product_id.is_not(None))).all())
-    legacy_ids = set(
+    catalog_ids = set(
         session.scalars(
-            select(Product.product_id).where(Product.product_id.in_(catalog_ids))
+            select(CatalogProduct.legacy_product_id).where(
+                CatalogProduct.legacy_product_id.is_not(None)
+            )
         ).all()
-    ) if catalog_ids else set()
-    return {"resolved": sorted(legacy_ids), "dangling": sorted(catalog_ids - legacy_ids)}
+    )
+    legacy_ids = (
+        set(
+            session.scalars(
+                select(Product.product_id).where(Product.product_id.in_(catalog_ids))
+            ).all()
+        )
+        if catalog_ids
+        else set()
+    )
+    return {
+        "resolved": sorted(legacy_ids),
+        "dangling": sorted(catalog_ids - legacy_ids),
+    }
 
 
-def list_alternative_skus(session: Session, product_id: UUID, exclude_sku_id: UUID) -> list[CatalogSkuCandidate]:
+def list_alternative_skus(
+    session: Session, product_id: UUID, exclude_sku_id: UUID
+) -> list[CatalogSkuCandidate]:
     statement = (
         select(CatalogSku, CatalogProduct, CatalogInventory)
         .join(CatalogProduct, CatalogSku.product_id == CatalogProduct.id)
         .join(CatalogInventory, CatalogInventory.sku_id == CatalogSku.id)
-        .where(CatalogSku.product_id == product_id, CatalogSku.id != exclude_sku_id,
-               CatalogSku.sale_status == "active", CatalogInventory.on_hand_quantity > CatalogInventory.reserved_quantity)
+        .where(
+            CatalogSku.product_id == product_id,
+            CatalogSku.id != exclude_sku_id,
+            CatalogSku.sale_status == "active",
+            CatalogInventory.on_hand_quantity > CatalogInventory.reserved_quantity,
+        )
         .order_by(CatalogSku.money_amount.asc(), CatalogSku.sku_code.asc())
     )
     product = session.get(CatalogProduct, product_id)
-    category_code = product.category.code if product is not None and product.category else ""
-    definitions = list_catalog_attribute_definitions(session, category_code=category_code)
+    category_code = (
+        product.category.code if product is not None and product.category else ""
+    )
+    definitions = list_catalog_attribute_definitions(
+        session, category_code=category_code
+    )
     return [
         _candidate(sku, product, inventory, definitions=definitions)
         for sku, product, inventory in session.execute(statement).all()

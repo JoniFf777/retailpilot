@@ -6,11 +6,7 @@ from .state import ShopMindMultiAgentState
 
 
 def _clean_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
-    return {
-        key: value
-        for key, value in metadata.items()
-        if value is not None
-    }
+    return {key: value for key, value in metadata.items() if value is not None}
 
 
 def append_agent_step(

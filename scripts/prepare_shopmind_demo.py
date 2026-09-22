@@ -34,15 +34,23 @@ class DemoPrepareError(RuntimeError):
 def _database_target(database_url: str) -> tuple[str, str]:
     parsed = urlsplit(database_url)
     if parsed.scheme not in {"postgresql", "postgresql+psycopg"}:
-        raise DemoPrepareError("DATABASE_URL must target PostgreSQL for the offline demo.")
+        raise DemoPrepareError(
+            "DATABASE_URL must target PostgreSQL for the offline demo."
+        )
     host = (parsed.hostname or "").lower()
     database = (parsed.path or "").lstrip("/").split("?", 1)[0].lower()
     if host not in LOOPBACK_HOSTS:
-        raise DemoPrepareError("Refusing a non-loopback DATABASE_URL; use an isolated local demo database.")
+        raise DemoPrepareError(
+            "Refusing a non-loopback DATABASE_URL; use an isolated local demo database."
+        )
     if not database or database in BLOCKED_DATABASE_NAMES:
-        raise DemoPrepareError("Refusing a production-looking database name; use an explicit *_demo, *_test, or *_smoke database.")
+        raise DemoPrepareError(
+            "Refusing a production-looking database name; use an explicit *_demo, *_test, or *_smoke database."
+        )
     if not any(marker in database for marker in REQUIRED_DATABASE_MARKERS):
-        raise DemoPrepareError("Refusing an unmarked database; its name must contain _demo, _test, or _smoke.")
+        raise DemoPrepareError(
+            "Refusing an unmarked database; its name must contain _demo, _test, or _smoke."
+        )
     return host, database
 
 
@@ -65,7 +73,9 @@ def prepare() -> dict[str, object]:
         session.execute(text("select 1")).scalar_one()
     except Exception as exc:  # pragma: no cover - depends on local service state
         session.close()
-        raise DemoPrepareError("PostgreSQL is not reachable on the configured local demo target.") from exc
+        raise DemoPrepareError(
+            "PostgreSQL is not reachable on the configured local demo target."
+        ) from exc
     finally:
         try:
             session.close()
@@ -80,9 +90,13 @@ def prepare() -> dict[str, object]:
 
     verify_session = SessionLocal()
     try:
-        version = verify_session.execute(text("select version_num from alembic_version")).scalar_one()
+        version = verify_session.execute(
+            text("select version_num from alembic_version")
+        ).scalar_one()
         if version != MIGRATION_HEAD:
-            raise DemoPrepareError(f"Migration ended at {version}; expected {MIGRATION_HEAD}.")
+            raise DemoPrepareError(
+                f"Migration ended at {version}; expected {MIGRATION_HEAD}."
+            )
         verify_session.execute(text("select 1")).scalar_one()
     finally:
         verify_session.close()
@@ -101,15 +115,23 @@ def prepare() -> dict[str, object]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prepare the local ShopMind offline demo database.")
-    parser.add_argument("--json", action="store_true", help="Emit a machine-readable summary.")
+    parser = argparse.ArgumentParser(
+        description="Prepare the local ShopMind offline demo database."
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Emit a machine-readable summary."
+    )
     args = parser.parse_args()
     try:
         report = prepare()
     except Exception as exc:
         print(f"ShopMind demo preparation failed: {exc}")
         return 1
-    print(json.dumps(report, ensure_ascii=False) if args.json else "ShopMind offline demo prepared (idempotent; no reset).")
+    print(
+        json.dumps(report, ensure_ascii=False)
+        if args.json
+        else "ShopMind offline demo prepared (idempotent; no reset)."
+    )
     return 0
 
 

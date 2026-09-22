@@ -58,8 +58,7 @@ def test_plan_trajectory_replay_passes_all_fixed_cases() -> None:
 
 def test_shared_budget_replay_is_normalized_and_bounded() -> None:
     case = next(
-        case for case in PLAN_TRAJECTORY_CASES
-        if case["scenario"] == "shared_budget"
+        case for case in PLAN_TRAJECTORY_CASES if case["scenario"] == "shared_budget"
     )
 
     result = replay_plan_trajectory_case(case)
@@ -77,7 +76,8 @@ def test_shared_budget_replay_is_normalized_and_bounded() -> None:
 
 def test_shared_step_budget_replay_rejects_before_third_tool_call() -> None:
     case = next(
-        case for case in PLAN_TRAJECTORY_CASES
+        case
+        for case in PLAN_TRAJECTORY_CASES
         if case["scenario"] == "shared_step_budget"
     )
 
@@ -95,8 +95,7 @@ def test_expired_time_budget_replays_reject_before_tool_calls() -> None:
         ("expired_duration", "plan.duration_budget_exceeded"),
     ):
         case = next(
-            case for case in PLAN_TRAJECTORY_CASES
-            if case["scenario"] == scenario
+            case for case in PLAN_TRAJECTORY_CASES if case["scenario"] == scenario
         )
 
         result = replay_plan_trajectory_case(case)
@@ -110,8 +109,7 @@ def test_expired_time_budget_replays_reject_before_tool_calls() -> None:
 
 def test_retry_fault_trajectories_have_stable_attempt_sequences() -> None:
     retry_cases = [
-        case for case in PLAN_TRAJECTORY_CASES
-        if case["scenario"].startswith("retry_")
+        case for case in PLAN_TRAJECTORY_CASES if case["scenario"].startswith("retry_")
     ]
 
     for case in retry_cases:
@@ -129,8 +127,7 @@ def test_retry_fault_trajectories_have_stable_attempt_sequences() -> None:
 
 def test_retry_success_preserves_single_tool_execution_after_replay() -> None:
     case = next(
-        case for case in PLAN_TRAJECTORY_CASES
-        if case["scenario"] == "retry_success"
+        case for case in PLAN_TRAJECTORY_CASES if case["scenario"] == "retry_success"
     )
 
     result = replay_plan_trajectory_case(case)
@@ -147,8 +144,7 @@ def test_retry_budget_and_cancellation_block_before_second_attempt() -> None:
         ("retry_cancelled", "plan.step.retry.cancelled"),
     ):
         case = next(
-            case for case in PLAN_TRAJECTORY_CASES
-            if case["scenario"] == scenario
+            case for case in PLAN_TRAJECTORY_CASES if case["scenario"] == scenario
         )
 
         result = replay_plan_trajectory_case(case)
@@ -224,7 +220,10 @@ def test_ci_workflow_gates_and_uploads_plan_trajectory_replay() -> None:
     assert 'SHOPMIND_AGENT_TASK_MAX_ATTEMPTS: "1"' in workflow
     assert command in workflow
     assert "Publish V5 plan trajectory summary" in workflow
-    assert 'cat artifacts/v5-plan-trajectories/summary.md >> "$GITHUB_STEP_SUMMARY"' in workflow
+    assert (
+        'cat artifacts/v5-plan-trajectories/summary.md >> "$GITHUB_STEP_SUMMARY"'
+        in workflow
+    )
     assert "name: v5-plan-trajectory-eval" in workflow
     assert "path: artifacts/v5-plan-trajectories/summary.json" in workflow
     assert workflow.index("Gate V5 planner policy") < workflow.index(

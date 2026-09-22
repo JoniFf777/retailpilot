@@ -46,7 +46,7 @@ def _policy(
         metadata={
             "parallel_read_enabled": parallel_enabled,
             "parallel_read_max_workers": max_workers,
-        }
+        },
     )
 
 
@@ -272,10 +272,7 @@ def test_parallel_graph_sanitizes_policy_wrapped_transport_failures(
     assert "rag_summary" not in result
     assert private_detail not in str(result)
     if failure_mode == "typed_unavailable":
-        assert any(
-            usage["total_tokens"] == 4
-            for usage in result["delegated_usage"]
-        )
+        assert any(usage["total_tokens"] == 4 for usage in result["delegated_usage"])
 
 
 def test_plan_owned_retry_replays_sequential_specialist_with_stable_identity(
@@ -362,9 +359,7 @@ def test_parallel_graph_enforces_shared_agent_step_budget_atomically() -> None:
     result = _invoke(context)
 
     assert result["parallel_execution"]["status"] == "partial"
-    assert result["parallel_execution"]["error_codes"] == [
-        "plan.step_budget_exceeded"
-    ]
+    assert result["parallel_execution"]["error_codes"] == ["plan.step_budget_exceeded"]
     assert len(result["executed_routes"]) == 2
     assert len(result["tool_calls"]) == 2
     assert len(context.metadata_snapshot()["tool_call_records"]) == 2
@@ -446,8 +441,6 @@ def test_compiled_graph_accepts_validated_planner_boundary() -> None:
     )
 
     assert result["execution_plan"]["planner_type"] == "validated_provider_plan"
-    assert result["execution_plan"]["metadata"]["planner_provider"] == (
-        "test_provider"
-    )
+    assert result["execution_plan"]["metadata"]["planner_provider"] == ("test_provider")
     assert result["routes"] == ["product_agent"]
     assert result["tool_calls"] == ["search_products"]

@@ -7,7 +7,9 @@ def test_phase5a_payment_openapi_contract() -> None:
     assert "/api/orders/{order_id}/payments" in paths
     post = paths["/api/orders/{order_id}/payments"]["post"]
     get = paths["/api/orders/{order_id}/payments"]["get"]
-    assert any(parameter["name"] == "Idempotency-Key" for parameter in post["parameters"])
+    assert any(
+        parameter["name"] == "Idempotency-Key" for parameter in post["parameters"]
+    )
     assert "202" in post["responses"]
     assert "402" in post["responses"]
     assert "409" in post["responses"]
@@ -16,7 +18,9 @@ def test_phase5a_payment_openapi_contract() -> None:
     assert "404" in get["responses"]
     assert "422" in get["responses"]
 
-    request_schema = schema["components"]["schemas"]["PaymentAttemptRequest"]["properties"]
+    request_schema = schema["components"]["schemas"]["PaymentAttemptRequest"][
+        "properties"
+    ]
     assert set(request_schema) == {"provider", "payment_method_ref"}
     assert "amount" not in request_schema
     assert "currency" not in request_schema

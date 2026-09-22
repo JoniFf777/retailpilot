@@ -128,13 +128,19 @@ def test_clear_candidate_context_returns_whether_row_existed():
         now=now,
     )
 
-    assert clear_candidate_context(
-        session,
-        user_id="user-1",
-        thread_id="thread-1",
-    ) is True
-    assert clear_candidate_context(
-        session,
-        user_id="user-1",
-        thread_id="thread-1",
-    ) is False
+    assert (
+        clear_candidate_context(
+            session,
+            user_id="user-1",
+            thread_id="thread-1",
+        )
+        is True
+    )
+    assert (
+        clear_candidate_context(
+            session,
+            user_id="user-1",
+            thread_id="thread-1",
+        )
+        is False
+    )

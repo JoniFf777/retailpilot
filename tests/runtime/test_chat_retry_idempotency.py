@@ -80,7 +80,11 @@ def test_terminal_same_key_replays_without_reexecution(terminal_status):
     def executor(context):
         nonlocal calls
         calls += 1
-        return {"answer": terminal_status.value, "status": terminal_status.value, "tool_calls": []}
+        return {
+            "answer": terminal_status.value,
+            "status": terminal_status.value,
+            "tool_calls": [],
+        }
 
     request = RunRequest(
         operation=RunOperation.CHAT,
@@ -108,7 +112,12 @@ def test_same_key_hash_conflict_is_machine_readable():
         calls += 1
         return {"answer": "ok", "status": "completed", "tool_calls": []}
 
-    base = dict(operation=RunOperation.CHAT, user_id="hash-user", thread_id="hash-thread", idempotency_key="hash-key")
+    base = dict(
+        operation=RunOperation.CHAT,
+        user_id="hash-user",
+        thread_id="hash-thread",
+        idempotency_key="hash-key",
+    )
     harness.run(RunRequest(input_text="one", **base), executor)
     conflict = harness.run(RunRequest(input_text="two", **base), executor)
     assert calls == 1

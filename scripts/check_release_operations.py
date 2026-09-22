@@ -13,14 +13,10 @@ from evaluation.json_artifacts import write_json_artifact
 
 def _format_summary(report: dict) -> str:
     failed = [
-        check["check_id"]
-        for check in report["checks"]
-        if check["status"] == "failed"
+        check["check_id"] for check in report["checks"] if check["status"] == "failed"
     ]
     waiting = [
-        check["check_id"]
-        for check in report["checks"]
-        if check["status"] == "waiting"
+        check["check_id"] for check in report["checks"] if check["status"] == "waiting"
     ]
     return "\n".join(
         (

@@ -275,7 +275,9 @@ class ToolResourcePolicy(RuntimeModel):
                 or "://" in normalized
                 or any(character in normalized for character in "/?#@")
             ):
-                raise ValueError("HTTPS allowlist entries must be bare lowercase hosts.")
+                raise ValueError(
+                    "HTTPS allowlist entries must be bare lowercase hosts."
+                )
         return self
 
 
@@ -494,12 +496,14 @@ def aggregate_run_usage(usages: Iterable[RunUsage]) -> RunUsage:
         )
 
     total_values = [
-        usage.total_tokens
-        if usage.total_tokens is not None
-        else (
-            usage.input_tokens + usage.output_tokens
-            if usage.input_tokens is not None and usage.output_tokens is not None
-            else None
+        (
+            usage.total_tokens
+            if usage.total_tokens is not None
+            else (
+                usage.input_tokens + usage.output_tokens
+                if usage.input_tokens is not None and usage.output_tokens is not None
+                else None
+            )
         )
         for usage in samples
     ]

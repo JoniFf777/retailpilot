@@ -91,7 +91,9 @@ def _seed_order(session: Session, *, user_id: str, stock: int = 2) -> tuple[str,
 
 
 async def _create_order(client: AsyncClient) -> str:
-    preview = await client.post("/api/checkout/preview", json={}, params={"user_id": "payment-owner"})
+    preview = await client.post(
+        "/api/checkout/preview", json={}, params={"user_id": "payment-owner"}
+    )
     assert preview.status_code == 200
     created = await client.post(
         "/api/orders",
@@ -114,7 +116,9 @@ async def test_payment_http_success_replay_and_get(
     provider = MockPaymentProvider()
     _install_overrides(monkeypatch, payment_http_session, provider)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             order_id = await _create_order(client)
             first = await client.post(
                 f"/api/orders/{order_id}/payments",
@@ -137,7 +141,9 @@ async def test_payment_http_success_replay_and_get(
                 == "demo-payment-correlation"
             ]
             claimed = [
-                record for record in payment_logs if record.get("event") == "payment.claimed"
+                record
+                for record in payment_logs
+                if record.get("event") == "payment.claimed"
             ]
             finalized = [
                 record
@@ -148,7 +154,9 @@ async def test_payment_http_success_replay_and_get(
             assert claimed[-1]["order_id"] == order_id
             assert claimed[-1]["payment_attempt_id"]
             assert finalized[-1]["order_id"] == order_id
-            assert finalized[-1]["payment_attempt_id"] == claimed[-1]["payment_attempt_id"]
+            assert (
+                finalized[-1]["payment_attempt_id"] == claimed[-1]["payment_attempt_id"]
+            )
             assert all(record.get("request_id") for record in payment_logs)
             assert all(record.get("trace_id") for record in payment_logs)
 
@@ -171,7 +179,11 @@ async def test_payment_http_success_replay_and_get(
 
             inventory = payment_http_session.scalar(select(CatalogInventory))
             assert inventory is not None
-            assert (inventory.on_hand_quantity, inventory.reserved_quantity, inventory.version) == (1, 0, 2)
+            assert (
+                inventory.on_hand_quantity,
+                inventory.reserved_quantity,
+                inventory.version,
+            ) == (1, 0, 2)
     finally:
         app.dependency_overrides.clear()
 
@@ -189,7 +201,9 @@ async def test_payment_http_decline_unknown_reconcile_and_conflict(
     )
     _install_overrides(monkeypatch, payment_http_session, provider)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             order_id = await _create_order(client)
             declined = await client.post(
                 f"/api/orders/{order_id}/payments",
@@ -248,7 +262,9 @@ async def test_payment_http_owner_boundary_and_body_contract(
     _seed_order(payment_http_session, user_id="payment-owner")
     _install_overrides(monkeypatch, payment_http_session, MockPaymentProvider())
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             order_id = await _create_order(client)
             missing_key = await client.post(
                 f"/api/orders/{order_id}/payments",
@@ -261,7 +277,11 @@ async def test_payment_http_owner_boundary_and_body_contract(
                 f"/api/orders/{order_id}/payments",
                 params={"user_id": "payment-owner"},
                 headers={"Idempotency-Key": "body-owner"},
-                json={"provider": "mock", "payment_method_ref": "method", "user_id": "other"},
+                json={
+                    "provider": "mock",
+                    "payment_method_ref": "method",
+                    "user_id": "other",
+                },
             )
             assert body_owner.status_code == 422
 
@@ -291,10 +311,14 @@ async def test_default_payment_dependency_reuses_provider_operation_across_http_
         scenarios_by_method={"unknown": ("unknown", "success")}
     )
     monkeypatch.setattr(payments_route, "_default_payment_provider", provider)
-    assert payments_route.get_payment_provider() is payments_route.get_payment_provider()
+    assert (
+        payments_route.get_payment_provider() is payments_route.get_payment_provider()
+    )
     _install_identity_and_db_overrides(payment_http_session, monkeypatch)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             order_id = await _create_order(client)
             first = await client.post(
                 f"/api/orders/{order_id}/payments",
@@ -319,7 +343,9 @@ async def test_default_payment_dependency_reuses_provider_operation_across_http_
             assert second.json()["payment_attempt"]["status"] == "succeeded"
             assert provider.charge_calls == 1
             assert provider.get_result_calls == 2
-            assert provider._operations[provider_key].provider_payment_id == operation_id
+            assert (
+                provider._operations[provider_key].provider_payment_id == operation_id
+            )
     finally:
         app.dependency_overrides.clear()
 

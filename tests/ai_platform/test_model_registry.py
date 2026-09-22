@@ -20,7 +20,11 @@ def make_candidate(identifier: str) -> ModelCandidate:
 
 def test_registry_rejects_duplicate_ids_and_publishes_snapshot():
     with pytest.raises(ValueError):
-        ModelCandidateRegistry(ModelRegistrySnapshot("v1", (make_candidate("same"), make_candidate("same"))))
+        ModelCandidateRegistry(
+            ModelRegistrySnapshot(
+                "v1", (make_candidate("same"), make_candidate("same"))
+            )
+        )
     registry = default_model_registry()
     original = registry.snapshot.version
     registry.publish(ModelRegistrySnapshot("v2", registry.snapshot.candidates))

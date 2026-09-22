@@ -32,9 +32,7 @@ def sample_event_outputs() -> list[dict[str, Any]]:
         },
         {
             "debug": {
-                "confirmation": {
-                    "events": [{"event": "pending_action_confirmed"}]
-                }
+                "confirmation": {"events": [{"event": "pending_action_confirmed"}]}
             }
         },
     ]
