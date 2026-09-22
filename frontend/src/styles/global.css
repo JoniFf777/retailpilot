@@ -1,6 +1,7 @@
 @import "./tokens.css";
 @import "./recommendation.css";
 @import "./comparison.css";
+@import "./tasks.css";
 
 :root {
   font-family: "Nunito Sans", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -68,6 +69,7 @@ h2 { letter-spacing: -0.035em; }
 .placeholder-card p:last-child { color: var(--color-text-muted); font-size: 1.05rem; line-height: 1.7; margin-bottom: 0; }
 
 .chat-page, .privacy-page, .runs-page, .status-page { display: grid; gap: var(--space-6); }
+.chat-heading-actions { align-items: center; display: flex; gap: .65rem; }
 .chat-heading { align-items: flex-end; display: flex; gap: var(--space-5); justify-content: space-between; }
 .chat-heading h1 { max-width: 720px; }
 .chat-subtitle { color: var(--color-text-muted); font-size: 1rem; line-height: 1.7; margin: 1rem 0 0; }

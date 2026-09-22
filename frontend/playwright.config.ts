@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: /(?:live-critical-path|catalog-browse\.live)\.spec\.ts$/,
+  testIgnore: process.env.RUN_LIVE_BROWSER === "1" ? undefined : /(?:live-critical-path|catalog-browse\.live)\.spec\.ts$/,
   fullyParallel: true,
   reporter: "line",
   use: {

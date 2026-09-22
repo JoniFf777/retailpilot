@@ -1,4 +1,106 @@
 export interface paths {
+    "/api/admin/ai/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Evidence */
+        get: operations["list_evidence_api_admin_ai_evidence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/evidence/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evidence Coverage */
+        get: operations["evidence_coverage_api_admin_ai_evidence_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/evidence/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Evidence Version */
+        post: operations["revoke_evidence_version_api_admin_ai_evidence_revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/extensions/{definition_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Extension */
+        post: operations["activate_extension_api_admin_ai_extensions__definition_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ai Operations Health */
+        get: operations["ai_operations_health_api_admin_ai_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/trace/project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Project Trace Endpoint */
+        post: operations["project_trace_endpoint_api_admin_ai_trace_project_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cart": {
         parameters: {
             query?: never;
@@ -513,6 +615,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/shopping-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Shopping Tasks */
+        get: operations["list_shopping_tasks_api_shopping_tasks_get"];
+        put?: never;
+        /** Create Shopping Task */
+        post: operations["create_shopping_task_api_shopping_tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shopping-tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shopping Task */
+        get: operations["get_shopping_task_api_shopping_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shopping-tasks/{task_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Prepare Task Action */
+        post: operations["prepare_task_action_api_shopping_tasks__task_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shopping-tasks/{task_id}/actions/{action_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm Task Action */
+        post: operations["confirm_task_action_api_shopping_tasks__task_id__actions__action_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shopping-tasks/{task_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Task */
+        post: operations["cancel_task_api_shopping_tasks__task_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shopping-tasks/{task_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Task Events */
+        get: operations["task_events_api_shopping_tasks__task_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shopping-tasks/{task_id}/inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Task Inputs */
+        post: operations["add_task_inputs_api_shopping_tasks__task_id__inputs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shopping-tasks/{task_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume Task */
+        post: operations["resume_task_api_shopping_tasks__task_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -580,6 +819,11 @@ export interface components {
             sku_name?: string | null;
             subtotal_money_snapshot?: components["schemas"]["Money"] | null;
             unit_money_snapshot?: components["schemas"]["Money"] | null;
+        };
+        /** AdminVersionRequest */
+        AdminVersionRequest: {
+            /** Expected Version */
+            expected_version: number;
         };
         /** AlternativeSkuView */
         AlternativeSkuView: {
@@ -1230,6 +1474,14 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** Fact */
+        Fact: {
+            /** Key */
+            key: string;
+            source_ref: components["schemas"]["SourceRef"];
+            /** Value */
+            value: unknown;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1403,6 +1655,11 @@ export interface components {
         };
         /** OwnerDataCounts */
         OwnerDataCounts: {
+            /**
+             * After Sales Drafts
+             * @default 0
+             */
+            after_sales_drafts: number;
             /** Agent Run Events */
             agent_run_events: number;
             /** Agent Runs */
@@ -1425,6 +1682,26 @@ export interface components {
             pending_actions: number;
             /** Preferences */
             preferences: number;
+            /**
+             * Shopping Task Actions
+             * @default 0
+             */
+            shopping_task_actions: number;
+            /**
+             * Shopping Task Artifacts
+             * @default 0
+             */
+            shopping_task_artifacts: number;
+            /**
+             * Shopping Task Commands
+             * @default 0
+             */
+            shopping_task_commands: number;
+            /**
+             * Shopping Tasks
+             * @default 0
+             */
+            shopping_tasks: number;
         };
         /** OwnerDataDeletion */
         OwnerDataDeletion: {
@@ -2034,6 +2311,91 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** ShoppingTaskActionRequest */
+        ShoppingTaskActionRequest: {
+            /**
+             * Action Type
+             * @enum {string}
+             */
+            action_type: "add_bundle_to_cart" | "save_after_sales_draft";
+            /** Expected Version */
+            expected_version: number;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** ShoppingTaskCommandRequest */
+        ShoppingTaskCommandRequest: {
+            /** Expected Version */
+            expected_version: number;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** ShoppingTaskConfirmRequest */
+        ShoppingTaskConfirmRequest: {
+            /** Confirmed */
+            confirmed: boolean;
+            /** Expected Version */
+            expected_version: number;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** ShoppingTaskCreateRequest */
+        ShoppingTaskCreateRequest: {
+            /** Device Selector */
+            device_selector?: string | null;
+            /** Goal Text */
+            goal_text: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bundle_selection" | "compatibility_diagnosis" | "after_sales_assessment";
+            /** Known Facts */
+            known_facts?: components["schemas"]["Fact"][];
+            /** Order Selector */
+            order_selector?: string | null;
+            /** Parent Task Id */
+            parent_task_id?: string | null;
+            /** Thread Id */
+            thread_id?: string | null;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** ShoppingTaskInputRequest */
+        ShoppingTaskInputRequest: {
+            /** Expected Version */
+            expected_version: number;
+            /** Facts */
+            facts?: components["schemas"]["Fact"][];
+            /** Feedback */
+            feedback?: {
+                [key: string]: unknown;
+            };
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** SourceRef */
+        SourceRef: {
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at?: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "user_reported" | "catalog" | "order" | "policy" | "evidence" | "derived";
+            /** Source Id */
+            source_id?: string | null;
+            /** Source Version */
+            source_version?: string | null;
+            /**
+             * Verified
+             * @default false
+             */
+            verified: boolean;
+        };
         /** TextEditableField */
         TextEditableField: {
             /** Current Value */
@@ -2066,6 +2428,13 @@ export interface components {
              */
             required: boolean;
         };
+        /** TraceProjectionRequest */
+        TraceProjectionRequest: {
+            /** Events */
+            events?: {
+                [key: string]: unknown;
+            }[];
+        };
         /** UpdateCartItemRequest */
         UpdateCartItemRequest: {
             /** Expected Version */
@@ -2095,6 +2464,207 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_evidence_api_admin_ai_evidence_get: {
+        parameters: {
+            query?: {
+                category_code?: string | null;
+                evidence_type?: string | null;
+                limit?: number;
+                policy_type?: string | null;
+                product_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evidence_coverage_api_admin_ai_evidence_coverage_get: {
+        parameters: {
+            query?: {
+                category_code?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_evidence_version_api_admin_ai_evidence_revoke_post: {
+        parameters: {
+            query: {
+                evidence_key: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_extension_api_admin_ai_extensions__definition_id__publish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                definition_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ai_operations_health_api_admin_ai_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    project_trace_endpoint_api_admin_ai_trace_project_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TraceProjectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_cart_api_cart_get: {
         parameters: {
             query?: {
@@ -3571,6 +4141,382 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_shopping_tasks_api_shopping_tasks_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                user_id?: string | null;
+            };
+            header?: {
+                "X-ShopMind-Authenticated-User"?: string | null;
+                "X-ShopMind-Identity-Nonce"?: string | null;
+                "X-ShopMind-Identity-Signature"?: string | null;
+                "X-ShopMind-Identity-Timestamp"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_shopping_task_api_shopping_tasks_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "X-ShopMind-Authenticated-User"?: string | null;
+                "X-ShopMind-Identity-Nonce"?: string | null;
+                "X-ShopMind-Identity-Signature"?: string | null;
+                "X-ShopMind-Identity-Timestamp"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingTaskCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shopping_task_api_shopping_tasks__task_id__get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+            };
+            header?: {
+                "X-ShopMind-Authenticated-User"?: string | null;
+                "X-ShopMind-Identity-Nonce"?: string | null;
+                "X-ShopMind-Identity-Signature"?: string | null;
+                "X-ShopMind-Identity-Timestamp"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prepare_task_action_api_shopping_tasks__task_id__actions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "X-ShopMind-Authenticated-User"?: string | null;
+                "X-ShopMind-Identity-Nonce"?: string | null;
+                "X-ShopMind-Identity-Signature"?: string | null;
+                "X-ShopMind-Identity-Timestamp"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingTaskActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_task_action_api_shopping_tasks__task_id__actions__action_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "X-ShopMind-Authenticated-User"?: string | null;
+                "X-ShopMind-Identity-Nonce"?: string | null;
+                "X-ShopMind-Identity-Signature"?: string | null;
+                "X-ShopMind-Identity-Timestamp"?: string | null;
+            };
+            path: {
+                action_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingTaskConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_task_api_shopping_tasks__task_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "X-ShopMind-Authenticated-User"?: string | null;
+                "X-ShopMind-Identity-Nonce"?: string | null;
+                "X-ShopMind-Identity-Signature"?: string | null;
+                "X-ShopMind-Identity-Timestamp"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingTaskCommandRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    task_events_api_shopping_tasks__task_id__events_get: {
+        parameters: {
+            query?: {
+                after_sequence?: number;
+                user_id?: string | null;
+            };
+            header?: {
+                "X-ShopMind-Authenticated-User"?: string | null;
+                "X-ShopMind-Identity-Nonce"?: string | null;
+                "X-ShopMind-Identity-Signature"?: string | null;
+                "X-ShopMind-Identity-Timestamp"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_task_inputs_api_shopping_tasks__task_id__inputs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "X-ShopMind-Authenticated-User"?: string | null;
+                "X-ShopMind-Identity-Nonce"?: string | null;
+                "X-ShopMind-Identity-Signature"?: string | null;
+                "X-ShopMind-Identity-Timestamp"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingTaskInputRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_task_api_shopping_tasks__task_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "X-ShopMind-Authenticated-User"?: string | null;
+                "X-ShopMind-Identity-Nonce"?: string | null;
+                "X-ShopMind-Identity-Signature"?: string | null;
+                "X-ShopMind-Identity-Timestamp"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingTaskCommandRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

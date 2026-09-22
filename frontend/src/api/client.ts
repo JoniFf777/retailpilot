@@ -32,7 +32,8 @@ import type {
   CatalogProductDetail,
   CatalogBrowseAddToCartPendingActionRequest,
 } from "./contracts";
-import { readSseStream } from "./sse";
+import { parseSseText, readSseStream } from "./sse";
+import type { ShoppingTaskListItem, ShoppingTaskSnapshot, TaskKind } from "../features/tasks/taskTypes";
 
 const API_BASE = "/api";
 
@@ -41,6 +42,8 @@ function idempotencyKey(): string {
 }
 
 type RequestOptions = RequestInit & { idempotency?: "required" | "disabled"; idempotencyKey?: string };
+
+export type ShoppingTaskEvent = { sequence: number; type: string; payload: Record<string, unknown> };
 
 function isPendingActionView(value: unknown): value is PendingActionView {
   if (!value || typeof value !== "object") return false;
@@ -75,6 +78,32 @@ export const shopMindApi = {
     return requestJson<CatalogProductListResponse>(`/catalog/products?${query.toString()}`, { signal, idempotency: "disabled" });
   },
   getCatalogProduct: (productCode: string, signal?: AbortSignal) => requestJson<CatalogProductDetail>(`/catalog/products/${encodeURIComponent(productCode)}`, { signal, idempotency: "disabled" }),
+  listShoppingTasks: (userId: string, signal?: AbortSignal) => requestJson<{ items: ShoppingTaskListItem[]; limit: number; offset: number }>(`/shopping-tasks?user_id=${encodeURIComponent(userId)}`, { signal, idempotency: "disabled" }),
+  getShoppingTask: (taskId: string, userId: string, signal?: AbortSignal) => requestJson<ShoppingTaskSnapshot>(`/shopping-tasks/${encodeURIComponent(taskId)}?user_id=${encodeURIComponent(userId)}`, { signal, idempotency: "disabled" }),
+  streamShoppingTaskEvents: async (taskId: string, userId: string, afterSequence: number, signal?: AbortSignal): Promise<ShoppingTaskEvent[]> => {
+    const query = new URLSearchParams({ user_id: userId, after_sequence: String(afterSequence) });
+    const response = await fetch(`${API_BASE}/shopping-tasks/${encodeURIComponent(taskId)}/events?${query.toString()}`, { headers: { Accept: "text/event-stream" }, signal });
+    if (!response.ok) throw await readApiError(response);
+    const text = await response.text();
+    return parseSseText(text).flatMap((frame) => {
+      try {
+        const value: unknown = JSON.parse(frame.data);
+        if (!value || typeof value !== "object") return [];
+        const payload = value as Record<string, unknown>;
+        const sequence = Number(frame.id);
+        const type = typeof payload.type === "string" ? payload.type : frame.event;
+        if (!Number.isInteger(sequence) || sequence < 1 || !type) return [];
+        return [{ sequence, type, payload }];
+      } catch {
+        return [];
+      }
+    });
+  },
+  createShoppingTask: (request: { user_id: string; kind: TaskKind; goal_text: string; known_facts?: unknown[]; thread_id?: string }, idempotencyKey?: string, signal?: AbortSignal) => requestJson<{ task_id: string; status: string; version: number; mode: string }>("/shopping-tasks", { method: "POST", body: JSON.stringify(request), idempotencyKey, signal }),
+  cancelShoppingTask: (taskId: string, request: { user_id: string; expected_version: number }, idempotencyKey?: string, signal?: AbortSignal) => requestJson<{ task_id: string; status: string; version: number }>(`/shopping-tasks/${encodeURIComponent(taskId)}/cancel`, { method: "POST", body: JSON.stringify(request), idempotencyKey, signal }),
+  addShoppingTaskInputs: (taskId: string, request: { user_id: string; expected_version: number; facts?: unknown[]; feedback?: Record<string, unknown> }, idempotencyKey?: string, signal?: AbortSignal) => requestJson<{ task_id: string; status: string; version: number }>(`/shopping-tasks/${encodeURIComponent(taskId)}/inputs`, { method: "POST", body: JSON.stringify(request), idempotencyKey, signal }),
+  prepareShoppingTaskAction: (taskId: string, request: { user_id: string; expected_version: number; action_type: "add_bundle_to_cart" | "save_after_sales_draft" }, idempotencyKey?: string, signal?: AbortSignal) => requestJson<{ action_id: string; action_type: string; status: string; version: number; expires_at: string; payload: Record<string, unknown> }>(`/shopping-tasks/${encodeURIComponent(taskId)}/actions`, { method: "POST", body: JSON.stringify(request), idempotencyKey, signal }),
+  confirmShoppingTaskAction: (taskId: string, actionId: string, request: { user_id: string; expected_version: number; confirmed: boolean }, idempotencyKey?: string, signal?: AbortSignal) => requestJson<Record<string, unknown>>(`/shopping-tasks/${encodeURIComponent(taskId)}/actions/${encodeURIComponent(actionId)}/confirm`, { method: "POST", body: JSON.stringify(request), idempotencyKey, signal }),
   chat: (request: ChatRequest, idempotencyKey?: string, signal?: AbortSignal) => requestJson<ChatResponse>("/chat", {
     method: "POST", body: JSON.stringify(request), signal, idempotencyKey,
   }),

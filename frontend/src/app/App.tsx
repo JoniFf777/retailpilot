@@ -1,9 +1,10 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 
-type IconName = "chat" | "catalog" | "privacy" | "runs" | "status" | "orders";
+type IconName = "chat" | "catalog" | "privacy" | "runs" | "status" | "orders" | "tasks";
 
 const NAV_ITEMS: Array<{ to: string; label: string; caption: string; icon: IconName; end?: boolean }> = [
   { to: "/", label: "决策工作台", caption: "Shopping desk", icon: "chat", end: true },
+  { to: "/tasks", label: "任务工作台", caption: "Durable tasks", icon: "tasks" },
   { to: "/catalog", label: "浏览商品", caption: "Catalog browse", icon: "catalog" },
   { to: "/privacy", label: "隐私中心", caption: "Owner data", icon: "privacy" },
   { to: "/runs", label: "运行记录", caption: "Run inspector", icon: "runs" },
@@ -20,6 +21,7 @@ function Icon({ name }: { name: IconName }) {
     runs: "M5 4.25h14A1.75 1.75 0 0 1 20.75 6v12A1.75 1.75 0 0 1 19 19.75H5A1.75 1.75 0 0 1 3.25 18V6A1.75 1.75 0 0 1 5 4.25Zm2.25 4h9.5M7.25 12h5.5m-5.5 3h7.5",
     status: "M12 3.5a8.5 8.5 0 1 0 8.5 8.5A8.5 8.5 0 0 0 12 3.5Zm0 4v5l3.25 2",
     orders: "M5 4.25h14A1.75 1.75 0 0 1 20.75 6v12A1.75 1.75 0 0 1 19 19.75H5A1.75 1.75 0 0 1 3.25 18V6A1.75 1.75 0 0 1 5 4.25Zm3.25 4h7.5M8.25 12h7.5m-7.5 3h5",
+    tasks: "M6 4.5h12A1.5 1.5 0 0 1 19.5 6v12a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V6A1.5 1.5 0 0 1 6 4.5Zm2.5 4h7m-7 3.5h7m-7 3.5h4",
   };
 
   return (
