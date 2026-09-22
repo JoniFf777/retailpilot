@@ -97,3 +97,21 @@ export type CatalogProductListResponse = components["schemas"]["CatalogProductLi
 export type CatalogErrorResponse = components["schemas"]["CatalogErrorResponse"];
 export type CatalogBrowseAddToCartPendingActionRequest =
   components["schemas"]["CatalogBrowseAddToCartPendingActionRequest"];
+
+export type TaskKind = components["schemas"]["TaskSnapshot"]["kind"];
+export type TaskStatus = components["schemas"]["TaskSnapshot"]["status"];
+export type ShoppingTaskListItem = components["schemas"]["TaskListItemView"];
+export type ShoppingTaskListResponse = components["schemas"]["TaskListResponse"];
+export type ShoppingTaskSnapshot = components["schemas"]["TaskSnapshot"];
+export type TaskStepView = components["schemas"]["TaskStepView"];
+export type TaskArtifactView = components["schemas"]["TaskArtifactView"];
+export type TaskOutputView = components["schemas"]["TaskOutputView"];
+export type TaskBundleProposalView = components["schemas"]["TaskBundleProposalView"];
+export type TaskBundleOptionView = components["schemas"]["TaskBundleOptionView"];
+export type TaskBundleItemView = components["schemas"]["TaskBundleItemView"];
+export type VerificationReport = components["schemas"]["VerificationReport"];
+export type VerificationIssue = components["schemas"]["VerificationIssue"];
+export type ShoppingTaskCreateResult = components["schemas"]["TaskCreateResult"];
+export type ShoppingTaskCommandResult = components["schemas"]["TaskCommandResult"];
+export type ShoppingTaskActionPreviewResult = components["schemas"]["TaskActionPreviewResult"];
+export type ShoppingTaskActionResolution = components["schemas"]["TaskActionResolution"];

@@ -2418,9 +2418,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Create Shopping Task Api Shopping Tasks Post"
+                  "$ref": "#/components/schemas/TaskCreateResult"
                 }
               }
             }
@@ -2554,9 +2552,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response List Shopping Tasks Api Shopping Tasks Get"
+                  "$ref": "#/components/schemas/TaskListResponse"
                 }
               }
             }
@@ -2679,9 +2675,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Shopping Task Api Shopping Tasks  Task Id  Get"
+                  "$ref": "#/components/schemas/TaskSnapshot"
                 }
               }
             }
@@ -2814,9 +2808,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Add Task Inputs Api Shopping Tasks  Task Id  Inputs Post"
+                  "$ref": "#/components/schemas/TaskCommandResult"
                 }
               }
             }
@@ -2949,9 +2941,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Cancel Task Api Shopping Tasks  Task Id  Cancel Post"
+                  "$ref": "#/components/schemas/TaskCommandResult"
                 }
               }
             }
@@ -3084,9 +3074,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Resume Task Api Shopping Tasks  Task Id  Resume Post"
+                  "$ref": "#/components/schemas/TaskCommandResult"
                 }
               }
             }
@@ -3351,9 +3339,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Prepare Task Action Api Shopping Tasks  Task Id  Actions Post"
+                  "$ref": "#/components/schemas/TaskActionPreviewResult"
                 }
               }
             }
@@ -3496,9 +3482,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Confirm Task Action Api Shopping Tasks  Task Id  Actions  Action Id  Confirm Post"
+                  "$ref": "#/components/schemas/TaskActionResolution"
                 }
               }
             }
@@ -7109,6 +7093,100 @@
         ],
         "title": "Fact"
       },
+      "GoalSpec": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "goal-spec.v1",
+            "title": "Schema Version",
+            "default": "goal-spec.v1"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bundle_selection",
+              "compatibility_diagnosis",
+              "after_sales_assessment"
+            ],
+            "title": "Kind"
+          },
+          "goal_text": {
+            "type": "string",
+            "title": "Goal Text"
+          },
+          "required_slots": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Required Slots"
+          },
+          "hard_constraints": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 32,
+            "title": "Hard Constraints"
+          },
+          "soft_requirements": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 32,
+            "title": "Soft Requirements"
+          },
+          "locked_selections": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "maxProperties": 8,
+            "title": "Locked Selections"
+          },
+          "excluded_skus": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Excluded Skus"
+          },
+          "open_questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Open Questions"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "type": "array",
+            "maxItems": 64,
+            "title": "Facts"
+          },
+          "diagnosis_state": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 16,
+            "title": "Diagnosis State"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "goal_text"
+        ],
+        "title": "GoalSpec"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -8807,6 +8885,118 @@
         ],
         "title": "PendingActionView"
       },
+      "PlanProposal": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "plan-proposal.v1",
+            "title": "Schema Version",
+            "default": "plan-proposal.v1"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Revision",
+            "default": 1
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStep"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Steps"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "agent"
+            ],
+            "title": "Mode",
+            "default": "offline"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Reason",
+            "default": "deterministic_offline_plan"
+          },
+          "fingerprint": {
+            "type": "string",
+            "title": "Fingerprint",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "steps"
+        ],
+        "title": "PlanProposal"
+      },
+      "PlanStep": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "title": "Key"
+          },
+          "capability": {
+            "type": "string",
+            "title": "Capability"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "coordinator",
+              "catalog_analyst",
+              "evidence_researcher",
+              "reviewer"
+            ],
+            "title": "Role"
+          },
+          "depends_on": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Depends On"
+          },
+          "input_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Input Refs"
+          },
+          "output_kind": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Output Kind"
+          },
+          "read_only": {
+            "type": "boolean",
+            "title": "Read Only",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "capability",
+          "role",
+          "output_kind"
+        ],
+        "title": "PlanStep"
+      },
       "ProductSpecificationView": {
         "properties": {
           "code": {
@@ -9747,6 +9937,650 @@
         ],
         "title": "SourceRef"
       },
+      "TaskActionPreviewResult": {
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "title": "Action Id"
+          },
+          "action_type": {
+            "type": "string",
+            "enum": [
+              "add_bundle_to_cart",
+              "save_after_sales_draft"
+            ],
+            "title": "Action Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action_id",
+          "action_type",
+          "status",
+          "version",
+          "expires_at",
+          "payload"
+        ],
+        "title": "TaskActionPreviewResult"
+      },
+      "TaskActionResolution": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "shopmind.task-action-resolution.v1",
+            "title": "Schema Version",
+            "default": "shopmind.task-action-resolution.v1"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "action_id": {
+            "type": "string",
+            "title": "Action Id"
+          },
+          "action_version": {
+            "type": "integer",
+            "title": "Action Version"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "side_effect": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Side Effect"
+          },
+          "cart_items": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cart Items"
+          },
+          "draft_only": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Only"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "action_id",
+          "action_version",
+          "status",
+          "side_effect"
+        ],
+        "title": "TaskActionResolution"
+      },
+      "TaskArtifactView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "branch": {
+            "type": "string",
+            "title": "Branch"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "passed",
+              "failed",
+              "superseded"
+            ],
+            "title": "Status"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "branch",
+          "status",
+          "payload"
+        ],
+        "title": "TaskArtifactView"
+      },
+      "TaskBundleItemView": {
+        "properties": {
+          "slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot"
+          },
+          "sku_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku Code"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "TaskBundleItemView",
+        "description": "Narrow view of `app.shopping_tasks.bundle.BundleItem`: only the fields\nTaskDetailPage.tsx reads. Kept independent rather than imported from `.bundle`\nto avoid a contracts <-> bundle <-> compatibility import cycle (compatibility.py\nimports SourceRef from this module); `extra=\"allow\"` because the actual object\nhas more fields (sku_id, name, currency, quantity, ...) than this view declares."
+      },
+      "TaskBundleOptionView": {
+        "properties": {
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskBundleItemView"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "TaskBundleOptionView"
+      },
+      "TaskBundleProposalView": {
+        "properties": {
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/TaskBundleOptionView"
+            },
+            "type": "array",
+            "title": "Options"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "TaskBundleProposalView"
+      },
+      "TaskCommandResult": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "waiting_input",
+              "awaiting_approval",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "status",
+          "version"
+        ],
+        "title": "TaskCommandResult",
+        "description": "Shared response shape for the inputs/cancel/resume command endpoints."
+      },
+      "TaskCreateResult": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "waiting_input",
+              "awaiting_approval",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "agent"
+            ],
+            "title": "Mode"
+          },
+          "accepted": {
+            "type": "boolean",
+            "title": "Accepted"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "status",
+          "version",
+          "mode",
+          "accepted"
+        ],
+        "title": "TaskCreateResult"
+      },
+      "TaskListItemView": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bundle_selection",
+              "compatibility_diagnosis",
+              "after_sales_assessment"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "waiting_input",
+              "awaiting_approval",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "agent"
+            ],
+            "title": "Mode"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "kind",
+          "status",
+          "mode",
+          "version",
+          "created_at"
+        ],
+        "title": "TaskListItemView"
+      },
+      "TaskListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskListItemView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "limit",
+          "offset"
+        ],
+        "title": "TaskListResponse"
+      },
+      "TaskOutputView": {
+        "properties": {
+          "bundle_proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskBundleProposalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verification_report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerificationReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "TaskOutputView",
+        "description": "The task's composed output. Only the two fields the frontend renders today\n(`bundle_proposal`, `verification_report`) get real shape; `compose_result`'s\npayload also carries an `outcome` string plus kind-specific extras\n(`diagnostic_check` for compatibility_diagnosis, `assessment` for\nafter_sales_assessment) that stay untyped and simply pass through, since which\nof those exist depends on `TaskSnapshot.kind`. `verification_report` reuses\n`VerificationReport` directly (not a narrowed view) since `verify_task_output()`\nbelow is its only producer, so the stored shape always matches exactly."
+      },
+      "TaskSnapshot": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Task Id"
+          },
+          "owner_id": {
+            "type": "string",
+            "title": "Owner Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bundle_selection",
+              "compatibility_diagnosis",
+              "after_sales_assessment"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "waiting_input",
+              "awaiting_approval",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "agent"
+            ],
+            "title": "Mode"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/GoalSpec"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanProposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/TaskStepView"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/TaskArtifactView"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskOutputView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending_interaction": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Interaction"
+          },
+          "last_sequence": {
+            "type": "integer",
+            "title": "Last Sequence",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "task_id",
+          "owner_id",
+          "kind",
+          "status",
+          "mode",
+          "version",
+          "goal"
+        ],
+        "title": "TaskSnapshot"
+      },
+      "TaskStepView": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "plan_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Plan Revision"
+          },
+          "capability": {
+            "type": "string",
+            "title": "Capability"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "coordinator",
+              "catalog_analyst",
+              "evidence_researcher",
+              "reviewer"
+            ],
+            "title": "Role"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "skipped",
+              "superseded"
+            ],
+            "title": "Status"
+          },
+          "attempt_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Attempt Count"
+          },
+          "output_artifact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Artifact Id"
+          },
+          "has_lease": {
+            "type": "boolean",
+            "title": "Has Lease"
+          },
+          "lease_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lease Until"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "plan_revision",
+          "capability",
+          "role",
+          "status",
+          "attempt_count",
+          "has_lease"
+        ],
+        "title": "TaskStepView"
+      },
       "TextEditableField": {
         "properties": {
           "field_type": {
@@ -9869,6 +10703,121 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VerificationIssue": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "affected_steps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Affected Steps"
+          },
+          "affected_artifacts": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Affected Artifacts"
+          },
+          "affected_skus": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Affected Skus"
+          },
+          "missing_facts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Missing Facts"
+          },
+          "allowed_repairs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Allowed Repairs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "VerificationIssue"
+      },
+      "VerificationReport": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "verification-report.v1",
+            "title": "Schema Version",
+            "default": "verification-report.v1"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "repairable",
+              "needs_input",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/VerificationIssue"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Issues"
+          },
+          "rule_version": {
+            "type": "string",
+            "title": "Rule Version",
+            "default": "shopping-rules.v1"
+          },
+          "reviewer_used": {
+            "type": "boolean",
+            "title": "Reviewer Used",
+            "default": false
+          },
+          "progress_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress Fingerprint"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "VerificationReport"
       }
     }
   }

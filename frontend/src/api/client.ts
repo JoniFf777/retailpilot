@@ -31,13 +31,15 @@ import type {
   CatalogProductListResponse,
   CatalogProductDetail,
   CatalogBrowseAddToCartPendingActionRequest,
-} from "./contracts";
-import { parseSseText, readSseStream } from "./sse";
-import type {
-  ShoppingTaskListItem,
+  ShoppingTaskActionPreviewResult,
+  ShoppingTaskActionResolution,
+  ShoppingTaskCommandResult,
+  ShoppingTaskCreateResult,
+  ShoppingTaskListResponse,
   ShoppingTaskSnapshot,
   TaskKind,
-} from "../features/tasks/taskTypes";
+} from "./contracts";
+import { parseSseText, readSseStream } from "./sse";
 
 const API_BASE = "/api";
 
@@ -108,10 +110,10 @@ export const shopMindApi = {
       idempotency: "disabled",
     }),
   listShoppingTasks: (userId: string, signal?: AbortSignal) =>
-    requestJson<{ items: ShoppingTaskListItem[]; limit: number; offset: number }>(
-      `/shopping-tasks?user_id=${encodeURIComponent(userId)}`,
-      { signal, idempotency: "disabled" },
-    ),
+    requestJson<ShoppingTaskListResponse>(`/shopping-tasks?user_id=${encodeURIComponent(userId)}`, {
+      signal,
+      idempotency: "disabled",
+    }),
   getShoppingTask: (taskId: string, userId: string, signal?: AbortSignal) =>
     requestJson<ShoppingTaskSnapshot>(
       `/shopping-tasks/${encodeURIComponent(taskId)}?user_id=${encodeURIComponent(userId)}`,
@@ -155,20 +157,24 @@ export const shopMindApi = {
     idempotencyKey?: string,
     signal?: AbortSignal,
   ) =>
-    requestJson<{ task_id: string; status: string; version: number; mode: string }>(
-      "/shopping-tasks",
-      { method: "POST", body: JSON.stringify(request), idempotencyKey, signal },
-    ),
+    requestJson<ShoppingTaskCreateResult>("/shopping-tasks", {
+      method: "POST",
+      body: JSON.stringify(request),
+      idempotencyKey,
+      signal,
+    }),
   cancelShoppingTask: (
     taskId: string,
     request: { user_id: string; expected_version: number },
     idempotencyKey?: string,
     signal?: AbortSignal,
   ) =>
-    requestJson<{ task_id: string; status: string; version: number }>(
-      `/shopping-tasks/${encodeURIComponent(taskId)}/cancel`,
-      { method: "POST", body: JSON.stringify(request), idempotencyKey, signal },
-    ),
+    requestJson<ShoppingTaskCommandResult>(`/shopping-tasks/${encodeURIComponent(taskId)}/cancel`, {
+      method: "POST",
+      body: JSON.stringify(request),
+      idempotencyKey,
+      signal,
+    }),
   addShoppingTaskInputs: (
     taskId: string,
     request: {
@@ -180,10 +186,12 @@ export const shopMindApi = {
     idempotencyKey?: string,
     signal?: AbortSignal,
   ) =>
-    requestJson<{ task_id: string; status: string; version: number }>(
-      `/shopping-tasks/${encodeURIComponent(taskId)}/inputs`,
-      { method: "POST", body: JSON.stringify(request), idempotencyKey, signal },
-    ),
+    requestJson<ShoppingTaskCommandResult>(`/shopping-tasks/${encodeURIComponent(taskId)}/inputs`, {
+      method: "POST",
+      body: JSON.stringify(request),
+      idempotencyKey,
+      signal,
+    }),
   prepareShoppingTaskAction: (
     taskId: string,
     request: {
@@ -194,19 +202,10 @@ export const shopMindApi = {
     idempotencyKey?: string,
     signal?: AbortSignal,
   ) =>
-    requestJson<{
-      action_id: string;
-      action_type: string;
-      status: string;
-      version: number;
-      expires_at: string;
-      payload: Record<string, unknown>;
-    }>(`/shopping-tasks/${encodeURIComponent(taskId)}/actions`, {
-      method: "POST",
-      body: JSON.stringify(request),
-      idempotencyKey,
-      signal,
-    }),
+    requestJson<ShoppingTaskActionPreviewResult>(
+      `/shopping-tasks/${encodeURIComponent(taskId)}/actions`,
+      { method: "POST", body: JSON.stringify(request), idempotencyKey, signal },
+    ),
   confirmShoppingTaskAction: (
     taskId: string,
     actionId: string,
@@ -214,7 +213,7 @@ export const shopMindApi = {
     idempotencyKey?: string,
     signal?: AbortSignal,
   ) =>
-    requestJson<Record<string, unknown>>(
+    requestJson<ShoppingTaskActionResolution>(
       `/shopping-tasks/${encodeURIComponent(taskId)}/actions/${encodeURIComponent(actionId)}/confirm`,
       { method: "POST", body: JSON.stringify(request), idempotencyKey, signal },
     ),

@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "../../app/session";
-import type { ShoppingTaskSnapshot } from "./taskTypes";
+import type { ShoppingTaskSnapshot } from "../../api/contracts";
 import { TaskDetailPage } from "./TaskDetailPage";
 
 function jsonResponse(body: unknown, status = 200) {
@@ -20,6 +20,11 @@ function emptyEventStream() {
   return new Response("", { status: 200, headers: { "Content-Type": "text/event-stream" } });
 }
 
+// Role/capability pairs match the real planner (app/shopping_tasks/contracts.py's
+// CAPABILITIES map): catalog_analyst owns catalog_candidates, coordinator owns
+// compose_result. Getting these right matters here — a hand-typed fixture using a
+// role/capability pair the backend could never actually produce is exactly the kind
+// of drift generated types are meant to catch.
 function baseSnapshot(overrides: Partial<ShoppingTaskSnapshot> = {}): ShoppingTaskSnapshot {
   return {
     task_id: "task-1",
@@ -29,47 +34,68 @@ function baseSnapshot(overrides: Partial<ShoppingTaskSnapshot> = {}): ShoppingTa
     mode: "offline",
     version: 3,
     goal: {
+      schema_version: "goal-spec.v1",
       kind: "bundle_selection",
       goal_text: "为办公场景选一套笔记本、显示器和扩展坞",
       required_slots: [],
-      open_questions: [],
       hard_constraints: {},
       soft_requirements: {},
+      locked_selections: {},
+      excluded_skus: [],
+      open_questions: [],
+      facts: [],
+      diagnosis_state: { round: 0, answered_check_ids: [], ruled_out: [], observations: [] },
+      version: 1,
     },
     plan: {
+      schema_version: "plan-proposal.v1",
+      revision: 1,
+      mode: "offline",
+      reason: "deterministic_offline_plan",
+      fingerprint: "",
       steps: [
         {
           key: "search",
-          capability: "product_search",
-          role: "product",
+          capability: "catalog_candidates",
+          role: "catalog_analyst",
           depends_on: [],
+          input_refs: [],
           output_kind: "candidates",
+          read_only: true,
         },
         {
           key: "compose",
-          capability: "bundle_compose",
-          role: "decision",
+          capability: "compose_result",
+          role: "coordinator",
           depends_on: ["search"],
+          input_refs: [],
           output_kind: "bundle",
+          read_only: true,
         },
       ],
     },
     steps: [
       {
         key: "search",
-        capability: "product_search",
-        role: "product",
-        status: "succeeded",
+        plan_revision: 1,
+        capability: "catalog_candidates",
+        role: "catalog_analyst",
+        status: "completed",
         attempt_count: 1,
         output_artifact_id: "artifact-1",
+        has_lease: false,
+        lease_until: null,
       },
       {
         key: "compose",
-        capability: "bundle_compose",
-        role: "decision",
-        status: "succeeded",
+        plan_revision: 1,
+        capability: "compose_result",
+        role: "coordinator",
+        status: "completed",
         attempt_count: 1,
         output_artifact_id: "artifact-2",
+        has_lease: false,
+        lease_until: null,
       },
     ],
     artifacts: [
@@ -77,7 +103,7 @@ function baseSnapshot(overrides: Partial<ShoppingTaskSnapshot> = {}): ShoppingTa
         id: "artifact-2",
         kind: "bundle_proposal",
         branch: "compose",
-        status: "verified",
+        status: "passed",
         payload: {},
       },
     ],
@@ -117,11 +143,11 @@ describe("Durable task workbench: task detail", () => {
     expect(screen.getByText("2 步")).toBeInTheDocument();
     expect(screen.getByText("search")).toBeInTheDocument();
     expect(screen.getByText("compose")).toBeInTheDocument();
-    expect(screen.getByText("product · product_search")).toBeInTheDocument();
-    expect(screen.getByText("decision · bundle_compose")).toBeInTheDocument();
+    expect(screen.getByText("catalog_analyst · catalog_candidates")).toBeInTheDocument();
+    expect(screen.getByText("coordinator · compose_result")).toBeInTheDocument();
     expect(screen.getByText("1 份产物")).toBeInTheDocument();
     expect(screen.getByText("bundle_proposal")).toBeInTheDocument();
-    expect(screen.getByText("compose · verified")).toBeInTheDocument();
+    expect(screen.getByText("compose · passed")).toBeInTheDocument();
   });
 
   it("shows the not-found state when the snapshot can't be read", async () => {

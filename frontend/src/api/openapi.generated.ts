@@ -1482,6 +1482,51 @@ export interface components {
             /** Value */
             value: unknown;
         };
+        /** GoalSpec */
+        GoalSpec: {
+            /** Diagnosis State */
+            diagnosis_state?: {
+                [key: string]: unknown;
+            };
+            /** Excluded Skus */
+            excluded_skus?: string[];
+            /** Facts */
+            facts?: components["schemas"]["Fact"][];
+            /** Goal Text */
+            goal_text: string;
+            /** Hard Constraints */
+            hard_constraints?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bundle_selection" | "compatibility_diagnosis" | "after_sales_assessment";
+            /** Locked Selections */
+            locked_selections?: {
+                [key: string]: string;
+            };
+            /** Open Questions */
+            open_questions?: string[];
+            /** Required Slots */
+            required_slots?: string[];
+            /**
+             * Schema Version
+             * @default goal-spec.v1
+             * @constant
+             */
+            schema_version: "goal-spec.v1";
+            /** Soft Requirements */
+            soft_requirements?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Version
+             * @default 1
+             */
+            version: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2086,6 +2131,61 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** PlanProposal */
+        PlanProposal: {
+            /**
+             * Fingerprint
+             * @default
+             */
+            fingerprint: string;
+            /**
+             * Mode
+             * @default offline
+             * @enum {string}
+             */
+            mode: "offline" | "agent";
+            /**
+             * Reason
+             * @default deterministic_offline_plan
+             */
+            reason: string;
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            /**
+             * Schema Version
+             * @default plan-proposal.v1
+             * @constant
+             */
+            schema_version: "plan-proposal.v1";
+            /** Steps */
+            steps: components["schemas"]["PlanStep"][];
+        };
+        /** PlanStep */
+        PlanStep: {
+            /** Capability */
+            capability: string;
+            /** Depends On */
+            depends_on?: string[];
+            /** Input Refs */
+            input_refs?: string[];
+            /** Key */
+            key: string;
+            /** Output Kind */
+            output_kind: string;
+            /**
+             * Read Only
+             * @default true
+             */
+            read_only: boolean;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "coordinator" | "catalog_analyst" | "evidence_researcher" | "reviewer";
+        };
         /** ProductSpecificationView */
         ProductSpecificationView: {
             /** Code */
@@ -2396,6 +2496,263 @@ export interface components {
              */
             verified: boolean;
         };
+        /** TaskActionPreviewResult */
+        TaskActionPreviewResult: {
+            /** Action Id */
+            action_id: string;
+            /**
+             * Action Type
+             * @enum {string}
+             */
+            action_type: "add_bundle_to_cart" | "save_after_sales_draft";
+            /** Expires At */
+            expires_at: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Status */
+            status: string;
+            /** Version */
+            version: number;
+        };
+        /** TaskActionResolution */
+        TaskActionResolution: {
+            /** Action Id */
+            action_id: string;
+            /** Action Version */
+            action_version: number;
+            /** Cart Items */
+            cart_items?: string[] | null;
+            /** Draft Only */
+            draft_only?: boolean | null;
+            /**
+             * Schema Version
+             * @default shopmind.task-action-resolution.v1
+             * @constant
+             */
+            schema_version: "shopmind.task-action-resolution.v1";
+            /** Side Effect */
+            side_effect: boolean | string;
+            /** Status */
+            status: string;
+            /** Task Id */
+            task_id: string;
+        };
+        /** TaskArtifactView */
+        TaskArtifactView: {
+            /** Branch */
+            branch: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "passed" | "failed" | "superseded";
+        };
+        /**
+         * TaskBundleItemView
+         * @description Narrow view of `app.shopping_tasks.bundle.BundleItem`: only the fields
+         *     TaskDetailPage.tsx reads. Kept independent rather than imported from `.bundle`
+         *     to avoid a contracts <-> bundle <-> compatibility import cycle (compatibility.py
+         *     imports SourceRef from this module); `extra="allow"` because the actual object
+         *     has more fields (sku_id, name, currency, quantity, ...) than this view declares.
+         */
+        TaskBundleItemView: {
+            /** Price */
+            price?: string | null;
+            /** Sku Code */
+            sku_code?: string | null;
+            /** Slot */
+            slot?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** TaskBundleOptionView */
+        TaskBundleOptionView: {
+            /** Currency */
+            currency?: string | null;
+            /** Items */
+            items?: components["schemas"]["TaskBundleItemView"][];
+            /** Total */
+            total?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** TaskBundleProposalView */
+        TaskBundleProposalView: {
+            /** Options */
+            options?: components["schemas"]["TaskBundleOptionView"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * TaskCommandResult
+         * @description Shared response shape for the inputs/cancel/resume command endpoints.
+         */
+        TaskCommandResult: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "waiting_input" | "awaiting_approval" | "succeeded" | "failed" | "cancelled" | "expired";
+            /** Task Id */
+            task_id: string;
+            /** Version */
+            version: number;
+        };
+        /** TaskCreateResult */
+        TaskCreateResult: {
+            /** Accepted */
+            accepted: boolean;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "offline" | "agent";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "waiting_input" | "awaiting_approval" | "succeeded" | "failed" | "cancelled" | "expired";
+            /** Task Id */
+            task_id: string;
+            /** Version */
+            version: number;
+        };
+        /** TaskListItemView */
+        TaskListItemView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bundle_selection" | "compatibility_diagnosis" | "after_sales_assessment";
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "offline" | "agent";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "waiting_input" | "awaiting_approval" | "succeeded" | "failed" | "cancelled" | "expired";
+            /** Task Id */
+            task_id: string;
+            /** Version */
+            version: number;
+        };
+        /** TaskListResponse */
+        TaskListResponse: {
+            /** Items */
+            items: components["schemas"]["TaskListItemView"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /**
+         * TaskOutputView
+         * @description The task's composed output. Only the two fields the frontend renders today
+         *     (`bundle_proposal`, `verification_report`) get real shape; `compose_result`'s
+         *     payload also carries an `outcome` string plus kind-specific extras
+         *     (`diagnostic_check` for compatibility_diagnosis, `assessment` for
+         *     after_sales_assessment) that stay untyped and simply pass through, since which
+         *     of those exist depends on `TaskSnapshot.kind`. `verification_report` reuses
+         *     `VerificationReport` directly (not a narrowed view) since `verify_task_output()`
+         *     below is its only producer, so the stored shape always matches exactly.
+         */
+        TaskOutputView: {
+            bundle_proposal?: components["schemas"]["TaskBundleProposalView"] | null;
+            verification_report?: components["schemas"]["VerificationReport"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** TaskSnapshot */
+        TaskSnapshot: {
+            /** Artifacts */
+            artifacts?: components["schemas"]["TaskArtifactView"][];
+            goal: components["schemas"]["GoalSpec"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bundle_selection" | "compatibility_diagnosis" | "after_sales_assessment";
+            /**
+             * Last Sequence
+             * @default 0
+             */
+            last_sequence: number;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "offline" | "agent";
+            output?: components["schemas"]["TaskOutputView"] | null;
+            /** Owner Id */
+            owner_id: string;
+            /** Pending Interaction */
+            pending_interaction?: {
+                [key: string]: unknown;
+            } | null;
+            plan?: components["schemas"]["PlanProposal"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "waiting_input" | "awaiting_approval" | "succeeded" | "failed" | "cancelled" | "expired";
+            /** Steps */
+            steps?: components["schemas"]["TaskStepView"][];
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Version */
+            version: number;
+        };
+        /** TaskStepView */
+        TaskStepView: {
+            /** Attempt Count */
+            attempt_count: number;
+            /** Capability */
+            capability: string;
+            /** Has Lease */
+            has_lease: boolean;
+            /** Key */
+            key: string;
+            /** Lease Until */
+            lease_until?: string | null;
+            /** Output Artifact Id */
+            output_artifact_id?: string | null;
+            /** Plan Revision */
+            plan_revision: number;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "coordinator" | "catalog_analyst" | "evidence_researcher" | "reviewer";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "completed" | "failed" | "skipped" | "superseded";
+        };
         /** TextEditableField */
         TextEditableField: {
             /** Current Value */
@@ -2454,6 +2811,51 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VerificationIssue */
+        VerificationIssue: {
+            /** Affected Artifacts */
+            affected_artifacts?: string[];
+            /** Affected Skus */
+            affected_skus?: string[];
+            /** Affected Steps */
+            affected_steps?: string[];
+            /** Allowed Repairs */
+            allowed_repairs?: string[];
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Missing Facts */
+            missing_facts?: string[];
+        };
+        /** VerificationReport */
+        VerificationReport: {
+            /** Issues */
+            issues?: components["schemas"]["VerificationIssue"][];
+            /** Progress Fingerprint */
+            progress_fingerprint?: string | null;
+            /**
+             * Reviewer Used
+             * @default false
+             */
+            reviewer_used: boolean;
+            /**
+             * Rule Version
+             * @default shopping-rules.v1
+             */
+            rule_version: string;
+            /**
+             * Schema Version
+             * @default verification-report.v1
+             * @constant
+             */
+            schema_version: "verification-report.v1";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "repairable" | "needs_input" | "rejected";
         };
     };
     responses: never;
@@ -4178,9 +4580,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TaskListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4219,9 +4619,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TaskCreateResult"];
                 };
             };
             /** @description Validation Error */
@@ -4259,9 +4657,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TaskSnapshot"];
                 };
             };
             /** @description Validation Error */
@@ -4302,9 +4698,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TaskActionPreviewResult"];
                 };
             };
             /** @description Validation Error */
@@ -4346,9 +4740,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TaskActionResolution"];
                 };
             };
             /** @description Validation Error */
@@ -4389,9 +4781,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TaskCommandResult"];
                 };
             };
             /** @description Validation Error */
@@ -4471,9 +4861,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TaskCommandResult"];
                 };
             };
             /** @description Validation Error */
@@ -4514,9 +4902,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TaskCommandResult"];
                 };
             };
             /** @description Validation Error */

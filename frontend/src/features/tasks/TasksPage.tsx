@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { shopMindApi } from "../../api/client";
 import { useSession } from "../../app/useSession";
-import type { TaskKind } from "./taskTypes";
+import type { TaskKind } from "../../api/contracts";
 
 const labels: Record<TaskKind, string> = {
   bundle_selection: "组合选购",

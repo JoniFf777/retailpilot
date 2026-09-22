@@ -159,18 +159,12 @@ export function TaskDetailPage() {
       </div>
     );
   const task = query.data;
-  const bundle = task.output?.bundle_proposal as
-    | {
-        options?: Array<{
-          total?: string;
-          currency?: string;
-          items?: Array<{ slot?: string; sku_code?: string; price?: string }>;
-        }>;
-      }
-    | undefined;
-  const verification = task.output?.verification_report as
-    | { issues?: Array<{ code?: string; message?: string }> }
-    | undefined;
+  // steps/artifacts default to [] server-side (repository.snapshot()), but a default
+  // isn't a JSON Schema "required" field, so the generated type still allows undefined.
+  const steps = task.steps ?? [];
+  const artifacts = task.artifacts ?? [];
+  const bundle = task.output?.bundle_proposal;
+  const verification = task.output?.verification_report;
   return (
     <section className="task-detail-page" aria-labelledby="task-detail-title">
       <Link className="text-button" to="/tasks">
@@ -204,8 +198,11 @@ export function TaskDetailPage() {
             <h2>计划与步骤</h2>
             <span>{task.plan?.steps.length ?? 0} 步</span>
           </div>
-          {task.steps.map((step) => (
-            <div className="task-step-row" key={step.key}>
+          {steps.map((step) => (
+            // `task.steps` mixes every plan revision's steps together; a local repair
+            // (revise_task_plan) can reuse the same step key in a later revision, so
+            // the key must include plan_revision to stay unique across revisions.
+            <div className="task-step-row" key={`${step.plan_revision}:${step.key}`}>
               <span className={`task-step-dot task-step-${step.status}`} />
               <div>
                 <strong>{step.key}</strong>
@@ -220,7 +217,7 @@ export function TaskDetailPage() {
         <article className="task-panel">
           <div className="section-heading">
             <h2>结果与证据</h2>
-            <span>{task.artifacts.length} 份产物</span>
+            <span>{artifacts.length} 份产物</span>
           </div>
           {bundle?.options?.map((option, index) => (
             <div className="task-artifact" key={index}>
@@ -243,7 +240,7 @@ export function TaskDetailPage() {
           {task.output && !bundle ? (
             <pre className="task-output">{JSON.stringify(task.output, null, 2)}</pre>
           ) : null}
-          {task.artifacts.map((artifact) => (
+          {artifacts.map((artifact) => (
             <div className="task-artifact" key={artifact.id}>
               <strong>{artifact.kind}</strong>
               <span>
@@ -280,7 +277,7 @@ export function TaskDetailPage() {
           </button>
         </div>
       )}
-      {(task.status === "waiting_input" || task.status === "needs_information") && (
+      {task.status === "waiting_input" && (
         <form
           className="task-panel task-feedback"
           onSubmit={(event) => {
