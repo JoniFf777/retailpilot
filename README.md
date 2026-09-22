@@ -38,7 +38,7 @@ flowchart LR
 
 The React/Vite application calls FastAPI. Agent orchestration and deterministic recommendation reads feed a guarded commerce backend. PostgreSQL owns business state; RocketMQ is an optional publisher target, never a Core Demo dependency.
 
-See [docs/architecture.md](docs/architecture.md) for system, transaction, and state diagrams, and [docs/interview_guide.md](docs/interview_guide.md) for a portfolio-oriented walkthrough.
+See [docs/architecture.md](docs/architecture.md) for system, transaction, and state diagrams, and [docs/interview_architecture_overview.md](docs/interview_architecture_overview.md) for a portfolio-oriented walkthrough.
 
 ## Tech stack
 

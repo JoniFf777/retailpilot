@@ -1,0 +1,16 @@
+{
+  "seed_source": "shopmind-dock-catalog",
+  "seed_version": "2026.09.20",
+  "category": {"code": "dock", "name": "Dock", "status": "active"},
+  "attribute_definitions": [
+    {"code": "video_outputs", "name": "Video outputs", "scope": "spu", "data_type": "string", "filterable": true, "comparable": true, "display_order": 10},
+    {"code": "power_delivery_w", "name": "Power delivery", "scope": "spu", "data_type": "integer", "unit": "W", "filterable": true, "comparable": true, "display_order": 20},
+    {"code": "host_interface", "name": "Host interface", "scope": "spu", "data_type": "string", "filterable": true, "comparable": true, "display_order": 30}
+  ],
+  "products": [
+    {"product_code": "DOCK-THUNDER-12", "legacy_product_id": "TASK-DOCK-001", "brand": "ShopMind", "name": "Thunder Dock 12", "description": "Explicit dual-display and power-delivery facts.", "sale_status": "active", "attributes": {"video_outputs": "HDMI+DP", "power_delivery_w": 100, "host_interface": "Thunderbolt 4"}, "sku": {"sku_code": "DOCK-THUNDER-12-100", "name": "100W / HDMI + DP", "money_amount": "899.00", "currency": "CNY", "sale_status": "active", "variant_attributes": {}, "inventory": 10}},
+    {"product_code": "DOCK-USB4-08", "legacy_product_id": "TASK-DOCK-002", "brand": "ShopMind", "name": "USB4 Dock 8", "description": "Explicit USB4 video and power facts.", "sale_status": "active", "attributes": {"video_outputs": "HDMI", "power_delivery_w": 85, "host_interface": "USB4"}, "sku": {"sku_code": "DOCK-USB4-08-85", "name": "85W / HDMI", "money_amount": "599.00", "currency": "CNY", "sale_status": "active", "variant_attributes": {}, "inventory": 12}},
+    {"product_code": "DOCK-USBC-UNKNOWN", "legacy_product_id": "TASK-DOCK-003", "brand": "ShopMind", "name": "USB-C Dock Basic", "description": "Interface shape is present but output facts are intentionally incomplete.", "sale_status": "active", "attributes": {"host_interface": "USB-C"}, "sku": {"sku_code": "DOCK-USBC-UNKNOWN-60", "name": "60W / unspecified output", "money_amount": "299.00", "currency": "CNY", "sale_status": "active", "variant_attributes": {}, "inventory": 7}},
+    {"product_code": "DOCK-NOSTOCK-16", "legacy_product_id": "TASK-DOCK-004", "brand": "ShopMind", "name": "Pro Dock 16", "description": "Explicit facts, currently out of stock for negative cases.", "sale_status": "active", "attributes": {"video_outputs": "HDMI+DP", "power_delivery_w": 140, "host_interface": "Thunderbolt 4"}, "sku": {"sku_code": "DOCK-NOSTOCK-16-140", "name": "140W / HDMI + DP", "money_amount": "1299.00", "currency": "CNY", "sale_status": "active", "variant_attributes": {}, "inventory": 0}}
+  ]
+}

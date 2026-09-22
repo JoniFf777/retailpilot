@@ -65,6 +65,8 @@ def _load_product_documents(documents_dir: Path) -> list[SourceDocument]:
                 content=content,
                 metadata={
                     "doc_type": "product",
+                    "evidence_type": "product_guide",
+                    "authority": "evidence_only",
                     "source_path": str(md_file),
                     "source_name": md_file.name,
                     "product_id": product_id,
@@ -88,6 +90,12 @@ def _load_policy_documents(documents_dir: Path) -> list[SourceDocument]:
                 content=content,
                 metadata={
                     "doc_type": "policy",
+                    "evidence_type": (
+                        "compatibility"
+                        if md_file.stem.casefold() == "compatibility_guide"
+                        else "store_policy"
+                    ),
+                    "authority": "evidence_only",
                     "source_path": str(md_file),
                     "source_name": md_file.name,
                     "product_id": None,

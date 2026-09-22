@@ -62,6 +62,11 @@ class OwnerDataCounts(BaseModel):
     conversation_summaries: int = Field(ge=0)
     idempotency_records: int = Field(ge=0)
     memory_records: int = Field(ge=0)
+    shopping_tasks: int = Field(default=0, ge=0)
+    shopping_task_artifacts: int = Field(default=0, ge=0)
+    shopping_task_actions: int = Field(default=0, ge=0)
+    after_sales_drafts: int = Field(default=0, ge=0)
+    shopping_task_commands: int = Field(default=0, ge=0)
 
 
 class OwnerMemoryRecord(BaseModel):

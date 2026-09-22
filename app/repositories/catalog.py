@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.catalog.models import AttributeDefinition, CatalogCategory, CatalogInventory, CatalogProduct, CatalogSku
 from app.recommendation.categories import default_category_registry
+from app.shopping_tasks.category_registry import default_task_category_registry
 from app.db.models import Product
 from app.schemas.catalog import (
     CatalogAttributeDefinition,
@@ -39,7 +40,7 @@ def list_active_skus(
         _candidate(sku, product, inventory, definitions=definitions)
         for sku, product, inventory in rows
     ]
-    registry = default_category_registry()
+    registry = default_task_category_registry() if category_code == "dock" else default_category_registry()
     invalid = [
         issue
         for candidate in candidates

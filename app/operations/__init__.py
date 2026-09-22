@@ -39,6 +39,11 @@ from .release_checks import (
     ReleaseOperationReport,
     evaluate_release_operation,
 )
+from .shopping_task_rollback import (
+    ShoppingTaskRollbackEvidence,
+    ShoppingTaskRollbackReport,
+    evaluate_shopping_task_rollback,
+)
 
 __all__ = [
     "DEPLOYMENT_READINESS_SCHEMA_VERSION",
@@ -66,10 +71,13 @@ __all__ = [
     "ReleaseOperationReport",
     "RuntimeCleanupEvidence",
     "RuntimeCleanupEvidenceError",
+    "ShoppingTaskRollbackEvidence",
+    "ShoppingTaskRollbackReport",
     "assert_production_preflight",
     "evaluate_deployment_readiness",
     "evaluate_production_preflight",
     "evaluate_release_operation",
+    "evaluate_shopping_task_rollback",
     "load_runtime_cleanup_evidence",
     "write_runtime_cleanup_evidence",
 ]

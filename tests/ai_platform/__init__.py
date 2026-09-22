@@ -1,0 +1,1 @@
+"""AI platform contract tests."""

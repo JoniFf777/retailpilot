@@ -663,7 +663,8 @@ class GovernanceAuditRecord(Base):
             "'action.prepare', 'action.resume', 'action.confirm', "
             "'action.cancel', 'action.expire', "
             "'memory.create', 'memory.inspect', 'memory.correct', 'memory.delete', "
-            "'deletion.request', 'deletion.execute'"
+            "'deletion.request', 'deletion.execute', "
+            "'admin.extension.publish', 'admin.evidence.revoke'"
             ")",
             name="ck_governance_audit_operation",
         ),
@@ -781,6 +782,10 @@ class Document(Base):
     )
 
     id: Mapped[int] = mapped_column(BIGINT_ID, Identity(), primary_key=True)
+    evidence_version_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("shopmind_evidence_versions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     doc_type: Mapped[str] = mapped_column(String, nullable=False)
     source_path: Mapped[str] = mapped_column(Text, nullable=False)
     source_name: Mapped[Optional[str]] = mapped_column(Text)
@@ -800,3 +805,15 @@ class Document(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+# Import the business-scoped evidence models after the legacy declarations so
+# Base.metadata.create_all() and Alembic see both model families.
+from app.ai_platform.models import (  # noqa: E402,F401
+    AIExtensionDefinition,
+    AIExtensionPublication,
+    ShoppingEvidencePublication,
+    ShoppingEvidenceVersion,
+    ShoppingIngestionNode,
+    ShoppingIngestionTask,
+)

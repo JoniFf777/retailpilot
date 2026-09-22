@@ -1,6 +1,41 @@
-# ShopMind Architecture
+# ShopMind 当前架构
 
-Updated: 2026-08-11
+> 中文入口更新时间：2026-09-17
+>
+>
+> 本文件保留 V3-V6 的详细技术底稿和固定英文合同标识。第一次了解项目请先读 `interview_architecture_overview.md`；目录与代码调用关系见 `shopmind_directory_structure_guide.md`。
+
+## 当前架构摘要
+
+ShopMind 是“React 前端 + FastAPI 模块化单体 + PostgreSQL/pgvector + 可选后台 worker”的购物决策与交易系统。多个 Agent 默认在同一后端进程内协作，不能描述成已经上线的分布式微服务集群。
+
+核心分层：
+
+```text
+React / TypeScript
+  → FastAPI / Identity / OpenAPI
+  → AI Admission / Harness / LangGraph
+  → Product、RAG、Preference、Decision 只读协作
+  → 结构化推荐与购物证据
+  → PendingAction / HITL
+  → Cart / Checkout / Order / Reservation / Mock Payment
+  → PostgreSQL / pgvector / Transactional Outbox
+```
+
+最新 AI 工程层包括：
+
+- Chat/Confirm 已接入 global、operation、subject 三层 Admission；
+- 购物证据使用 Fetcher → Parser → Chunker → Enricher → Indexer，并持久化版本、任务、节点和活动发布指针；
+- `SearchChannel + PostProcessor`、Model Gateway、Prompt/Skill/MCP Registry 已有实现和离线门禁；
+- 默认 RAG 当前只复用公共 RRF，Model Gateway 和动态 Extension 尚未全面接管核心流量；
+- `/admin/ai` 默认关闭，后端能力多于当前前端健康摘要页；
+- RocketMQ 仍只负责可选交易 Outbox Publisher，不调度证据入库。
+
+事实权威顺序：Catalog/PostgreSQL 管 SKU、价格、库存和可售状态；结构化兼容规则管理硬约束；购物证据只提供说明和政策；Order/Payment 数据管理 owner-scoped 交易事实。
+
+以下章节是详细架构合同，其中保留部分英文术语，便于测试、代码标识和历史设计追踪。
+
+Detailed baseline originally updated: 2026-08-11; Chinese current-state entry updated: 2026-09-17.
 
 ## Purpose
 
@@ -10,7 +45,7 @@ PendingAction / HITL -> Cart -> Checkout Preview -> Order and Inventory
 Reservation -> Mock Payment -> Transactional Outbox -> optional RocketMQ FIFO
 publisher. PostgreSQL is the source of truth for commerce state.
 
-The current Alembic head is `0015_shopmind_order_expiration`.
+The current Alembic head is `0020_task_worker_heartbeat`.
 `0007_governance_audit` is the pre-commerce / pre-ShopMind-commerce baseline,
 not the current migration head.
 
@@ -33,6 +68,27 @@ permissions. The server-owned
 `SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER=lexical` setting enables the
 deterministic experiment reranker; its default is disabled until held-out
 quality and latency justify a different policy.
+
+## Shopping Evidence Platform
+
+ShopMind's document path is a shopping-evidence path, not a general enterprise
+knowledge base. The controlled corpus contains Product Guide, Compatibility
+Evidence, Buying Guide and Store Policy material. A versioned
+`Fetcher → Parser → Chunker → Enricher → Indexer` pipeline validates product,
+SKU, category, compatibility and policy validity metadata before an atomic
+publication. Incomplete or expired versions are not searchable.
+
+Catalog remains authoritative for SKU identity, price, inventory and sale
+status; structured compatibility rules remain authoritative for hard
+compatibility decisions; owner-scoped transaction tables remain authoritative
+for order/payment facts. Evidence only explains those facts or supplies current
+policy rules. The admin `/api/admin/ai/*` surface is disabled unless a trusted
+admin authorizer is installed and returns bounded, payload-free operational
+views.
+
+The AI platform uses existing local/Redis coordination for operation admission
+and keeps RocketMQ separate: RocketMQ is an optional transaction-Outbox
+publisher and is not required by the evidence pipeline or public Chat path.
 
 
 ## Current Commerce Architecture
@@ -300,7 +356,8 @@ PostgreSQL is the ShopMind persistence path:
   thread, run and resource fingerprints plus closed allowlisted metadata;
 - product and policy document chunks with pgvector embeddings;
 - Alembic migrations through the historical `0007_governance_audit` baseline;
-  current commerce migrations continue through `0015_shopmind_order_expiration`.
+  current commerce and task migrations continue through `0020_task_worker_heartbeat`, which
+  also contains the shopping-evidence lifecycle and AI extension registry.
 
 Inherited SQLite/vectorstore paths remain for workshop/legacy compatibility.
 New ShopMind runtime persistence should use PostgreSQL.
@@ -740,3 +797,15 @@ the document evidence boundary.
   resource, and time isolation exist.
 - Stable events and replayable trajectories are designed before advanced
   orchestration.
+
+## Durable shopping task workbench (additive)
+
+`app/shopping_tasks/` owns the new offline task contracts, planner, bounded
+solver, evidence projection, worker and state/budget helpers. Its PostgreSQL
+facts are introduced after `0017` by `0018_shopping_task_workbench`; the worker
+claims scheduler epochs and step leases with `SKIP LOCKED` and submits results
+with token fencing. The released recommendation registry remains ten-category;
+the dock schema is loaded only by the task registry. Task actions reuse the
+existing Catalog cart rows and add a local-only after-sales draft boundary.
+This path is not a second Harness and does not enable real-model execution by
+default.

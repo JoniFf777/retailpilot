@@ -1,4 +1,23 @@
-# ShopMind Reference Deployment Operations
+# ShopMind 生产参考运维手册
+
+> 中文入口更新时间：2026-09-17
+>
+>
+> 本文保留 V6 发布检查的固定英文 Schema、status 和 reason 名称。它提供离线、无敏感信息的部署/回滚/事故检查合同，不会代替真实部署平台、TLS、可信代理、备份、调度器、制品签名或外部指标系统。
+
+## 当前运维入口摘要
+
+- `GET /api/health`：liveness；
+- `GET /api/health/preflight`：静态生产配置；
+- `GET /api/health/readiness`：PostgreSQL、migration `0017_ai_extension_registry`、协调后端和必要依赖；
+- `GET /api/health/service-metrics`：有界单副本 SLO；
+- `GET /api/health/governance-audit`：审计发送告警状态；
+- `GET /api/health/outbox`：可选交易 Outbox 状态；
+- `/api/admin/ai/*`：默认关闭的 AI 平台运维面。
+
+AI 平台只检查已启用且属于当前流量必要路径的依赖。RocketMQ disabled、证据高级后端 disabled 不会让核心 API readiness 失败。购物证据使用 PostgreSQL 租约/CAS，不通过 RocketMQ 调度。
+
+以下英文内容是原始 V6 运行合同和可复制命令，保留用于与代码中的固定 Schema 对照。
 
 This runbook covers the V6 reference deployment checks. It does not introduce
 a deployment platform, remote control plane, distributed metrics store, or

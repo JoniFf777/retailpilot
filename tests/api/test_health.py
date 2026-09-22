@@ -48,7 +48,7 @@ async def test_preflight_health_exposes_closed_development_report() -> None:
     assert payload["profile"] == "development"
     assert payload["status"] == "not_applicable"
     assert payload["ready"] is False
-    assert payload["total_checks"] == 6
+    assert payload["total_checks"] == 8
     assert payload["failed_checks"] == 0
 
 

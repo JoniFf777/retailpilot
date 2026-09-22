@@ -2,6 +2,18 @@
 
 Updated: 2026-07-26
 
+## Agent Product Upgrade — Completed 2026-09-21
+
+The `evolve-shopping-agent-task-workbench` change is implemented and accepted at
+75/75. It adds bounded bundle selection, compatibility diagnosis and
+owner-scoped after-sales assessment/local drafts with real model planning,
+rule-first verification, constrained review, local repair and durable task
+recovery. The feature remains opt-in and is not a general-purpose autonomous
+code-execution platform. See
+[shopmind_agent_upgrade_acceptance.md](docs/shopmind_agent_upgrade_acceptance.md)
+for validation and remaining operational limits. No release/tag/deployment is
+implied by implementation completion.
+
 ## Product Direction
 
 ShopMind will be a production-oriented **Multi-Agent Engineering reference

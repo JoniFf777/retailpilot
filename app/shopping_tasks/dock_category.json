@@ -1,0 +1,13 @@
+{
+  "code": "dock",
+  "display_name": "Dock",
+  "aliases": ["扩展坞", "dock station", "docking station"],
+  "definition_version": "2026.09.20",
+  "attributes": [
+    {"key": "video_outputs", "catalog_key": "video_outputs", "label": "Video outputs", "type": "string", "role": "display_only", "missing": "ignore", "display_order": 10, "comparable": true},
+    {"key": "power_delivery_w", "catalog_key": "power_delivery_w", "label": "Power delivery", "type": "number", "unit": "W", "role": "display_only", "missing": "ignore", "display_order": 20, "comparable": true},
+    {"key": "host_interface", "catalog_key": "host_interface", "label": "Host interface", "type": "string", "role": "display_only", "missing": "ignore", "display_order": 30, "comparable": true}
+  ],
+  "display_fields": ["video_outputs", "power_delivery_w", "host_interface"],
+  "clarification_question": "请补充扩展坞的视频输出和供电事实。"
+}

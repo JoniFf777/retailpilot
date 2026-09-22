@@ -159,7 +159,7 @@ async def test_deployment_readiness_endpoint_against_configured_database():
     assert payload["status"] == "ready"
     assert payload["passed_checks"] == 3
     assert payload["failed_checks"] == 0
-    assert payload["not_applicable_checks"] == 2
+    assert payload["not_applicable_checks"] == 3
 
 
 async def test_service_metrics_endpoint_exposes_closed_process_snapshot():

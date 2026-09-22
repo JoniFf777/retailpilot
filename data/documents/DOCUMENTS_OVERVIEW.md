@@ -2,7 +2,7 @@
 
 **Location:** `data/documents/`  
 **Purpose:** 用于 RAG Agent 查询的非结构化内容  
-**Total:** 30 个文档（25 个 product specs + 5 个 policies）  
+**Total:** 109 个文档（104 个 product guides + 5 个 policies）
 **Format:** Markdown
 
 ## 概览
@@ -22,12 +22,20 @@
 
 ```
 data/documents/
-├── products/           # 25 product documents
-│   ├── TECH-LAP-001.md to TECH-LAP-005.md  (5 laptops)
-│   ├── TECH-MON-006.md to TECH-MON-009.md  (4 monitors)
-│   ├── TECH-KEY-010.md to TECH-KEY-015.md  (6 keyboards/mice)
-│   ├── TECH-AUD-016.md to TECH-AUD-020.md  (5 audio)
-│   └── TECH-ACC-021.md to TECH-ACC-025.md  (5 accessories)
+├── products/           # 104 product documents
+│   ├── TECH-LAP-*      (9 laptops)
+│   ├── TECH-MON-*      (7 monitors)
+│   ├── TECH-KEY-*      (6 keyboards)
+│   ├── TECH-MOU-*      (9 mice)
+│   ├── TECH-AUD-*      (5 audio)
+│   ├── TECH-HED-*      (9 headphones)
+│   ├── TECH-CAM-*      (9 cameras/webcams)
+│   ├── TECH-KBD-*      (9 keyboards)
+│   ├── TECH-ROU-*      (9 routers)
+│   ├── TECH-SPK-*      (9 speakers)
+│   ├── TECH-TAB-*      (9 tablets)
+│   ├── TECH-PHN-*      (9 phones)
+│   └── TECH-ACC-*      (5 accessories)
 │
 └── policies/          # 5 policy documents
     ├── return_policy.md
@@ -39,7 +47,7 @@ data/documents/
 
 ---
 
-## Product Documents（25 个文件）
+## Product Documents（104 个文件）
 
 **命名规则：**`{product_id}.md`，例如 `TECH-LAP-001.md`。
 
@@ -54,11 +62,7 @@ data/documents/
 7. Troubleshooting：常见问题和解决方案。
 
 **类别：**
-- **Laptops** (5): MacBook Air/Pro, Dell XPS, Lenovo ThinkPad, HP Pavilion
-- **Monitors** (4): Dell UltraSharp, LG, Samsung Gaming, BenQ Designer
-- **Keyboards/Mice** (6): Apple Magic, Logitech MX, Gaming, Combos
-- **Audio** (5): Sony/Apple headphones, Blue Yeti mic, speakers, JBL
-- **Accessories** (5): USB-C hub, laptop stand, webcam, sleeve, cables
+- 当前语料覆盖 13 个电子消费品前缀，实际文件清单以该目录为准；新增商品必须先通过 Catalog 引用校验。
 
 ---
 

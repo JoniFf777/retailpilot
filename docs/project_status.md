@@ -1,9 +1,27 @@
-# ShopMind Project Status
+# ShopMind 当前项目状态
 
-Snapshot date: 2026-09-14
+Snapshot date: 2026-09-21
 
-Current closure state: Phase 1-6B-2 accepted/closed; Project Closure
-implementation in progress; Inbox/Consumer deferred.
+> 中文阅读提示：本文件是详细状态源，包含当前实现与历史 Phase 验收记录。秋招快速理解请先读 `interview_architecture_overview.md` 和 `resume_project_summary.md`。
+
+## 当前中文快照
+
+- 正式发布版本仍是 `v3.0.0`；V4-V6 和后续购物闭环/AI 平台实现位于当前 `main`/工作区，但尚未创建新 tag、Release 或部署。
+- Phase 1-6B-2 与 Agent Task Workbench（75/75）均已完成；Inbox/Consumer deferred。
+- 当前 Alembic head 为 `0020_task_worker_heartbeat`；新任务功能默认关闭。
+- 核心购物链路已经覆盖推荐、明确 SKU、PendingAction、Cart、Checkout、Order、Inventory Reservation、Mock Payment 和 Transactional Outbox。
+- Chat/Confirm 已使用分层 AI Admission；local coordination 为默认，可显式选择 Redis。
+- 购物证据 Pipeline、版本/任务/节点/活动指针和证据撤销已经实现，使用 PostgreSQL 租约/CAS，不依赖 RocketMQ。
+- 完整 Retrieval Pipeline、Model Gateway、Prompt/Skill/MCP Registry 已有合同、实现和离线门禁，但尚未全面接管默认 RAG、模型、Prompt 和工具路径。
+- `/admin/ai` 默认关闭；后端支持健康、证据/覆盖率、发布/撤销和 payload-free Trace，当前前端主要展示健康摘要。
+- RocketMQ 只有可选交易 Outbox Publisher；Consumer、Inbox 和消费端去重仍未实现。
+- 最新全量后端回归为 `978 passed, 68 skipped`；任务 PostgreSQL 专项 `7/7`、生产/回滚专项 `30/30`、前端 Vitest `154/154`。历史 PostgreSQL/Redis 与 V3 handoff 批次仍有效，但不同批次不能相加。
+
+以下详细章节保留历史英文术语和阶段记录，便于与测试、提交和 Release 证据对应。
+
+Current closure state: Phase 1-6B-2 accepted/closed; Agent Task Workbench
+complete (75/75); Project Closure implementation in progress because
+Inbox/Consumer deferred remains outside this change.
 
 ## Summary
 
@@ -108,7 +126,7 @@ All V6 implementation exit criteria are satisfied.
   options enable bounded rerankers; the semantic option lazy-loads a configured
   CrossEncoder and has no measured quality improvement claimed yet.
 - SQLAlchemy repositories isolate persistence from tools.
-- The ShopMind Alembic head is `0015_shopmind_order_expiration` (`0007_governance_audit`
+- The ShopMind Alembic head is `0020_task_worker_heartbeat` (`0007_governance_audit`
   remains the pre-ShopMind baseline revision).
 - Bootstrap, seed, index, PostgreSQL smoke, and combined V3 smoke scripts exist.
 
@@ -163,7 +181,7 @@ All V6 implementation exit criteria are satisfied.
 - PostgreSQL integration passes `23/23`, including fresh-store restart,
   repository isolation and Harness governance emission assertions; combined
   PostgreSQL/Redis integration passes `25/25`. PostgreSQL smoke passed at
-  migration `0015_shopmind_order_expiration`, and V3 API handoff smoke passed `3/3`.
+  migration `0017_ai_extension_registry`, and V3 API handoff smoke passed `3/3`.
 - The exact immutable implementation commit `908b918` passed that matrix from a
   fresh detached worktree. Production preflight passed `6/6`, the V6 catalog
   passed `8/8` suites with `488/488` checks and `48/48` comparisons, release
@@ -642,7 +660,8 @@ completion, bounded retry/backoff, dead-letter state, and explicit operator
 redrive.
 
 The standalone publisher sends `shopmind.order.created.v1`,
-`shopmind.order.cancelled.v1`, and `shopmind.payment.succeeded.v1` to
+`shopmind.order.cancelled.v1`, `shopmind.order.expired.v1`, and
+`shopmind.payment.succeeded.v1` to
 `shopmind-order-events-v1` with `message_group=order_id`, event-type tags, and
 event-ID keys. The Apache RocketMQ Python SDK is worker-only and lazy-loaded;
 development defaults keep publishing disabled. Phase 6A is accepted and closed;
@@ -677,8 +696,24 @@ dead-letter rows do not make the Order API unavailable, and readiness does not
 perform a RocketMQ network check. Health uses capped counters only and does
 not load recent Outbox rows or payloads. Phase 6B-2 is accepted and closed; it
 does not add Prometheus/Grafana/ELK,
-OpenTelemetry Collector, external tracing, a monitoring dashboard, new
-transaction behavior or Inbox/Consumer.
+OpenTelemetry Collector, external tracing, new transaction behavior or
+Inbox/Consumer.
+
+### Shopping Evidence Engineering Foundation (implemented/verified)
+
+The follow-up change `adopt-ragent-engineering-patterns` keeps the current
+shopping business boundaries and adds a versioned shopping-evidence lifecycle.
+The first implementation slice adds Product Guide, Compatibility Evidence,
+Buying Guide and Store Policy contracts, PostgreSQL-backed ingestion task/node
+and publication tables, a reusable vector/lexical retrieval pipeline, bounded
+AI admission/model candidate resilience, a server-owned Prompt/Skill/MCP
+  registry, and a default-off admin AI operations surface. Catalog remains the
+authority for SKU, price, stock and sale status; order/payment data remains the
+authority for owner-specific facts; documents only provide explanation and
+policy rules. RocketMQ remains an optional transaction-Outbox publisher and is
+  not used to dispatch the evidence pipeline. The implementation and offline
+  contract gates are complete; the optional advanced backends remain deferred
+  until live quality, latency and cost measurements justify a separate change.
 
 ## Current Risks
 
@@ -876,3 +911,15 @@ persisting document bodies. A synthetic ablation compares deterministic
 single, bounded multi, hybrid RRF and semantic variants with disclosed cost
 tradeoffs. Local live catalog and core order/payment browser paths passed 2/2;
 offline Playwright passed 35/35.
+
+### Agent task workbench implementation status (2026-09-21)
+
+The task workbench is complete at 75/75 with strict contracts, a task-only dock
+category registry, durable task/plan/step/attempt/artifact/event/action tables,
+owner-scoped API routes, a PostgreSQL worker, bounded bundle solving, safe
+diagnosis/after-sales modules, scoped evidence, `/tasks` frontend routes,
+transactional confirmed actions, production readiness and rollback gates.
+Three authorized real-provider task trajectories and a legal local revision are
+recorded in `docs/shopmind_agent_upgrade_acceptance.md`. The feature remains
+disabled by default and the old Chat/catalog/commerce contracts remain the
+compatibility path.

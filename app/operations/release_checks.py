@@ -30,6 +30,7 @@ ReleaseOperationCheckId = Literal[
     "coordination.backend",
     "service.slo",
     "governance.audit",
+    "ai.platform",
     "rollback.target",
     "rollback.migration",
 ]
@@ -94,6 +95,7 @@ class ReleaseOperationInput(BaseModel):
         "incompatible",
         "unverified",
     ] = "not_applicable"
+    ai_platform_status: Literal["disabled", "ready", "degraded", "not_ready"] = "disabled"
 
     @model_validator(mode="after")
     def validate_operation_evidence(self) -> "ReleaseOperationInput":
@@ -146,6 +148,10 @@ class ReleaseOperationReason(StrEnum):
     GOVERNANCE_AUDIT_WARNING = "governance_audit_warning"
     GOVERNANCE_AUDIT_DISABLED = "governance_audit_disabled"
     GOVERNANCE_AUDIT_DEGRADED = "governance_audit_degraded"
+    AI_PLATFORM_READY = "ai_platform_ready"
+    AI_PLATFORM_DEGRADED = "ai_platform_degraded"
+    AI_PLATFORM_NOT_READY = "ai_platform_not_ready"
+    AI_PLATFORM_DISABLED = "ai_platform_disabled"
     ROLLBACK_TARGET_VERIFIED = "rollback_target_verified"
     ROLLBACK_TARGET_UNVERIFIED = "rollback_target_unverified"
     ROLLBACK_MIGRATION_COMPATIBLE = "rollback_migration_compatible"
@@ -332,6 +338,32 @@ def _governance_check(
     )
 
 
+def _ai_platform_check(evidence: ReleaseOperationInput) -> ReleaseOperationCheck:
+    if evidence.ai_platform_status == "ready":
+        return _check(
+            "ai.platform",
+            ReleaseOperationCheckStatus.PASSED,
+            ReleaseOperationReason.AI_PLATFORM_READY,
+        )
+    if evidence.ai_platform_status == "degraded":
+        return _check(
+            "ai.platform",
+            ReleaseOperationCheckStatus.WAITING,
+            ReleaseOperationReason.AI_PLATFORM_DEGRADED,
+        )
+    if evidence.ai_platform_status == "not_ready":
+        return _check(
+            "ai.platform",
+            ReleaseOperationCheckStatus.FAILED,
+            ReleaseOperationReason.AI_PLATFORM_NOT_READY,
+        )
+    return _check(
+        "ai.platform",
+        ReleaseOperationCheckStatus.NOT_APPLICABLE,
+        ReleaseOperationReason.AI_PLATFORM_DISABLED,
+    )
+
+
 def _rollback_checks(
     evidence: ReleaseOperationInput,
 ) -> tuple[ReleaseOperationCheck, ReleaseOperationCheck]:
@@ -430,6 +462,7 @@ def evaluate_release_operation(
         _coordination_check(evidence.readiness),
         _service_check(evidence.service_health),
         _governance_check(evidence.governance_audit_health),
+        _ai_platform_check(evidence),
         *_rollback_checks(evidence),
     )
     failed = sum(check.status == "failed" for check in checks)

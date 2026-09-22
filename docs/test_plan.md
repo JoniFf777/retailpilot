@@ -114,3 +114,16 @@ cleanup temp-ACL case. A broader run reached `731 passed, 2 skipped` before
 boundary.
 Consumer, Inbox, webhook, automatic reconciliation, Redis, and RocketMQ
 consumer orchestration are not part of Phase 6A.
+
+## Shopping Evidence Engineering Foundation
+
+The follow-up implementation adds offline contracts for four shopping evidence
+types: Product Guide, Compatibility Evidence, Buying Guide, and Store Policy.
+The acceptance matrix covers Catalog reference validation, active policy
+windows, cross-product leakage, stale price/inventory conflicts, structured
+compatibility precedence, PostgreSQL pipeline leases/CAS, extension snapshot
+refresh, payload-free admin views, AI admission/candidate fallback, circuit
+breaking, cancellation, shared usage budgets, and release-state evaluation.
+The evidence pipeline uses PostgreSQL task leases first; the existing optional
+RocketMQ publisher remains limited to transaction Outbox events and no order
+topic is used to dispatch evidence nodes.

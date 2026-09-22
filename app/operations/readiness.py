@@ -8,7 +8,7 @@ from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.settings import Settings
@@ -16,6 +16,7 @@ from app.db.version import MIGRATION_HEAD
 from app.runtime.coordination_factory import (
     build_runtime_coordination_backend,
 )
+from app.shopping_tasks.models import ShoppingTaskWorkerHeartbeat
 
 from .cleanup_evidence import (
     RuntimeCleanupEvidence,
@@ -29,6 +30,7 @@ from .preflight import (
 
 
 DEPLOYMENT_READINESS_SCHEMA_VERSION = "shopmind.deployment-readiness.v1"
+LEGACY_MIGRATION_HEAD = "0017_ai_extension_registry"
 
 DeploymentReadinessCheckId = Literal[
     "configuration.preflight",
@@ -36,6 +38,8 @@ DeploymentReadinessCheckId = Literal[
     "postgres.migration",
     "coordination.backend",
     "retention.cleanup",
+    "ai.platform",
+    "shopping_tasks.worker",
 ]
 
 
@@ -44,6 +48,8 @@ class DeploymentReadinessCategory(StrEnum):
     DATABASE = "database"
     COORDINATION = "coordination"
     RETENTION = "retention"
+    AI_PLATFORM = "ai_platform"
+    SHOPPING_TASKS = "shopping_tasks"
 
 
 class DeploymentReadinessCheckStatus(StrEnum):
@@ -71,6 +77,13 @@ class DeploymentReadinessReason(StrEnum):
     CLEANUP_EVIDENCE_INVALID = "cleanup_evidence_invalid"
     CLEANUP_EVIDENCE_STALE = "cleanup_evidence_stale"
     CLEANUP_RECENT = "cleanup_recent"
+    AI_PLATFORM_DISABLED = "ai_platform_disabled"
+    AI_PLATFORM_READY = "ai_platform_ready"
+    SHOPPING_TASKS_DISABLED = "shopping_tasks_disabled"
+    SHOPPING_TASK_WORKER_READY = "shopping_task_worker_ready"
+    SHOPPING_TASK_WORKER_MISSING = "shopping_task_worker_missing"
+    SHOPPING_TASK_WORKER_STALE = "shopping_task_worker_stale"
+    SHOPPING_TASK_WORKER_UNAVAILABLE = "shopping_task_worker_unavailable"
 
 
 class DeploymentReadinessCheck(BaseModel):
@@ -162,8 +175,89 @@ def _configuration_check(
     )
 
 
+def _ai_platform_check(settings: Settings) -> DeploymentReadinessCheck:
+    if not getattr(settings, "shopmind_ai_platform_enabled", False):
+        return _check(
+            "ai.platform",
+            DeploymentReadinessCategory.AI_PLATFORM,
+            DeploymentReadinessCheckStatus.NOT_APPLICABLE,
+            DeploymentReadinessReason.AI_PLATFORM_DISABLED,
+        )
+    return _check(
+        "ai.platform",
+        DeploymentReadinessCategory.AI_PLATFORM,
+        DeploymentReadinessCheckStatus.PASSED,
+        DeploymentReadinessReason.AI_PLATFORM_READY,
+    )
+
+
+def _shopping_tasks_check(
+    settings: Settings,
+    *,
+    session_factory: Callable[[], Session],
+    now: datetime,
+) -> DeploymentReadinessCheck:
+    if not settings.shopmind_shopping_tasks_enabled:
+        return _check(
+            "shopping_tasks.worker",
+            DeploymentReadinessCategory.SHOPPING_TASKS,
+            DeploymentReadinessCheckStatus.NOT_APPLICABLE,
+            DeploymentReadinessReason.SHOPPING_TASKS_DISABLED,
+        )
+    session: Session | None = None
+    try:
+        session = session_factory()
+        last_seen = session.scalar(
+            select(func.max(ShoppingTaskWorkerHeartbeat.last_seen_at))
+        )
+    except Exception:
+        return _check(
+            "shopping_tasks.worker",
+            DeploymentReadinessCategory.SHOPPING_TASKS,
+            DeploymentReadinessCheckStatus.FAILED,
+            DeploymentReadinessReason.SHOPPING_TASK_WORKER_UNAVAILABLE,
+        )
+    finally:
+        if session is not None:
+            try:
+                session.close()
+            except Exception:
+                pass
+    if last_seen is None:
+        return _check(
+            "shopping_tasks.worker",
+            DeploymentReadinessCategory.SHOPPING_TASKS,
+            DeploymentReadinessCheckStatus.FAILED,
+            DeploymentReadinessReason.SHOPPING_TASK_WORKER_MISSING,
+        )
+    normalized = (
+        last_seen.astimezone(timezone.utc)
+        if last_seen.tzinfo is not None and last_seen.utcoffset() is not None
+        else last_seen.replace(tzinfo=timezone.utc)
+    )
+    recent = (now - normalized).total_seconds() <= (
+        settings.shopmind_shopping_task_worker_max_age_seconds
+    )
+    return _check(
+        "shopping_tasks.worker",
+        DeploymentReadinessCategory.SHOPPING_TASKS,
+        (
+            DeploymentReadinessCheckStatus.PASSED
+            if recent
+            else DeploymentReadinessCheckStatus.FAILED
+        ),
+        (
+            DeploymentReadinessReason.SHOPPING_TASK_WORKER_READY
+            if recent
+            else DeploymentReadinessReason.SHOPPING_TASK_WORKER_STALE
+        ),
+    )
+
+
 def _postgres_checks(
     session_factory: Callable[[], Session],
+    *,
+    shopping_tasks_enabled: bool,
 ) -> tuple[DeploymentReadinessCheck, DeploymentReadinessCheck]:
     def close_session(session: Session | None) -> None:
         if session is None:
@@ -212,7 +306,12 @@ def _postgres_checks(
             DeploymentReadinessReason.MIGRATION_UNAVAILABLE,
         )
     else:
-        current = migration == MIGRATION_HEAD
+        accepted_heads = (
+            {MIGRATION_HEAD}
+            if shopping_tasks_enabled
+            else {LEGACY_MIGRATION_HEAD, MIGRATION_HEAD}
+        )
+        current = migration in accepted_heads
         migration_check = _check(
             "postgres.migration",
             DeploymentReadinessCategory.DATABASE,
@@ -372,13 +471,22 @@ def evaluate_deployment_readiness(
     resolved_preflight = preflight_report or evaluate_production_preflight(
         settings
     )
-    postgres_checks = _postgres_checks(session_factory)
+    postgres_checks = _postgres_checks(
+        session_factory,
+        shopping_tasks_enabled=settings.shopmind_shopping_tasks_enabled,
+    )
     checks = (
         _configuration_check(settings, resolved_preflight),
         *postgres_checks,
         _coordination_check(
             settings,
             coordination_probe or _default_coordination_probe,
+        ),
+        _ai_platform_check(settings),
+        _shopping_tasks_check(
+            settings,
+            session_factory=session_factory,
+            now=(clock or (lambda: datetime.now(timezone.utc)))(),
         ),
         _retention_check(
             settings,

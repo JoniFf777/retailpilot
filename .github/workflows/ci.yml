@@ -99,6 +99,20 @@ jobs:
           path: artifacts/v6-release-operations
           if-no-files-found: error
 
+      - name: Gate shopping task rollback checks
+        if: always()
+        run: |
+          mkdir -p artifacts/shopping-task-rollback
+          python evaluation/run_shopping_task_rollback_eval.py --output-json artifacts/shopping-task-rollback/summary.json | tee artifacts/shopping-task-rollback/summary.md
+
+      - name: Upload shopping task rollback artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: shopping-task-rollback
+          path: artifacts/shopping-task-rollback
+          if-no-files-found: error
+
       - name: Gate V5 planner policy
         if: always()
         run: |

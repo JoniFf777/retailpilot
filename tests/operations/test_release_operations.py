@@ -194,15 +194,16 @@ def test_deployment_ready_report_is_ordered_versioned_and_value_free() -> None:
     assert report.status == "ready"
     assert report.recommended_action == "continue_rollout"
     assert report.passed is True
-    assert report.total_checks == 7
+    assert report.total_checks == 8
     assert report.passed_checks == 5
-    assert report.not_applicable_checks == 2
+    assert report.not_applicable_checks == 3
     assert [check.check_id for check in report.checks] == [
         "health.liveness",
         "readiness.deployment",
         "coordination.backend",
         "service.slo",
         "governance.audit",
+        "ai.platform",
         "rollback.target",
         "rollback.migration",
     ]
@@ -279,7 +280,7 @@ def test_rollback_fails_closed_without_target_and_migration_proof() -> None:
         "execute_rollback",
         True,
     )
-    assert ready.not_applicable_checks == 0
+    assert ready.not_applicable_checks == 1
     assert incompatible.status == "blocked"
     assert incompatible.recommended_action == "block_rollback"
     assert {

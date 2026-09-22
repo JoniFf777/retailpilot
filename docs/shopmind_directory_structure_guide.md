@@ -3,6 +3,8 @@
 > 用途：理解代码放在哪里、各层怎样协作，以及面试时如何介绍项目结构。  
 > 当前仓库名是 `retailpilot`，当前产品名是 **ShopMind**。仓库仍保留早期 TechHub workshop 和 V1 单 Agent 代码，因此阅读时要区分“当前主链路”和“历史参考代码”。
 
+> 状态同步：2026-09-17。本文已覆盖工作区最新的购物证据 Pipeline、检索扩展流水线、AI 韧性与 Extension Registry、`/admin/ai` 运维入口和 Alembic `0017_ai_extension_registry`。这些实现尚未形成新正式版本，因此“目录中已有”不等于“已经发布上线”。
+
 ## 1. 先建立整体认识
 
 这个仓库可以分成六块：
@@ -10,7 +12,7 @@
 ```text
 retailpilot/
 ├── frontend/               # React/TypeScript Web 前端
-├── app/                    # FastAPI 后端、领域服务、数据库和 Agent Runtime
+├── app/                    # FastAPI 后端、领域服务、数据库、AI 平台和 Agent Runtime
 ├── agents/                 # LangGraph 编排、专业 Agent 和历史 Agent
 ├── tools/                  # Agent 可以调用的商品、文档、偏好、购物车工具
 ├── alembic/                # PostgreSQL 数据库迁移
@@ -32,7 +34,9 @@ React 页面
 frontend/src/api/client.ts
    ↓ HTTP / POST SSE
 app/api/routes/
-   ├── 对话请求 → app/dependencies/agent.py → Harness → LangGraph / 推荐引擎
+   ├── 对话请求 → app/dependencies/agent.py → AI admission → Harness → LangGraph / 推荐引擎
+   ├── 购物证据 → app/ai_platform/ingestion.py → 版本化 evidence → pgvector/词法检索
+   ├── 管理 AI → app/api/routes/ai_operations.py → payload-free 运维投影
    └── 交易请求 → app/services/ → app/repositories/ → SQLAlchemy Models
                                                    ↓
                                           PostgreSQL / pgvector
@@ -305,6 +309,8 @@ app/repositories/
 ├── cart.py                     # 旧购物车兼容查询
 ├── preferences.py              # 用户偏好
 ├── documents.py                # pgvector/词法文档检索
+├── shopping_evidence.py        # 购物证据版本、入库任务和活动发布指针
+├── ai_extensions.py            # Prompt/Skill/MCP 持久化注册表
 ├── candidate_contexts.py       # 历史候选序号上下文
 ├── runtime_conversations.py    # Thread、Message、Summary
 ├── runtime_runs.py             # Run、Event、幂等记录
@@ -427,6 +433,32 @@ app/runtime/
   → 保存结果与事件
   → 返回 RunResult
 ```
+
+### 3.10.1 `app/ai_platform/`：购物 AI 平台能力
+
+```text
+app/ai_platform/
+├── contracts.py       # 购物证据、模型候选、能力状态和 Pipeline 合同
+├── models.py          # 证据版本/任务/节点/发布指针与扩展 ORM
+├── ingestion.py       # Fetcher → Parser → Chunker → Enricher → Indexer
+├── indexing.py        # 接入现有 documents/pgvector 的索引 Adapter
+├── audit.py           # 旧语料清单、引用与概览漂移审计
+├── guards.py          # Catalog/交易事实权威和业务写入隔离
+├── resilience.py      # operation admission、候选路由、熔断、预算和取消
+├── model_registry.py  # 服务端模型候选快照
+├── model_adapter.py   # Model Gateway 与 Harness attempt 观测桥接
+├── extensions.py      # Prompt/Skill/MCP 业务范围校验和内存快照
+├── prompts.py         # 稳定 Prompt slot 与内置安全回退
+├── mcp.py             # HTTPS、allowlist、Schema 和 Tool Gateway 适配
+├── policy.py          # 订单政策资格的结构化事实组合
+├── admin.py           # 独立管理员授权适配器
+├── operations.py      # payload-free Trace 和管理员审计投影
+└── health.py          # disabled/ready/degraded/not_ready 聚合
+```
+
+这里的“文档”是购物证据，不是通用企业知识库。四类来源分别是商品说明、兼容性资料、选购指南和商城政策。Catalog 仍负责 SKU、价格、库存和可售状态；订单/支付表仍负责用户交易事实。`SHOPMIND_AI_PLATFORM_ENABLED` 与 `SHOPMIND_AI_OPERATIONS_ENABLED` 默认关闭，客户端不能指定 provider、endpoint、预算或扩展目录。
+
+当前接入状态要分开看：`build_operation_admission()` 已包围 Chat/Confirm；`ingest_shopping_evidence.py` 已可执行版本化入库；旧推荐证据可通过服务端 `SHOPMIND_RECOMMENDATION_RETRIEVAL_MODE=legacy|shadow|shared` 渐进迁入受控 `RetrievalPipeline`：shadow 只记录受限对照，shared 强制范围/版本 gate，发生故障时不会回退返回原始不可信片段，回滚显式设为 legacy；`model_adapter.py`、Prompt/Skill/MCP Registry 提供的是受控适配缝，尚未全面替换默认 Agent、Prompt 和 Tool Gateway 路径。
 
 ### 3.11 安全、治理和运维目录
 
@@ -584,6 +616,7 @@ app/
 | `/privacy` | 本人数据与 Memory 管理 |
 | `/runs` | 本人 Run/Trace 检查 |
 | `/status` | 服务健康与就绪状态 |
+| `/admin/ai` | 默认关闭的管理员 AI 健康、购物证据和入库摘要 |
 
 ### 6.2 `frontend/src/api/`：前后端合同和请求
 
@@ -623,7 +656,8 @@ features/
 ├── orders/           # 订单列表、详情、支付和 Attempt 历史
 ├── privacy/          # Memory/本人数据操作
 ├── runs/             # Run/Trace 检查
-└── status/           # Health/Readiness 页面
+├── status/           # Health/Readiness 页面
+└── admin-ai/         # 默认关闭的 AI 运维摘要页
 ```
 
 这个目录采用“功能内聚”方式：一个功能的组件、类型辅助、错误映射、Query Key 和测试尽量放在一起。
@@ -673,7 +707,9 @@ alembic/
     ├── 0012_shopmind_orders.py
     ├── 0013_shopmind_payments.py
     ├── 0014_shopmind_outbox_events.py
-    └── 0015_shopmind_order_expiration.py
+    ├── 0015_shopmind_order_expiration.py
+    ├── 0016_shopping_evidence_pipeline.py
+    └── 0017_ai_extension_registry.py
 ```
 
 迁移文件直接体现项目演进：
@@ -691,7 +727,7 @@ alembic/
   → Order Expiration
 ```
 
-当前 migration head 在 `app/db/version.py` 中固定为 `0015_shopmind_order_expiration`，Readiness 会检查实际数据库是否到达该版本。
+当前 migration head 在 `app/db/version.py` 中固定为 `0017_ai_extension_registry`，Readiness 会检查实际数据库是否到达该版本。0016 管理购物证据入库生命周期，0017 管理 Prompt/Skill/MCP 扩展版本和活动指针。
 
 ## 8. `data/`：商品种子和 RAG 语料
 
@@ -712,7 +748,7 @@ data/
 
 前者回答“笔记本有哪些属性、怎样比较”，后者回答“数据库里有哪些笔记本 SKU”。
 
-`data/documents/` 的内容由索引脚本切分并写入 PostgreSQL `documents`/pgvector 表，为 RAG 提供商品和政策证据。
+`data/documents/` 当前包含 104 份商品资料与 5 份政策资料。兼容入口仍可由索引脚本写入 `documents`/pgvector 表；新的 `ingest_shopping_evidence.py` 则把受信来源送入 Fetcher → Parser → Chunker → Enricher → Indexer，并持久化版本、任务、节点和活动发布指针。它不接受聊天附件或任意 URL。
 
 ## 9. `app/outbox/` 与消息发布
 
@@ -740,6 +776,8 @@ Outbox 不是一个单文件功能，而是横跨：
 
 当前实现的是 Producer/Publisher 侧；没有 Consumer/Inbox。
 
+RocketMQ 只负责交易 Outbox 的可选异步发布。购物证据 Pipeline 使用 PostgreSQL 租约、节点 CAS 和活动版本指针，不复用订单 Topic，也不依赖 RocketMQ SDK、Broker 或 Publisher Worker。
+
 ## 10. `evaluation/`：Agent 与系统评测
 
 ```text
@@ -753,7 +791,11 @@ evaluation/
 ├── retrieval_capture.py          # 真实检索记录合同
 ├── run_retrieval_capture.py
 ├── run_simulated_eval.py         # 合成需求/检索 smoke
-└── run_ablation_eval.py          # 合成报告框架
+├── run_ablation_eval.py          # 合成报告框架
+├── run_ai_runtime_resilience_eval.py # 准入、候选切换、预算/取消故障合同
+├── run_shopping_evidence_eval.py # 证据范围、有效期和事实冲突合同
+├── run_retrieval_equivalence_eval.py # 旧/新 RRF 固定语料等价性
+└── run_ai_platform_release_eval.py # default-off/shadow/enable/rollback 门禁
 ```
 
 主要评测方向：
@@ -765,7 +807,10 @@ evaluation/
 - 故障与重启恢复；
 - Redis/本地协调等价性；
 - 治理、发布和回滚检查；
-- 推荐约束与检索指标。
+- 推荐约束与检索指标；
+- 购物证据范围、政策有效期和 Catalog 冲突；
+- AI 准入、首包前切换、流开始后终止、共享预算与取消；
+- AI 平台 default-off、shadow、启用和回滚门禁。
 
 `run_*` 通常负责参数解析、执行和写 JSON artifact；`shopmind_*` 保存具体案例和断言逻辑。
 
@@ -775,6 +820,7 @@ evaluation/
 
 ```text
 tests/
+├── ai_platform/        # 入库、模型韧性、Extension/MCP、事实权威和运维投影
 ├── agents/             # 路由、权限、Planner、Adapter 和图
 ├── recommendation/     # 解析、Schema、过滤、排序和推荐图
 ├── runtime/            # Harness、Context、Gateway、协调和回放
@@ -798,7 +844,8 @@ tests/
 - `test_phase6_postgres_outbox.py`：多 worker claim、租约恢复、发布崩溃窗口、死信和 redrive；
 - `test_agent_write_hitl_postgres.py`：Agent 写意图到数据库动作生命周期；
 - `test_chat_retry_idempotency_postgres.py`：Chat 响应丢失后的幂等恢复；
-- `test_redis_coordination_integration.py`：真实 Redis 原子协调。
+- `test_redis_coordination_integration.py`：真实 Redis 原子协调；
+- `test_shopping_evidence_postgres.py`：证据重复提交、崩溃恢复、版本发布、政策有效期与删除隔离。
 
 单元测试验证函数和合同，API 测试验证网络边界，Integration 测试验证 PostgreSQL/Redis 真正的锁与事务行为。三者不能相互替代。
 
@@ -821,6 +868,8 @@ scripts/
 ├── cleanup_candidate_contexts.py   # 清理过期候选
 ├── cleanup_runtime_persistence.py  # Runtime retention 清理
 ├── expire_orders.py                # 过期订单释放预占
+├── ingest_shopping_evidence.py     # 受信商品/政策资料 Pipeline 导入
+├── audit_shopping_evidence.py      # 语料清单、引用和概览漂移审计
 ├── run_outbox_publisher.py         # Outbox worker
 ├── inspect_outbox.py               # 无 payload 运维快照
 ├── redrive_outbox.py               # 显式重投死信
@@ -837,9 +886,10 @@ scripts/
 
 | 用途 | 文件 |
 | --- | --- |
+| 文档导航与时效 | `documentation_index.md` |
 | 当前状态 | `project_status.md` |
-| 项目简介 | `project_introduction.md`、`shopmind_project_plain_explanation.md` |
-| 总体架构 | `architecture.md`、`shopmind_architecture_and_resume_review.md` |
+| 项目简介 | `project_introduction.md`、`interview_architecture_overview.md` |
+| 总体架构 | `architecture.md`、`interview_architecture_overview.md` |
 | Runtime 设计 | `agent_runtime_design.md` |
 | 推荐合同 | `recommendation_contract_design.md` |
 | Catalog/SKU | `catalog_and_sku_design.md` |
@@ -847,7 +897,8 @@ scripts/
 | Outbox | `rocketmq_outbox_design.md` |
 | API | `api_design.md`、`api_contracts.md` |
 | 本地开发 | `development.md`、`demo_runbook.md` |
-| 面试准备 | `interview_guide.md`、本文及简历总结 |
+| 面试准备 | `interview_architecture_overview.md`、本文及简历总结 |
+| 三大亮点深挖 | `interview_highlight_multi_agent_orchestration.md`、`interview_highlight_rag_evidence.md`、`interview_highlight_durable_execution.md` |
 | 阶段记录 | `phase*_implementation_report.md` |
 | 历史版本 | `v2_*`、`v3_*`、`v6_release_candidate_notes.md` |
 
@@ -883,7 +934,7 @@ scripts/
 
 `.venv`、`.pytest_cache`、`__pycache__`、HuggingFace 缓存、pytest 临时目录、`node_modules`、`dist` 都不是项目源码，介绍目录结构时可以忽略。
 
-## 15. 三条主链路怎样穿过目录
+## 15. 四条主链路怎样穿过目录
 
 ### 15.1 推荐请求
 
@@ -952,11 +1003,33 @@ OrderDetailPage 发起支付
 
 这里体现 API、Service、Repository、Model 和 Outbox 的分层。
 
+### 15.4 购物证据入库与管理员检查
+
+```text
+受信商品/政策 Markdown 或管理员直接文本
+  → scripts/ingest_shopping_evidence.py
+  → app/ai_platform/ingestion.py
+  → app/repositories/shopping_evidence.py
+  → ShoppingEvidenceVersion / IngestionTask / IngestionNode
+  → app/ai_platform/indexing.py
+  → documents/pgvector
+  → 原子切换 active publication
+
+管理员 /admin/ai
+  → app/api/routes/ai_operations.py
+  → 模型健康 / 入库状态 / 证据覆盖 / payload-free Trace
+  → expected-version 发布或撤销 + 治理审计
+```
+
+这条链路和交易 Outbox 分开：证据入库失败不会发布订单消息，RocketMQ 不参与证据任务调度。
+
 ## 16. 面试时如何介绍目录结构
 
 可以用下面这段话：
 
 > 项目是前后端分离的模块化单体。前端放在 `frontend`，按 chat、recommendation、cart、checkout、orders 等业务功能组织，通过 OpenAPI 生成的类型调用 FastAPI。后端主体在 `app`，API Route 只处理协议和事务提交，交易规则放在 `services`，数据库访问放在 `repositories`，ORM 与 Pydantic Schema 分开。多 Agent 编排在 `agents/shopmind_multi_agent`，结构化推荐逻辑单独放在 `app/recommendation`，通用 Agent 生命周期、预算、权限和幂等能力放在 `app/runtime`。数据库迁移在 `alembic`，真实 PostgreSQL 并发验收在 `tests/integration`，运行和运维入口在 `scripts`。
+
+最新 AI 工程能力单独放在 `app/ai_platform`：它管理受信购物证据的版本化入库、模型准入与韧性、Prompt/Skill/MCP Registry 和无正文运维投影；`app/recommendation/retrieval_pipeline.py` 则负责可插拔检索 Channel 与后处理器。这样不会把通用平台代码混进商品排序、交易状态机或 Agent 图。
 
 如果面试官继续追问“为什么这么拆”，可以回答：
 
@@ -970,7 +1043,7 @@ OrderDetailPage 发起支付
 
 ### 第一阶段：看懂产品入口
 
-1. `docs/shopmind_project_plain_explanation.md`
+1. `docs/interview_architecture_overview.md`
 2. `frontend/src/app/router.tsx`
 3. `app/api/router.py`
 4. `app/main.py`
@@ -986,6 +1059,7 @@ OrderDetailPage 发起支付
 5. `app/recommendation/request.py`
 6. `app/recommendation/ranking.py`
 7. `app/recommendation/rag.py`
+8. `app/recommendation/retrieval_pipeline.py`
 
 目标：能说明一句自然语言怎样变成推荐结果。
 
@@ -1001,14 +1075,19 @@ OrderDetailPage 发起支付
 
 目标：能说明确认、库存、支付和消息失败如何处理。
 
-### 第四阶段：看懂工程保障
+### 第四阶段：看懂 AI 平台与工程保障
 
 1. `app/runtime/contracts.py`
 2. `app/runtime/harness.py`
 3. `app/runtime/tool_gateway.py`
 4. `app/runtime/plan_executor.py`
-5. `tests/integration/`
-6. `evaluation/`
+5. `app/ai_platform/contracts.py`
+6. `app/ai_platform/ingestion.py`
+7. `app/ai_platform/resilience.py`
+8. `app/ai_platform/extensions.py`
+9. `app/api/routes/ai_operations.py`
+10. `tests/ai_platform/` 与 `tests/integration/`
+11. `evaluation/`
 
 目标：能说明系统如何限制 Agent、保存运行并验证故障恢复。
 
@@ -1021,6 +1100,7 @@ OrderDetailPage 发起支付
 | `app/dependencies/` | API 到 Agent/身份实现的桥梁 |
 | `agents/shopmind_multi_agent/` | LangGraph 业务编排 |
 | `app/recommendation/` | 可测试的推荐领域逻辑 |
+| `app/ai_platform/` | 购物证据生命周期、模型韧性、扩展注册和 AI 运维投影 |
 | `app/runtime/` | Agent 运行、权限、预算、事件和协调 |
 | `tools/` | Agent 可调用的业务能力 |
 | `app/services/` | 交易状态机与事务编排 |

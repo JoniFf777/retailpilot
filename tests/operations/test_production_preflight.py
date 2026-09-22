@@ -43,7 +43,7 @@ def test_development_profile_remains_unchanged_and_not_applicable() -> None:
     assert report.profile == "development"
     assert report.status == "not_applicable"
     assert report.ready is False
-    assert report.total_checks == 6
+    assert report.total_checks == 8
     assert report.passed_checks == 0
     assert report.failed_checks == 0
     assert {check.status for check in report.checks} == {"not_applicable"}
@@ -56,7 +56,8 @@ def test_production_profile_accepts_bounded_single_replica_configuration() -> No
     assert report.profile == "production"
     assert report.status == "ready"
     assert report.ready is True
-    assert report.passed_checks == report.total_checks == 6
+    assert report.passed_checks == 7
+    assert report.total_checks == 8
     assert report.failed_checks == 0
     assert [check.check_id for check in report.checks] == [
         "identity.boundary",
@@ -65,6 +66,8 @@ def test_production_profile_accepts_bounded_single_replica_configuration() -> No
         "transport.rag",
         "retention.cleanup",
         "runtime.limits",
+        "ai.platform",
+        "shopping_tasks.configuration",
     ]
 
 
@@ -208,7 +211,8 @@ def test_preflight_cli_writes_safe_artifact_and_sanitizes_settings_failure(
     assert "status: ready" in capsys.readouterr().out
     artifact = json.loads(output.read_text(encoding="utf-8"))
     assert artifact["schema_version"] == "shopmind.production-preflight.v1"
-    assert artifact["passed_checks"] == artifact["total_checks"] == 6
+    assert artifact["passed_checks"] == 7
+    assert artifact["total_checks"] == 8
 
     private_error = "private URL, signing secret, and database password"
 
@@ -225,6 +229,35 @@ def test_preflight_cli_writes_safe_artifact_and_sanitizes_settings_failure(
     assert "settings_invalid" in failure_output
     assert private_error not in failure_output
 
+
+def test_shopping_task_agent_mode_requires_platform_configuration() -> None:
+    offline = evaluate_production_preflight(
+        _ready_settings(shopmind_shopping_tasks_enabled=True)
+    )
+    blocked = evaluate_production_preflight(
+        _ready_settings(
+            shopmind_shopping_tasks_enabled=True,
+            shopmind_shopping_task_mode="agent",
+        )
+    )
+    agent = evaluate_production_preflight(
+        _ready_settings(
+            shopmind_shopping_tasks_enabled=True,
+            shopmind_shopping_task_mode="agent",
+            shopmind_ai_platform_enabled=True,
+        )
+    )
+
+    assert _check_map(offline)["shopping_tasks.configuration"].reason == (
+        "shopping_tasks_offline_configured"
+    )
+    assert blocked.status == "blocked"
+    assert _check_map(blocked)["shopping_tasks.configuration"].reason == (
+        "shopping_tasks_agent_unconfigured"
+    )
+    assert _check_map(agent)["shopping_tasks.configuration"].reason == (
+        "shopping_tasks_agent_configured"
+    )
 
 def test_ci_gates_and_uploads_production_preflight_before_evaluations() -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")

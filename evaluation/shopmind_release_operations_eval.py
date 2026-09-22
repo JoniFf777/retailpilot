@@ -216,6 +216,7 @@ def _case_result(
             "coordination.backend",
             "service.slo",
             "governance.audit",
+            "ai.platform",
             "rollback.target",
             "rollback.migration",
         ],

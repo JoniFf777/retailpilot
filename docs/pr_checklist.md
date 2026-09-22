@@ -1,4 +1,11 @@
-# PR Checklist
+# ShopMind PR 检查清单
+
+> 中文入口更新时间：2026-09-17
+>
+>
+> 本清单按改动范围选择验证，不要求每个 PR 重跑所有历史阶段。当前新增 AI 平台相关改动至少应覆盖 `tests/ai_platform`、Retrieval Pipeline、`test_ai_operations.py` 和四个 AI 平台离线 runner；数据库变更还应验证 Alembic head `0017_ai_extension_registry`。
+
+下面保留历史 V3-V6 分组和命令，便于按模块追溯。执行命令时以当前机器的 `AGENTS.md` 和 `.local/retailpilot-runbook.md` 为准，不复制密钥或未脱敏连接。
 
 Use this checklist before opening or merging changes into `main`.
 

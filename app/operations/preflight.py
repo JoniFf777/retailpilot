@@ -20,6 +20,8 @@ ProductionPreflightCheckId = Literal[
     "transport.rag",
     "retention.cleanup",
     "runtime.limits",
+    "ai.platform",
+    "shopping_tasks.configuration",
 ]
 
 
@@ -30,6 +32,8 @@ class ProductionPreflightCategory(StrEnum):
     TRANSPORT = "transport"
     RETENTION = "retention"
     RUNTIME = "runtime"
+    AI_PLATFORM = "ai_platform"
+    SHOPPING_TASKS = "shopping_tasks"
 
 
 class ProductionPreflightCheckStatus(StrEnum):
@@ -57,6 +61,12 @@ class ProductionPreflightReason(StrEnum):
     RETENTION_CLEANUP_UNSCHEDULED = "retention_cleanup_unscheduled"
     RUNTIME_LIMITS_BOUNDED = "runtime_limits_bounded"
     RUNTIME_LIMITS_UNBOUNDED = "runtime_limits_unbounded"
+    AI_PLATFORM_DISABLED = "ai_platform_disabled"
+    AI_PLATFORM_CONFIGURED = "ai_platform_configured"
+    SHOPPING_TASKS_DISABLED = "shopping_tasks_disabled"
+    SHOPPING_TASKS_OFFLINE_CONFIGURED = "shopping_tasks_offline_configured"
+    SHOPPING_TASKS_AGENT_CONFIGURED = "shopping_tasks_agent_configured"
+    SHOPPING_TASKS_AGENT_UNCONFIGURED = "shopping_tasks_agent_unconfigured"
 
 
 class ProductionPreflightCheck(BaseModel):
@@ -274,6 +284,49 @@ def _runtime_check(settings: Settings) -> ProductionPreflightCheck:
     )
 
 
+def _ai_platform_check(settings: Settings) -> ProductionPreflightCheck:
+    return _check(
+        "ai.platform",
+        ProductionPreflightCategory.AI_PLATFORM,
+        passed=True,
+        passed_reason=(
+            ProductionPreflightReason.AI_PLATFORM_CONFIGURED
+            if getattr(settings, "shopmind_ai_platform_enabled", False)
+            else ProductionPreflightReason.AI_PLATFORM_DISABLED
+        ),
+        failed_reason=ProductionPreflightReason.AI_PLATFORM_CONFIGURED,
+    )
+
+
+def _shopping_tasks_check(settings: Settings) -> ProductionPreflightCheck:
+    if not getattr(settings, "shopmind_shopping_tasks_enabled", False):
+        return ProductionPreflightCheck(
+            check_id="shopping_tasks.configuration",
+            category=ProductionPreflightCategory.SHOPPING_TASKS,
+            status=ProductionPreflightCheckStatus.NOT_APPLICABLE,
+            reason=ProductionPreflightReason.SHOPPING_TASKS_DISABLED,
+        )
+    if getattr(settings, "shopmind_shopping_task_mode", "offline") == "offline":
+        return _check(
+            "shopping_tasks.configuration",
+            ProductionPreflightCategory.SHOPPING_TASKS,
+            passed=True,
+            passed_reason=ProductionPreflightReason.SHOPPING_TASKS_OFFLINE_CONFIGURED,
+            failed_reason=ProductionPreflightReason.SHOPPING_TASKS_AGENT_UNCONFIGURED,
+        )
+    configured = (
+        getattr(settings, "shopmind_ai_platform_enabled", False)
+        and bool(str(getattr(settings, "workshop_model", "")).strip())
+    )
+    return _check(
+        "shopping_tasks.configuration",
+        ProductionPreflightCategory.SHOPPING_TASKS,
+        passed=configured,
+        passed_reason=ProductionPreflightReason.SHOPPING_TASKS_AGENT_CONFIGURED,
+        failed_reason=ProductionPreflightReason.SHOPPING_TASKS_AGENT_UNCONFIGURED,
+    )
+
+
 def evaluate_production_preflight(
     settings: Settings,
 ) -> ProductionPreflightReport:
@@ -297,6 +350,11 @@ def evaluate_production_preflight(
                 ("transport.rag", ProductionPreflightCategory.TRANSPORT),
                 ("retention.cleanup", ProductionPreflightCategory.RETENTION),
                 ("runtime.limits", ProductionPreflightCategory.RUNTIME),
+                ("ai.platform", ProductionPreflightCategory.AI_PLATFORM),
+                (
+                    "shopping_tasks.configuration",
+                    ProductionPreflightCategory.SHOPPING_TASKS,
+                ),
             )
         )
         return ProductionPreflightReport(
@@ -316,14 +374,17 @@ def evaluate_production_preflight(
         _transport_check(settings),
         _retention_check(settings),
         _runtime_check(settings),
+        _ai_platform_check(settings),
+        _shopping_tasks_check(settings),
     )
     failed_checks = sum(check.status == "failed" for check in checks)
+    passed_checks = sum(check.status == "passed" for check in checks)
     return ProductionPreflightReport(
         profile="production",
         status="ready" if not failed_checks else "blocked",
         ready=not failed_checks,
         total_checks=len(checks),
-        passed_checks=len(checks) - failed_checks,
+        passed_checks=passed_checks,
         failed_checks=failed_checks,
         checks=checks,
     )

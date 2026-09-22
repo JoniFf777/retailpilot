@@ -1,10 +1,31 @@
-# Agent Runtime Design
+# ShopMind Agent Runtime 设计
 
-Status: V4 and V5 complete; V6 Slices 1-4 complete (global Slices 37-40);
-Slice 4 identity, PII-safe audit/persistence/retention/emission, authenticated
-owner-data lifecycle, signed ingress, monitoring and accepted governance
-evaluation are implemented; V6 Slice 5 static production preflight is
-implemented and production operations remain
+> 中文入口更新时间：2026-09-17
+>
+>
+> 本文件是 V4-V6 Runtime 的详细技术底稿，保留既有英文合同和历史设计。秋招第一遍建议阅读 `interview_architecture_overview.md`，需要回答 Harness、Context、Tool Gateway、A2A、恢复与治理细节时再查本文。
+
+## 当前接入摘要
+
+| 能力 | 当前状态 |
+| --- | --- |
+| Harness / Run / Event | 已进入 Chat、Confirm 和 POST SSE 生命周期 |
+| Memory / Context | 已实现 owner 隔离、有界选择、治理和持久化 |
+| Tool Gateway / HITL | 已实现工具策略与显式动作确认，两者职责分离 |
+| Planner / Specialist | 确定性 canonical plan 为基线，可选 LLM Planner 和有界重试 |
+| Local/HTTP Adapter | 合同与等价性门禁已实现；默认 Specialist 仍在进程内 |
+| Local/Redis Coordination | 准入、限流、去重和缓存已实现；local 为默认 |
+| AI Admission | 已包围 Chat/Confirm，使用 global/operation/subject 维度 |
+| Model Gateway | 候选、故障分类、首包前切换、熔断和 Adapter 已实现；尚未全面接管默认模型调用 |
+| Extension Registry | Prompt/Skill/MCP 版本与校验已实现；默认路径仍使用内置回退 |
+| Evaluation / Operations | trajectory、resilience、governance、readiness 和 release gate 已实现 |
+
+Runtime 不拥有商品价格、库存、订单或支付真值，也不是 OS 级沙箱。结构化推荐和交易状态机仍由各自领域模块负责。
+
+Status: V4-V6 implementation complete on `main`; version/tag/release/deployment
+remain separate actions. The shopping AI platform follow-up exists in the
+current worktree, while Model Gateway and dynamic extensions have not replaced
+all default runtime paths.
 
 ## Goal
 
@@ -1021,3 +1042,14 @@ indexes, timestamps, retention fields, and referential cleanup behavior.
 8. Add advanced planning and one optional remote Agent adapter.
 
 This keeps each step observable and reversible.
+
+## Shopping task workbench addendum (2026-09-20)
+
+The additive `app/shopping_tasks` path persists goal/plan/step/attempt/artifact
+and public event facts after the existing V4-V6 runtime tables. Offline planning
+is server-owned and validated against a role/capability allowlist. PostgreSQL
+workers use short claim transactions and lease/fencing checks; retrieval is
+wrapped by a scope-locked task QuerySpec. The current implementation does not
+claim that the existing Model Gateway has fully replaced planner/reviewer calls:
+`SHOPMIND_SHOPPING_TASK_MODE=agent` therefore fails closed until that adapter is
+implemented and separately authorized.

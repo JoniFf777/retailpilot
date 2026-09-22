@@ -75,6 +75,18 @@ DEFAULT_SHOPMIND_RAG_AGENT_TRANSPORT = "in_process"
 DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_ENABLED = False
 DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER = "none"
 DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+DEFAULT_SHOPMIND_RECOMMENDATION_RETRIEVAL_MODE = "legacy"
+DEFAULT_SHOPMIND_AI_PLATFORM_ENABLED = False
+DEFAULT_SHOPMIND_AI_OPERATIONS_ENABLED = False
+DEFAULT_SHOPMIND_SHOPPING_TASKS_ENABLED = False
+DEFAULT_SHOPMIND_SHOPPING_TASK_MODE = "offline"
+DEFAULT_SHOPMIND_SHOPPING_TASK_WORKER_MAX_AGE_SECONDS = 60
+DEFAULT_SHOPMIND_AI_MAX_CONCURRENCY = 8
+DEFAULT_SHOPMIND_AI_RATE_LIMIT = 60
+DEFAULT_SHOPMIND_AI_RATE_WINDOW_MS = 60_000
+DEFAULT_SHOPMIND_AI_LEASE_TTL_MS = 30_000
+DEFAULT_SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD = 2
+DEFAULT_SHOPMIND_AI_CIRCUIT_OPEN_SECONDS = 30.0
 DEFAULT_SHOPMIND_RAG_AGENT_HTTP_TIMEOUT_SECONDS = 10.0
 DEFAULT_SHOPMIND_RAG_AGENT_HTTP_MAX_RESPONSE_BYTES = 1_048_576
 DEFAULT_SHOPMIND_PARALLEL_READ_ENABLED = False
@@ -236,6 +248,28 @@ class Settings(BaseModel):
         min_length=1,
         max_length=256,
     )
+    shopmind_recommendation_retrieval_mode: Literal["legacy", "shadow", "shared"] = Field(
+        default=DEFAULT_SHOPMIND_RECOMMENDATION_RETRIEVAL_MODE
+    )
+    shopmind_ai_platform_enabled: bool = Field(
+        default=DEFAULT_SHOPMIND_AI_PLATFORM_ENABLED
+    )
+    shopmind_ai_operations_enabled: bool = Field(
+        default=DEFAULT_SHOPMIND_AI_OPERATIONS_ENABLED
+    )
+    shopmind_shopping_tasks_enabled: bool = Field(default=DEFAULT_SHOPMIND_SHOPPING_TASKS_ENABLED)
+    shopmind_shopping_task_mode: Literal["offline", "agent"] = Field(default=DEFAULT_SHOPMIND_SHOPPING_TASK_MODE)
+    shopmind_shopping_task_worker_max_age_seconds: int = Field(
+        default=DEFAULT_SHOPMIND_SHOPPING_TASK_WORKER_MAX_AGE_SECONDS,
+        ge=1,
+        le=3_600,
+    )
+    shopmind_ai_max_concurrency: int = Field(default=DEFAULT_SHOPMIND_AI_MAX_CONCURRENCY, ge=1, le=1_000)
+    shopmind_ai_rate_limit: int = Field(default=DEFAULT_SHOPMIND_AI_RATE_LIMIT, ge=1, le=100_000)
+    shopmind_ai_rate_window_ms: int = Field(default=DEFAULT_SHOPMIND_AI_RATE_WINDOW_MS, ge=1, le=3_600_000)
+    shopmind_ai_lease_ttl_ms: int = Field(default=DEFAULT_SHOPMIND_AI_LEASE_TTL_MS, ge=1, le=300_000)
+    shopmind_ai_circuit_failure_threshold: int = Field(default=DEFAULT_SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD, ge=1, le=100)
+    shopmind_ai_circuit_open_seconds: float = Field(default=DEFAULT_SHOPMIND_AI_CIRCUIT_OPEN_SECONDS, gt=0, le=3_600)
     shopmind_deployment_profile: DeploymentProfile = Field(
         default=DEFAULT_SHOPMIND_DEPLOYMENT_PROFILE
     )
@@ -514,6 +548,51 @@ class Settings(BaseModel):
                     DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL,
                 ).strip()[:256]
                 or DEFAULT_SHOPMIND_RECOMMENDATION_EVIDENCE_RERANKER_MODEL
+            ),
+            shopmind_recommendation_retrieval_mode=_get_choice_env(
+                "SHOPMIND_RECOMMENDATION_RETRIEVAL_MODE",
+                DEFAULT_SHOPMIND_RECOMMENDATION_RETRIEVAL_MODE,
+                {"legacy", "shadow", "shared"},
+            ),
+            shopmind_ai_platform_enabled=_get_bool_env(
+                "SHOPMIND_AI_PLATFORM_ENABLED",
+                DEFAULT_SHOPMIND_AI_PLATFORM_ENABLED,
+            ),
+            shopmind_ai_operations_enabled=_get_bool_env(
+                "SHOPMIND_AI_OPERATIONS_ENABLED",
+                DEFAULT_SHOPMIND_AI_OPERATIONS_ENABLED,
+            ),
+            shopmind_shopping_tasks_enabled=_get_bool_env(
+                "SHOPMIND_SHOPPING_TASKS_ENABLED",
+                DEFAULT_SHOPMIND_SHOPPING_TASKS_ENABLED,
+            ),
+            shopmind_shopping_task_mode=_get_choice_env(
+                "SHOPMIND_SHOPPING_TASK_MODE",
+                DEFAULT_SHOPMIND_SHOPPING_TASK_MODE,
+                {"offline", "agent"},
+            ),
+            shopmind_shopping_task_worker_max_age_seconds=_get_bounded_positive_int_env(
+                "SHOPMIND_SHOPPING_TASK_WORKER_MAX_AGE_SECONDS",
+                DEFAULT_SHOPMIND_SHOPPING_TASK_WORKER_MAX_AGE_SECONDS,
+                3_600,
+            ),
+            shopmind_ai_max_concurrency=_get_bounded_positive_int_env(
+                "SHOPMIND_AI_MAX_CONCURRENCY", DEFAULT_SHOPMIND_AI_MAX_CONCURRENCY, 1_000
+            ),
+            shopmind_ai_rate_limit=_get_bounded_positive_int_env(
+                "SHOPMIND_AI_RATE_LIMIT", DEFAULT_SHOPMIND_AI_RATE_LIMIT, 100_000
+            ),
+            shopmind_ai_rate_window_ms=_get_bounded_positive_int_env(
+                "SHOPMIND_AI_RATE_WINDOW_MS", DEFAULT_SHOPMIND_AI_RATE_WINDOW_MS, 3_600_000
+            ),
+            shopmind_ai_lease_ttl_ms=_get_bounded_positive_int_env(
+                "SHOPMIND_AI_LEASE_TTL_MS", DEFAULT_SHOPMIND_AI_LEASE_TTL_MS, 300_000
+            ),
+            shopmind_ai_circuit_failure_threshold=_get_bounded_positive_int_env(
+                "SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD", DEFAULT_SHOPMIND_AI_CIRCUIT_FAILURE_THRESHOLD, 100
+            ),
+            shopmind_ai_circuit_open_seconds=_get_bounded_positive_float_env(
+                "SHOPMIND_AI_CIRCUIT_OPEN_SECONDS", DEFAULT_SHOPMIND_AI_CIRCUIT_OPEN_SECONDS, 3_600
             ),
             shopmind_deployment_profile=langsmith_runtime.profile,
             shopmind_deployment_replicas=_get_bounded_positive_int_env(

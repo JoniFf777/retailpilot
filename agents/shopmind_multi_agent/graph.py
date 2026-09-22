@@ -479,7 +479,8 @@ def create_shopmind_multi_agent_graph(
                 )
             )
             recommendation_evidence_provider = SqlAlchemyRecommendationEvidenceProvider(
-                reranker=reranker
+                reranker=reranker,
+                retrieval_mode=runtime_settings.shopmind_recommendation_retrieval_mode,
             )
 
     graph.add_node(

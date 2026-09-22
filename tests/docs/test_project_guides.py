@@ -27,7 +27,7 @@ def test_closure_documentation_matches_current_release_candidate() -> None:
         "docs/project_status.md",
         "docs/frontend_implementation_plan.md",
         "docs/architecture.md",
-        "docs/interview_guide.md",
+        "docs/interview_architecture_overview.md",
     ):
         assert path in readme
     assert "Phase 1-6B-2 accepted/closed" in status
@@ -78,7 +78,7 @@ def test_machine_local_and_runtime_artifacts_are_ignored() -> None:
 
 def test_current_architecture_and_interview_material_cover_commerce() -> None:
     architecture = Path("docs/architecture.md").read_text(encoding="utf-8")
-    interview = Path("docs/interview_guide.md").read_text(encoding="utf-8")
+    interview = Path("docs/interview_architecture_overview.md").read_text(encoding="utf-8")
     for term in (
         "Current Commerce Architecture",
         "Checkout, Payment, and Outbox transaction sequence",
@@ -88,11 +88,11 @@ def test_current_architecture_and_interview_material_cover_commerce() -> None:
     ):
         assert term in architecture
     for term in (
-        "One-minute introduction",
-        "Five-minute demo route",
-        "Why SKU-level truth?",
-        "Why not exactly-once?",
-        "Inbox/deduplication",
+        "两分钟口述模板",
+        "LangGraph 负责同步多 Agent 对话图",
+        "PostgreSQL 持久化 DAG",
+        "RAG 证据检索",
+        "用户确认后才执行写操作",
     ):
         assert term in interview
 

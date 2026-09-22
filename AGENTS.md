@@ -23,6 +23,18 @@ Read these before changing code:
 Machine-specific facts belong in `.local/retailpilot-runbook.md`. `.local/` is
 ignored by Git. Never copy API keys or private passwords into tracked files.
 
+## Agent Task Workbench Upgrade (Completed 2026-09-21)
+
+The `evolve-shopping-agent-task-workbench` implementation and acceptance
+checklist are complete at 75/75. It adds bundle selection, compatibility
+diagnosis, and owner-scoped after-sales assessment/local drafts with bounded
+planning, rule-first verification, constrained model review, local repair,
+evidence grounding, confirmed actions, durable step recovery, production
+readiness and rollback gates. Read `docs/shopmind_agent_upgrade_acceptance.md`
+for current evidence and known limits. The feature remains disabled by default;
+release, deployment, tagging and pushing are separate explicit actions. The
+ragent repository remains a read-only design reference, not a dependency.
+
 ## Current Baseline
 
 - Published release/tag: `v3.0.0`, release commit `c995896`.
@@ -91,11 +103,11 @@ ignored by Git. Never copy API keys or private passwords into tracked files.
   `D:\python\retailpilot\frontend`. Keep frontend files there and use the
   committed Vite scripts for build, mocked browser tests, and live demo checks.
 
-Current validation after the recommendation quality patch: `896 passed, 63 skipped`;
+Current full validation after the task-workbench closeout: `978 passed, 68 skipped`;
 PostgreSQL integration `23/23`;
 reference-client/API/docs focused `58/58`; runtime coordination focused `12/12`;
 combined PostgreSQL/Redis integration `25/25`;
-PostgreSQL smoke passed at migration `0015_shopmind_order_expiration`; V3 API
+Task-workbench PostgreSQL acceptance passed at migration `0020_task_worker_heartbeat`; V3 API
 handoff passed `3/3`; the latest offline resilience gate passed `6/6` cases and
 `72/72` checks; coordination equivalence passed `5/5` cases and `18/18` checks;
 governance lifecycle passed `5/5` cases and `42/42` checks; V6 catalog
@@ -103,7 +115,7 @@ regression passed `8/8` suites, `61/61` cases, `488/488` suite checks, and
 `48/48` baseline checks; release operations passed `7/7` cases and `42/42`
 checks. Historical V3 validation
 remains `227 passed, 4 skipped` with LangSmith evaluator scores `6/6` at `1.0`.
-The post-completion project/frontend documentation tests pass `10/10`.
+The post-completion project/frontend documentation tests pass `11/11`.
 
 The latest follow-up also adds bounded state patch history/CAS, candidate
 expiry, RAG subquestion/channel budgets, policy applicability/version checks,
@@ -215,7 +227,7 @@ conda run -n pythonLearn D:\DL\Anaconda3\envs\pythonLearn\python.exe scripts\smo
 
 Bootstrap is plan-only unless `--execute` is given. Seed/index clear data and
 require `--execute --confirm-clear`; use them only against an isolated database.
-Current migration head: `0015_shopmind_order_expiration`.
+Current migration head: `0020_task_worker_heartbeat`.
 
 ## Runtime Modes
 
@@ -301,6 +313,7 @@ See `docs/agent_runtime_design.md` for target contracts.
 - `app/dependencies/agent.py` - API bridge and confirmation boundary.
 - `app/core/settings.py` - runtime settings.
 - `app/db/`, `app/repositories/` - SQLAlchemy persistence.
+- `app/ai_platform/` - shopping evidence lifecycle, model resilience, extension registry, and payload-free AI operations.
 - `tools/` - tools; preserve Agent ownership boundaries.
 - `alembic/` - PostgreSQL migrations.
 - `evaluation/`, `evaluators/` - local and LangSmith evaluation.

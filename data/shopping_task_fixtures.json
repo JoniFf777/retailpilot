@@ -1,0 +1,16 @@
+{
+  "schema_version": "shopmind.shopping-task-fixtures.v1",
+  "compatibility_rules": [
+    {"left_sku": "LAP-LEN-X1-14-32-1T", "right_sku": "DOCK-THUNDER-12-100", "state": "supported", "reason": "Documented Thunderbolt 4 display and power path.", "source_id": "compat-lenovo-thunderbolt-v1"},
+    {"left_sku": "LAP-DELL-XPS-13-16-512", "right_sku": "DOCK-THUNDER-12-100", "state": "supported", "reason": "Documented Thunderbolt 4 display and power path.", "source_id": "compat-dell-thunderbolt-v1"},
+    {"left_sku": "LAP-LEN-X1-14-32-1T", "right_sku": "DOCK-USB4-08-85", "state": "unknown", "reason": "The required host video fact is missing.", "source_id": "compat-lenovo-usb4-unknown-v1"},
+    {"left_sku": "LAP-DELL-XPS-13-16-512", "right_sku": "DOCK-USB4-08-85", "state": "unsupported", "reason": "The documented host port cannot provide the required display mode.", "source_id": "compat-dell-usb4-unsupported-v1"}
+  ],
+  "diagnostic_checks": [
+    {"check_id": "check-cable-and-power", "question": "设备重新连接后是否仍无画面或供电？", "safe_instruction": "只观察指示灯、画面和供电状态；不要拆机或远程控制设备。", "source_id": "diagnosis-safe-connection-v1"},
+    {"check_id": "check-display-mode", "question": "显示器输入源是否与扩展坞输出端口一致？", "safe_instruction": "请检查显示器菜单和线缆两端标识，不要执行危险拆解。", "source_id": "diagnosis-display-input-v1"}
+  ],
+  "policy_rules": [
+    {"policy_type": "return", "region": "CN", "channel": "online", "return_window_days": 7, "requires_unopened": false, "source_id": "return-cn-online-v1", "source_version": "2026.09.20"}
+  ]
+}

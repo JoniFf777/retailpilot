@@ -1,4 +1,19 @@
-# ShopMind LangSmith Observability
+# ShopMind LangSmith 可观测性
+
+> 中文入口更新时间：2026-09-17
+>
+>
+> LangSmith 是显式启用的调试/云实验旁路，不是普通 API、Core Demo、测试、集成验收、离线评测或 AI 平台运行的必需依赖。
+
+使用原则：
+
+- 普通开发和测试设置 `LANGSMITH_TRACING=false`；
+- 不读取、打印、提交或复制真实 Key；
+- 只有用户明确授权时才创建云 Trace 或消耗云评测额度；
+- 缺失、不可用、未授权、限流或额度不足都不能中断购物主链路；
+- 本地确定性评测、购物证据 Pipeline 和 RocketMQ Outbox 不依赖 LangSmith。
+
+以下保留 profile、采样和故障语义的固定英文术语，方便与配置字段对应。
 
 LangSmith is an optional side-channel for debugging call chains and explicitly
 requested cloud experiments. It is not required for normal API execution,

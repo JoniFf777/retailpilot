@@ -19,6 +19,7 @@ from agents.shopmind_multi_agent.write_handoff import (
 )
 from agents.shopmind_agent import invoke_shopmind_agent
 from app.core.settings import get_settings
+from app.ai_platform.factory import build_operation_admission
 from app.runtime import (
     ACTION_REGISTRY,
     ActionRegistryError,
@@ -206,6 +207,10 @@ def execute_shopmind_agent_run(
     """
 
     settings = get_settings()
+    coordination_backend, ai_admission, admission_operation = build_operation_admission(
+        settings, "chat"
+    )
+    admission_lease = ai_admission.acquire(admission_operation, user_id or "anonymous")
     operation = RunOperation.CHAT
     request = RunRequest(
         operation=operation,
@@ -268,12 +273,18 @@ def execute_shopmind_agent_run(
             thread_id=thread_id,
         )
 
-    return runtime_harness.run(
-        request,
-        executor,
-        event_sink=event_sink,
-        cancellation_check=cancellation_check,
-    )
+    try:
+        return runtime_harness.run(
+            request,
+            executor,
+            event_sink=event_sink,
+            cancellation_check=cancellation_check,
+        )
+    finally:
+        admission_lease.release()
+        close = getattr(coordination_backend, "close", None)
+        if callable(close):
+            close()
 
 
 def call_shopmind_agent(
@@ -312,6 +323,10 @@ def confirm_pending_action(
     """Confirm or cancel a pending action behind the API boundary."""
 
     settings = get_settings()
+    coordination_backend, ai_admission, admission_operation = build_operation_admission(
+        settings, "confirm"
+    )
+    admission_lease = ai_admission.acquire(admission_operation, user_id or "anonymous")
     operation = RunOperation.CONFIRM_PENDING_ACTION
     request = RunRequest(
         operation=operation,
@@ -674,5 +689,11 @@ def confirm_pending_action(
             ),
         }
 
-    result = runtime_harness.run(request, executor, event_sink=event_sink)
-    return run_result_to_legacy_response(result, include_debug=True)
+    try:
+        result = runtime_harness.run(request, executor, event_sink=event_sink)
+        return run_result_to_legacy_response(result, include_debug=True)
+    finally:
+        admission_lease.release()
+        close = getattr(coordination_backend, "close", None)
+        if callable(close):
+            close()

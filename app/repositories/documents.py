@@ -110,6 +110,7 @@ def search_documents(
     *,
     doc_type: str,
     k: int,
+    evidence_version_ids: Sequence[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Search documents by pgvector cosine distance.
 
@@ -118,7 +119,10 @@ def search_documents(
     """
     bind = session.get_bind()
     if bind.dialect.name != "postgresql":
-        return _search_documents_sqlite(session, doc_type=doc_type, k=k)
+        statement = select(Document).where(Document.doc_type == doc_type)
+        if evidence_version_ids is not None:
+            statement = statement.where(Document.evidence_version_id.in_(list(evidence_version_ids)))
+        return [document_to_dict(document) for document in session.scalars(statement.order_by(Document.id.asc()).limit(k)).all()]
 
     embedding = _format_pgvector(query_embedding)
     statement = text(
@@ -139,13 +143,14 @@ def search_documents(
             embedding <=> CAST(:embedding AS vector) AS distance
         FROM documents
         WHERE doc_type = :doc_type
+          AND (:evidence_version_ids_no_filter OR evidence_version_id = ANY(:evidence_version_ids))
         ORDER BY embedding <=> CAST(:embedding AS vector)
         LIMIT :k
         """
     )
     rows = session.execute(
         statement,
-        {"embedding": embedding, "doc_type": doc_type, "k": k},
+        {"embedding": embedding, "doc_type": doc_type, "k": k, "evidence_version_ids": list(evidence_version_ids or ()), "evidence_version_ids_no_filter": evidence_version_ids is None},
     ).mappings()
     return [_row_to_dict(row) for row in rows]
 
@@ -154,9 +159,10 @@ def search_product_documents(
     session: Session,
     query_embedding: Sequence[float],
     k: int = 3,
+    evidence_version_ids: Sequence[int] | None = None,
 ) -> list[dict[str, Any]]:
     return search_documents(
-        session, query_embedding, doc_type="product", k=k
+        session, query_embedding, doc_type="product", k=k, evidence_version_ids=evidence_version_ids
     )
 
 
@@ -166,6 +172,7 @@ def search_product_documents_for_product_ids(
     *,
     product_ids: Sequence[str],
     k: int = 6,
+    evidence_version_ids: Sequence[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Search only the explicit legacy-product whitelist selected by Catalog.
 
@@ -184,6 +191,8 @@ def search_product_documents_for_product_ids(
             .order_by(Document.product_id.asc(), Document.id.asc())
             .limit(k)
         )
+        if evidence_version_ids is not None:
+            statement = statement.where(Document.evidence_version_id.in_(list(evidence_version_ids)))
         return [document_to_dict(document) for document in session.scalars(statement).all()]
 
     embedding = _format_pgvector(query_embedding)
@@ -195,13 +204,14 @@ def search_product_documents_for_product_ids(
                embedding <=> CAST(:embedding AS vector) AS distance
         FROM documents
         WHERE doc_type = 'product' AND product_id = ANY(:product_ids)
+          AND (:evidence_version_ids_no_filter OR evidence_version_id = ANY(:evidence_version_ids))
         ORDER BY embedding <=> CAST(:embedding AS vector), id ASC
         LIMIT :k
         """
     )
     rows = session.execute(
         statement,
-        {"embedding": embedding, "product_ids": normalized_ids, "k": k},
+        {"embedding": embedding, "product_ids": normalized_ids, "k": k, "evidence_version_ids": list(evidence_version_ids or ()), "evidence_version_ids_no_filter": evidence_version_ids is None},
     ).mappings()
     return [_row_to_dict(row) for row in rows]
 
@@ -210,9 +220,10 @@ def search_policy_documents(
     session: Session,
     query_embedding: Sequence[float],
     k: int = 2,
+    evidence_version_ids: Sequence[int] | None = None,
 ) -> list[dict[str, Any]]:
     return search_documents(
-        session, query_embedding, doc_type="policy", k=k
+        session, query_embedding, doc_type="policy", k=k, evidence_version_ids=evidence_version_ids
     )
 
 
@@ -223,6 +234,7 @@ def search_keyword_documents(
     doc_type: str,
     product_ids: Sequence[str] | None = None,
     k: int = 10,
+    evidence_version_ids: Sequence[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Run a bounded BM25-style lexical search over the active document rows.
 
@@ -235,6 +247,8 @@ def search_keyword_documents(
     if k <= 0:
         return []
     statement = select(Document).where(Document.doc_type == doc_type)
+    if evidence_version_ids is not None:
+        statement = statement.where(Document.evidence_version_id.in_(list(evidence_version_ids)))
     normalized_ids = sorted({str(value) for value in (product_ids or []) if value})
     if product_ids is not None and not normalized_ids:
         return []

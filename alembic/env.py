@@ -13,6 +13,8 @@ from app.cart import models as cart_models  # noqa: F401
 from app.orders import models as order_models  # noqa: F401
 from app.payments import models as payment_models  # noqa: F401
 from app.outbox import models as outbox_models  # noqa: F401
+from app.ai_platform import models as ai_platform_models  # noqa: F401
+from app.shopping_tasks import models as shopping_task_models  # noqa: F401
 
 
 config = context.config

@@ -2,7 +2,7 @@
 param(
     [ValidateSet("development", "offline-demo", "demo", "production", "public-demo", "evaluation")]
     [string]$Profile = "development",
-    [ValidateSet("api", "tests", "langsmith-eval")]
+    [ValidateSet("api", "tests", "task-worker", "langsmith-eval")]
     [string]$Action = "api",
     [switch]$Reload,
     [string]$PythonExecutable = $env:SHOPMIND_PYTHON,
@@ -78,6 +78,9 @@ switch ($Action) {
     }
     "tests" {
         & $python -m pytest @Arguments
+    }
+    "task-worker" {
+        & $python scripts\run_shopping_task_worker.py @Arguments
     }
     "langsmith-eval" {
         & $python evaluation\run_langsmith_eval.py @Arguments

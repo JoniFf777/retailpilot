@@ -51,12 +51,9 @@ class Context:
     a curated experience in the workshop.
     """
 
-    model: Literal[
-        "anthropic:claude-haiku-4-5",
-        "anthropic:claude-sonnet-4-5",
-        "openai:gpt-5-mini",
-        "openai:gpt-5-nano",
-    ] = DEFAULT_MODEL
+    # OpenAI-compatible gateways (for example SiliconFlow) use the same
+    # LangChain provider prefix with an arbitrary server-owned model ID.
+    model: str = DEFAULT_MODEL
 
 
 # ============================================================================

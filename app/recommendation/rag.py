@@ -6,9 +6,17 @@ import re
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Mapping, Protocol, Sequence
 
 from app.db.session import SessionLocal
+from app.recommendation.retrieval_pipeline import (
+    RepositoryLexicalChannel,
+    RepositoryVectorChannel,
+    RetrievalPipeline,
+    SearchRequest,
+    rrf_fuse,
+)
 from app.repositories import documents as document_repository
 from app.schemas.catalog import CatalogSkuCandidate
 from app.schemas.recommendation import EvidenceView, RecommendationResult
@@ -252,6 +260,8 @@ def _select_current_policy_documents(
     applicable: list[dict[str, object]] = []
     inapplicable_count = 0
     for document in documents:
+        if not _policy_is_current(document):
+            continue
         scope = _policy_scope(document, allowed_product_ids)
         if scope == "inapplicable":
             inapplicable_count += 1
@@ -293,6 +303,30 @@ def _select_current_policy_documents(
     return selected, inapplicable_count, version_conflicts
 
 
+def _policy_is_current(document: Mapping[str, object]) -> bool:
+    """Reject explicitly inactive evidence while preserving legacy metadata."""
+
+    metadata = document.get("metadata") or {}
+    if not isinstance(metadata, Mapping):
+        metadata = {}
+    now = datetime.now(timezone.utc)
+    for key, inclusive in (("valid_from", True), ("valid_until", False)):
+        value = metadata.get(key) or document.get(key)
+        if not value:
+            continue
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return False
+        if inclusive and parsed > now:
+            return False
+        if not inclusive and parsed <= now:
+            return False
+    return True
+
+
 class SqlAlchemyRecommendationEvidenceProvider:
     """Read evidence after Top K only; it never changes structured product facts."""
 
@@ -301,10 +335,14 @@ class SqlAlchemyRecommendationEvidenceProvider:
         embed_query=None,
         reranker: EvidenceReranker | None = None,
         budget: RetrievalBudget | None = None,
+        retrieval_mode: str = "legacy",
     ) -> None:
+        if retrieval_mode not in {"legacy", "shadow", "shared"}:
+            raise ValueError("retrieval_mode must be legacy, shadow, or shared")
         self._embed_query = embed_query
         self._reranker = reranker
         self._budget = budget or RetrievalBudget()
+        self._retrieval_mode = retrieval_mode
 
     @contextmanager
     def _session(self):
@@ -322,6 +360,30 @@ class SqlAlchemyRecommendationEvidenceProvider:
         return _embed_query(message)
 
     def retrieve(
+        self,
+        *,
+        message: str,
+        top_k: Sequence[CatalogSkuCandidate],
+    ) -> RecommendationEvidence:
+        if self._retrieval_mode == "shared":
+            return self._retrieve_shared(message=message, top_k=top_k)
+        legacy = self._retrieve_legacy(message=message, top_k=top_k)
+        if self._retrieval_mode == "shadow":
+            # Shadow mode is deliberately observational: an unavailable shared
+            # path cannot change released recommendation evidence. Operators
+            # can roll back by setting the server-owned mode to `legacy`.
+            try:
+                shadow = self._retrieve_shared(message=message, top_k=top_k)
+                legacy.diagnostics["shared_shadow"] = {
+                    "evidence_status": shadow.diagnostics.get("evidence_status"),
+                    "product_document_count": shadow.diagnostics.get("product_document_count", 0),
+                    "policy_document_count": shadow.diagnostics.get("policy_document_count", 0),
+                }
+            except Exception:
+                legacy.diagnostics["shared_shadow"] = {"evidence_status": "unavailable"}
+        return legacy
+
+    def _retrieve_legacy(
         self,
         *,
         message: str,
@@ -455,18 +517,14 @@ class SqlAlchemyRecommendationEvidenceProvider:
                     else "empty"
                 )
 
-        def fuse(vector_docs: list[dict[str, object]], keyword_docs: list[dict[str, object]], limit: int) -> list[dict[str, object]]:
-            records: dict[str, dict[str, object]] = {}
-            scores: dict[str, float] = {}
-            for docs in (vector_docs, keyword_docs):
-                for rank, document in enumerate(docs, start=1):
-                    key = str(document.get("id") or f"{document.get('source_path') or 'anonymous'}:{document.get('chunk_index') or rank}")
-                    records.setdefault(key, document)
-                    scores[key] = scores.get(key, 0.0) + 1.0 / (60.0 + rank)
-            return [
-                records[key]
-                for key in sorted(records, key=lambda item: (-scores[item], item))[:limit]
-            ]
+        def fuse(
+            vector_docs: list[dict[str, object]],
+            keyword_docs: list[dict[str, object]],
+            limit: int,
+        ) -> list[dict[str, object]]:
+            # Keep the released RRF constant while routing fusion through the
+            # reusable Channel/PostProcessor implementation.
+            return rrf_fuse([vector_docs, keyword_docs], limit=limit, rrf_k=60)
 
         product_docs = fuse(
             product_vector_docs,
@@ -606,6 +664,58 @@ class SqlAlchemyRecommendationEvidenceProvider:
                 },
                 "query_plan": query_plan,
             },
+        )
+
+    def _retrieve_shared(
+        self,
+        *,
+        message: str,
+        top_k: Sequence[CatalogSkuCandidate],
+    ) -> RecommendationEvidence:
+        """Adapt the released evidence view to the guarded shared pipeline.
+
+        This path never falls back to raw legacy chunks: the pipeline's gate
+        owns scope/version validation, and a failure is visible as unavailable.
+        """
+        legacy_ids = tuple(sorted({candidate.legacy_product_id for candidate in top_k if candidate.legacy_product_id}))
+        policy_requested = any(keyword in message.casefold() for keyword in _POLICY_TERMS)
+        pipeline = RetrievalPipeline([
+            RepositoryVectorChannel(SessionLocal, self._embedding),
+            RepositoryLexicalChannel(SessionLocal),
+        ])
+        query_plan = build_retrieval_query_plan(message, limit=self._budget.subquestion_limit)
+        product_docs: list[dict[str, object]] = []
+        statuses: dict[str, str] = {}
+        if legacy_ids:
+            for query in query_plan["product"]:
+                docs, current = pipeline.search(SearchRequest(query=query, evidence_type="product_document", product_ids=legacy_ids, limit=self._budget.candidate_limit, rrf_k=60))
+                product_docs.extend(docs)
+                statuses.update({f"product.{key}": value for key, value in current.items()})
+        policy_docs: list[dict[str, object]] = []
+        if policy_requested:
+            for query in query_plan["policy"]:
+                docs, current = pipeline.search(SearchRequest(query=query, evidence_type="store_policy", product_ids=legacy_ids, limit=self._budget.candidate_limit, rrf_k=60))
+                policy_docs.extend(docs)
+                statuses.update({f"policy.{key}": value for key, value in current.items()})
+        product_docs = rrf_fuse([product_docs], limit=self._budget.candidate_limit, rrf_k=60)
+        policy_docs = rrf_fuse([policy_docs], limit=self._budget.candidate_limit, rrf_k=60)
+        policy_docs, inapplicable, conflicts = _select_current_policy_documents(policy_docs, set(legacy_ids))
+        grouped: dict[str, list[EvidenceView]] = {candidate.sku_code: [] for candidate in top_k}
+        by_legacy: dict[str, list[str]] = {}
+        for candidate in top_k:
+            if candidate.legacy_product_id:
+                by_legacy.setdefault(candidate.legacy_product_id, []).append(candidate.sku_code)
+        for document in product_docs:
+            product_id = str(document.get("product_id") or (document.get("metadata") or {}).get("product_id") or "")
+            for sku_code in by_legacy.get(product_id, []):
+                if len(grouped[sku_code]) < self._budget.context_per_candidate:
+                    grouped[sku_code].append(_evidence(document, source="product_rag", evidence_type="product_document", query=message))
+        all_statuses = set(statuses.values())
+        evidence_status = "available" if product_docs or policy_docs else ("unavailable" if all_statuses and all_statuses <= {"unavailable", "degraded"} else "unknown")
+        return RecommendationEvidence(
+            product_evidence=grouped,
+            policy_evidence=[_evidence(document, source="policy_rag", evidence_type="policy_document", query=message) for document in policy_docs],
+            diagnostics={"retrieval_path": "shared", "requested_legacy_product_ids": list(legacy_ids), "product_document_count": len(product_docs), "policy_document_count": len(policy_docs), "policy_requested": policy_requested, "policy_inapplicable_count": inapplicable, "policy_version_conflicts": conflicts, "evidence_status": evidence_status, "channels": statuses, "query_plan": query_plan},
         )
 
 

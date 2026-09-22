@@ -20,6 +20,7 @@ from app.operations import (
     write_runtime_cleanup_evidence,
 )
 from app.main import create_app
+from app.shopping_tasks.models import ShoppingTaskWorkerHeartbeat
 from scripts import check_deployment_readiness
 
 
@@ -114,10 +115,10 @@ def test_development_readiness_probes_live_dependencies_without_cleanup() -> Non
 
     assert report.status == "ready"
     assert report.ready is True
-    assert report.total_checks == 5
+    assert report.total_checks == 7
     assert report.passed_checks == 3
     assert report.failed_checks == 0
-    assert report.not_applicable_checks == 2
+    assert report.not_applicable_checks == 4
     assert checks["configuration.preflight"].reason == "development_profile"
     assert checks["retention.cleanup"].reason == "cleanup_not_required"
 
@@ -133,12 +134,16 @@ def test_production_readiness_accepts_fresh_cleanup_evidence(tmp_path) -> None:
 
     assert report.status == "ready"
     assert report.ready is True
-    assert report.passed_checks == report.total_checks == 5
+    assert report.passed_checks == 5
+    assert report.total_checks == 7
+    assert report.not_applicable_checks == 2
     assert [check.check_id for check in report.checks] == [
         "configuration.preflight",
         "postgres.connectivity",
         "postgres.migration",
         "coordination.backend",
+        "ai.platform",
+        "shopping_tasks.worker",
         "retention.cleanup",
     ]
     assert _check_map(report)["retention.cleanup"].reason == "cleanup_recent"
@@ -235,7 +240,69 @@ def test_readiness_blocks_outdated_migration_without_exposing_version() -> None:
     assert _check_map(report)["postgres.migration"].reason == (
         "migration_outdated"
     )
+
+
+def test_disabled_shopping_tasks_accept_legacy_migration_head() -> None:
+    report = evaluate_deployment_readiness(
+        Settings(shopmind_shopping_tasks_enabled=False),
+        session_factory=_session_factory(migration="0017_ai_extension_registry"),
+        coordination_probe=lambda settings: None,
+    )
+
+    assert _check_map(report)["postgres.migration"].reason == "migration_current"
+    assert _check_map(report)["shopping_tasks.worker"].status == "not_applicable"
     assert "private-branch-version" not in report.model_dump_json()
+
+
+def _task_worker_session_factory(last_seen: datetime | None):
+    engine = create_engine("sqlite:///:memory:")
+    with engine.begin() as connection:
+        connection.execute(
+            text("create table alembic_version (version_num varchar(64))")
+        )
+        connection.execute(
+            text("insert into alembic_version values (:version)"),
+            {"version": MIGRATION_HEAD},
+        )
+        ShoppingTaskWorkerHeartbeat.__table__.create(connection)
+        if last_seen is not None:
+            connection.execute(
+                ShoppingTaskWorkerHeartbeat.__table__.insert().values(
+                    worker_id="worker-ready",
+                    started_at=last_seen,
+                    last_seen_at=last_seen,
+                )
+            )
+    return sessionmaker(bind=engine)
+
+
+def test_enabled_shopping_tasks_require_recent_worker_heartbeat() -> None:
+    settings = Settings(
+        shopmind_shopping_tasks_enabled=True,
+        shopmind_shopping_task_worker_max_age_seconds=60,
+    )
+    missing = _evaluate(
+        settings,
+        session_factory=_task_worker_session_factory(None),
+    )
+    stale = _evaluate(
+        settings,
+        session_factory=_task_worker_session_factory(NOW - timedelta(minutes=2)),
+    )
+    ready = _evaluate(
+        settings,
+        session_factory=_task_worker_session_factory(NOW - timedelta(seconds=10)),
+    )
+
+    assert _check_map(missing)["shopping_tasks.worker"].reason == (
+        "shopping_task_worker_missing"
+    )
+    assert _check_map(stale)["shopping_tasks.worker"].reason == (
+        "shopping_task_worker_stale"
+    )
+    assert _check_map(ready)["shopping_tasks.worker"].reason == (
+        "shopping_task_worker_ready"
+    )
 
 
 def test_readiness_health_endpoint_uses_status_code_and_closed_payload(

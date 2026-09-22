@@ -51,6 +51,8 @@ class AuditOperation(StrEnum):
     MEMORY_DELETE = "memory.delete"
     DELETION_REQUEST = "deletion.request"
     DELETION_EXECUTE = "deletion.execute"
+    ADMIN_EXTENSION_PUBLISH = "admin.extension.publish"
+    ADMIN_EVIDENCE_REVOKE = "admin.evidence.revoke"
 
 
 class AuditDecision(StrEnum):
@@ -131,6 +133,8 @@ _OPERATION_CATEGORY = {
     AuditOperation.MEMORY_DELETE: AuditCategory.MEMORY,
     AuditOperation.DELETION_REQUEST: AuditCategory.DELETION,
     AuditOperation.DELETION_EXECUTE: AuditCategory.DELETION,
+    AuditOperation.ADMIN_EXTENSION_PUBLISH: AuditCategory.ACTION,
+    AuditOperation.ADMIN_EVIDENCE_REVOKE: AuditCategory.ACTION,
 }
 
 _ALLOWED_DECISIONS = {
@@ -172,6 +176,16 @@ _ALLOWED_DECISIONS = {
         AuditDecision.SUCCEEDED,
         AuditDecision.SKIPPED,
         AuditDecision.NOT_FOUND,
+    },
+    AuditOperation.ADMIN_EXTENSION_PUBLISH: {
+        AuditDecision.DENIED,
+        AuditDecision.SUCCEEDED,
+        AuditDecision.FAILED,
+    },
+    AuditOperation.ADMIN_EVIDENCE_REVOKE: {
+        AuditDecision.DENIED,
+        AuditDecision.SUCCEEDED,
+        AuditDecision.FAILED,
     },
     AuditOperation.MEMORY_CREATE: {
         AuditDecision.DENIED,

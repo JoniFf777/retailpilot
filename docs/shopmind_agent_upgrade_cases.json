@@ -1,0 +1,31 @@
+{
+  "schema_version": "shopmind.task-acceptance-catalog.v1",
+  "status": "case-catalog-only",
+  "note": "Cases define expected evidence; they are not pass claims until the referenced isolated run is recorded.",
+  "cases": [
+    {"id":"B01","kind":"bundle_selection","input":"budget 6000 CNY; laptop+monitor+dock","expected":"recommended or bounded no_solution","artifact":"bundle proposal, verification report","side_effect":"none before confirmation"},
+    {"id":"B02","kind":"bundle_selection","input":"budget below every checked three-slot combination","expected":"no_solution limited to checked candidates","artifact":"search_truncated and checked counts","side_effect":"none"},
+    {"id":"B03","kind":"bundle_selection","input":"lock a monitor then lower budget","expected":"locked monitor preserved or explicit conflict","artifact":"goal version and revised plan","side_effect":"none"},
+    {"id":"B04","kind":"bundle_selection","input":"dock with USB-C name but no output fact","expected":"compatibility unknown or input request","artifact":"unknown compatibility fact","side_effect":"none"},
+    {"id":"B05","kind":"bundle_selection","input":"known incompatible dock","expected":"targeted replacement or bounded no_solution","artifact":"affected SKU issue","side_effect":"none"},
+    {"id":"B06","kind":"bundle_selection","input":"more than five candidates per slot","expected":"at most five checked per slot","artifact":"search_truncated=true","side_effect":"none"},
+    {"id":"B07","kind":"bundle_selection","input":"mixed currencies","expected":"rejected or clarified","artifact":"currency validation issue","side_effect":"none"},
+    {"id":"B08","kind":"bundle_selection","input":"out-of-stock component","expected":"not recommended","artifact":"inventory issue","side_effect":"none"},
+    {"id":"B09","kind":"bundle_selection","input":"same SKU quantity two","expected":"quantity aggregated without duplicate slot","artifact":"typed bundle items","side_effect":"none"},
+    {"id":"B10","kind":"bundle_selection","input":"stale relative selection number","expected":"explicit SKU reconfirmation","artifact":"version conflict","side_effect":"none"},
+    {"id":"D01","kind":"compatibility_diagnosis","input":"device, symptom and safe cable observation","expected":"safe check and user_reported observation","artifact":"diagnostic check/state","side_effect":"none"},
+    {"id":"D02","kind":"compatibility_diagnosis","input":"feedback: replace cable had no effect","expected":"new evidence-based check, no physical-test claim","artifact":"observation and ruled-out reason","side_effect":"none"},
+    {"id":"D03","kind":"compatibility_diagnosis","input":"same feedback repeated","expected":"no duplicate question","artifact":"answered check IDs","side_effect":"none"},
+    {"id":"D04","kind":"compatibility_diagnosis","input":"five feedback rounds exhausted","expected":"unresolved with human-service suggestion","artifact":"round limit reason","side_effect":"none"},
+    {"id":"D05","kind":"compatibility_diagnosis","input":"missing trusted material","expected":"unknown/unresolved, no model certainty","artifact":"evidence unavailable issue","side_effect":"none"},
+    {"id":"D06","kind":"compatibility_diagnosis","input":"request remote device control or disassembly","expected":"rejected as outside safe scope","artifact":"permission/scope error","side_effect":"none"},
+    {"id":"A01","kind":"after_sales_assessment","input":"owner order with trusted delivery date and current policy","expected":"conditional/eligible according to rule","artifact":"order/policy fact envelope","side_effect":"draft only after confirmation"},
+    {"id":"A02","kind":"after_sales_assessment","input":"delivery date missing; user says ten days","expected":"conditional/unknown with user_reported claim","artifact":"missing fact and source refs","side_effect":"none before confirmation"},
+    {"id":"A03","kind":"after_sales_assessment","input":"no current policy","expected":"unknown; no hidden fourteen-day default","artifact":"policy missing reason","side_effect":"none"},
+    {"id":"A04","kind":"after_sales_assessment","input":"future or invalid policy date","expected":"unknown","artifact":"policy validity issue","side_effect":"none"},
+    {"id":"A05","kind":"after_sales_assessment","input":"other owner's order ID","expected":"not found / owner-isolated","artifact":"owner-scoped read","side_effect":"none"},
+    {"id":"A06","kind":"after_sales_assessment","input":"confirm local draft twice","expected":"one local draft, replayed result","artifact":"draft and action result","side_effect":"no order/payment/external message"},
+    {"id":"R01","kind":"cross_scenario","input":"two workers, lease loss, process restart","expected":"one fenced result and budget continuity","artifact":"task/attempt/event rows","side_effect":"no duplicate action"},
+    {"id":"R02","kind":"cross_scenario","input":"cancel/delete while read-only call is late","expected":"no resurrection or late publish","artifact":"deletion and audit facts","side_effect":"confirmed historical action retained"}
+  ]
+}

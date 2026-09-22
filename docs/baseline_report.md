@@ -12,8 +12,7 @@
 - `docs/project_status.md`
 - `tests/agents/test_product_agent_adapter.py`
 
-未跟踪内容为完整的 `frontend/` 应用和
-`retailpilot_autumn_recruitment_modification_brief.md`。`frontend/` 包含 React/Vite、
+未跟踪内容为完整的 `frontend/` 应用和当时的秋招改造说明（现已由当前面试教材替代）。`frontend/` 包含 React/Vite、
 POST-SSE、AbortController、HITL 抽屉、隐私、运行和状态页面；它是本次重做的保留参考，
 不能删除或覆盖。仓库根目录还存在不可访问的 `pytest-cache-files-*`、
 `pytest-temp-*` 目录；本次未处理它们。
