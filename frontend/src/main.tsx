@@ -5,10 +5,18 @@ import { router } from "./app/router";
 import { AppProviders } from "./app/providers";
 import "./styles/theme.css";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <AppProviders>
-      <RouterProvider router={router} />
-    </AppProviders>
-  </StrictMode>,
-);
+async function bootstrap() {
+  if (import.meta.env.VITE_SHOPMIND_DEMO === "true") {
+    const { installDemoTransport } = await import("./demo");
+    installDemoTransport();
+  }
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <AppProviders>
+        <RouterProvider router={router} />
+      </AppProviders>
+    </StrictMode>,
+  );
+}
+
+void bootstrap();
