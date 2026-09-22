@@ -34,6 +34,10 @@
  */
 @source "../components";
 @source not "../components/**/*.test.tsx";
+@source "../app";
+@source not "../app/**/*.test.tsx";
+@source "../features/status/useSystemReadiness.ts";
+@source "../features/status/readiness.ts";
 
 /*
  * Design tokens. `static` keeps every variable in the output even when no utility uses it:
@@ -74,3 +78,35 @@
 
 /* Class-based dark mode. Only the variant is defined for now; no toggle ships before P4.5. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Dark palette, keyed to the same semantic token names so every utility that already
+ * reads e.g. `bg-surface` re-themes automatically once something adds `.dark` to <html> —
+ * no `dark:` variant needed on individual elements for these. Nothing sets that class yet
+ * (P1 ships tokens only, per the redesign plan; the toggle and the accompanying light/dark
+ * regression pass land together in P4.5), so this block has no visible effect today.
+ */
+.dark {
+  --color-background: #0b1512;
+  --color-background-deep: #060d0b;
+  --color-surface: #101d19;
+  --color-surface-raised: #14231e;
+  --color-surface-soft: #182821;
+  --color-text-primary: #e9f3ee;
+  --color-text-muted: #a9beb6;
+  --color-text-subtle: #7c928a;
+  --color-brand: #2bd6ab;
+  --color-brand-strong: #5be4c3;
+  --color-brand-soft: #123a30;
+  --color-success: #3ecf94;
+  --color-warning: #e0a63f;
+  --color-warning-soft: #3a2c12;
+  --color-danger: #ef6b74;
+  --color-danger-soft: #3a1518;
+  --color-agent-product: #6fb3ea;
+  --color-agent-rag: #b79cf0;
+  --color-agent-preference: #e3a15f;
+  --color-border: #223330;
+  --color-border-strong: #2d423d;
+  --color-ring: #2bd6ab;
+}

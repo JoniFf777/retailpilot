@@ -1,4 +1,6 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
+import { cn } from "../components/cn";
+import { useSystemReadiness } from "../features/status/useSystemReadiness";
 
 type IconName = "chat" | "catalog" | "privacy" | "runs" | "status" | "orders" | "tasks";
 
@@ -38,7 +40,7 @@ function Icon({ name }: { name: IconName }) {
   };
 
   return (
-    <svg aria-hidden="true" className="nav-icon" fill="none" viewBox="0 0 24 24">
+    <svg aria-hidden="true" className="h-[1.15rem] w-[1.15rem]" fill="none" viewBox="0 0 24 24">
       <path
         d={paths[name]}
         stroke="currentColor"
@@ -50,64 +52,138 @@ function Icon({ name }: { name: IconName }) {
   );
 }
 
-export function App() {
+/**
+ * Maps the shared readiness query (see `useSystemReadiness`) to what the shell's two
+ * status lights show. Both call sites render from this one place so they can never
+ * drift apart. "ready"/"blocked" are the only two values the backend returns
+ * (`app/operations/readiness.py`); pending/error get a neutral "unknown" reading rather
+ * than guessing.
+ */
+function systemStatusTone(readiness: ReturnType<typeof useSystemReadiness>): {
+  label: string;
+  dotClassName: string;
+} {
+  if (readiness.isPending) return { label: "检查中…", dotClassName: "bg-text-subtle" };
+  if (!readiness.isError && readiness.data?.status === "ready") {
+    return { label: "系统可用", dotClassName: "bg-success" };
+  }
+  if (!readiness.isError && readiness.data?.status === "blocked") {
+    return { label: "存在阻塞", dotClassName: "bg-danger" };
+  }
+  return { label: "状态未知", dotClassName: "bg-warning" };
+}
+
+function StatusDot({ tone, className }: { tone: string; className?: string }) {
   return (
-    <div className="app-shell">
-      <aside className="app-sidebar">
-        <div className="sidebar-content">
-          <Link className="brand" to="/">
-            <span aria-hidden="true" className="brand-mark">
-              <span />
+    <span
+      className={cn("inline-block flex-none rounded-full ring-2 ring-surface", tone, className)}
+    />
+  );
+}
+
+export function App() {
+  const readiness = useSystemReadiness();
+  const status = systemStatusTone(readiness);
+
+  return (
+    <div className="grid min-h-screen lg:grid-cols-[248px_minmax(0,1fr)]">
+      <aside className="sticky top-0 z-10 flex flex-col justify-between self-start border-0 border-b border-solid border-border bg-surface/90 px-4 py-3 lg:min-h-screen lg:border-r lg:border-b-0 lg:px-4 lg:py-6">
+        <div className="grid gap-4 lg:gap-7">
+          <Link className="inline-flex items-center gap-3 rounded-md px-1 py-1 lg:px-2" to="/">
+            <span
+              aria-hidden="true"
+              className="relative inline-flex h-10 w-10 flex-none -rotate-6 items-center justify-center rounded-xl bg-brand shadow-[0_8px_18px_rgb(8_127_104_/_20%)]"
+            >
+              <span className="absolute h-5 w-5 rounded-full border-[1.5px] border-solid border-white/80" />
+              <span className="absolute h-2.5 w-2.5 rounded-full border-[1.5px] border-solid border-white/80" />
+              <span className="h-1 w-1 rounded-full bg-white" />
             </span>
-            <span className="brand-copy">
-              <strong>ShopMind</strong>
-              <small>Decision workspace</small>
+            <span className="hidden flex-col gap-0.5 lg:flex">
+              <strong className="text-[1.05rem] tracking-tight text-text-primary">ShopMind</strong>
+              <small className="text-[0.68rem] tracking-wide text-text-subtle">
+                Decision workspace
+              </small>
             </span>
           </Link>
 
-          <div className="sidebar-section-label">工作台</div>
-          <nav aria-label="主导航" className="sidebar-nav">
+          <div className="hidden px-2 text-[0.68rem] font-extrabold tracking-[0.14em] text-text-subtle uppercase lg:block">
+            工作台
+          </div>
+          <nav
+            aria-label="主导航"
+            className="flex [scrollbar-width:none] gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] lg:grid lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden"
+          >
             {NAV_ITEMS_WITH_ORDERS.map((item) => (
               <NavLink
-                className={({ isActive }) => `nav-item ${isActive ? "nav-item-active" : ""}`}
+                className={({ isActive }) =>
+                  cn(
+                    "flex min-h-11 flex-none items-center gap-3 rounded-md border border-solid border-transparent px-2.5 py-1.5 text-text-muted transition-colors duration-200 ease-standard hover:bg-surface-soft hover:text-brand-strong lg:min-h-[3.35rem] lg:flex-auto lg:px-3",
+                    isActive &&
+                      "border-[#c9e9dd] bg-brand-soft text-brand-strong hover:bg-brand-soft",
+                  )
+                }
                 end={item.end}
                 key={item.to}
                 to={item.to}
               >
-                <span className="nav-icon-wrap">
-                  <Icon name={item.icon} />
-                </span>
-                <span className="nav-copy">
-                  <strong>{item.label}</strong>
-                  <small>{item.caption}</small>
-                </span>
-                <span aria-hidden="true" className="nav-active-indicator" />
+                {({ isActive }) => (
+                  <>
+                    <span
+                      className={cn(
+                        "inline-flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-solid border-brand/10 bg-white/70",
+                        isActive && "border-transparent bg-brand text-white",
+                      )}
+                    >
+                      <Icon name={item.icon} />
+                    </span>
+                    <span className="hidden min-w-0 flex-col gap-0.5 lg:grid">
+                      <strong className="text-[0.86rem] font-bold">{item.label}</strong>
+                      <small
+                        className={cn(
+                          "hidden text-[0.65rem] text-text-subtle xl:block",
+                          isActive && "text-brand",
+                        )}
+                      >
+                        {item.caption}
+                      </small>
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "ml-auto hidden h-1.5 w-1.5 flex-none rounded-full bg-brand lg:block",
+                        isActive ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
         </div>
 
-        <div className="sidebar-footer">
-          <div className="system-indicator">
-            <span className="system-pulse" />
-            <span>
-              <strong>系统可用</strong>
-              <small>开发环境 · V6</small>
+        <div className="hidden items-center justify-between border-0 border-t border-solid border-border pt-5 lg:flex">
+          <div className="flex items-center gap-2">
+            <StatusDot className="h-3 w-3" tone={status.dotClassName} />
+            <span className="grid gap-0.5">
+              <strong className="text-[0.73rem] text-text-primary">{status.label}</strong>
+              <small className="text-[0.65rem] text-text-subtle">开发环境 · V6</small>
             </span>
           </div>
-          <span className="version-tag">0.1</span>
+          <span className="rounded-full bg-surface-soft px-2 py-1 text-[0.65rem] text-text-muted">
+            0.1
+          </span>
         </div>
       </aside>
 
-      <div className="app-main">
-        <div className="mobile-context-bar">
+      <div className="min-w-0">
+        <div className="flex items-center justify-between px-5 pt-4 text-[0.7rem] tracking-wide text-text-subtle sm:px-8 lg:hidden">
           <span>ShopMind / Decision workspace</span>
-          <span className="topbar-status">
-            <span className="system-pulse" />
-            在线
+          <span className="inline-flex items-center gap-1.5">
+            <StatusDot className="h-2 w-2" tone={status.dotClassName} />
+            {status.label}
           </span>
         </div>
-        <main className="page-frame">
+        <main className="mx-auto max-w-[1300px] px-5 pt-8 pb-20 sm:px-8 sm:pt-10 lg:pt-16">
           <Outlet />
         </main>
       </div>

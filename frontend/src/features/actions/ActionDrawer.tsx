@@ -6,6 +6,7 @@ import type {
   PendingActionTransitionRequest,
   PendingActionView,
 } from "../../api/contracts";
+import { Drawer } from "../../components/overlay";
 import { actionErrorMessage } from "./actionErrors";
 
 type UpdatedFields = PendingActionTransitionRequest["updated_fields"];
@@ -163,7 +164,13 @@ export function ActionDrawer({
     );
   }, [action.preview]);
   return (
-    <aside className="action-drawer" role="dialog" aria-modal="true" aria-labelledby="action-title">
+    <Drawer
+      as="aside"
+      backdrop={false}
+      className="action-drawer"
+      labelledBy="action-title"
+      onClose={onDismiss}
+    >
       <div className="action-drawer-header">
         <div>
           <p className="eyebrow">HUMAN CONFIRMATION</p>
@@ -272,6 +279,6 @@ export function ActionDrawer({
         )}
       </div>
       <p className="action-safety-note">确认时后端会重新校验价格、库存和权限。</p>
-    </aside>
+    </Drawer>
   );
 }
