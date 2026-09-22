@@ -235,10 +235,10 @@ export function CartPanel({
   const mixedCurrency = warnings.some((warning) => warning.code === "mixed_currency");
 
   return (
-    <section className="shopmind-cart-panel" aria-label="ShopMind 购物车">
+    <section className="shopmind-cart-panel" aria-label="RetailPilot 购物车">
       <div className="panel-heading">
         <h2 ref={titleRef} tabIndex={-1}>
-          ShopMind 购物车
+          RetailPilot 购物车
         </h2>
         <span>{itemCount} 个 SKU</span>
       </div>
@@ -330,7 +330,7 @@ export function CartPanel({
           description={
             confirmation.kind === "delete"
               ? `从购物车移除“${confirmation.productName}”？`
-              : "确定清空 ShopMind 购物车吗？"
+              : "确定清空 RetailPilot 购物车吗？"
           }
           confirmLabel={confirmation.kind === "delete" ? "确认移除" : "确认清空"}
           busy={confirmation.kind === "delete" ? deleteMutation.isPending : clearMutation.isPending}

@@ -157,7 +157,7 @@ export async function readApiError(response: Response): Promise<ApiError> {
             "message" in detail &&
             typeof detail.message === "string"
           ? detail.message
-          : "ShopMind request failed.";
+          : "RetailPilot request failed.";
 
   return new ApiError(
     paymentError?.message ??

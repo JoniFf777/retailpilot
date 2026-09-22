@@ -12,10 +12,10 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
   return (
     <article className={`message-row ${isUser ? "message-row-user" : "message-row-assistant"}`}>
       <div className="message-avatar" aria-hidden="true">
-        {isUser ? "你" : "S"}
+        {isUser ? "你" : "R"}
       </div>
       <div className="message-bubble">
-        <div className="message-meta">{isUser ? "你" : "ShopMind"}</div>
+        <div className="message-meta">{isUser ? "你" : "RetailPilot"}</div>
         <p>{message.content}</p>
         {message.response && (
           <div className={`response-status response-status-${message.response.status}`}>

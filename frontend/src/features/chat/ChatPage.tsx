@@ -461,9 +461,11 @@ export function ChatPage() {
     <section className="chat-page" aria-labelledby="chat-title">
       <div className="chat-heading">
         <div>
-          <p className="eyebrow">SHOPMIND WORKBENCH</p>
+          <p className="eyebrow">RETAILPILOT WORKBENCH</p>
           <h1 id="chat-title">把购物问题，变成清晰决定</h1>
-          <p className="chat-subtitle">用中文描述需求，ShopMind 会整理商品信息、偏好与决策依据。</p>
+          <p className="chat-subtitle">
+            用中文描述需求，RetailPilot 会整理商品信息、偏好与决策依据。
+          </p>
         </div>
         <div className="chat-heading-actions">
           <Link className="secondary-button" to="/tasks">

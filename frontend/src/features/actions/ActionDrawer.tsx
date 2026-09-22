@@ -182,7 +182,7 @@ export function ActionDrawer({
       </div>
       <div className="action-summary">
         <span className="label">
-          {actionType === "add_to_cart" ? "加入 ShopMind 购物车" : "保存偏好"}
+          {actionType === "add_to_cart" ? "加入 RetailPilot 购物车" : "保存偏好"}
         </span>
         {preview}
         <small>

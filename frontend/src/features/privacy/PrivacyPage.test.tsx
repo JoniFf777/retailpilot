@@ -95,7 +95,7 @@ describe("Privacy Center", () => {
     await screen.findByText("7 条记录");
     expect(screen.getByTestId("delete-owner-button")).toBeDisabled();
     fireEvent.change(screen.getByTestId("delete-owner-data"), {
-      target: { value: "删除我的全部 ShopMind 数据" },
+      target: { value: "删除我的全部 RetailPilot 数据" },
     });
     expect(screen.getByTestId("delete-owner-button")).toBeEnabled();
   });

@@ -86,7 +86,7 @@ export function CatalogHomePage() {
     <section className="catalog-page" aria-labelledby="catalog-title">
       <div className="catalog-heading">
         <div>
-          <p className="eyebrow">SHOPMIND CATALOG</p>
+          <p className="eyebrow">RETAILPILOT CATALOG</p>
           <h1 id="catalog-title">浏览商品</h1>
           <p className="catalog-lede">从商品类别开始，查看真实库存、价格和结构化规格。</p>
         </div>

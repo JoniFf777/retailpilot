@@ -8,7 +8,7 @@ function decodeData(data: string): AgentEvent {
     !("event_type" in parsed) ||
     !("sequence" in parsed)
   ) {
-    throw new Error("Invalid ShopMind stream event.");
+    throw new Error("Invalid RetailPilot stream event.");
   }
   return parsed as AgentEvent;
 }
@@ -48,10 +48,10 @@ export function parseSseText(text: string): SseFrame[] {
 export function toAgentEvent(frame: SseFrame): AgentEvent {
   const event = decodeData(frame.data);
   if (frame.event && frame.event !== event.event_type) {
-    throw new Error("ShopMind stream event type mismatch.");
+    throw new Error("RetailPilot stream event type mismatch.");
   }
   if (frame.id && Number(frame.id) !== event.sequence) {
-    throw new Error("ShopMind stream sequence mismatch.");
+    throw new Error("RetailPilot stream sequence mismatch.");
   }
   return event;
 }

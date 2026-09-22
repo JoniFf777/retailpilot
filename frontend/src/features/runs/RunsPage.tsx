@@ -171,7 +171,7 @@ export function RunsPage() {
                 <div>
                   <strong>{event.event_type}</strong>
                   <span>
-                    {event.agent_name ?? "ShopMind runtime"} · {formatDate(event.created_at)}
+                    {event.agent_name ?? "RetailPilot runtime"} · {formatDate(event.created_at)}
                   </span>
                 </div>
               </li>

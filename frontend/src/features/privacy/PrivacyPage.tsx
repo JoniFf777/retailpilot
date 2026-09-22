@@ -5,7 +5,7 @@ import type { OwnerMemoryRecord } from "../../api/contracts";
 import { useSession } from "../../app/useSession";
 import { chatErrorMessage } from "../chat/chatErrors";
 
-const DELETE_PHRASE = "删除我的全部 ShopMind 数据";
+const DELETE_PHRASE = "删除我的全部 RetailPilot 数据";
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(
@@ -154,7 +154,7 @@ export function PrivacyPage() {
         <div>
           <p className="eyebrow">OWNER DATA BOUNDARY</p>
           <h1 id="privacy-title">隐私中心</h1>
-          <p>查看、纠正或删除属于当前身份的 ShopMind 数据。页面只显示后端允许的摘要字段。</p>
+          <p>查看、纠正或删除属于当前身份的 RetailPilot 数据。页面只显示后端允许的摘要字段。</p>
         </div>
       </div>
       {isDevelopment ? (

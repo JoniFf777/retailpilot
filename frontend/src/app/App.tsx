@@ -99,7 +99,9 @@ export function App() {
               <span className="h-1 w-1 rounded-full bg-white" />
             </span>
             <span className="hidden flex-col gap-0.5 lg:flex">
-              <strong className="text-[1.05rem] tracking-tight text-text-primary">ShopMind</strong>
+              <strong className="text-[1.05rem] tracking-tight text-text-primary">
+                RetailPilot
+              </strong>
               <small className="text-[0.68rem] tracking-wide text-text-subtle">
                 Decision workspace
               </small>
@@ -177,7 +179,7 @@ export function App() {
 
       <div className="min-w-0">
         <div className="flex items-center justify-between px-5 pt-4 text-[0.7rem] tracking-wide text-text-subtle sm:px-8 lg:hidden">
-          <span>ShopMind / Decision workspace</span>
+          <span>RetailPilot / Decision workspace</span>
           <span className="inline-flex items-center gap-1.5">
             <StatusDot className="h-2 w-2" tone={status.dotClassName} />
             {status.label}

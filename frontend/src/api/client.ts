@@ -297,7 +297,7 @@ export const shopMindApi = {
     });
     if (!response.ok) throw await readApiError(response);
     if (!response.body)
-      throw new ApiError("ShopMind stream returned no body.", response.status, null, null);
+      throw new ApiError("RetailPilot stream returned no body.", response.status, null, null);
     yield* readSseStream(response.body);
   },
   createAddToCartPendingAction: (request: AddToCartPendingActionRequest, signal?: AbortSignal) =>

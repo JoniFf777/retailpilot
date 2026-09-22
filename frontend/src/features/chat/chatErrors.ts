@@ -2,7 +2,7 @@ import { ApiError } from "../../api/errors";
 
 export function chatErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) {
-    return "暂时无法连接 ShopMind，请检查后端服务后重试。";
+    return "暂时无法连接 RetailPilot，请检查后端服务后重试。";
   }
   switch (error.status) {
     case 400:
@@ -16,8 +16,8 @@ export function chatErrorMessage(error: unknown): string {
     case 429:
       return "当前运行较多，请稍后再试。";
     case 503:
-      return "ShopMind 服务暂时不可用，请稍后再试。";
+      return "RetailPilot 服务暂时不可用，请稍后再试。";
     default:
-      return "ShopMind 暂时无法完成这次请求，请稍后重试。";
+      return "RetailPilot 暂时无法完成这次请求，请稍后重试。";
   }
 }

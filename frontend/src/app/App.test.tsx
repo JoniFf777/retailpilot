@@ -12,7 +12,7 @@ describe("ShopMind shell", () => {
         </Routes>
       </MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: /ShopMind/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /RetailPilot/ })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "主导航" })).toBeInTheDocument();
   });
 });

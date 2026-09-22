@@ -460,7 +460,7 @@ test("structured SKU selection uses typed pending-action endpoints and refreshes
       expected_version: 1,
       updated_fields: { quantity: 2 },
     });
-  await expect(page.getByText("ShopMind 购物车", { exact: true })).toBeVisible();
+  await expect(page.getByText("RetailPilot 购物车", { exact: true })).toBeVisible();
 });
 
 type CartItemFixture = Record<string, unknown>;
@@ -603,7 +603,7 @@ async function openManagedCart(
   await page.getByRole("button", { name: "选择此商品" }).click();
   await page.getByTestId("action-quantity").fill("1");
   await page.getByTestId("action-confirm").click();
-  await expect(page.getByText("ShopMind 购物车", { exact: true })).toBeVisible();
+  await expect(page.getByText("RetailPilot 购物车", { exact: true })).toBeVisible();
 }
 
 function checkoutPreviewFixture(overrides: Record<string, unknown> = {}) {
@@ -1054,7 +1054,7 @@ test("Cart clear confirms, sends DELETE /api/cart and renders empty state", asyn
   });
   await page.getByRole("button", { name: "清空购物车" }).click();
   await expect(page.getByRole("dialog", { name: "清空购物车" })).toContainText(
-    "确定清空 ShopMind 购物车吗？",
+    "确定清空 RetailPilot 购物车吗？",
   );
   await page.getByRole("button", { name: "确认清空" }).click();
   await expect.poll(() => clearRequested).toBe(true);

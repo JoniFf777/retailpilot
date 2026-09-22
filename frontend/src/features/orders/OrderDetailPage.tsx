@@ -88,7 +88,7 @@ export function OrderDetailPage() {
       {fromCheckout && (
         <div className="success-banner" role="status" data-testid="order-confirmation">
           <strong>Order created.</strong>
-          <span>Your pending-payment order is recorded by ShopMind.</span>
+          <span>Your pending-payment order is recorded by RetailPilot.</span>
         </div>
       )}
       {query.isLoading && (

@@ -303,7 +303,7 @@ describe("ShopMind Cart management", () => {
     renderCart(fetchMock);
     await screen.findByText("轻薄本");
     fireEvent.click(screen.getByRole("button", { name: "清空购物车" }));
-    expect(screen.getByRole("dialog")).toHaveTextContent("确定清空 ShopMind 购物车吗？");
+    expect(screen.getByRole("dialog")).toHaveTextContent("确定清空 RetailPilot 购物车吗？");
     fireEvent.click(screen.getByRole("button", { name: "确认清空" }));
     expect(await screen.findByText("购物车还是空的。")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /结算|支付|订单/ })).not.toBeInTheDocument();
