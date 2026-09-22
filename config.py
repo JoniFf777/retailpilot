@@ -60,10 +60,11 @@ class Context:
 # DATA PATHS CONFIGURATION
 # ============================================================================
 
-# Determine the base path (works in both local dev and LS deployment environments)
-if Path("/deps/langsmith-agent-lifecycle-workshop").exists():
+# Determine the base path (works in both local dev and LS deployment environments).
+# The deployment path is derived from pyproject.toml's [project.name].
+if Path("/deps/retailpilot").exists():
     # Running in LangSmith deployment (data files are at /deps, not /api)
-    BASE_PATH = Path("/deps/langsmith-agent-lifecycle-workshop")
+    BASE_PATH = Path("/deps/retailpilot")
 else:
     # Running locally
     BASE_PATH = Path(__file__).parent
