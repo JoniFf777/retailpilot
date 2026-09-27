@@ -23,7 +23,6 @@
 @import "./checkout.css" layer(legacy);
 @import "./orders.css" layer(legacy);
 @import "./global.css" layer(legacy);
-@import "./catalog.css" layer(legacy);
 
 /*
  * Class-name detection is an explicit allow-list, not "everything under src". Tailwind
@@ -36,8 +35,15 @@
 @source not "../components/**/*.test.tsx";
 @source "../app";
 @source not "../app/**/*.test.tsx";
-@source "../features/status/useSystemReadiness.ts";
-@source "../features/status/readiness.ts";
+@source "../features/status";
+@source not "../features/status/**/*.test.tsx";
+@source "../features/admin-ai";
+@source "../features/runs";
+@source not "../features/runs/**/*.test.tsx";
+@source "../features/privacy";
+@source not "../features/privacy/**/*.test.tsx";
+@source "../features/catalog";
+@source not "../features/catalog/**/*.test.tsx";
 
 /*
  * Design tokens. `static` keeps every variable in the output even when no utility uses it:

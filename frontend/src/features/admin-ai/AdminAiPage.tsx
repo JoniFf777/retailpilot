@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Button, Card } from "../../components/primitives";
 
 interface AiHealth {
   schema_version: string;
@@ -18,6 +19,26 @@ async function readHealth(signal?: AbortSignal): Promise<AiHealth> {
   return response.json() as Promise<AiHealth>;
 }
 
+function SummaryCard({
+  kicker,
+  value,
+  caption,
+}: {
+  kicker: string;
+  value: string | number;
+  caption: string;
+}) {
+  return (
+    <Card as="article" className="grid gap-1.5">
+      <span className="text-[0.66rem] font-extrabold tracking-wide text-text-subtle uppercase">
+        {kicker}
+      </span>
+      <h2 className="m-0 text-2xl tracking-tight">{value}</h2>
+      <p className="m-0 text-sm text-text-muted">{caption}</p>
+    </Card>
+  );
+}
+
 export function AdminAiPage() {
   const query = useQuery({
     queryKey: ["admin-ai-health"],
@@ -26,49 +47,45 @@ export function AdminAiPage() {
   const evidence = query.data?.evidence.evidence ?? {};
   const tasks = query.data?.evidence.tasks ?? {};
   return (
-    <section className="status-page" aria-labelledby="admin-ai-title">
+    <section aria-labelledby="admin-ai-title" className="grid gap-6">
       <div className="page-heading">
         <div>
           <p className="eyebrow">SHOPPING EVIDENCE OPERATIONS</p>
           <h1 id="admin-ai-title">AI 运维</h1>
           <p className="page-lede">仅管理员可见的购物证据、入库任务与可选 Outbox 发布状态。</p>
         </div>
-        <button className="button secondary" type="button" onClick={() => void query.refetch()}>
+        <Button onClick={() => void query.refetch()} variant="secondary">
           重新检查
-        </button>
+        </Button>
       </div>
       {query.isPending && (
-        <p className="state-card" role="status">
+        <p className="m-0 text-sm text-text-muted" role="status">
           正在读取 AI 运维状态…
         </p>
       )}
       {query.isError && (
-        <div className="state-card error-state" role="alert">
+        <Card as="div" className="border-danger/25 bg-danger-soft text-sm text-danger" role="alert">
           {query.error instanceof Error ? query.error.message : "AI 运维状态不可用"}
-        </div>
+        </Card>
       )}
       {query.data && (
-        <div className="status-summary-grid">
-          <article className="status-card">
-            <span className="card-kicker">EVIDENCE</span>
-            <h2>{Object.values(evidence).reduce((total, value) => total + value, 0)}</h2>
-            <p>当前购物证据版本</p>
-          </article>
-          <article className="status-card">
-            <span className="card-kicker">INGESTION</span>
-            <h2>{Object.values(tasks).reduce((total, value) => total + value, 0)}</h2>
-            <p>入库任务总数</p>
-          </article>
-          <article className="status-card">
-            <span className="card-kicker">OUTBOX</span>
-            <h2>独立</h2>
-            <p>{query.data.rocketmq}</p>
-          </article>
-          <article className="status-card">
-            <span className="card-kicker">MODELS</span>
-            <h2>{query.data.models.length}</h2>
-            <p>候选模型健康快照</p>
-          </article>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            caption="当前购物证据版本"
+            kicker="EVIDENCE"
+            value={Object.values(evidence).reduce((total, value) => total + value, 0)}
+          />
+          <SummaryCard
+            caption="入库任务总数"
+            kicker="INGESTION"
+            value={Object.values(tasks).reduce((total, value) => total + value, 0)}
+          />
+          <SummaryCard caption={query.data.rocketmq} kicker="OUTBOX" value="独立" />
+          <SummaryCard
+            caption="候选模型健康快照"
+            kicker="MODELS"
+            value={query.data.models.length}
+          />
         </div>
       )}
     </section>

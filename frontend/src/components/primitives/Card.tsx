@@ -3,7 +3,7 @@ import { cn } from "../cn";
 
 export interface CardProps extends HTMLAttributes<HTMLElement> {
   /** Element to render. Use `article` when the card is a self-contained item. */
-  as?: "div" | "section" | "article";
+  as?: "div" | "section" | "article" | "form";
   padded?: boolean;
 }
 
