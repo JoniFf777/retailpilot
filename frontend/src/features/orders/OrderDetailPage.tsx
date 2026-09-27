@@ -44,9 +44,7 @@ export function OrderDetailPage() {
       const code =
         error instanceof ApiError ? (error.paymentError?.code ?? error.orderError?.code) : null;
       if (code === "payment_in_progress") {
-        setCancelMessage(
-          "Payment is in progress. Cancel is unavailable until the current Payment Attempt finishes.",
-        );
+        setCancelMessage("支付正在进行中，当前 Payment Attempt 完成前无法取消。");
         void Promise.all([
           queryClient.invalidateQueries({ queryKey: paymentAttemptsQueryKey(identity, orderId) }),
           queryClient.invalidateQueries({ queryKey: orderQueryKey(identity, orderId) }),
@@ -58,7 +56,7 @@ export function OrderDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ordersQueryKey(identity) });
       setCancelMessage(
         result.idempotent_replay
-          ? "Cancel was already processed."
+          ? "取消请求此前已处理过。"
           : "Order cancelled. Inventory was released; Cart was not restored.",
       );
     },
@@ -74,11 +72,11 @@ export function OrderDetailPage() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">ORDER DETAIL</p>
-          <h1 id="order-detail-title">Order snapshot</h1>
+          <h1 id="order-detail-title">订单快照</h1>
         </div>
         <div className="page-heading-actions">
           <Link className="secondary-button" to="/orders">
-            All orders
+            全部订单
           </Link>
           <Link className="secondary-button" to="/">
             Shopping
@@ -87,23 +85,23 @@ export function OrderDetailPage() {
       </div>
       {fromCheckout && (
         <div className="success-banner" role="status" data-testid="order-confirmation">
-          <strong>Order created.</strong>
-          <span>Your pending-payment order is recorded by RetailPilot.</span>
+          <strong>订单已创建。</strong>
+          <span>你的待支付订单已被 RetailPilot 记录。</span>
         </div>
       )}
       {query.isLoading && (
         <div className="loading-panel" role="status">
-          Loading order…
+          正在读取订单…
         </div>
       )}
       {query.error && (
         <div className="error-state standalone" role="alert">
           <div>
-            <strong>Order unavailable</strong>
-            <p>{query.error instanceof ApiError ? query.error.message : "Try again later."}</p>
+            <strong>订单暂时无法读取</strong>
+            <p>{query.error instanceof ApiError ? query.error.message : "请稍后重试。"}</p>
           </div>
           <button className="text-button" onClick={() => void query.refetch()} type="button">
-            Retry
+            重试
           </button>
         </div>
       )}
@@ -123,20 +121,20 @@ export function OrderDetailPage() {
                 <strong>{order.status}</strong>
               </div>
               <div>
-                <span>Currency</span>
+                <span>币种</span>
                 <strong>{order.currency}</strong>
               </div>
               <div>
-                <span>Version</span>
+                <span>版本</span>
                 <strong>{order.version}</strong>
               </div>
               <div>
-                <span>Created</span>
+                <span>创建时间</span>
                 <strong>{new Date(order.created_at).toLocaleString()}</strong>
               </div>
               {order.expires_at && (
                 <div>
-                  <span>Payment deadline</span>
+                  <span>支付截止时间</span>
                   <strong>{new Date(order.expires_at).toLocaleString()}</strong>
                 </div>
               )}
@@ -146,10 +144,10 @@ export function OrderDetailPage() {
               <div className="order-cancel-zone">
                 <p>
                   {activePayment
-                    ? "Payment is in progress. Cancel is unavailable until the current Payment Attempt finishes."
+                    ? "支付正在进行中，当前 Payment Attempt 完成前无法取消。"
                     : inconsistentPayment
-                      ? "Payment state is inconsistent. Cancel is unavailable until the payment state is reconciled."
-                      : "Cancel is explicit. It releases the reservation and does not add items back to Cart."}
+                      ? "支付状态不一致，需要先核对支付状态才能取消。"
+                      : "取消是明确的操作：会释放库存预留，不会把商品放回购物车。"}
                 </p>
                 {!activePayment && !inconsistentPayment && (
                   <button
@@ -158,7 +156,7 @@ export function OrderDetailPage() {
                     onClick={() => cancelMutation.mutate()}
                     type="button"
                   >
-                    {cancelMutation.isPending ? "Cancelling…" : "Cancel pending order"}
+                    {cancelMutation.isPending ? "取消中…" : "Cancel pending order"}
                   </button>
                 )}
               </div>
@@ -178,7 +176,7 @@ export function OrderDetailPage() {
               <p className="error-copy" role="alert">
                 {cancelMutation.error instanceof ApiError
                   ? cancelMutation.error.message
-                  : "Cancel failed. Try again."}
+                  : "取消失败，请重试。"}
               </p>
             )}
           </section>

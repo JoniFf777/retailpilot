@@ -12,20 +12,20 @@ export function OrderSnapshot({ order }: { order: OrderView }) {
               <span>
                 {item.sku_name} · {item.sku_code}
               </span>
-              <small>Snapshot SKU: {item.sku_id}</small>
+              <small>快照 SKU：{item.sku_id}</small>
             </div>
             <div className="order-item-numbers">
-              <span>Qty {item.quantity}</span>
-              <span>{formatMoney(item.unit_money)} each</span>
+              <span>数量 {item.quantity}</span>
+              <span>单价 {formatMoney(item.unit_money)}</span>
               <strong>{formatMoney(item.subtotal_money)}</strong>
             </div>
           </article>
         ))}
       </div>
       <div className="order-total">
-        <span>Subtotal</span>
+        <span>小计</span>
         <strong>{formatMoney(order.subtotal)}</strong>
-        <span>Total</span>
+        <span>总计</span>
         <strong>{formatMoney(order.total)}</strong>
       </div>
     </div>

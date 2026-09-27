@@ -24,33 +24,31 @@ export function OrdersPage() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">ORDER HISTORY</p>
-          <h1 id="orders-title">Your orders</h1>
-          <p className="page-lede">
-            Orders use the backend snapshot: names and prices do not change with live Catalog data.
-          </p>
+          <h1 id="orders-title">我的订单</h1>
+          <p className="page-lede">订单使用后端快照：名称和价格不会随目录实时数据变化。</p>
         </div>
         <Link className="secondary-button" to="/">
-          Back to shopping
+          返回购物
         </Link>
       </div>
       {query.isLoading && (
         <div className="loading-panel" role="status">
-          Loading orders…
+          正在读取订单…
         </div>
       )}
       {query.error && (
         <div className="error-state standalone" role="alert">
           <div>
-            <strong>Orders unavailable</strong>
-            <p>{query.error instanceof ApiError ? query.error.message : "Try again later."}</p>
+            <strong>订单暂时无法读取</strong>
+            <p>{query.error instanceof ApiError ? query.error.message : "请稍后重试。"}</p>
           </div>
           <button className="text-button" onClick={() => void query.refetch()} type="button">
-            Retry
+            重试
           </button>
         </div>
       )}
       {query.data && orders.length === 0 && (
-        <div className="empty-panel">No orders yet. Add a product to your Cart to begin.</div>
+        <div className="empty-panel">还没有订单，先去购物车加一件商品开始。</div>
       )}
       {query.data && orders.length > 0 && (
         <div className="order-list" data-testid="order-list">
@@ -58,14 +56,14 @@ export function OrdersPage() {
             <Link className="order-list-card" key={order.order_id} to={`/orders/${order.order_id}`}>
               <div className="order-list-card-heading">
                 <div>
-                  <span className="label">Order</span>
+                  <span className="label">订单</span>
                   <strong>{order.order_id}</strong>
                 </div>
                 <OrderStatus status={order.status} />
               </div>
               <div className="order-list-card-meta">
                 <span>
-                  {order.items.length} SKU · {order.currency}
+                  {order.items.length} 个 SKU · {order.currency}
                 </span>
                 <strong>{formatMoney(order.total)}</strong>
               </div>

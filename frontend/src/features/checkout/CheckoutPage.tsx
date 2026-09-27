@@ -42,7 +42,7 @@ function errorMessage(error: unknown): string {
       return "This submission key was already used for a different request. Start a new Preview before trying again.";
     return error.orderError?.message ?? error.checkoutError?.message ?? error.message;
   }
-  return "The submission result is unknown. Retry with the same checkout attempt.";
+  return "提交结果未知，可以用同一个 checkout attempt 重试。";
 }
 
 function warningLabel(warning: CheckoutWarning): string {
@@ -58,8 +58,8 @@ function PreviewItem({ item }: { item: NonNullable<CheckoutPreview["items"]>[num
         <small>SKU {item.sku_id}</small>
       </div>
       <div className="checkout-item-numbers">
-        <span>Qty {item.quantity}</span>
-        <span>{formatMoney(item.unit_money)} each</span>
+        <span>数量 {item.quantity}</span>
+        <span>单价 {formatMoney(item.unit_money)}</span>
         <strong>{formatMoney(item.subtotal_money)}</strong>
       </div>
     </article>
@@ -191,24 +191,19 @@ export function CheckoutPage() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">CHECKOUT PREVIEW</p>
-          <h1 id="checkout-title">Review your order</h1>
-          <p className="page-lede">
-            Prices and inventory will be checked again when the order is created.
-          </p>
+          <h1 id="checkout-title">确认订单内容</h1>
+          <p className="page-lede">创建订单时会重新校验价格和库存。</p>
         </div>
         <Link className="secondary-button" to="/">
-          Back to shopping
+          返回购物
         </Link>
       </div>
 
       {recovering && (
         <section className="checkout-recovery" data-testid="checkout-recovery" role="status">
           <p className="eyebrow">RESULT UNKNOWN</p>
-          <h2>We did not receive the previous result.</h2>
-          <p>
-            Retrying uses the same checkout token and Idempotency-Key, so it will not create a
-            second logical order.
-          </p>
+          <h2>没有收到上一次的结果。</h2>
+          <p>重试会使用同一个 checkout token 和 Idempotency-Key，不会创建第二个逻辑订单。</p>
           <div className="checkout-actions">
             <button
               className="primary-button"
@@ -216,7 +211,7 @@ export function CheckoutPage() {
               onClick={retryOrder}
               type="button"
             >
-              {orderMutation.isPending ? "Retrying…" : "Retry submission"}
+              {orderMutation.isPending ? "重试中…" : "Retry submission"}
             </button>
             <button
               className="secondary-button"
@@ -224,7 +219,7 @@ export function CheckoutPage() {
               onClick={startNewPreview}
               type="button"
             >
-              Start a new Preview
+              重新获取 Preview
             </button>
           </div>
         </section>
@@ -232,17 +227,17 @@ export function CheckoutPage() {
 
       {!recovering && previewQuery.isLoading && (
         <div className="loading-panel" role="status">
-          Loading the latest Cart Preview…
+          正在读取最新的购物车 Preview…
         </div>
       )}
       {!recovering && previewQuery.error && (
         <section className="error-state standalone" role="alert">
           <div>
-            <strong>Preview unavailable</strong>
+            <strong>Preview 暂时无法读取</strong>
             <p>{errorMessage(previewQuery.error)}</p>
           </div>
           <button className="text-button" onClick={startNewPreview} type="button">
-            Try Preview again
+            重新获取 Preview
           </button>
         </section>
       )}
@@ -256,14 +251,14 @@ export function CheckoutPage() {
             <div className="section-heading">
               <div>
                 <p className="eyebrow">SERVER PREVIEW</p>
-                <h2 id="checkout-preview-title">Order contents</h2>
+                <h2 id="checkout-preview-title">订单内容</h2>
               </div>
               <span>
-                {data.item_count} SKU · {data.total_quantity} items
+                {data.item_count} 个 SKU · 共 {data.total_quantity} 件
               </span>
             </div>
             {items.length === 0 && (
-              <p className="empty-panel">Your Cart is empty. Add a SKU before starting Checkout.</p>
+              <p className="empty-panel">购物车是空的，结算前请先添加商品。</p>
             )}
             <div className="checkout-items">
               {items.map((item) => (
@@ -272,7 +267,7 @@ export function CheckoutPage() {
             </div>
             {data.warnings?.length ? (
               <div className="checkout-warnings" role="status">
-                <strong>Review warnings</strong>
+                <strong>需要留意的提示</strong>
                 {data.warnings.map((warning, index) => (
                   <span key={`${warning.code}-${warning.sku_id ?? index}`}>
                     {warningLabel(warning)}
@@ -281,17 +276,16 @@ export function CheckoutPage() {
               </div>
             ) : null}
             <div className="checkout-total">
-              <span>Subtotal</span>
-              <strong>{data.subtotal ? formatMoney(data.subtotal) : "Not available"}</strong>
-              <small>{data.currency ?? "Multiple currencies"}</small>
+              <span>小计</span>
+              <strong>{data.subtotal ? formatMoney(data.subtotal) : "暂不可计算"}</strong>
+              <small>{data.currency ?? "存在多种币种"}</small>
             </div>
             <p className="checkout-revalidation">
-              The backend will re-check price, inventory, availability, Cart fingerprint, and total
-              during order creation.
+              创建订单时后端会重新核实价格、库存、可售状态、购物车指纹和总额。
             </p>
             {!canCreate && (
               <p className="checkout-blocked" role="alert">
-                Order creation is unavailable until the current Preview is valid.
+                当前 Preview 已失效，暂时无法创建订单。
               </p>
             )}
             {needsRepreview && (
@@ -304,11 +298,8 @@ export function CheckoutPage() {
             <section className="checkout-confirm-card" data-testid="checkout-confirm">
               <div>
                 <p className="eyebrow">FINAL STEP</p>
-                <h2>Confirm your order</h2>
-                <p>
-                  This explicit action creates the pending-payment Order. “Back to shopping” only
-                  leaves this page.
-                </p>
+                <h2>确认创建订单</h2>
+                <p>这是明确的操作，会创建待支付订单。"返回购物"只会离开本页。</p>
               </div>
               <button
                 className="primary-button"
@@ -316,14 +307,14 @@ export function CheckoutPage() {
                 onClick={submitOrder}
                 type="button"
               >
-                {orderMutation.isPending ? "Creating order…" : "Confirm order"}
+                {orderMutation.isPending ? "创建中…" : "Confirm order"}
               </button>
             </section>
           )}
           {submissionError && (
             <section className="error-state standalone" role="alert">
               <div>
-                <strong>Order submission needs attention</strong>
+                <strong>订单提交需要处理</strong>
                 <p>{submissionError}</p>
               </div>
               {attempt &&
