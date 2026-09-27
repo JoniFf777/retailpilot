@@ -70,6 +70,8 @@ export function RecommendationPanel({
               recommendationRequest={recommendation.recommendation_request}
               categoryAttributes={recommendation.category_attributes ?? {}}
               constraintFields={recommendation.constraint_fields ?? []}
+              recognizedConstraints={recommendation.recognized_constraints}
+              recommendations={recommendations}
             />
           )}
           {recommendation.evidence_status && recommendation.evidence_status !== "available" && (

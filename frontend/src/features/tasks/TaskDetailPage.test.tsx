@@ -222,4 +222,83 @@ describe("Durable task workbench: task detail", () => {
       feedback: { observation: "实际到货的是灰色版本", source: "user_reported" },
     });
   });
+
+  it("shows revision history once a repair has produced a second plan revision", async () => {
+    const snapshot = baseSnapshot({
+      plan: { ...baseSnapshot().plan!, revision: 2 },
+      steps: [
+        {
+          key: "search",
+          plan_revision: 1,
+          capability: "catalog_candidates",
+          role: "catalog_analyst",
+          status: "superseded",
+          attempt_count: 1,
+          has_lease: false,
+          lease_until: null,
+        },
+        {
+          key: "search",
+          plan_revision: 2,
+          capability: "catalog_candidates",
+          role: "catalog_analyst",
+          status: "completed",
+          attempt_count: 1,
+          has_lease: false,
+          lease_until: null,
+        },
+        {
+          key: "compose",
+          plan_revision: 2,
+          capability: "compose_result",
+          role: "coordinator",
+          status: "completed",
+          attempt_count: 1,
+          has_lease: false,
+          lease_until: null,
+        },
+      ],
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(snapshot)));
+    renderTaskDetail();
+    await screen.findByRole("heading", { name: /为办公场景选一套/ });
+    expect(screen.getByText("修订历史")).toBeInTheDocument();
+    expect(screen.getByText("2 个版本")).toBeInTheDocument();
+    expect(screen.getByText("修订 1")).toBeInTheDocument();
+    expect(screen.getByText("修订 2 · 当前")).toBeInTheDocument();
+  });
+
+  it("shows an active lease's expiry time and flags an expired one distinctly", async () => {
+    const future = new Date(Date.now() + 5 * 60_000).toISOString();
+    const past = new Date(Date.now() - 5 * 60_000).toISOString();
+    const snapshot = baseSnapshot({
+      steps: [
+        {
+          key: "search",
+          plan_revision: 1,
+          capability: "catalog_candidates",
+          role: "catalog_analyst",
+          status: "completed",
+          attempt_count: 1,
+          has_lease: true,
+          lease_until: future,
+        },
+        {
+          key: "compose",
+          plan_revision: 1,
+          capability: "compose_result",
+          role: "coordinator",
+          status: "completed",
+          attempt_count: 1,
+          has_lease: true,
+          lease_until: past,
+        },
+      ],
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(snapshot)));
+    renderTaskDetail();
+    await screen.findByRole("heading", { name: /为办公场景选一套/ });
+    expect(screen.getByText("租约已过期")).toBeInTheDocument();
+    expect(screen.getByText(/^租约至 \d{2}:\d{2}:\d{2}$/)).toBeInTheDocument();
+  });
 });

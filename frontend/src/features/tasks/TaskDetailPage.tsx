@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { shopMindApi } from "../../api/client";
 import { ApiError } from "../../api/errors";
 import { useSession } from "../../app/useSession";
+import type { TaskStepView } from "../../api/contracts";
+import { RevisionHistory } from "./RevisionHistory";
+import { TaskDagView } from "./TaskDagView";
 
 function commandKey(taskId: string, operation: string): string {
   const storageKey = `shopmind:task-command:${taskId}:${operation}`;
@@ -16,6 +19,17 @@ function commandKey(taskId: string, operation: string): string {
 
 function clearCommandKey(taskId: string, operation: string): void {
   sessionStorage.removeItem(`shopmind:task-command:${taskId}:${operation}`);
+}
+
+/** `has_lease` only means the step is still holding a fencing token — it may already be
+ *  stale, so this cross-checks `lease_until` rather than treating `has_lease` alone as
+ *  "currently running" (see docs/frontend_redesign_handoff.md §7 point 4). */
+function leaseLabel(step: TaskStepView): string | null {
+  if (!step.has_lease) return null;
+  if (!step.lease_until) return "持有租约";
+  const until = new Date(step.lease_until);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= Date.now()) return "租约已过期";
+  return `租约至 ${until.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
 }
 
 export function TaskDetailPage() {
@@ -198,6 +212,9 @@ export function TaskDetailPage() {
             <h2>计划与步骤</h2>
             <span>{task.plan?.steps.length ?? 0} 步</span>
           </div>
+          {task.plan && task.plan.steps.length > 0 && (
+            <TaskDagView plan={task.plan} steps={steps} />
+          )}
           {steps.map((step) => (
             // `task.steps` mixes every plan revision's steps together; a local repair
             // (revise_task_plan) can reuse the same step key in a later revision, so
@@ -210,7 +227,10 @@ export function TaskDetailPage() {
                   {step.role} · {step.capability}
                 </span>
               </div>
-              <em>{step.status}</em>
+              <div className="task-step-status">
+                <em>{step.status}</em>
+                {leaseLabel(step) && <small className="task-step-lease">{leaseLabel(step)}</small>}
+              </div>
             </div>
           ))}
         </article>
@@ -250,6 +270,7 @@ export function TaskDetailPage() {
           ))}
         </article>
       </div>
+      <RevisionHistory activeRevision={task.plan?.revision ?? 1} steps={steps} />
       {currentActionType && task.status === "succeeded" && !preparedAction && (
         <button
           className="primary-button"

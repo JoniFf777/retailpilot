@@ -218,6 +218,45 @@ describe("RecommendationPanel", () => {
     };
     render(<RecommendationPanel recommendation={excluded} onFillPrompt={() => undefined} />);
     expect(screen.getByText("面板：不包括ips")).toBeInTheDocument();
+    expect(screen.queryByText("硬性条件")).not.toBeInTheDocument();
+    expect(screen.queryByText("软性偏好")).not.toBeInTheDocument();
+  });
+
+  it("groups a soft preference apart from hard constraints and shows how many results matched it", () => {
+    const weight: RecommendationResult = {
+      ...result,
+      category: "laptop",
+      category_display_name: "笔记本",
+      category_attributes: { weight_max_kg: 1.5 },
+      recommendation_request: {
+        category: "laptop",
+        availability_required: true,
+        budget_max: "9000",
+      },
+      constraint_fields: [
+        {
+          key: "weight_max_kg",
+          label: "重量至多",
+          value: 1.5,
+          value_type: "number",
+          unit: "kg",
+          display_order: 1,
+          comparable: false,
+        },
+      ],
+      recognized_constraints: {
+        weight_max_kg: { operator: "lte", polarity: "include", role: "soft", value: 1.5 },
+      },
+      recommendations: [
+        { ...result.recommendations![0]!, matched_soft_preferences: ["weight_max_kg"] },
+        { ...result.recommendations![1]!, matched_soft_preferences: [] },
+      ],
+    };
+    render(<RecommendationPanel recommendation={weight} onFillPrompt={() => undefined} />);
+    expect(screen.getByText("硬性条件")).toBeInTheDocument();
+    expect(screen.getByText("软性偏好")).toBeInTheDocument();
+    expect(screen.getByText("重量至多：1.5kg")).toBeInTheDocument();
+    expect(screen.getByText("1/2 命中")).toBeInTheDocument();
   });
 
   it("shows degraded evidence status and policy citations without exposing internals", () => {

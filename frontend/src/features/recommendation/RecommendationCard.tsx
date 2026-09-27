@@ -113,8 +113,8 @@ export function RecommendationCard({
       )}
       <ScoreBreakdown items={item.score_breakdown} />
       {(item.evidence ?? []).length > 0 && (
-        <details className="evidence-list">
-          <summary>查看证据</summary>
+        <section className="evidence-list" aria-label="引用证据">
+          <span className="evidence-list-heading">引用证据 · {(item.evidence ?? []).length}</span>
           <ul>
             {(item.evidence ?? []).map((evidence, index) => (
               <li
@@ -131,7 +131,7 @@ export function RecommendationCard({
               </li>
             ))}
           </ul>
-        </details>
+        </section>
       )}
       <div className="recommendation-card-actions">
         <button

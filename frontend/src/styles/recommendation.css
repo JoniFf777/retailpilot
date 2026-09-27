@@ -86,11 +86,36 @@
   padding: 0;
 }
 .structured-constraints li {
+  align-items: center;
   background: rgb(255 255 255 / 72%);
   border-radius: 99px;
   color: var(--color-text-muted);
+  display: flex;
   font-size: 0.78rem;
+  gap: 0.35rem;
   padding: 0.28rem 0.55rem;
+}
+.constraint-group {
+  display: grid;
+  gap: 0.35rem;
+}
+.constraint-group-heading {
+  color: var(--color-text-subtle);
+  font-size: 0.64rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.constraint-group[data-role="soft"] li {
+  background: rgb(182 106 34 / 10%);
+}
+.constraint-hit {
+  color: var(--color-text-subtle);
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+.constraint-hit[data-full="true"] {
+  color: var(--color-success);
 }
 .recommendation-grid {
   display: grid;
@@ -220,36 +245,58 @@
   border-radius: 99px;
   padding: 0.14rem 0.35rem;
 }
-.score-breakdown,
-.evidence-list {
+.score-breakdown {
   border-top: 1px solid var(--color-border);
   color: var(--color-text-muted);
   font-size: 0.76rem;
   padding-top: 0.7rem;
 }
-.score-breakdown summary,
-.evidence-list summary {
+.score-breakdown summary {
   color: var(--color-brand-strong);
   cursor: pointer;
   font-weight: 700;
 }
-.score-breakdown ul,
-.evidence-list ul {
+.score-breakdown ul {
   display: grid;
   gap: 0.4rem;
   list-style: none;
   margin: 0.65rem 0 0;
   padding: 0;
 }
-.score-breakdown li,
+.score-breakdown li {
+  display: grid;
+  gap: 0.12rem;
+  grid-template-columns: 1fr auto;
+}
+.score-breakdown small {
+  color: var(--color-text-subtle);
+  grid-column: 1 / -1;
+}
+.evidence-list {
+  background: #f6f3fb;
+  border: 1px solid #ddd2f0;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  margin-top: 0.7rem;
+  padding: 0.65rem 0.8rem 0.75rem;
+}
+.evidence-list-heading {
+  color: var(--color-agent-rag);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+.evidence-list ul {
+  display: grid;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+}
 .evidence-list li {
   display: grid;
   gap: 0.12rem;
 }
-.score-breakdown li {
-  grid-template-columns: 1fr auto;
-}
-.score-breakdown small,
 .evidence-list small {
   color: var(--color-text-subtle);
   grid-column: 1 / -1;
