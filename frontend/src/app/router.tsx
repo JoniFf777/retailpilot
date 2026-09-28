@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, createHashRouter } from "react-router-dom";
 import { ChatPage } from "../features/chat/ChatPage";
 import { PrivacyPage } from "../features/privacy/PrivacyPage";
 import { RunsPage } from "../features/runs/RunsPage";
@@ -16,7 +16,19 @@ import { AdminAiPage } from "../features/admin-ai/AdminAiPage";
 import { TasksPage } from "../features/tasks/TasksPage";
 import { TaskDetailPage } from "../features/tasks/TaskDetailPage";
 
-export const router = createBrowserRouter([
+/**
+ * `createBrowserRouter` deep-links 404 on a static host with no server-side rewrite rule
+ * (GitHub Pages, a plain S3 bucket, ...) — the server sees a request for e.g. `/tasks/123`
+ * and has no `index.html` to fall back to. `createHashRouter` sidesteps this entirely:
+ * every route lives after a `#` (`/#/tasks/123`), which the server never sees, so it
+ * always serves `index.html` for the one real path (`/`). Demo builds (the ones actually
+ * meant for static hosting) use it; a real backend deployment is expected to have proper
+ * server-side routing and keeps the cleaner `createBrowserRouter` URLs.
+ */
+const buildRouter =
+  import.meta.env.VITE_SHOPMIND_DEMO === "true" ? createHashRouter : createBrowserRouter;
+
+export const router = buildRouter([
   {
     path: "/",
     element: <App />,
