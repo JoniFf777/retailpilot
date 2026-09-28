@@ -20,13 +20,13 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
       className={`flex max-w-[88%] items-start gap-2.5 ${isUser ? "ml-auto flex-row-reverse" : ""}`}
     >
       <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-solid text-xs font-extrabold ${isUser ? "border-border bg-[#e8efec] text-text-muted" : "border-brand bg-brand text-white"}`}
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-xs font-extrabold ${isUser ? "border-border bg-surface-soft text-text-muted" : "border-brand bg-brand text-white"}`}
         aria-hidden="true"
       >
         {isUser ? "你" : "R"}
       </div>
       <div
-        className={`rounded-tl-none rounded-tr-2xl rounded-br-2xl rounded-bl-2xl border border-solid px-3.5 py-3 ${isUser ? "rounded-tl-2xl rounded-tr-none border-[#c9e9dd] bg-brand-soft" : "border-[#e1ece7] bg-[#f3f7f5]"}`}
+        className={`rounded-tl-none rounded-tr-2xl rounded-br-2xl rounded-bl-2xl border px-3.5 py-3 ${isUser ? "rounded-tl-2xl rounded-tr-none border-brand/25 bg-brand-soft" : "border-border bg-surface-soft"}`}
       >
         <div className="mb-1.5 text-xs font-extrabold text-text-subtle">
           {isUser ? "你" : "RetailPilot"}

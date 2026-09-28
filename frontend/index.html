@@ -9,6 +9,19 @@
       content="RetailPilot 购物决策工作台：把复杂的购物问题变成清晰、可确认的决定。"
     />
     <title>RetailPilot · 购物决策工作台</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("shopmind.frontend.theme");
+          var dark =
+            stored === "dark" ||
+            (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (error) {
+          // Private browsing / storage disabled — page just renders light.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

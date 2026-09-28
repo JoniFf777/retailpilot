@@ -238,7 +238,7 @@ export function CartPanel({
 
   return (
     <section
-      className="shopmind-cart-panel relative mt-4 grid gap-2.5 rounded-md border border-solid border-border bg-surface p-3.5"
+      className="shopmind-cart-panel relative mt-4 grid gap-2.5 rounded-md border border-border bg-surface p-3.5"
       aria-label="RetailPilot 购物车"
     >
       <div className="flex items-center justify-between">
@@ -263,7 +263,7 @@ export function CartPanel({
       )}
       {data && (
         <div
-          className="grid grid-cols-3 gap-2.5 rounded-sm border border-solid border-border bg-surface-soft p-3"
+          className="grid grid-cols-3 gap-2.5 rounded-sm border border-border bg-surface-soft p-3"
           aria-label="购物车摘要"
         >
           <div className="grid min-w-0 gap-0.5">
@@ -285,7 +285,7 @@ export function CartPanel({
       )}
       {mixedCurrency && (
         <p
-          className="m-0 rounded-sm bg-warning-soft p-2.5 text-[0.72rem] leading-relaxed text-[#7c4b05]"
+          className="m-0 rounded-sm bg-warning-soft p-2.5 text-[0.72rem] leading-relaxed text-warning"
           role="status"
         >
           {cartWarningMessage(warnings.find((warning) => warning.code === "mixed_currency")!)}
@@ -316,7 +316,7 @@ export function CartPanel({
         ))}
       </div>
       {data && items.length > 0 && (
-        <div className="flex items-center justify-between gap-2.5 border-t border-solid border-border pt-3">
+        <div className="flex items-center justify-between gap-2.5 border-t border-border pt-3">
           {onCheckout && (
             <button
               className={cn("cart-checkout-button flex-[1_1_100%]", BUTTON_PRIMARY)}

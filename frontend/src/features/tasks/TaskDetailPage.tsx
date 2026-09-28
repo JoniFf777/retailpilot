@@ -31,7 +31,7 @@ function clearCommandKey(taskId: string, operation: string): void {
   sessionStorage.removeItem(`shopmind:task-command:${taskId}:${operation}`);
 }
 
-const ARTIFACT_ROW = "grid gap-0.5 border-t border-solid border-border pt-3";
+const ARTIFACT_ROW = "grid gap-0.5 border-t border-border pt-3";
 
 const STEP_DOT_TONE: Record<string, string> = {
   completed: "bg-success",
@@ -249,7 +249,7 @@ export function TaskDetailPage() {
             // (revise_task_plan) can reuse the same step key in a later revision, so
             // the key must include plan_revision to stay unique across revisions.
             <div
-              className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-t border-solid border-border py-3"
+              className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-t border-border py-3"
               key={`${step.plan_revision}:${step.key}`}
             >
               <span className={`h-3 w-3 rounded-full ${stepDotTone(step.status)}`} />
@@ -292,7 +292,7 @@ export function TaskDetailPage() {
             </div>
           ))}
           {task.output && !bundle ? (
-            <pre className="max-h-[360px] overflow-auto rounded-sm border border-solid border-[#dcefe7] bg-[#f6fbf8] p-3.5 text-xs whitespace-pre-wrap">
+            <pre className="max-h-[360px] overflow-auto rounded-sm border border-border bg-surface-soft p-3.5 text-xs whitespace-pre-wrap">
               {JSON.stringify(task.output, null, 2)}
             </pre>
           ) : null}
@@ -344,7 +344,7 @@ export function TaskDetailPage() {
           <h2 className="m-0 text-xl">补充用户观察</h2>
           <textarea
             aria-label="用户补充事实"
-            className="rounded-sm border border-solid border-border-strong p-3"
+            className="rounded-sm border border-border-strong p-3"
             rows={3}
             value={feedback}
             onChange={(event) => setFeedback(event.target.value)}

@@ -17,13 +17,13 @@ type Props = {
 };
 
 const AVAILABILITY_TONES: Record<string, string> = {
-  available: "bg-[#dcfce7] text-[#166534]",
-  tight: "bg-[#fef3c7] text-[#92400e]",
-  unavailable: "bg-[#fee2e2] text-[#991b1b]",
+  available: "bg-success-soft text-success",
+  tight: "bg-warning-soft text-warning",
+  unavailable: "bg-danger-soft text-danger",
 };
 
 const ALT_BUTTON =
-  "inline-flex min-h-8 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-solid border-border bg-surface px-2 text-xs font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-8 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-border bg-surface px-2 text-xs font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50";
 
 export function RecommendationCard({
   item,
@@ -37,7 +37,7 @@ export function RecommendationCard({
   const alternatives = item.alternative_skus ?? [];
   return (
     <article
-      className="recommendation-card grid gap-3 rounded-lg border border-solid border-border bg-surface p-4 shadow-[0_8px_24px_rgb(28,65,55,0.07)]"
+      className="recommendation-card grid gap-3 rounded-lg border border-border bg-surface p-4 shadow-[0_8px_24px_rgb(28,65,55,0.07)]"
       aria-label={`推荐 ${rank}：${item.product_name}`}
     >
       <header className="flex items-start justify-between gap-2.5">
@@ -85,16 +85,13 @@ export function RecommendationCard({
         </p>
       )}
       {(item.soft_tradeoffs ?? []).length > 0 && (
-        <p className="m-0 text-sm leading-relaxed text-[#92400e]">
+        <p className="m-0 text-sm leading-relaxed text-warning">
           <strong className="text-text-primary">取舍：</strong>
           {item.soft_tradeoffs?.join("、")}
         </p>
       )}
       {alternatives.length > 0 && (
-        <div
-          className="grid gap-2.5 border-t border-solid border-border pt-3"
-          aria-label="同款其他 SKU"
-        >
+        <div className="grid gap-2.5 border-t border-border pt-3" aria-label="同款其他 SKU">
           <span className="text-xs font-bold text-text-subtle">同款可选 SKU</span>
           {alternatives.map((alternative) => {
             const selected = selectedSkuIds.includes(alternative.sku_id);
@@ -140,10 +137,10 @@ export function RecommendationCard({
       <ScoreBreakdown items={item.score_breakdown} />
       {(item.evidence ?? []).length > 0 && (
         <section
-          className="mt-1 rounded-md border border-solid border-[#ddd2f0] bg-[#f6f3fb] p-3"
+          className="mt-1 rounded-md border border-agent-rag/30 bg-agent-rag/10 p-3"
           aria-label="引用证据"
         >
-          <span className="text-xs font-bold text-[#7555ae]">
+          <span className="text-xs font-bold text-agent-rag">
             引用证据 · {(item.evidence ?? []).length}
           </span>
           <ul className="m-0 mt-2 grid list-none gap-2 p-0">

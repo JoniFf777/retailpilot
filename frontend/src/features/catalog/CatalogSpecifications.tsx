@@ -21,7 +21,7 @@ export function CatalogSpecifications({
     <dl className={`m-0 grid ${compact ? "gap-1.5" : "gap-2"}`}>
       {visible.map((specification) => (
         <div
-          className={`flex items-baseline justify-between gap-4 ${compact ? "" : "border-b border-solid border-[#edf3f0] pb-1.5"}`}
+          className={`flex items-baseline justify-between gap-4 ${compact ? "" : "border-b border-border pb-1.5"}`}
           key={specification.key}
         >
           <dt className="text-[0.74rem] text-text-muted">{specification.label}</dt>

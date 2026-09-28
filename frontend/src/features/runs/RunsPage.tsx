@@ -60,7 +60,7 @@ export function RunsPage() {
       {isDevelopment ? (
         <Card
           as="div"
-          className="flex flex-wrap items-center gap-3 bg-white/88 text-sm text-text-muted"
+          className="flex flex-wrap items-center gap-3 bg-surface/88 text-sm text-text-muted"
         >
           <label
             className="flex items-center gap-2 font-semibold text-text-primary"
@@ -68,7 +68,7 @@ export function RunsPage() {
           >
             开发用户标识
             <input
-              className="w-45 rounded-sm border border-solid border-border-strong px-2.5 py-1.5 font-normal"
+              className="w-45 rounded-sm border border-border-strong px-2.5 py-1.5 font-normal"
               id="runs-user-id"
               onChange={(event) => setUserId(event.target.value)}
               value={userId}
@@ -92,7 +92,7 @@ export function RunsPage() {
         <div className="grid grid-cols-[150px_minmax(0,1fr)_90px_auto] gap-2.5 max-sm:grid-cols-1">
           <select
             aria-label="运行选择器类型"
-            className="min-w-0 rounded-sm border border-solid border-border-strong px-2.5 py-1.5"
+            className="min-w-0 rounded-sm border border-border-strong px-2.5 py-1.5"
             onChange={(event) => setSelectorType(event.target.value as "run_id" | "trace_id")}
             value={selectorType}
           >
@@ -101,7 +101,7 @@ export function RunsPage() {
           </select>
           <input
             aria-label="运行选择器值"
-            className="min-w-0 rounded-sm border border-solid border-border-strong px-2.5 py-1.5"
+            className="min-w-0 rounded-sm border border-border-strong px-2.5 py-1.5"
             data-testid="run-selector"
             onChange={(event) => setSelectorValue(event.target.value)}
             placeholder="输入 opaque selector"
@@ -109,7 +109,7 @@ export function RunsPage() {
           />
           <input
             aria-label="事件数量上限"
-            className="min-w-0 rounded-sm border border-solid border-border-strong px-2.5 py-1.5"
+            className="min-w-0 rounded-sm border border-border-strong px-2.5 py-1.5"
             max="100"
             min="1"
             onChange={(event) => setEventLimit(Number(event.target.value) || 50)}
@@ -170,7 +170,7 @@ export function RunsPage() {
               ["Steps", String(runQuery.data.usage.step_count)],
             ].map(([label, value]) => (
               <div
-                className="grid gap-1 rounded-sm border border-solid border-[#e0efe9] bg-surface-soft p-3"
+                className="grid gap-1 rounded-sm border border-border bg-surface-soft p-3"
                 key={label}
               >
                 <span className="overflow-wrap-anywhere text-xs text-text-subtle">{label}</span>
@@ -178,17 +178,17 @@ export function RunsPage() {
               </div>
             ))}
           </div>
-          <div className="flex items-baseline justify-between gap-3 border-b border-solid border-border pb-3">
+          <div className="flex items-baseline justify-between gap-3 border-b border-border pb-3">
             <h3 className="m-0 text-base">Client-visible timeline</h3>
             <span className="text-xs text-text-subtle">不包含 event payload</span>
           </div>
           <ol className="m-0 grid list-none gap-3 p-0">
             {runQuery.data.events.map((event) => (
               <li className="grid grid-cols-[2rem_1fr] items-start gap-3" key={event.sequence}>
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-solid border-[#c9e9dd] bg-brand-soft text-xs text-brand-strong">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-brand/25 bg-brand-soft text-xs text-brand-strong">
                   {event.sequence}
                 </span>
-                <div className="grid gap-0.5 border-b border-solid border-[#edf3f0] pb-3">
+                <div className="grid gap-0.5 border-b border-border pb-3">
                   <strong className="text-sm">{event.event_type}</strong>
                   <span className="text-sm text-text-muted">
                     {event.agent_name ?? "RetailPilot runtime"} · {formatDate(event.created_at)}

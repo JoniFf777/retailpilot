@@ -34,10 +34,7 @@ export function ExecutionTimeline({
   lastSequence: number;
 }) {
   return (
-    <div
-      className="border-b border-solid border-[#dbeee6] bg-[#f4fbf8] px-5.5 py-3.5"
-      aria-live="polite"
-    >
+    <div className="border-b border-border bg-surface-soft px-5.5 py-3.5" aria-live="polite">
       <div className="flex justify-between text-xs font-extrabold text-brand-strong">
         <span>实时执行进度</span>
         <span className="font-medium text-text-subtle">{lastSequence} 个事件</span>

@@ -39,7 +39,7 @@ export function CartConfirmationDialog({
       }}
     >
       <div
-        className="w-full max-w-[25rem] rounded-md border border-solid border-border-strong bg-surface p-[1.15rem] shadow-overlay"
+        className="w-full max-w-[25rem] rounded-md border border-border-strong bg-surface p-[1.15rem] shadow-overlay"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-confirmation-title"

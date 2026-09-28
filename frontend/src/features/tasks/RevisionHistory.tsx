@@ -36,7 +36,7 @@ export function RevisionHistory({
       <ol className="m-0 grid gap-3.5 p-0">
         {revisions.map((revision) => (
           <li
-            className={`grid gap-1.5 border-l-[3px] border-solid pl-3 ${revision === activeRevision ? "border-brand" : "border-border-strong"}`}
+            className={`grid gap-1.5 border-l-[3px] pl-3 ${revision === activeRevision ? "border-brand" : "border-border-strong"}`}
             key={revision}
           >
             <span className="text-sm font-extrabold text-brand-strong">

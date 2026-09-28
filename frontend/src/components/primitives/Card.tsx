@@ -12,7 +12,7 @@ export function Card({ as: Element = "div", padded = true, className, ...rest }:
     <Element
       {...rest}
       className={cn(
-        "rounded-lg border border-solid border-border bg-surface shadow-soft",
+        "rounded-lg border border-border bg-surface shadow-soft",
         padded && "p-5",
         className,
       )}

@@ -78,16 +78,15 @@ function isRetryableSubmissionState(state: PaymentSubmissionState | undefined): 
   );
 }
 
-const RECOVERY_BOX =
-  "flex flex-wrap items-center justify-between gap-3.5 rounded-sm border border-solid p-4";
+const RECOVERY_BOX = "flex flex-wrap items-center justify-between gap-3.5 rounded-sm border p-4";
 const RECOVERY_TONES: Record<string, string> = {
   known: "border-border bg-surface-soft",
-  success: "border-[#bfe8d8] bg-success-soft",
-  provider_succeeded: "border-[#bfe8d8] bg-success-soft",
+  success: "border-success/25 bg-success-soft",
+  provider_succeeded: "border-success/25 bg-success-soft",
 };
 
 function recoveryBox(suffix: string): string {
-  return `${RECOVERY_BOX} ${RECOVERY_TONES[suffix] ?? "border-[#f0dbb2] bg-warning-soft"}`;
+  return `${RECOVERY_BOX} ${RECOVERY_TONES[suffix] ?? "border-warning/25 bg-warning-soft"}`;
 }
 
 export function PaymentSection({
@@ -257,7 +256,7 @@ export function PaymentSection({
 
   return (
     <section
-      className="grid gap-4 rounded-md border border-solid border-border bg-white/78 p-4.5"
+      className="grid gap-4 rounded-md border border-border bg-surface/78 p-4.5"
       aria-labelledby="payment-section-title"
       data-testid="payment-section"
     >
@@ -429,7 +428,7 @@ export function PaymentSection({
         )}
       {activeAttempt && (
         <div
-          className="rounded-sm border border-solid border-border bg-surface-soft p-4 text-sm text-text-muted"
+          className="rounded-sm border border-border bg-surface-soft p-4 text-sm text-text-muted"
           data-testid="payment-in-progress"
         >
           Payment is in progress. Cancel is unavailable until the current Attempt finishes.

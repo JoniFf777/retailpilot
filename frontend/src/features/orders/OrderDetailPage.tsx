@@ -95,7 +95,7 @@ export function OrderDetailPage() {
       </div>
       {fromCheckout && (
         <div
-          className="flex flex-wrap items-center gap-2.5 rounded-lg border border-solid border-[#bde4cd] bg-[#e2f5e9] p-4 text-success"
+          className="flex flex-wrap items-center gap-2.5 rounded-lg border border-success/25 bg-success-soft p-4 text-success"
           role="status"
           data-testid="order-confirmation"
         >
@@ -123,7 +123,7 @@ export function OrderDetailPage() {
       )}
       {order && (
         <Card as="section" className="grid gap-5" data-testid="order-detail">
-          <div className="flex items-center justify-between gap-4 border-b border-solid border-border pb-4">
+          <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
             <div className="grid min-w-0 gap-1">
               <span className="text-xs text-text-muted">Order ID</span>
               <code className="overflow-wrap-anywhere text-brand-strong">{order.order_id}</code>
@@ -160,7 +160,7 @@ export function OrderDetailPage() {
           </div>
           <OrderSnapshot order={order} />
           {order.status === "pending_payment" && (
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-solid border-[#f1d5d4] bg-danger-soft p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-danger/25 bg-danger-soft p-4">
               <p className="m-0 max-w-[540px] text-sm leading-relaxed text-danger">
                 {activePayment
                   ? "支付正在进行中，当前 Payment Attempt 完成前无法取消。"

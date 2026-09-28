@@ -1,10 +1,10 @@
 import type { RecommendationResult } from "../../api/contracts";
 
-const NOTICE = "grid gap-2 rounded-md border border-solid border-[#fed7aa] bg-[#fff7ed] p-4";
-const NOTICE_HEADING = "m-0 text-[0.92rem] text-[#9a3412]";
+const NOTICE = "grid gap-2 rounded-md border border-warning/25 bg-warning-soft p-4";
+const NOTICE_HEADING = "m-0 text-[0.92rem] text-warning";
 const NOTICE_BODY = "m-0 leading-relaxed text-text-muted";
 const NOTICE_BUTTON =
-  "inline-flex min-h-10 cursor-pointer items-center justify-center justify-self-start gap-2 rounded-[0.65rem] border border-solid border-border bg-surface px-3 text-sm font-bold text-brand-strong disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-10 cursor-pointer items-center justify-center justify-self-start gap-2 rounded-[0.65rem] border border-border bg-surface px-3 text-sm font-bold text-brand-strong disabled:cursor-not-allowed disabled:opacity-50";
 
 export function RecommendationOutcomeNotice({
   result,

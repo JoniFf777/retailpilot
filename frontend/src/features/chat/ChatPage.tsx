@@ -19,8 +19,7 @@ const QUICK_PROMPTS = [
 const TOGGLE_BUTTON =
   "min-h-9 cursor-pointer rounded-[0.45rem] border-0 bg-transparent px-2 text-xs text-text-muted";
 const TOGGLE_BUTTON_SELECTED = "bg-surface font-extrabold text-brand-strong shadow-sm";
-const SOFT_PANEL =
-  "grid gap-2 rounded-md border border-solid border-[#dcefe7] bg-surface-soft p-3.5";
+const SOFT_PANEL = "grid gap-2 rounded-md border border-border bg-surface-soft p-3.5";
 
 export function ChatPage() {
   const {
@@ -82,13 +81,13 @@ export function ChatPage() {
       </div>
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(220px,0.34fr)_minmax(0,1fr)]">
         <aside
-          className="order-2 grid gap-4 rounded-lg border border-solid border-border bg-white/90 p-4 shadow-soft lg:order-none"
+          className="order-2 grid gap-4 rounded-lg border border-border bg-surface/90 p-4 shadow-soft lg:order-none"
           aria-label="会话信息"
         >
           <div className="flex items-center justify-between px-0.5 py-1 text-[0.84rem] font-extrabold">
             <span>当前会话</span>
             <span className="inline-flex items-center gap-1 text-xs text-success">
-              <span className="h-2.5 w-2.5 rounded-full border-[3px] border-solid border-[#dcf5e9] bg-success" />
+              <span className="h-2.5 w-2.5 rounded-full border-[3px] border-success/25 bg-success" />
               在线
             </span>
           </div>
@@ -110,7 +109,7 @@ export function ChatPage() {
             >
               开发用户标识
               <input
-                className="rounded-sm border border-solid border-border-strong bg-surface px-3 py-2.5 text-sm font-normal tracking-normal text-text-primary normal-case"
+                className="rounded-sm border border-border-strong bg-surface px-3 py-2.5 text-sm font-normal tracking-normal text-text-primary normal-case"
                 id="dev-user-id"
                 value={userId}
                 onChange={(event) => setUserId(event.target.value)}
@@ -127,8 +126,8 @@ export function ChatPage() {
           </div>
           <CartPanel enabled={cartEnabled} onCheckout={() => navigate("/checkout")} />
         </aside>
-        <div className="grid min-h-[560px] overflow-hidden rounded-lg border border-solid border-border bg-white/90 shadow-soft lg:min-h-[620px]">
-          <div className="flex items-center justify-between border-b border-solid border-border px-5.5 py-4.5">
+        <div className="grid min-h-[560px] overflow-hidden rounded-lg border border-border bg-surface/90 shadow-soft lg:min-h-[620px]">
+          <div className="flex items-center justify-between border-b border-border px-5.5 py-4.5">
             <div>
               <strong className="block text-[0.95rem]">购物决策对话</strong>
               <span className="mt-1 block text-xs text-text-subtle">
@@ -162,7 +161,7 @@ export function ChatPage() {
             {messages.length === 0 ? (
               <div className="m-auto max-w-[410px] self-center py-10 text-center">
                 <div
-                  className="mb-3.5 inline-flex h-[3.35rem] w-[3.35rem] items-center justify-center rounded-2xl border border-solid border-[#c9e9dd] bg-brand-soft text-xl text-brand"
+                  className="mb-3.5 inline-flex h-[3.35rem] w-[3.35rem] items-center justify-center rounded-2xl border border-brand/25 bg-brand-soft text-xl text-brand"
                   aria-hidden="true"
                 >
                   ⌁
@@ -189,12 +188,12 @@ export function ChatPage() {
             {busy && (
               <div className="flex max-w-[88%] items-start gap-2.5" role="status">
                 <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-solid border-brand bg-brand text-xs font-extrabold text-white"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-brand bg-brand text-xs font-extrabold text-white"
                   aria-hidden="true"
                 >
                   R
                 </div>
-                <div className="flex gap-1 rounded-tl-none rounded-tr-2xl rounded-br-2xl rounded-bl-2xl border border-solid border-[#e1ece7] bg-[#f3f7f5] p-4">
+                <div className="flex gap-1 rounded-tl-none rounded-tr-2xl rounded-br-2xl rounded-bl-2xl border border-border bg-surface-soft p-4">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand opacity-45" />
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand opacity-45 [animation-delay:0.15s]" />
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand opacity-45 [animation-delay:0.3s]" />
@@ -218,16 +217,13 @@ export function ChatPage() {
               </button>
             </div>
           )}
-          <form
-            className="border-t border-solid border-border px-5.5 pt-4 pb-3"
-            onSubmit={handleSubmit}
-          >
+          <form className="border-t border-border px-5.5 pt-4 pb-3" onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="chat-message">
               输入购物问题
             </label>
             <textarea
               ref={inputRef}
-              className="w-full resize-y rounded-md border border-solid border-border-strong bg-[#fbfdfc] p-3.5 text-text-primary"
+              className="w-full resize-y rounded-md border border-border-strong bg-surface p-3.5 text-text-primary"
               data-testid="chat-input"
               id="chat-message"
               onChange={(event) => setDraft(event.target.value)}
@@ -237,7 +233,7 @@ export function ChatPage() {
             />
             <div className="mt-2.5 flex flex-wrap items-center gap-3 text-xs text-text-muted">
               <div
-                className="inline-flex gap-0.5 rounded-sm border border-solid border-border bg-surface-soft p-[0.16rem]"
+                className="inline-flex gap-0.5 rounded-sm border border-border bg-surface-soft p-[0.16rem]"
                 aria-label="回答方式"
                 role="group"
               >
@@ -270,7 +266,7 @@ export function ChatPage() {
           <div className="flex flex-wrap gap-2 px-5.5 pb-4.5" aria-label="常用问题">
             {QUICK_PROMPTS.map((prompt) => (
               <button
-                className="min-h-9 cursor-pointer rounded-full border border-solid border-transparent bg-surface-soft px-2.5 text-xs text-text-muted transition-colors duration-150 ease-standard hover:border-[#c9e9dd] hover:bg-brand-soft hover:text-brand-strong disabled:cursor-not-allowed"
+                className="min-h-9 cursor-pointer rounded-full border border-transparent bg-surface-soft px-2.5 text-xs text-text-muted transition-colors duration-150 ease-standard hover:border-brand/25 hover:bg-brand-soft hover:text-brand-strong disabled:cursor-not-allowed"
                 key={prompt}
                 disabled={busy}
                 onClick={() => fillDraft(prompt)}

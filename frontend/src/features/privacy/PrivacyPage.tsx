@@ -68,7 +68,7 @@ function MemoryCard({
       </p>
       <Field htmlFor={`memory-content-${memory.memory_id}`} label="Memory 内容">
         <textarea
-          className="min-h-18 rounded-sm border border-solid border-border-strong p-3"
+          className="min-h-18 rounded-sm border border-border-strong p-3"
           data-testid={`memory-content-${memory.memory_id}`}
           id={`memory-content-${memory.memory_id}`}
           onChange={(event) => onDraftChange(event.target.value)}
@@ -170,7 +170,7 @@ export function PrivacyPage() {
       {isDevelopment ? (
         <Card
           as="div"
-          className="flex flex-wrap items-center gap-3 bg-white/88 text-sm text-text-muted"
+          className="flex flex-wrap items-center gap-3 bg-surface/88 text-sm text-text-muted"
         >
           <label
             className="flex items-center gap-2 font-semibold text-text-primary"
@@ -178,7 +178,7 @@ export function PrivacyPage() {
           >
             开发用户标识
             <input
-              className="w-45 rounded-sm border border-solid border-border-strong px-2.5 py-1.5 font-normal"
+              className="w-45 rounded-sm border border-border-strong px-2.5 py-1.5 font-normal"
               id="privacy-user-id"
               onChange={(event) => setUserId(event.target.value)}
               value={userId}
@@ -227,7 +227,7 @@ export function PrivacyPage() {
             <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2.5">
               {counts.map(([key, count]) => (
                 <div
-                  className="grid gap-1 rounded-md border border-solid border-[#e0efe9] bg-surface-soft p-3.5"
+                  className="grid gap-1 rounded-md border border-border bg-surface-soft p-3.5"
                   key={key}
                 >
                   <strong className="text-2xl tracking-tight">{count}</strong>
@@ -287,7 +287,7 @@ export function PrivacyPage() {
             </p>
             <Field htmlFor="delete-owner-data" label={`请输入确认短语：${DELETE_PHRASE}`}>
               <input
-                className="rounded-sm border border-solid border-border-strong px-2.5 py-1.5"
+                className="rounded-sm border border-border-strong px-2.5 py-1.5"
                 data-testid="delete-owner-data"
                 id="delete-owner-data"
                 onChange={(event) => setDeletePhrase(event.target.value)}

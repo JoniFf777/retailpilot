@@ -3,7 +3,7 @@ import type { ScoreBreakdownItem } from "../../api/contracts";
 export function ScoreBreakdown({ items }: { items: ScoreBreakdownItem[] }) {
   if (items.length === 0) return null;
   return (
-    <details className="border-t border-solid border-border pt-3 text-sm text-text-muted">
+    <details className="border-t border-border pt-3 text-sm text-text-muted">
       <summary className="cursor-pointer font-bold text-brand-strong">查看评分依据</summary>
       <ul className="m-0 mt-2.5 grid list-none gap-2 p-0">
         {items.map((item) => (

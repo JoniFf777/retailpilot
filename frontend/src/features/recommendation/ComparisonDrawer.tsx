@@ -3,9 +3,8 @@ import type { RecommendationChoice } from "./recommendationTypes";
 import { ProductSpecifications } from "./ProductSpecifications";
 import { formatAvailability, formatMoney } from "./recommendationFormatters";
 
-const TH_CELL =
-  "border-b border-solid border-border p-3 text-left align-top text-sm text-text-muted";
-const TD_CELL = "border-b border-solid border-border p-3 align-top text-[0.8rem]";
+const TH_CELL = "border-b border-border p-3 text-left align-top text-sm text-text-muted";
+const TD_CELL = "border-b border-border p-3 align-top text-[0.8rem]";
 
 export function ComparisonDrawer({
   open,
@@ -80,7 +79,7 @@ export function ComparisonDrawer({
       style={{ background: "rgba(15, 23, 42, 0.32)" }}
     >
       <section
-        className="max-h-[min(78vh,700px)] w-full max-w-[1080px] overflow-auto rounded-t-lg border border-solid border-border bg-surface p-5 shadow-[0_-16px_46px_rgb(15,23,42,0.2)] max-[640px]:max-h-[88vh] max-[640px]:p-4"
+        className="max-h-[min(78vh,700px)] w-full max-w-[1080px] overflow-auto rounded-t-lg border border-border bg-surface p-5 shadow-[0_-16px_46px_rgb(15,23,42,0.2)] max-[640px]:max-h-[88vh] max-[640px]:p-4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="comparison-title"
@@ -93,7 +92,7 @@ export function ComparisonDrawer({
             </h2>
           </div>
           <button
-            className="cursor-pointer rounded-[0.55rem] border border-solid border-border bg-transparent px-2.5 py-2 text-text-muted"
+            className="cursor-pointer rounded-[0.55rem] border border-border bg-transparent px-2.5 py-2 text-text-muted"
             ref={closeRef}
             type="button"
             onClick={onClose}
@@ -111,7 +110,7 @@ export function ComparisonDrawer({
                 </th>
                 {choices.map((choice) => (
                   <th
-                    className="min-w-[170px] border-b border-solid border-border p-3 text-left align-top text-text-primary"
+                    className="min-w-[170px] border-b border-border p-3 text-left align-top text-text-primary"
                     key={choice.sku_id}
                     scope="col"
                   >

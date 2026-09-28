@@ -36,7 +36,7 @@ interface ActionDrawerProps {
 }
 
 const FIELD_INPUT =
-  "rounded-sm border border-solid border-border-strong bg-surface px-3 py-2.5 text-sm text-text-primary normal-case tracking-normal";
+  "rounded-sm border border-border-strong bg-surface px-3 py-2.5 text-sm text-text-primary normal-case tracking-normal";
 
 export function ActionDrawer({
   action,
@@ -172,7 +172,7 @@ export function ActionDrawer({
     <Drawer
       as="aside"
       backdrop={false}
-      className="grid gap-4 border-t border-solid border-[#f1dfc2] bg-[#fffbf4] p-5.5"
+      className="grid gap-4 border-t border-warning/25 bg-warning-soft p-5.5"
       labelledBy="action-title"
       onClose={onDismiss}
     >
@@ -189,7 +189,7 @@ export function ActionDrawer({
           {riskClass === "high" ? "高风险" : "需确认"}
         </Badge>
       </div>
-      <div className="grid gap-2.5 rounded-md border border-solid border-[#dcefe7] bg-surface-soft p-3.5">
+      <div className="grid gap-2.5 rounded-md border border-border bg-surface-soft p-3.5">
         <span className="text-xs font-extrabold tracking-wide text-text-muted uppercase">
           {actionType === "add_to_cart" ? "加入 RetailPilot 购物车" : "保存偏好"}
         </span>
@@ -252,10 +252,7 @@ export function ActionDrawer({
         </div>
       )}
       {resolution && (
-        <div
-          className="rounded-md border border-solid border-[#dcefe7] bg-surface-soft p-3 text-sm"
-          role="status"
-        >
+        <div className="rounded-md border border-border bg-surface-soft p-3 text-sm" role="status">
           {resolution.idempotent_replay
             ? "该操作此前已处理，本次没有重复写入。"
             : resolution.cart_quantity
@@ -265,7 +262,7 @@ export function ActionDrawer({
       )}
       {displayError && (
         <div
-          className="rounded-md border border-solid border-[#f1d5d4] bg-danger-soft p-3 text-sm text-danger"
+          className="rounded-md border border-danger/25 bg-danger-soft p-3 text-sm text-danger"
           role="alert"
         >
           {displayError}

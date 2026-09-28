@@ -34,7 +34,7 @@ export function Dialog({ labelledBy, onClose, className, children, ...rest }: Di
         aria-labelledby={labelledBy}
         aria-modal="true"
         className={cn(
-          "relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-solid border-border",
+          "relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-border",
           "bg-surface shadow-overlay",
           className,
         )}

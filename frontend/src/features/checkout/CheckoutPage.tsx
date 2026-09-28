@@ -215,7 +215,7 @@ export function CheckoutPage() {
       {recovering && (
         <Card
           as="section"
-          className="grid gap-4 border-[#f1dfc2] bg-[#fffbf4]"
+          className="grid gap-4 border-warning/25 bg-warning-soft"
           data-testid="checkout-recovery"
           role="status"
         >
@@ -285,13 +285,13 @@ export function CheckoutPage() {
             </div>
             {data.warnings?.length ? (
               <div
-                className="grid gap-1.5 rounded-md border border-solid border-[#f0dbb2] bg-warning-soft p-4"
+                className="grid gap-1.5 rounded-md border border-warning/25 bg-warning-soft p-4"
                 role="status"
               >
                 <strong className="text-sm text-warning">需要留意的提示</strong>
                 {data.warnings.map((warning, index) => (
                   <span
-                    className="text-sm leading-relaxed text-[#7b5313]"
+                    className="text-sm leading-relaxed text-warning"
                     key={`${warning.code}-${warning.sku_id ?? index}`}
                   >
                     {warningLabel(warning)}
@@ -299,7 +299,7 @@ export function CheckoutPage() {
                 ))}
               </div>
             ) : null}
-            <div className="grid grid-cols-[1fr_auto] items-baseline gap-1 border-t border-solid border-border pt-4">
+            <div className="grid grid-cols-[1fr_auto] items-baseline gap-1 border-t border-border pt-4">
               <span className="text-sm text-text-muted">小计</span>
               <strong className="text-[1.35rem] text-brand-strong">
                 {data.subtotal ? formatMoney(data.subtotal) : "暂不可计算"}
@@ -308,7 +308,7 @@ export function CheckoutPage() {
                 {data.currency ?? "存在多种币种"}
               </small>
             </div>
-            <p className="m-0 rounded-sm border border-solid border-[#c9e9dd] bg-brand-soft p-3.5 text-sm leading-relaxed text-brand-strong">
+            <p className="m-0 rounded-sm border border-brand/25 bg-brand-soft p-3.5 text-sm leading-relaxed text-brand-strong">
               创建订单时后端会重新核实价格、库存、可售状态、购物车指纹和总额。
             </p>
             {!canCreate && (

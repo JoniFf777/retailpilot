@@ -67,7 +67,7 @@ function ConstraintList({
         const ratio = chip.role === "soft" && chip.key ? hitRatio(chip.key, recommendations) : null;
         return (
           <li
-            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm text-text-muted ${tone === "soft" ? "bg-[rgb(182,106,34,0.1)]" : "bg-white/72"}`}
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm text-text-muted ${tone === "soft" ? "bg-[rgb(182,106,34,0.1)]" : "bg-surface/72"}`}
             key={chip.text}
           >
             <span>{chip.text}</span>

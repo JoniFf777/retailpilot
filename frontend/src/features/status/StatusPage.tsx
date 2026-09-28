@@ -117,7 +117,7 @@ export function StatusPage() {
             <ul className="m-0 grid list-none gap-2.5 p-0">
               {readiness.data.checks.map((check) => (
                 <li
-                  className="flex items-center justify-between gap-3 border-t border-solid border-border pt-2.5 first:border-t-0 first:pt-0"
+                  className="flex items-center justify-between gap-3 border-t border-border pt-2.5 first:border-t-0 first:pt-0"
                   key={check.check_id}
                 >
                   <span className="grid gap-0.5">

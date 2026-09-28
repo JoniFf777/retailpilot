@@ -8,14 +8,17 @@
  * layered CSS, so the old files are imported INTO a layer (below `utilities`); otherwise
  * Tailwind classes on migrated pages would be silently overridden by old rules.
  *
- * Preflight (Tailwind's reset) is intentionally NOT imported yet: it would restyle every
- * page that has not been migrated. It is added in P4.5 once the legacy layer is empty.
- * Until then, utilities that rely on the reset (e.g. `border`) must set the style
- * explicitly, e.g. `border border-solid`.
+ * Preflight (P4.5): now that every page is on Tailwind utilities and `global.css` is down
+ * to its own base reset, Preflight can finally come in — it sits in `base`, below `legacy`,
+ * so anything `global.css` still sets explicitly (h1/h2/h3 sizing, the body background)
+ * keeps winning over Preflight's own reset for that same property. Border utilities no
+ * longer need an explicit `border-solid`: Preflight now supplies that default globally,
+ * though existing `border-solid` usages are harmless (same value, just no longer required).
  */
 @layer theme, base, legacy, components, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 
 /* Legacy CSS. Keep this order identical to the old imports in main.tsx. */
@@ -77,6 +80,7 @@
   --color-warning-soft: #fff0d5;
   --color-danger: #c23c46;
   --color-danger-soft: #fff0ef;
+  --color-success-soft: #e2f5e9;
   --color-agent-product: #2b79b9;
   --color-agent-rag: #7555ae;
   --color-agent-preference: #b66a22;
@@ -93,15 +97,16 @@
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* Class-based dark mode. Only the variant is defined for now; no toggle ships before P4.5. */
+/* Class-based dark mode, toggled by `useTheme`/`ThemeProvider` (src/app/theme.tsx). */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
  * Dark palette, keyed to the same semantic token names so every utility that already
  * reads e.g. `bg-surface` re-themes automatically once something adds `.dark` to <html> —
- * no `dark:` variant needed on individual elements for these. Nothing sets that class yet
- * (P1 ships tokens only, per the redesign plan; the toggle and the accompanying light/dark
- * regression pass land together in P4.5), so this block has no visible effect today.
+ * no `dark:` variant needed on individual elements for these. Colors that bypass these
+ * tokens (arbitrary `bg-[#...]`/`border-[#...]`/`text-[#...]` values) do NOT re-theme
+ * automatically and need their own `dark:` override, or converting to a token, where it
+ * actually shows — see P4.5's own regression pass for what was worth converting.
  */
 .dark {
   --color-background: #0b1512;
@@ -120,6 +125,7 @@
   --color-warning-soft: #3a2c12;
   --color-danger: #ef6b74;
   --color-danger-soft: #3a1518;
+  --color-success-soft: #10331f;
   --color-agent-product: #6fb3ea;
   --color-agent-rag: #b79cf0;
   --color-agent-preference: #e3a15f;

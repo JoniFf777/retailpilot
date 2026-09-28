@@ -11,7 +11,7 @@ import { RecommendationOutcomeNotice } from "./RecommendationOutcomeNotice";
 import { StructuredConstraintsPanel } from "./StructuredConstraintsPanel";
 import { mainChoice, recommendationsOf, type RecommendationChoice } from "./recommendationTypes";
 
-const NOTICE = "grid gap-2 rounded-md border border-solid border-[#fed7aa] bg-[#fff7ed] p-4";
+const NOTICE = "grid gap-2 rounded-md border border-warning/25 bg-warning-soft p-4";
 
 export function RecommendationPanel({
   recommendation,
@@ -63,7 +63,7 @@ export function RecommendationPanel({
     >
       {projectionError && (
         <div className={NOTICE} role="alert">
-          <strong className="text-[0.92rem] text-[#9a3412]">推荐详情暂时无法显示</strong>
+          <strong className="text-[0.92rem] text-warning">推荐详情暂时无法显示</strong>
           <p className="m-0 leading-relaxed text-text-muted">
             结构化推荐暂时无法显示，你仍可以查看文字回答或重新发起请求。
           </p>
@@ -84,7 +84,7 @@ export function RecommendationPanel({
           )}
           {recommendation.evidence_status && recommendation.evidence_status !== "available" && (
             <div className={NOTICE} role="status">
-              <strong className="text-[0.92rem] text-[#9a3412]">
+              <strong className="text-[0.92rem] text-warning">
                 证据状态：
                 {recommendation.evidence_status === "unavailable"
                   ? "文档服务不可用"
@@ -120,7 +120,7 @@ export function RecommendationPanel({
                 </div>
                 <div className="grid justify-items-end gap-1">
                   <button
-                    className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-[0.65rem] border border-solid border-border bg-surface px-3 text-sm font-bold text-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-[0.65rem] border border-border bg-surface px-3 text-sm font-bold text-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
                     ref={compareTriggerRef}
                     type="button"
                     disabled={selected.length < 2}
@@ -129,7 +129,7 @@ export function RecommendationPanel({
                     对比已选（{selected.length}）
                   </button>
                   {comparisonError && (
-                    <span className="text-sm text-[#b45309]" role="alert">
+                    <span className="text-sm text-warning" role="alert">
                       {comparisonError}
                     </span>
                   )}

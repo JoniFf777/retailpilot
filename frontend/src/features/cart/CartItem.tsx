@@ -17,7 +17,7 @@ interface CartItemProps {
 }
 
 const STEP_BUTTON =
-  "inline-flex h-7 w-7 items-center justify-center rounded-md border border-solid border-border-strong bg-surface text-base text-text-primary disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-strong bg-surface text-base text-text-primary disabled:cursor-not-allowed disabled:opacity-50";
 
 export function CartItem({
   item,
@@ -81,7 +81,7 @@ export function CartItem({
           </label>
           <input
             aria-label={`${item.product_name} 数量`}
-            className="h-7 w-12 rounded-md border border-solid border-border-strong bg-surface text-center text-[0.78rem] text-text-primary"
+            className="h-7 w-12 rounded-md border border-border-strong bg-surface text-center text-[0.78rem] text-text-primary"
             id={`cart-quantity-${item.cart_item_id}`}
             inputMode="numeric"
             max={MAX_CART_QUANTITY}
@@ -103,7 +103,7 @@ export function CartItem({
             ＋
           </button>
           <button
-            className="ml-1.5 inline-flex min-h-7 cursor-pointer items-center justify-center rounded-md border border-solid border-border-strong bg-brand-soft px-2 text-[0.68rem] font-semibold text-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
+            className="ml-1.5 inline-flex min-h-7 cursor-pointer items-center justify-center rounded-md border border-border-strong bg-brand-soft px-2 text-[0.68rem] font-semibold text-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
             disabled={
               busy || unavailable || !validation.valid || validation.quantity === item.quantity
             }
@@ -129,7 +129,7 @@ export function CartItem({
       )}
       {unavailable && (
         <p
-          className="m-0 rounded-[0.35rem] bg-warning-soft p-2 text-[0.68rem] leading-relaxed text-[#7c4b05]"
+          className="m-0 rounded-[0.35rem] bg-warning-soft p-2 text-[0.68rem] leading-relaxed text-warning"
           role="status"
         >
           {statusMessage}

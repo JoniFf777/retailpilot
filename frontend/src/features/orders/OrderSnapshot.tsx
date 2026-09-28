@@ -24,7 +24,7 @@ export function OrderSnapshot({ order }: { order: OrderView }) {
           </article>
         ))}
       </div>
-      <div className="grid grid-cols-2 items-center gap-2 border-t border-solid border-border pt-4">
+      <div className="grid grid-cols-2 items-center gap-2 border-t border-border pt-4">
         <span className="text-sm text-text-muted">小计</span>
         <strong className="justify-self-end text-sm text-brand-strong">
           {formatMoney(order.subtotal)}

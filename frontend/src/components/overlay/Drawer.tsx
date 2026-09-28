@@ -61,7 +61,7 @@ export function Drawer({
         aria-labelledby={labelledBy}
         aria-modal="true"
         className={cn(
-          "relative max-h-[85vh] w-full overflow-y-auto rounded-t-xl border border-solid border-border",
+          "relative max-h-[85vh] w-full overflow-y-auto rounded-t-xl border border-border",
           "pointer-events-auto bg-surface shadow-overlay sm:m-6 sm:max-w-md sm:rounded-xl",
           className,
         )}

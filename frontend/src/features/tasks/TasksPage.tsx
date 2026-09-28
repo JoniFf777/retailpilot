@@ -21,7 +21,7 @@ const labels: Record<TaskKind, string> = {
 };
 
 const SELECT_INPUT =
-  "rounded-sm border border-solid border-border-strong bg-surface px-3 py-2.5 text-sm text-text-primary";
+  "rounded-sm border border-border-strong bg-surface px-3 py-2.5 text-sm text-text-primary";
 
 export function TasksPage() {
   const { userId } = useSession();
@@ -100,7 +100,7 @@ export function TasksPage() {
         )}
         {listQuery.data?.items.map((item) => (
           <Link
-            className="grid grid-cols-[minmax(120px,1fr)_minmax(80px,0.7fr)_1fr_1fr] items-center gap-3 border-t border-solid border-border py-3.5 text-inherit no-underline hover:bg-surface-soft max-sm:grid-cols-2"
+            className="grid grid-cols-[minmax(120px,1fr)_minmax(80px,0.7fr)_1fr_1fr] items-center gap-3 border-t border-border py-3.5 text-inherit no-underline hover:bg-surface-soft max-sm:grid-cols-2"
             key={item.task_id}
             to={`/tasks/${item.task_id}`}
           >

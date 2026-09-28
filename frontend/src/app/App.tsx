@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { cn } from "../components/cn";
 import { useSystemReadiness } from "../features/status/useSystemReadiness";
+import { useTheme } from "./useTheme";
 
 type IconName = "chat" | "catalog" | "privacy" | "runs" | "status" | "orders" | "tasks";
 
@@ -81,21 +82,60 @@ function StatusDot({ tone, className }: { tone: string; className?: string }) {
   );
 }
 
+function ThemeToggle({ className }: { className?: string }) {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+  return (
+    <button
+      aria-label={isDark ? "切换到浅色模式" : "切换到深色模式"}
+      aria-pressed={isDark}
+      className={cn(
+        "inline-flex h-8 w-8 flex-none cursor-pointer items-center justify-center rounded-lg border border-border bg-surface text-text-muted transition-colors duration-200 ease-standard hover:bg-surface-soft hover:text-brand-strong",
+        className,
+      )}
+      onClick={toggleTheme}
+      type="button"
+    >
+      <svg aria-hidden="true" className="h-[1.05rem] w-[1.05rem]" fill="none" viewBox="0 0 24 24">
+        {isDark ? (
+          <path
+            d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.7"
+          />
+        ) : (
+          <>
+            <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.7" />
+            <path
+              d="M12 3v1.5M12 19.5V21M21 12h-1.5M4.5 12H3M18.4 5.6l-1.1 1.1M6.7 17.3l-1.1 1.1M18.4 18.4l-1.1-1.1M6.7 6.7 5.6 5.6"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeWidth="1.7"
+            />
+          </>
+        )}
+      </svg>
+    </button>
+  );
+}
+
 export function App() {
   const readiness = useSystemReadiness();
   const status = systemStatusTone(readiness);
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[248px_minmax(0,1fr)]">
-      <aside className="sticky top-0 z-10 flex flex-col justify-between self-start border-0 border-b border-solid border-border bg-surface/90 px-4 py-3 lg:min-h-screen lg:border-r lg:border-b-0 lg:px-4 lg:py-6">
+      <aside className="sticky top-0 z-10 flex flex-col justify-between self-start border-0 border-b border-border bg-surface/90 px-4 py-3 lg:min-h-screen lg:border-r lg:border-b-0 lg:px-4 lg:py-6">
         <div className="grid gap-4 lg:gap-7">
           <Link className="inline-flex items-center gap-3 rounded-md px-1 py-1 lg:px-2" to="/">
             <span
               aria-hidden="true"
               className="relative inline-flex h-10 w-10 flex-none -rotate-6 items-center justify-center rounded-xl bg-brand shadow-[0_8px_18px_rgb(8_127_104_/_20%)]"
             >
-              <span className="absolute h-5 w-5 rounded-full border-[1.5px] border-solid border-white/80" />
-              <span className="absolute h-2.5 w-2.5 rounded-full border-[1.5px] border-solid border-white/80" />
+              <span className="absolute h-5 w-5 rounded-full border-[1.5px] border-white/80" />
+              <span className="absolute h-2.5 w-2.5 rounded-full border-[1.5px] border-white/80" />
               <span className="h-1 w-1 rounded-full bg-white" />
             </span>
             <span className="hidden flex-col gap-0.5 lg:flex">
@@ -119,9 +159,9 @@ export function App() {
               <NavLink
                 className={({ isActive }) =>
                   cn(
-                    "flex min-h-11 flex-none items-center gap-3 rounded-md border border-solid border-transparent px-2.5 py-1.5 text-text-muted transition-colors duration-200 ease-standard hover:bg-surface-soft hover:text-brand-strong lg:min-h-[3.35rem] lg:flex-auto lg:px-3",
+                    "flex min-h-11 flex-none items-center gap-3 rounded-md border border-transparent px-2.5 py-1.5 text-text-muted transition-colors duration-200 ease-standard hover:bg-surface-soft hover:text-brand-strong lg:min-h-[3.35rem] lg:flex-auto lg:px-3",
                     isActive &&
-                      "border-[#c9e9dd] bg-brand-soft text-brand-strong hover:bg-brand-soft",
+                      "border-brand/25 bg-brand-soft text-brand-strong hover:bg-brand-soft",
                   )
                 }
                 end={item.end}
@@ -132,7 +172,7 @@ export function App() {
                   <>
                     <span
                       className={cn(
-                        "inline-flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-solid border-brand/10 bg-white/70",
+                        "inline-flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-brand/10 bg-surface/70",
                         isActive && "border-transparent bg-brand text-white",
                       )}
                     >
@@ -163,7 +203,7 @@ export function App() {
           </nav>
         </div>
 
-        <div className="hidden items-center justify-between border-0 border-t border-solid border-border pt-5 lg:flex">
+        <div className="hidden items-center justify-between border-0 border-t border-border pt-5 lg:flex">
           <div className="flex items-center gap-2">
             <StatusDot className="h-3 w-3" tone={status.dotClassName} />
             <span className="grid gap-0.5">
@@ -171,19 +211,25 @@ export function App() {
               <small className="text-[0.65rem] text-text-subtle">开发环境 · V6</small>
             </span>
           </div>
-          <span className="rounded-full bg-surface-soft px-2 py-1 text-[0.65rem] text-text-muted">
-            0.1
-          </span>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <span className="rounded-full bg-surface-soft px-2 py-1 text-[0.65rem] text-text-muted">
+              0.1
+            </span>
+          </div>
         </div>
       </aside>
 
       <div className="min-w-0">
         <div className="flex items-center justify-between px-5 pt-4 text-[0.7rem] tracking-wide text-text-subtle sm:px-8 lg:hidden">
           <span>RetailPilot / Decision workspace</span>
-          <span className="inline-flex items-center gap-1.5">
-            <StatusDot className="h-2 w-2" tone={status.dotClassName} />
-            {status.label}
-          </span>
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5">
+              <StatusDot className="h-2 w-2" tone={status.dotClassName} />
+              {status.label}
+            </span>
+            <ThemeToggle className="h-7 w-7" />
+          </div>
         </div>
         <main className="mx-auto max-w-[1300px] px-5 pt-8 pb-20 sm:px-8 sm:pt-10 lg:pt-16">
           <Outlet />

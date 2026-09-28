@@ -13,5 +13,5 @@ Planned next: `overlay/` (Drawer, Dialog, Toast), `data/` (KeyValue, StatusDot, 
 Rules:
 
 - Styling is Tailwind utilities on top of the tokens in `src/styles/theme.css`.
-- Tailwind's Preflight is not loaded yet, so utilities that depend on it must set the value explicitly (`border border-solid`, not just `border`).
+- Tailwind's Preflight is loaded (since P4.5), so a bare `border`/`border-t`/etc. is enough — no need for the old `border border-solid` pairing.
 - Every prop that a test or a stable selector may need (`className`, `data-testid`, `aria-*`) is passed through to the DOM element.

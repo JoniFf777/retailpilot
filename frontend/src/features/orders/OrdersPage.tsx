@@ -67,7 +67,7 @@ export function OrdersPage() {
         <div className="grid gap-3" data-testid="order-list">
           {orders.map((order) => (
             <Link
-              className="grid gap-3 rounded-md border border-solid border-border bg-white/92 p-4 text-inherit no-underline shadow-soft transition-[border-color,transform,box-shadow] duration-150 ease-standard hover:-translate-y-0.5 hover:border-brand hover:shadow-md"
+              className="grid gap-3 rounded-md border border-border bg-surface/92 p-4 text-inherit no-underline shadow-soft transition-[border-color,transform,box-shadow] duration-150 ease-standard hover:-translate-y-0.5 hover:border-brand hover:shadow-md"
               key={order.order_id}
               to={`/orders/${order.order_id}`}
             >
@@ -80,7 +80,7 @@ export function OrdersPage() {
                 </div>
                 <OrderStatus status={order.status} />
               </div>
-              <div className="flex items-center justify-between gap-4 border-t border-solid border-border pt-2.5 text-sm text-text-muted">
+              <div className="flex items-center justify-between gap-4 border-t border-border pt-2.5 text-sm text-text-muted">
                 <span>
                   {order.items.length} 个 SKU · {order.currency}
                 </span>

@@ -26,12 +26,12 @@ import {
 import { CatalogSpecifications } from "./CatalogSpecifications";
 
 const CARD_SURFACE =
-  "rounded-lg border border-solid border-border bg-surface shadow-soft transition-[border-color,transform] duration-[180ms] ease-standard hover:border-brand hover:-translate-y-0.5";
+  "rounded-lg border border-border bg-surface shadow-soft transition-[border-color,transform] duration-[180ms] ease-standard hover:border-brand hover:-translate-y-0.5";
 const KICKER = "text-[0.66rem] font-extrabold tracking-wide text-text-subtle uppercase";
 // Link, not <button>, so it can't use the Button primitive (no `as` support there) -
 // same visual result as Button variant="secondary" size="md".
 const LINK_BUTTON =
-  "inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-solid border-border-strong bg-surface px-4 text-sm font-semibold text-text-primary transition-colors duration-150 ease-standard hover:bg-surface-soft focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring/30";
+  "inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-border-strong bg-surface px-4 text-sm font-semibold text-text-primary transition-colors duration-150 ease-standard hover:bg-surface-soft focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring/30";
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -243,7 +243,7 @@ function CatalogProductCard({ product }: { product: CatalogProductSummary }) {
           </span>
         ))}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-solid border-border pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-border pt-3">
         <Link
           className={LINK_BUTTON}
           to={`/catalog/${encodeURIComponent(product.category.code)}/${encodeURIComponent(product.product_code)}`}
@@ -397,7 +397,7 @@ export function CatalogProductDetailPage() {
           <div className="grid gap-3">
             {data.skus.map((sku) => (
               <div
-                className="flex items-start justify-between gap-3 border-t border-solid border-border pt-3 first:border-t-0 first:pt-0 max-[720px]:flex-col"
+                className="flex items-start justify-between gap-3 border-t border-border pt-3 first:border-t-0 first:pt-0 max-[720px]:flex-col"
                 key={sku.sku_id}
               >
                 <div className="grid min-w-0 gap-1">

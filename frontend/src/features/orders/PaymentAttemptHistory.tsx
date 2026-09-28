@@ -25,7 +25,7 @@ export function PaymentAttemptHistory({ items }: { items: PaymentAttemptView[] }
   );
   return (
     <section
-      className="grid gap-3 border-t border-solid border-border pt-4"
+      className="grid gap-3 border-t border-border pt-4"
       aria-labelledby="payment-history-title"
       data-testid="payment-history"
     >
@@ -43,7 +43,7 @@ export function PaymentAttemptHistory({ items }: { items: PaymentAttemptView[] }
         <div className="grid gap-2.5">
           {validItems.map((item) => (
             <article
-              className="grid gap-2 rounded-sm border border-solid border-[#e0efe9] bg-surface-soft p-3.5"
+              className="grid gap-2 rounded-sm border border-border bg-surface-soft p-3.5"
               data-testid="payment-attempt"
               key={item.attempt_id}
             >
