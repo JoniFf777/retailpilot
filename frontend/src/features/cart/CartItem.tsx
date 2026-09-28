@@ -1,4 +1,5 @@
 import type { CartItemView, CartWarning } from "../../api/contracts";
+import { Card } from "../../components/primitives";
 import { availabilityMessage, formatMoney } from "./cartFormatters";
 import { cartWarningMessage, isUnavailableWarning } from "./cartErrors";
 import { MAX_CART_QUANTITY, MIN_CART_QUANTITY, validateCartQuantity } from "./quantity";
@@ -14,6 +15,9 @@ interface CartItemProps {
   onUpdate: () => void;
   onDelete: (trigger: HTMLElement) => void;
 }
+
+const STEP_BUTTON =
+  "inline-flex h-7 w-7 items-center justify-center rounded-md border border-solid border-border-strong bg-surface text-base text-text-primary disabled:cursor-not-allowed disabled:opacity-50";
 
 export function CartItem({
   item,
@@ -40,24 +44,30 @@ export function CartItem({
       : availabilityMessage(item.availability);
 
   return (
-    <article className="shopmind-cart-item">
-      <div className="cart-item-heading">
+    <Card as="article" className="shopmind-cart-item grid gap-2.5" padded={false}>
+      <div className="cart-item-heading flex items-start justify-between gap-2">
         <div>
-          <h3>{item.product_name}</h3>
-          <p>
+          <h3 className="m-0 text-[0.8rem]">{item.product_name}</h3>
+          <p className="mt-0.5 mb-0 text-[0.68rem] text-text-muted">
             {item.sku_name} · {item.sku_code}
           </p>
         </div>
-        <strong>{formatMoney(item.unit_money)} / 件</strong>
+        <strong className="text-[0.7rem] whitespace-nowrap text-text-primary">
+          {formatMoney(item.unit_money)} / 件
+        </strong>
       </div>
-      <div className="cart-item-meta">
+      <div className="cart-item-meta flex items-baseline justify-between gap-2 text-[0.7rem] text-text-muted">
         <span>当前小计：{formatMoney(item.subtotal_money)}</span>
         <span>{item.effective_sale_status === "active" ? "可购买" : "不可购买"}</span>
       </div>
-      <div className="cart-item-controls" aria-label={`${item.product_name} 数量和操作`}>
-        <div className="quantity-editor">
+      <div
+        className="flex items-center justify-between gap-2.5 p-3"
+        aria-label={`${item.product_name} 数量和操作`}
+      >
+        <div className="flex items-center gap-1.5">
           <button
             aria-label="减少数量"
+            className={STEP_BUTTON}
             disabled={
               busy || unavailable || !validation.valid || validation.quantity <= MIN_CART_QUANTITY
             }
@@ -71,6 +81,7 @@ export function CartItem({
           </label>
           <input
             aria-label={`${item.product_name} 数量`}
+            className="h-7 w-12 rounded-md border border-solid border-border-strong bg-surface text-center text-[0.78rem] text-text-primary"
             id={`cart-quantity-${item.cart_item_id}`}
             inputMode="numeric"
             max={MAX_CART_QUANTITY}
@@ -82,6 +93,7 @@ export function CartItem({
           />
           <button
             aria-label="增加数量"
+            className={STEP_BUTTON}
             disabled={
               busy || unavailable || !validation.valid || validation.quantity >= MAX_CART_QUANTITY
             }
@@ -91,7 +103,7 @@ export function CartItem({
             ＋
           </button>
           <button
-            className="secondary-button cart-update-button"
+            className="ml-1.5 inline-flex min-h-7 cursor-pointer items-center justify-center rounded-md border border-solid border-border-strong bg-brand-soft px-2 text-[0.68rem] font-semibold text-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
             disabled={
               busy || unavailable || !validation.valid || validation.quantity === item.quantity
             }
@@ -102,7 +114,7 @@ export function CartItem({
           </button>
         </div>
         <button
-          className="text-button cart-delete-button"
+          className="cursor-pointer rounded-md border-0 bg-transparent p-1 text-[0.7rem] font-semibold text-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
           disabled={busy}
           onClick={(event) => onDelete(event.currentTarget)}
           type="button"
@@ -111,20 +123,23 @@ export function CartItem({
         </button>
       </div>
       {!validation.valid && (
-        <p className="cart-validation-error" role="alert">
+        <p className="m-0 text-[0.68rem] leading-relaxed text-danger" role="alert">
           {validation.message}
         </p>
       )}
       {unavailable && (
-        <p className="cart-item-warning" role="status">
+        <p
+          className="m-0 rounded-[0.35rem] bg-warning-soft p-2 text-[0.68rem] leading-relaxed text-[#7c4b05]"
+          role="status"
+        >
           {statusMessage}
         </p>
       )}
       {error && (
-        <p className="cart-error" role="alert">
+        <p className="m-0 text-[0.68rem] leading-relaxed text-danger" role="alert">
           {error}
         </p>
       )}
-    </article>
+    </Card>
   );
 }

@@ -13,7 +13,7 @@ export function AssistantMessage({
   onSelectSku?: (skuId: string, context: RecommendationContextView) => void;
 }) {
   return (
-    <div className="assistant-message">
+    <div className="grid gap-3">
       <MessageBubble message={message} />
       {message.response && (
         <RecommendationPanel

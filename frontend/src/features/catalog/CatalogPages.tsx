@@ -12,6 +12,7 @@ import type {
 } from "../../api/contracts";
 import { useSession } from "../../app/useSession";
 import { Button, Card, Empty } from "../../components/primitives";
+import { EYEBROW, SECTION_HEADING } from "../../components/textPatterns";
 import { ActionDrawer } from "../actions/ActionDrawer";
 import { cartQueryKey } from "../cart/cartQuery";
 import { checkoutPreviewQueryKey } from "../checkout/checkoutQuery";
@@ -89,7 +90,7 @@ export function CatalogHomePage() {
     <section aria-labelledby="catalog-title" className="grid gap-6">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 max-[720px]:grid-cols-1">
         <div>
-          <p className="eyebrow">RETAILPILOT CATALOG</p>
+          <p className={EYEBROW}>RETAILPILOT CATALOG</p>
           <h1 className="m-0" id="catalog-title">
             浏览商品
           </h1>
@@ -306,7 +307,7 @@ export function CatalogCategoryPage() {
           <Link className="text-sm font-extrabold text-brand-strong" to="/catalog">
             ← 全部类别
           </Link>
-          <p className="eyebrow">{data.category.code}</p>
+          <p className={EYEBROW}>{data.category.code}</p>
           <h1 className="m-0" id="catalog-category-title">
             {data.category.display_name}
           </h1>
@@ -376,9 +377,9 @@ export function CatalogProductDetailPage() {
       </div>
       <div className="grid grid-cols-2 gap-4 max-[720px]:grid-cols-1">
         <Card className="grid gap-4">
-          <div className="section-heading">
+          <div className={SECTION_HEADING}>
             <div>
-              <p className="eyebrow">SPECIFICATIONS</p>
+              <p className={EYEBROW}>SPECIFICATIONS</p>
               <h2>结构化规格</h2>
             </div>
             <span className="text-xs text-text-subtle">{specifications.length} 项</span>
@@ -386,9 +387,9 @@ export function CatalogProductDetailPage() {
           <CatalogSpecifications specifications={specifications} />
         </Card>
         <Card className="grid gap-4">
-          <div className="section-heading">
+          <div className={SECTION_HEADING}>
             <div>
-              <p className="eyebrow">SKU OPTIONS</p>
+              <p className={EYEBROW}>SKU OPTIONS</p>
               <h2>可选 SKU</h2>
             </div>
             <span className="text-xs text-text-subtle">{data.skus.length} 个</span>

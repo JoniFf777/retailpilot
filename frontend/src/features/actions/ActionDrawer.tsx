@@ -7,6 +7,8 @@ import type {
   PendingActionView,
 } from "../../api/contracts";
 import { Drawer } from "../../components/overlay";
+import { Badge, Button } from "../../components/primitives";
+import { FIELD_LABEL } from "../../components/textPatterns";
 import { actionErrorMessage } from "./actionErrors";
 
 type UpdatedFields = PendingActionTransitionRequest["updated_fields"];
@@ -32,6 +34,9 @@ interface ActionDrawerProps {
   onConfirm: (updatedFields?: UpdatedFields) => void;
   onDismiss?: () => void;
 }
+
+const FIELD_INPUT =
+  "rounded-sm border border-solid border-border-strong bg-surface px-3 py-2.5 text-sm text-text-primary normal-case tracking-normal";
 
 export function ActionDrawer({
   action,
@@ -138,28 +143,28 @@ export function ActionDrawer({
     const item = action.preview as AddToCartPreview;
     return (
       <>
-        <h3>{item.product_name}</h3>
+        <h3 className="m-0 text-base">{item.product_name}</h3>
         {item.sku_name && (
-          <p>
+          <p className="m-0 mt-1 text-sm">
             {item.sku_name}
             {item.sku_code ? ` · ${item.sku_code}` : ""}
           </p>
         )}
-        <p>数量：{item.requested_quantity}</p>
+        <p className="m-0 mt-1 text-sm">数量：{item.requested_quantity}</p>
         {item.unit_money_snapshot && (
-          <p>
+          <p className="m-0 mt-1 text-sm">
             创建时价格：{item.unit_money_snapshot.currency} {item.unit_money_snapshot.amount}
           </p>
         )}
         {item.availability_snapshot && (
-          <p>
+          <p className="m-0 mt-1 text-sm">
             创建时库存：
             {item.availability_snapshot.in_stock
               ? `可用 ${item.availability_snapshot.available_quantity}`
               : "当时不可用"}
           </p>
         )}
-        {item.preview_text && <small>{item.preview_text}</small>}
+        {item.preview_text && <small className="text-text-subtle">{item.preview_text}</small>}
       </>
     );
   }, [action.preview]);
@@ -167,32 +172,37 @@ export function ActionDrawer({
     <Drawer
       as="aside"
       backdrop={false}
-      className="action-drawer"
+      className="grid gap-4 border-t border-solid border-[#f1dfc2] bg-[#fffbf4] p-5.5"
       labelledBy="action-title"
       onClose={onDismiss}
     >
-      <div className="action-drawer-header">
+      <div className="flex items-start justify-between">
         <div>
-          <p className="eyebrow">HUMAN CONFIRMATION</p>
-          <h2 id="action-title">待确认操作</h2>
+          <p className="m-0 mb-[0.7rem] text-[0.68rem] font-extrabold tracking-[0.16em] text-brand uppercase">
+            HUMAN CONFIRMATION
+          </p>
+          <h2 className="m-0 text-xl" id="action-title">
+            待确认操作
+          </h2>
         </div>
-        <span className={`risk-badge risk-${riskClass}`}>
+        <Badge tone={riskClass === "high" ? "danger" : "warning"}>
           {riskClass === "high" ? "高风险" : "需确认"}
-        </span>
+        </Badge>
       </div>
-      <div className="action-summary">
-        <span className="label">
+      <div className="grid gap-2.5 rounded-md border border-solid border-[#dcefe7] bg-surface-soft p-3.5">
+        <span className="text-xs font-extrabold tracking-wide text-text-muted uppercase">
           {actionType === "add_to_cart" ? "加入 RetailPilot 购物车" : "保存偏好"}
         </span>
         {preview}
-        <small>
+        <small className="text-xs text-text-subtle">
           状态：{status} · 版本 {typed ? action.version : 1}
         </small>
       </div>
       {actionType === "add_to_cart" && integerField && (
-        <label className="field-label" htmlFor="action-quantity">
+        <label className={FIELD_LABEL} htmlFor="action-quantity">
           数量
           <input
+            className={FIELD_INPUT}
             data-testid="action-quantity"
             id="action-quantity"
             inputMode="numeric"
@@ -203,16 +213,17 @@ export function ActionDrawer({
             value={quantity}
             disabled={terminal || busy}
           />
-          <small>
+          <small className="tracking-normal text-text-subtle normal-case">
             范围：{integerField.min_value}–{integerField.max_value}
           </small>
         </label>
       )}
       {actionType === "save_preference" && enumField && textField && (
-        <div className="action-fields">
-          <label className="field-label" htmlFor="action-preference-type">
+        <div className="grid gap-3.5">
+          <label className={FIELD_LABEL} htmlFor="action-preference-type">
             偏好类型
             <select
+              className={FIELD_INPUT}
               id="action-preference-type"
               value={preferenceType}
               disabled={terminal || busy}
@@ -225,9 +236,10 @@ export function ActionDrawer({
               ))}
             </select>
           </label>
-          <label className="field-label" htmlFor="action-preference-value">
+          <label className={FIELD_LABEL} htmlFor="action-preference-value">
             偏好内容
             <input
+              className={FIELD_INPUT}
               data-testid="action-preference-value"
               id="action-preference-value"
               value={preferenceValue}
@@ -240,7 +252,10 @@ export function ActionDrawer({
         </div>
       )}
       {resolution && (
-        <div className="action-resolution" role="status">
+        <div
+          className="rounded-md border border-solid border-[#dcefe7] bg-surface-soft p-3 text-sm"
+          role="status"
+        >
           {resolution.idempotent_replay
             ? "该操作此前已处理，本次没有重复写入。"
             : resolution.cart_quantity
@@ -249,36 +264,32 @@ export function ActionDrawer({
         </div>
       )}
       {displayError && (
-        <div className="action-error" role="alert">
+        <div
+          className="rounded-md border border-solid border-[#f1d5d4] bg-danger-soft p-3 text-sm text-danger"
+          role="alert"
+        >
           {displayError}
         </div>
       )}
-      <div className="action-drawer-actions">
-        <button
-          className="danger-button"
+      <div className="flex flex-wrap gap-2.5">
+        <Button
           data-testid="action-cancel"
           disabled={busy || terminal}
           onClick={onCancel}
-          type="button"
+          variant="danger"
         >
           取消操作
-        </button>
-        <button
-          className="primary-button"
-          data-testid="action-confirm"
-          disabled={busy || terminal}
-          onClick={submitConfirm}
-          type="button"
-        >
+        </Button>
+        <Button data-testid="action-confirm" disabled={busy || terminal} onClick={submitConfirm}>
           {busy ? "提交中…" : "确认执行"}
-        </button>
+        </Button>
         {onDismiss && (
-          <button className="text-button" onClick={onDismiss} type="button">
+          <Button onClick={onDismiss} variant="ghost">
             关闭
-          </button>
+          </Button>
         )}
       </div>
-      <p className="action-safety-note">确认时后端会重新校验价格、库存和权限。</p>
+      <p className="m-0 text-xs text-text-subtle">确认时后端会重新校验价格、库存和权限。</p>
     </Drawer>
   );
 }

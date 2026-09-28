@@ -4,6 +4,8 @@ import { ApiError } from "../../api/errors";
 import type { CartResponse, CartWarning, CartItemView } from "../../api/contracts";
 import { shopMindApi } from "../../api/client";
 import { useSession } from "../../app/useSession";
+import { cn } from "../../components/cn";
+import { BUTTON_DANGER, BUTTON_PRIMARY } from "../../components/textPatterns";
 import { clearCheckoutAttempt } from "../checkout/checkoutAttempt";
 import { checkoutPreviewQueryKey } from "../checkout/checkoutQuery";
 import { CartConfirmationDialog } from "./CartConfirmationDialog";
@@ -235,47 +237,64 @@ export function CartPanel({
   const mixedCurrency = warnings.some((warning) => warning.code === "mixed_currency");
 
   return (
-    <section className="shopmind-cart-panel" aria-label="RetailPilot 购物车">
-      <div className="panel-heading">
-        <h2 ref={titleRef} tabIndex={-1}>
+    <section
+      className="shopmind-cart-panel relative mt-4 grid gap-2.5 rounded-md border border-solid border-border bg-surface p-3.5"
+      aria-label="RetailPilot 购物车"
+    >
+      <div className="flex items-center justify-between">
+        <h2
+          className="m-0 text-[0.92rem] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          ref={titleRef}
+          tabIndex={-1}
+        >
           RetailPilot 购物车
         </h2>
-        <span>{itemCount} 个 SKU</span>
+        <span className="text-xs text-text-muted">{itemCount} 个 SKU</span>
       </div>
       {query.isLoading && (
-        <p className="cart-readonly-note" role="status">
+        <p className="m-0 text-[0.72rem] leading-relaxed text-text-muted" role="status">
           正在读取购物车…
         </p>
       )}
       {query.error && (
-        <p className="cart-error" role="alert">
+        <p className="m-0 text-[0.72rem] leading-relaxed text-danger" role="alert">
           购物车暂时无法读取。
         </p>
       )}
       {data && (
-        <div className="cart-summary" aria-label="购物车摘要">
-          <div>
-            <span>商品种类</span>
-            <strong>{itemCount}</strong>
+        <div
+          className="grid grid-cols-3 gap-2.5 rounded-sm border border-solid border-border bg-surface-soft p-3"
+          aria-label="购物车摘要"
+        >
+          <div className="grid min-w-0 gap-0.5">
+            <span className="text-[0.66rem] text-text-muted">商品种类</span>
+            <strong className="overflow-wrap-anywhere text-[0.82rem]">{itemCount}</strong>
           </div>
-          <div>
-            <span>总件数</span>
-            <strong>{totalQuantity}</strong>
+          <div className="grid min-w-0 gap-0.5">
+            <span className="text-[0.66rem] text-text-muted">总件数</span>
+            <strong className="overflow-wrap-anywhere text-[0.82rem]">{totalQuantity}</strong>
           </div>
-          <div>
-            <span>当前商品小计</span>
-            <strong>{data.subtotal ? formatMoney(data.subtotal) : "暂不可计算"}</strong>
+          <div className="grid min-w-0 gap-0.5">
+            <span className="text-[0.66rem] text-text-muted">当前商品小计</span>
+            <strong className="overflow-wrap-anywhere text-[0.82rem]">
+              {data.subtotal ? formatMoney(data.subtotal) : "暂不可计算"}
+            </strong>
           </div>
-          <small>按当前商品价格计算</small>
+          <small className="col-span-3 text-[0.66rem] text-text-muted">按当前商品价格计算</small>
         </div>
       )}
       {mixedCurrency && (
-        <p className="cart-warning" role="status">
+        <p
+          className="m-0 rounded-sm bg-warning-soft p-2.5 text-[0.72rem] leading-relaxed text-[#7c4b05]"
+          role="status"
+        >
           {cartWarningMessage(warnings.find((warning) => warning.code === "mixed_currency")!)}
         </p>
       )}
-      {data && items.length === 0 && <p className="cart-empty">购物车还是空的。</p>}
-      <div className="cart-items">
+      {data && items.length === 0 && (
+        <p className="m-0 text-[0.72rem] leading-relaxed text-text-muted">购物车还是空的。</p>
+      )}
+      <div className="grid gap-2.5">
         {items.map((item) => (
           <CartItem
             key={item.cart_item_id}
@@ -297,10 +316,10 @@ export function CartPanel({
         ))}
       </div>
       {data && items.length > 0 && (
-        <div className="cart-footer-actions">
+        <div className="flex items-center justify-between gap-2.5 border-t border-solid border-border pt-3">
           {onCheckout && (
             <button
-              className="primary-button cart-checkout-button"
+              className={cn("cart-checkout-button flex-[1_1_100%]", BUTTON_PRIMARY)}
               disabled={clearBusy || deleteMutation.isPending || updateMutation.isPending}
               onClick={onCheckout}
               type="button"
@@ -309,18 +328,20 @@ export function CartPanel({
             </button>
           )}
           <button
-            className="danger-button"
+            className={BUTTON_DANGER}
             disabled={clearBusy || deleteMutation.isPending || updateMutation.isPending}
             onClick={(event) => openClearConfirmation(event.currentTarget)}
             type="button"
           >
             {clearBusy ? "清空中…" : "清空购物车"}
           </button>
-          <span>去结算会先生成 Checkout Preview，不会直接创建订单。</span>
+          <span className="text-right text-[0.66rem] leading-snug text-text-muted">
+            去结算会先生成 Checkout Preview，不会直接创建订单。
+          </span>
         </div>
       )}
       {clearError && (
-        <p className="cart-error" role="alert">
+        <p className="m-0 text-[0.72rem] leading-relaxed text-danger" role="alert">
           {clearError}
         </p>
       )}

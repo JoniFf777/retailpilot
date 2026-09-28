@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Badge, Button, Card, Empty, type BadgeTone } from "../../components/primitives";
+import { EYEBROW, PAGE_HEADING, PAGE_LEDE } from "../../components/textPatterns";
 import { shopMindApi } from "../../api/client";
 import { useSession } from "../../app/useSession";
 import { chatErrorMessage } from "../chat/chatErrors";
@@ -46,11 +47,11 @@ export function RunsPage() {
 
   return (
     <section aria-labelledby="runs-title" className="grid gap-6">
-      <div className="page-heading">
+      <div className={PAGE_HEADING}>
         <div>
-          <p className="eyebrow">PAYLOAD-FREE OBSERVABILITY</p>
+          <p className={EYEBROW}>PAYLOAD-FREE OBSERVABILITY</p>
           <h1 id="runs-title">运行记录</h1>
-          <p className="page-lede">
+          <p className={PAGE_LEDE}>
             只查看当前 owner 的运行元数据和 client-visible 事件摘要，不展示请求正文、结果正文或原始
             payload。
           </p>
@@ -83,7 +84,7 @@ export function RunsPage() {
       <Card as="form" className="grid gap-4" onSubmit={inspect}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="eyebrow">EXACT OWNER SELECTOR</p>
+            <p className={EYEBROW}>EXACT OWNER SELECTOR</p>
             <h2 className="m-0 text-xl">查找一次运行</h2>
           </div>
           <span className="text-xs text-text-subtle">必须提供 run ID 或 trace ID 之一</span>
@@ -148,7 +149,7 @@ export function RunsPage() {
         <Card as="article" className="grid gap-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="eyebrow">RUN SUMMARY</p>
+              <p className={EYEBROW}>RUN SUMMARY</p>
               <h2 className="overflow-wrap-anywhere m-0 text-xl">{runQuery.data.run_id}</h2>
               <p className="overflow-wrap-anywhere mt-1.5 text-sm text-text-muted">
                 Trace {runQuery.data.trace_id}

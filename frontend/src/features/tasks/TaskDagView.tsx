@@ -76,7 +76,7 @@ export function TaskDagView({ plan, steps }: { plan: PlanProposal; steps: TaskSt
   return (
     <svg
       aria-label={`任务步骤依赖图：${plan.steps.length} 个步骤，${layers.length} 层依赖`}
-      className="task-dag"
+      className="task-dag mb-1 h-auto w-full"
       role="img"
       viewBox={`0 0 ${width} ${height}`}
     >
@@ -96,6 +96,7 @@ export function TaskDagView({ plan, steps }: { plan: PlanProposal; steps: TaskSt
                 d={`M ${fromX} ${fromY} C ${fromX} ${midY}, ${toX} ${midY}, ${toX} ${toY}`}
                 fill="none"
                 key={`${depKey}->${node.step.key}`}
+                style={{ stroke: "var(--color-border-strong)", strokeWidth: 1.5 }}
               />,
             ];
           }),
@@ -108,17 +109,31 @@ export function TaskDagView({ plan, steps }: { plan: PlanProposal; steps: TaskSt
               className="task-dag-node"
               height={NODE_HEIGHT}
               rx={10}
-              style={{ stroke: statusTone(current?.status) }}
+              style={{
+                fill: "var(--color-surface)",
+                stroke: statusTone(current?.status),
+                strokeWidth: 2,
+              }}
               width={NODE_WIDTH}
             />
             {/* Prefixed with the node's sequence number so this label is never the bare
                 `step.key`/`step.role` text that the plain step list below also renders —
                 two elements with byte-identical own text would make that list's existing
                 `getByText(...)` assertions ambiguous (see TaskDetailPage.test.tsx). */}
-            <text className="task-dag-node-key" x={12} y={20}>
+            <text
+              className="task-dag-node-key"
+              style={{ fill: "var(--color-text-primary)", fontSize: 12, fontWeight: 750 }}
+              x={12}
+              y={20}
+            >
               #{index + 1} {step.key}
             </text>
-            <text className="task-dag-node-meta" x={12} y={38}>
+            <text
+              className="task-dag-node-meta"
+              style={{ fill: "var(--color-text-subtle)", fontSize: 10 }}
+              x={12}
+              y={38}
+            >
               角色 {step.role}
             </text>
             <circle cx={NODE_WIDTH - 14} cy={14} fill={statusTone(current?.status)} r={5} />

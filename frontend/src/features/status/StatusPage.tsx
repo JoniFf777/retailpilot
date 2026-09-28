@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge, Button, Card, type BadgeTone } from "../../components/primitives";
+import { EYEBROW, PAGE_HEADING, PAGE_LEDE, SECTION_HEADING } from "../../components/textPatterns";
 import { chatErrorMessage } from "../chat/chatErrors";
 import { shopMindApi } from "../../api/client";
 import { useSystemReadiness } from "./useSystemReadiness";
@@ -32,11 +33,11 @@ export function StatusPage() {
 
   return (
     <section aria-labelledby="status-title" className="grid gap-6">
-      <div className="page-heading">
+      <div className={PAGE_HEADING}>
         <div>
-          <p className="eyebrow">OPERATIONS</p>
+          <p className={EYEBROW}>OPERATIONS</p>
           <h1 id="status-title">服务状态</h1>
-          <p className="page-lede">
+          <p className={PAGE_LEDE}>
             只展示后端公开的健康与 readiness 状态，不展示连接串、密钥或原始错误。
           </p>
         </div>
@@ -104,7 +105,7 @@ export function StatusPage() {
             </Card>
           </div>
           <Card className="grid gap-4">
-            <div className="section-heading">
+            <div className={SECTION_HEADING}>
               <div>
                 <span className="text-[0.66rem] font-extrabold tracking-wide text-text-subtle uppercase">
                   CLOSED CHECKS

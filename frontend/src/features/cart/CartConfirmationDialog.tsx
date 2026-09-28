@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { BUTTON_DANGER, BUTTON_SECONDARY } from "../../components/textPatterns";
 
 interface CartConfirmationDialogProps {
   title: string;
@@ -30,24 +31,32 @@ export function CartConfirmationDialog({
 
   return (
     <div
-      className="cart-dialog-backdrop"
+      className="fixed inset-0 z-20 flex items-center justify-center p-4"
       role="presentation"
+      style={{ background: "rgba(18, 36, 31, 0.38)" }}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onCancel();
       }}
     >
       <div
-        className="cart-confirmation-dialog"
+        className="w-full max-w-[25rem] rounded-md border border-solid border-border-strong bg-surface p-[1.15rem] shadow-overlay"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-confirmation-title"
         aria-describedby="cart-confirmation-description"
       >
-        <h2 id="cart-confirmation-title">{title}</h2>
-        <p id="cart-confirmation-description">{description}</p>
-        <div className="cart-dialog-actions">
+        <h2 className="m-0 text-base" id="cart-confirmation-title">
+          {title}
+        </h2>
+        <p
+          className="mt-2.5 mb-4 text-sm leading-relaxed text-text-muted"
+          id="cart-confirmation-description"
+        >
+          {description}
+        </p>
+        <div className="flex justify-end gap-2">
           <button
-            className="secondary-button"
+            className={BUTTON_SECONDARY}
             ref={cancelRef}
             disabled={busy}
             onClick={onCancel}
@@ -55,7 +64,7 @@ export function CartConfirmationDialog({
           >
             取消
           </button>
-          <button className="danger-button" disabled={busy} onClick={onConfirm} type="button">
+          <button className={BUTTON_DANGER} disabled={busy} onClick={onConfirm} type="button">
             {busy ? "处理中…" : confirmLabel}
           </button>
         </div>

@@ -19,9 +19,6 @@
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 
 /* Legacy CSS. Keep this order identical to the old imports in main.tsx. */
-@import "./cart.css" layer(legacy);
-@import "./checkout.css" layer(legacy);
-@import "./orders.css" layer(legacy);
 @import "./global.css" layer(legacy);
 
 /*
@@ -44,6 +41,20 @@
 @source not "../features/privacy/**/*.test.tsx";
 @source "../features/catalog";
 @source not "../features/catalog/**/*.test.tsx";
+@source "../features/cart";
+@source not "../features/cart/**/*.test.tsx";
+@source "../features/checkout";
+@source not "../features/checkout/**/*.test.tsx";
+@source "../features/orders";
+@source not "../features/orders/**/*.test.tsx";
+@source "../features/recommendation";
+@source not "../features/recommendation/**/*.test.tsx";
+@source "../features/tasks";
+@source not "../features/tasks/**/*.test.tsx";
+@source "../features/chat";
+@source not "../features/chat/**/*.test.tsx";
+@source "../features/actions";
+@source not "../features/actions/**/*.test.tsx";
 
 /*
  * Design tokens. `static` keeps every variable in the output even when no utility uses it:

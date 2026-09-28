@@ -9,19 +9,21 @@ const AGENT_LABELS: Record<string, string> = {
   model_gateway: "模型网关",
 };
 
-const AGENT_TONES: Record<string, "product" | "rag" | "preference"> = {
-  product_agent: "product",
-  rag_agent: "rag",
-  preference_agent: "preference",
+const AGENT_TONES: Record<string, string> = {
+  product_agent: "text-agent-product",
+  rag_agent: "text-agent-rag",
+  preference_agent: "text-agent-preference",
+};
+
+const AGENT_DOT_TONES: Record<string, string> = {
+  product_agent: "bg-agent-product",
+  rag_agent: "bg-agent-rag",
+  preference_agent: "bg-agent-preference",
 };
 
 function agentLabel(agentName: string | null): string | null {
   if (!agentName) return null;
   return AGENT_LABELS[agentName] ?? agentName;
-}
-
-function agentTone(agentName: string | null): string {
-  return (agentName && AGENT_TONES[agentName]) || "neutral";
 }
 
 export function ExecutionTimeline({
@@ -32,27 +34,35 @@ export function ExecutionTimeline({
   lastSequence: number;
 }) {
   return (
-    <div className="stream-progress" aria-live="polite">
-      <div className="stream-progress-heading">
+    <div
+      className="border-b border-solid border-[#dbeee6] bg-[#f4fbf8] px-5.5 py-3.5"
+      aria-live="polite"
+    >
+      <div className="flex justify-between text-xs font-extrabold text-brand-strong">
         <span>实时执行进度</span>
-        <span>{lastSequence} 个事件</span>
+        <span className="font-medium text-text-subtle">{lastSequence} 个事件</span>
       </div>
-      <ol className="execution-timeline">
-        {progress.map((item) => (
-          <li
-            className="execution-timeline-item"
-            data-tone={agentTone(item.agentName)}
-            key={item.sequence}
-          >
-            <span className="execution-timeline-dot" aria-hidden="true" />
-            <div className="execution-timeline-body">
-              {item.agentName && (
-                <span className="execution-timeline-agent">{agentLabel(item.agentName)}</span>
-              )}
-              <span className="execution-timeline-label">{item.label}</span>
-            </div>
-          </li>
-        ))}
+      <ol className="m-0 mt-2.5 flex list-none flex-col p-0">
+        {progress.map((item) => {
+          const tone = (item.agentName && AGENT_TONES[item.agentName]) || "text-text-subtle";
+          const dotTone = (item.agentName && AGENT_DOT_TONES[item.agentName]) || "bg-text-subtle";
+          return (
+            <li className="relative flex gap-2.5 py-1.5" key={item.sequence}>
+              <span
+                className={`relative z-10 mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotTone}`}
+                aria-hidden="true"
+              />
+              <div className="flex flex-col gap-0.5 text-xs">
+                {item.agentName && (
+                  <span className={`text-[0.64rem] font-bold tracking-wide uppercase ${tone}`}>
+                    {agentLabel(item.agentName)}
+                  </span>
+                )}
+                <span className="text-text-muted">{item.label}</span>
+              </div>
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

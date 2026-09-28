@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Badge, Button, Card, Empty, Field, type BadgeTone } from "../../components/primitives";
+import { EYEBROW, PAGE_HEADING, PAGE_LEDE, SECTION_HEADING } from "../../components/textPatterns";
 import { shopMindApi } from "../../api/client";
 import type { OwnerMemoryRecord } from "../../api/contracts";
 import { useSession } from "../../app/useSession";
@@ -157,11 +158,11 @@ export function PrivacyPage() {
 
   return (
     <section aria-labelledby="privacy-title" className="grid gap-6">
-      <div className="page-heading">
+      <div className={PAGE_HEADING}>
         <div>
-          <p className="eyebrow">OWNER DATA BOUNDARY</p>
+          <p className={EYEBROW}>OWNER DATA BOUNDARY</p>
           <h1 id="privacy-title">隐私中心</h1>
-          <p className="page-lede">
+          <p className={PAGE_LEDE}>
             查看、纠正或删除属于当前身份的 RetailPilot 数据。页面只显示后端允许的摘要字段。
           </p>
         </div>
@@ -214,9 +215,9 @@ export function PrivacyPage() {
       {inventoryQuery.data && (
         <>
           <Card className="grid gap-4">
-            <div className="section-heading">
+            <div className={SECTION_HEADING}>
               <div>
-                <p className="eyebrow">INVENTORY</p>
+                <p className={EYEBROW}>INVENTORY</p>
                 <h2>数据清单</h2>
               </div>
               <span className="text-xs text-text-subtle">
@@ -236,9 +237,9 @@ export function PrivacyPage() {
             </div>
           </Card>
           <Card className="grid gap-4">
-            <div className="section-heading">
+            <div className={SECTION_HEADING}>
               <div>
-                <p className="eyebrow">MEMORY</p>
+                <p className={EYEBROW}>MEMORY</p>
                 <h2>Memory</h2>
               </div>
               <span className="text-xs text-text-subtle">
@@ -278,7 +279,7 @@ export function PrivacyPage() {
             )}
           </Card>
           <Card className="grid gap-3 border-danger/25">
-            <p className="eyebrow">IRREVERSIBLE</p>
+            <p className={EYEBROW}>IRREVERSIBLE</p>
             <h2 className="m-0 text-xl">删除全部个人数据</h2>
             <p className="m-0 max-w-[760px] text-sm leading-relaxed text-text-muted">
               这会删除当前 owner

@@ -3,6 +3,10 @@ import type { RecommendationChoice } from "./recommendationTypes";
 import { ProductSpecifications } from "./ProductSpecifications";
 import { formatAvailability, formatMoney } from "./recommendationFormatters";
 
+const TH_CELL =
+  "border-b border-solid border-border p-3 text-left align-top text-sm text-text-muted";
+const TD_CELL = "border-b border-solid border-border p-3 align-top text-[0.8rem]";
+
 export function ComparisonDrawer({
   open,
   choices,
@@ -70,66 +74,100 @@ export function ComparisonDrawer({
       left.display_order - right.display_order || left.code.localeCompare(right.code),
   );
   return (
-    <div className="comparison-backdrop" role="presentation">
+    <div
+      className="fixed inset-0 z-20 flex items-end justify-center p-4 max-[640px]:p-0"
+      role="presentation"
+      style={{ background: "rgba(15, 23, 42, 0.32)" }}
+    >
       <section
-        className="comparison-drawer"
+        className="max-h-[min(78vh,700px)] w-full max-w-[1080px] overflow-auto rounded-t-lg border border-solid border-border bg-surface p-5 shadow-[0_-16px_46px_rgb(15,23,42,0.2)] max-[640px]:max-h-[88vh] max-[640px]:p-4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="comparison-title"
       >
-        <header>
+        <header className="mb-4 flex items-start justify-between">
           <div>
-            <span>当前推荐结果</span>
-            <h2 id="comparison-title">SKU 对比</h2>
+            <span className="text-xs font-extrabold tracking-wide text-brand">当前推荐结果</span>
+            <h2 className="mt-1 text-lg" id="comparison-title">
+              SKU 对比
+            </h2>
           </div>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="关闭对比">
+          <button
+            className="cursor-pointer rounded-[0.55rem] border border-solid border-border bg-transparent px-2.5 py-2 text-text-muted"
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="关闭对比"
+          >
             关闭
           </button>
         </header>
-        <div className="comparison-scroll">
-          <table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] border-collapse">
             <thead>
               <tr>
-                <th scope="col">项目</th>
+                <th className={TH_CELL} scope="col">
+                  项目
+                </th>
                 {choices.map((choice) => (
-                  <th key={choice.sku_id} scope="col">
+                  <th
+                    className="min-w-[170px] border-b border-solid border-border p-3 text-left align-top text-text-primary"
+                    key={choice.sku_id}
+                    scope="col"
+                  >
                     {choice.product_name}
-                    <small>{choice.sku_name}</small>
+                    <small className="mt-1 block font-normal text-text-subtle">
+                      {choice.sku_name}
+                    </small>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               <tr>
-                <th scope="row">价格</th>
+                <th className={TH_CELL} scope="row">
+                  价格
+                </th>
                 {choices.map((choice) => (
-                  <td key={choice.sku_id}>{formatMoney(choice.money)}</td>
+                  <td className={TD_CELL} key={choice.sku_id}>
+                    {formatMoney(choice.money)}
+                  </td>
                 ))}
               </tr>
               <tr>
-                <th scope="row">库存</th>
+                <th className={TH_CELL} scope="row">
+                  库存
+                </th>
                 {choices.map((choice) => (
-                  <td key={choice.sku_id}>{formatAvailability(choice.availability)}</td>
+                  <td className={TD_CELL} key={choice.sku_id}>
+                    {formatAvailability(choice.availability)}
+                  </td>
                 ))}
               </tr>
               <tr>
-                <th scope="row">综合匹配</th>
+                <th className={TH_CELL} scope="row">
+                  综合匹配
+                </th>
                 {choices.map((choice) => (
-                  <td key={choice.sku_id}>
+                  <td className={TD_CELL} key={choice.sku_id}>
                     {choice.score === undefined ? "—" : `${choice.score}/100`}
                   </td>
                 ))}
               </tr>
               {specificationDefinitions.map((definition) => (
                 <tr key={definition.code}>
-                  <th scope="row">
+                  <th className={TH_CELL} scope="row">
                     {definition.name}
                     {definition.unit ? `（${definition.unit}）` : ""}
                   </th>
                   {choices.map((choice) => (
-                    <td key={choice.sku_id}>
+                    <td
+                      className={`${TD_CELL} empty:after:text-text-subtle empty:after:content-['—']`}
+                      key={choice.sku_id}
+                    >
                       <ProductSpecifications
                         compact
+                        hideLabel
                         specifications={choice.specifications.filter(
                           (specification) => specification.code === definition.code,
                         )}

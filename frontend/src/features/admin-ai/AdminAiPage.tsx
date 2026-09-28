@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button, Card } from "../../components/primitives";
+import { EYEBROW, PAGE_HEADING, PAGE_LEDE } from "../../components/textPatterns";
 
 interface AiHealth {
   schema_version: string;
@@ -48,11 +49,11 @@ export function AdminAiPage() {
   const tasks = query.data?.evidence.tasks ?? {};
   return (
     <section aria-labelledby="admin-ai-title" className="grid gap-6">
-      <div className="page-heading">
+      <div className={PAGE_HEADING}>
         <div>
-          <p className="eyebrow">SHOPPING EVIDENCE OPERATIONS</p>
+          <p className={EYEBROW}>SHOPPING EVIDENCE OPERATIONS</p>
           <h1 id="admin-ai-title">AI 运维</h1>
-          <p className="page-lede">仅管理员可见的购物证据、入库任务与可选 Outbox 发布状态。</p>
+          <p className={PAGE_LEDE}>仅管理员可见的购物证据、入库任务与可选 Outbox 发布状态。</p>
         </div>
         <Button onClick={() => void query.refetch()} variant="secondary">
           重新检查

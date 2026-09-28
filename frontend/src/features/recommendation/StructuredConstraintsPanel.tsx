@@ -5,6 +5,7 @@ import type {
   Recommendation,
   RecommendationRequest,
 } from "../../api/contracts";
+import { BRAND_TAG, INFO_BOX } from "../../components/textPatterns";
 import { formatBudget, formatSpecificationValue } from "./recommendationFormatters";
 
 type ConstraintChip = { text: string; role: "hard" | "soft"; key?: string };
@@ -54,19 +55,26 @@ function hitRatio(
 function ConstraintList({
   chips,
   recommendations,
+  tone = "hard",
 }: {
   chips: ConstraintChip[];
   recommendations?: Recommendation[];
+  tone?: "hard" | "soft";
 }) {
   return (
-    <ul>
+    <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
       {chips.map((chip) => {
         const ratio = chip.role === "soft" && chip.key ? hitRatio(chip.key, recommendations) : null;
         return (
-          <li key={chip.text}>
+          <li
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm text-text-muted ${tone === "soft" ? "bg-[rgb(182,106,34,0.1)]" : "bg-white/72"}`}
+            key={chip.text}
+          >
             <span>{chip.text}</span>
             {ratio && (
-              <span className="constraint-hit" data-full={ratio[0] === ratio[1] ? "true" : "false"}>
+              <span
+                className={`text-xs font-bold ${ratio[0] === ratio[1] ? "text-success" : "text-text-subtle"}`}
+              >
                 {ratio[0]}/{ratio[1]} 命中
               </span>
             )}
@@ -139,18 +147,26 @@ export function StructuredConstraintsPanel({
   const hardChips = chips.filter((chip) => chip.role === "hard");
   const softChips = chips.filter((chip) => chip.role === "soft");
   return (
-    <section className="structured-constraints" aria-label="已识别的选购条件">
-      <span>已识别条件</span>
+    <section className={INFO_BOX} aria-label="已识别的选购条件">
+      <span className={BRAND_TAG}>已识别条件</span>
       {hardChips.length > 0 && (
-        <div className="constraint-group" data-role="hard">
-          {softChips.length > 0 && <span className="constraint-group-heading">硬性条件</span>}
+        <div className="grid gap-1.5" data-role="hard">
+          {softChips.length > 0 && (
+            <span className="text-[0.64rem] font-bold tracking-wide text-text-subtle uppercase">
+              硬性条件
+            </span>
+          )}
           <ConstraintList chips={hardChips} />
         </div>
       )}
       {softChips.length > 0 && (
-        <div className="constraint-group" data-role="soft">
-          {hardChips.length > 0 && <span className="constraint-group-heading">软性偏好</span>}
-          <ConstraintList chips={softChips} recommendations={recommendations} />
+        <div className="grid gap-1.5" data-role="soft">
+          {hardChips.length > 0 && (
+            <span className="text-[0.64rem] font-bold tracking-wide text-text-subtle uppercase">
+              软性偏好
+            </span>
+          )}
+          <ConstraintList chips={softChips} recommendations={recommendations} tone="soft" />
         </div>
       )}
     </section>

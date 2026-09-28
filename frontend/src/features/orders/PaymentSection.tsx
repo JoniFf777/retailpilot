@@ -8,6 +8,14 @@ import type {
   PaymentAttemptStatus,
   PaymentErrorCode,
 } from "../../api/contracts";
+import { Button } from "../../components/primitives";
+import {
+  ERROR_STATE,
+  EYEBROW,
+  LOADING_PANEL,
+  SECTION_HEADING,
+  TEXT_BUTTON,
+} from "../../components/textPatterns";
 import { orderQueryKey, ordersQueryKey } from "./orderQuery";
 import { paymentAttemptsQueryKey } from "./paymentQuery";
 import { PaymentAttemptHistory } from "./PaymentAttemptHistory";
@@ -68,6 +76,18 @@ function isRetryableSubmissionState(state: PaymentSubmissionState | undefined): 
     state === "provider_succeeded" ||
     state === "finalization_pending"
   );
+}
+
+const RECOVERY_BOX =
+  "flex flex-wrap items-center justify-between gap-3.5 rounded-sm border border-solid p-4";
+const RECOVERY_TONES: Record<string, string> = {
+  known: "border-border bg-surface-soft",
+  success: "border-[#bfe8d8] bg-success-soft",
+  provider_succeeded: "border-[#bfe8d8] bg-success-soft",
+};
+
+function recoveryBox(suffix: string): string {
+  return `${RECOVERY_BOX} ${RECOVERY_TONES[suffix] ?? "border-[#f0dbb2] bg-warning-soft"}`;
 }
 
 export function PaymentSection({
@@ -237,101 +257,100 @@ export function PaymentSection({
 
   return (
     <section
-      className="payment-section"
+      className="grid gap-4 rounded-md border border-solid border-border bg-white/78 p-4.5"
       aria-labelledby="payment-section-title"
       data-testid="payment-section"
     >
-      <div className="section-heading">
+      <div className={SECTION_HEADING}>
         <div>
-          <p className="eyebrow">PAYMENT</p>
-          <h2 id="payment-section-title">Mock Payment</h2>
+          <p className={EYEBROW}>PAYMENT</p>
+          <h2 className="m-0" id="payment-section-title">
+            Mock Payment
+          </h2>
         </div>
-        <span>
+        <span className="text-sm text-text-muted">
           {order.currency} {order.total.amount}
         </span>
       </div>
       {paymentQuery.isLoading && (
-        <div className="loading-panel" role="status">
+        <div className={LOADING_PANEL} role="status">
           Loading Payment history…
         </div>
       )}
       {paymentQuery.error && (
-        <div className="error-state" role="alert">
-          <p>Payment history unavailable.</p>
-          <button className="text-button" onClick={() => void paymentQuery.refetch()} type="button">
+        <div className={ERROR_STATE} role="alert">
+          <p className="m-0 text-sm">Payment history unavailable.</p>
+          <button className={TEXT_BUTTON} onClick={() => void paymentQuery.refetch()} type="button">
             Retry
           </button>
         </div>
       )}
       {providerUnavailable && (
         <div
-          className="payment-recovery payment-recovery-known"
+          className={recoveryBox("known")}
           role="status"
           data-testid="payment-provider-unavailable"
         >
-          <strong>Payment service temporarily unavailable.</strong>
-          <span>Payment history and Order were refreshed. Retry uses the original request.</span>
+          <strong className="text-sm text-text-muted">
+            Payment service temporarily unavailable.
+          </strong>
+          <span className="text-sm text-text-muted">
+            Payment history and Order were refreshed. Retry uses the original request.
+          </span>
           {canRetry && (
-            <button
-              className="primary-button"
-              disabled={paymentMutation.isPending}
-              onClick={retryPayment}
-              type="button"
-            >
+            <Button disabled={paymentMutation.isPending} onClick={retryPayment} type="button">
               {paymentMutation.isPending ? "Retrying…" : "Retry original request"}
-            </button>
+            </Button>
           )}
         </div>
       )}
       {displayedStatus && !providerUnavailable && (
         <div
-          className={`payment-recovery payment-recovery-${displayedStatus}`}
+          className={recoveryBox(displayedStatus)}
           role="status"
           data-testid={`payment-status-${displayedStatus}`}
         >
-          <strong>{PAYMENT_STATUS_LABELS[displayedStatus]}</strong>
+          <strong className="text-sm text-text-muted">
+            {PAYMENT_STATUS_LABELS[displayedStatus]}
+          </strong>
           {displayedStatus === "unknown" && (
-            <span>可使用原请求继续查询，系统不会创建第二笔支付。</span>
+            <span className="text-sm text-text-muted">
+              可使用原请求继续查询，系统不会创建第二笔支付。
+            </span>
           )}
           {displayedStatus === "provider_succeeded" && (
-            <span>本地订单完成处理中。只能继续完成，不能重新支付。</span>
+            <span className="text-sm text-text-muted">
+              本地订单完成处理中。只能继续完成，不能重新支付。
+            </span>
           )}
-          {displayedStatus === "processing" && <span>当前 Payment Attempt 仍在处理中。</span>}
+          {displayedStatus === "processing" && (
+            <span className="text-sm text-text-muted">当前 Payment Attempt 仍在处理中。</span>
+          )}
           {canRetry && displayedStatus === "unknown" && (
-            <button
-              className="primary-button"
-              disabled={paymentMutation.isPending}
-              onClick={retryPayment}
-              type="button"
-            >
+            <Button disabled={paymentMutation.isPending} onClick={retryPayment} type="button">
               {paymentMutation.isPending ? "查询中…" : "继续查询"}
-            </button>
+            </Button>
           )}
           {canRetry && displayedStatus === "provider_succeeded" && (
-            <button
-              className="primary-button"
-              disabled={paymentMutation.isPending}
-              onClick={retryPayment}
-              type="button"
-            >
+            <Button disabled={paymentMutation.isPending} onClick={retryPayment} type="button">
               {paymentMutation.isPending ? "完成中…" : "继续完成"}
-            </button>
+            </Button>
           )}
         </div>
       )}
       {conflictDiscarded && (
         <div
-          className="payment-recovery payment-recovery-known"
+          className={recoveryBox("known")}
           role="alert"
           data-testid="payment-idempotency-conflict"
         >
-          <strong>Payment request conflict.</strong>
-          <span>
+          <strong className="text-sm text-text-muted">Payment request conflict.</strong>
+          <span className="text-sm text-text-muted">
             Automatic retry stopped. Refresh Order and Payment history, then click Mock Payment to
             start a new attempt.
           </span>
           <button
-            className="text-button"
+            className={TEXT_BUTTON}
             onClick={() => {
               setMessage(null);
               void refreshPaymentState();
@@ -343,25 +362,32 @@ export function PaymentSection({
         </div>
       )}
       {message && !providerUnavailable && (
-        <p className="error-copy" role="alert">
+        <p className="m-0 text-sm text-danger" role="alert">
           {message}
         </p>
       )}
       {order.status === "paid" && (
-        <div className="payment-paid" data-testid="payment-paid">
-          <strong>支付成功</strong>
-          <span>Order is paid. Payment and Cancel are no longer available.</span>
+        <div className={recoveryBox("success")} data-testid="payment-paid">
+          <strong className="text-sm text-text-muted">支付成功</strong>
+          <span className="text-sm text-text-muted">
+            Order is paid. Payment and Cancel are no longer available.
+          </span>
         </div>
       )}
       {order.status === "cancelled" && (
-        <div className="payment-cancelled" data-testid="payment-cancelled">
+        <div
+          className={`${recoveryBox("known")} text-sm text-text-muted`}
+          data-testid="payment-cancelled"
+        >
           This Order is cancelled and cannot be paid.
         </div>
       )}
       {order.status === "expired" && (
-        <div className="payment-cancelled" data-testid="payment-expired">
-          <strong>Payment deadline expired</strong>
-          <span>This Order can still be viewed, but it cannot be paid or cancelled.</span>
+        <div className={recoveryBox("known")} data-testid="payment-expired">
+          <strong className="text-sm text-text-muted">Payment deadline expired</strong>
+          <span className="text-sm text-text-muted">
+            This Order can still be viewed, but it cannot be paid or cancelled.
+          </span>
         </div>
       )}
       {order.status === "pending_payment" &&
@@ -370,39 +396,42 @@ export function PaymentSection({
         !activeAttempt &&
         !displayedStatus &&
         !providerUnavailable && (
-          <div className="payment-action-card">
+          <div className={recoveryBox("known")}>
             {localState === "failed" && (
               <>
-                <p>Payment failed. Start a new Mock Payment attempt when you are ready.</p>
-                <button
-                  className="primary-button"
+                <p className="m-0 text-sm text-text-muted">
+                  Payment failed. Start a new Mock Payment attempt when you are ready.
+                </p>
+                <Button
                   disabled={!canStartNew || paymentMutation.isPending}
                   onClick={startPayment}
                   type="button"
                 >
                   再次支付
-                </button>
+                </Button>
               </>
             )}
             {localState !== "failed" && (
               <>
-                <p>
+                <p className="m-0 text-sm text-text-muted">
                   Use the fixed Mock Payment reference. No card or real payment data is collected.
                 </p>
-                <button
-                  className="primary-button"
+                <Button
                   disabled={!canStartNew || paymentMutation.isPending}
                   onClick={startPayment}
                   type="button"
                 >
                   {paymentMutation.isPending ? "支付处理中…" : "Mock Payment"}
-                </button>
+                </Button>
               </>
             )}
           </div>
         )}
       {activeAttempt && (
-        <div className="payment-in-progress" data-testid="payment-in-progress">
+        <div
+          className="rounded-sm border border-solid border-border bg-surface-soft p-4 text-sm text-text-muted"
+          data-testid="payment-in-progress"
+        >
           Payment is in progress. Cancel is unavailable until the current Attempt finishes.
         </div>
       )}

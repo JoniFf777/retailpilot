@@ -5,6 +5,19 @@ import { ApiError } from "../../api/errors";
 import type { CheckoutPreview, CheckoutWarning, OrderErrorCode } from "../../api/contracts";
 import { shopMindApi } from "../../api/client";
 import { useSession } from "../../app/useSession";
+import { cn } from "../../components/cn";
+import { Button, Card } from "../../components/primitives";
+import {
+  BUTTON_SECONDARY,
+  ERROR_STATE,
+  EYEBROW,
+  LINE_ITEM_ROW,
+  LOADING_PANEL,
+  PAGE_HEADING,
+  PAGE_LEDE,
+  SECTION_HEADING,
+  TEXT_BUTTON,
+} from "../../components/textPatterns";
 import { checkoutPreviewQueryKey } from "./checkoutQuery";
 import {
   clearCheckoutAttempt,
@@ -51,16 +64,16 @@ function warningLabel(warning: CheckoutWarning): string {
 
 function PreviewItem({ item }: { item: NonNullable<CheckoutPreview["items"]>[number] }) {
   return (
-    <article className="checkout-item" data-testid="checkout-item">
-      <div>
-        <strong>{item.product_name}</strong>
-        <span>{item.sku_name}</span>
-        <small>SKU {item.sku_id}</small>
+    <article className={LINE_ITEM_ROW} data-testid="checkout-item">
+      <div className="grid min-w-0 gap-1">
+        <strong className="text-sm">{item.product_name}</strong>
+        <span className="text-xs text-text-muted">{item.sku_name}</span>
+        <small className="text-xs text-text-muted">SKU {item.sku_id}</small>
       </div>
-      <div className="checkout-item-numbers">
-        <span>数量 {item.quantity}</span>
-        <span>单价 {formatMoney(item.unit_money)}</span>
-        <strong>{formatMoney(item.subtotal_money)}</strong>
+      <div className="grid min-w-40 gap-1 text-right">
+        <span className="text-xs text-text-muted">数量 {item.quantity}</span>
+        <span className="text-xs text-text-muted">单价 {formatMoney(item.unit_money)}</span>
+        <strong className="text-brand-strong">{formatMoney(item.subtotal_money)}</strong>
       </div>
     </article>
   );
@@ -187,141 +200,157 @@ export function CheckoutPage() {
   const recovering = attempt?.submissionState === "unknown";
 
   return (
-    <section className="checkout-page" aria-labelledby="checkout-title">
-      <div className="page-heading">
+    <section className="grid gap-8" aria-labelledby="checkout-title">
+      <div className={PAGE_HEADING}>
         <div>
-          <p className="eyebrow">CHECKOUT PREVIEW</p>
+          <p className={EYEBROW}>CHECKOUT PREVIEW</p>
           <h1 id="checkout-title">确认订单内容</h1>
-          <p className="page-lede">创建订单时会重新校验价格和库存。</p>
+          <p className={PAGE_LEDE}>创建订单时会重新校验价格和库存。</p>
         </div>
-        <Link className="secondary-button" to="/">
+        <Link className={cn(BUTTON_SECONDARY, "self-start")} to="/">
           返回购物
         </Link>
       </div>
 
       {recovering && (
-        <section className="checkout-recovery" data-testid="checkout-recovery" role="status">
-          <p className="eyebrow">RESULT UNKNOWN</p>
-          <h2>没有收到上一次的结果。</h2>
-          <p>重试会使用同一个 checkout token 和 Idempotency-Key，不会创建第二个逻辑订单。</p>
-          <div className="checkout-actions">
-            <button
-              className="primary-button"
-              disabled={orderMutation.isPending}
-              onClick={retryOrder}
-              type="button"
-            >
+        <Card
+          as="section"
+          className="grid gap-4 border-[#f1dfc2] bg-[#fffbf4]"
+          data-testid="checkout-recovery"
+          role="status"
+        >
+          <p className={EYEBROW}>RESULT UNKNOWN</p>
+          <h2 className="mt-1 text-lg">没有收到上一次的结果。</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
+            重试会使用同一个 checkout token 和 Idempotency-Key，不会创建第二个逻辑订单。
+          </p>
+          <div className="flex flex-wrap gap-2.5">
+            <Button disabled={orderMutation.isPending} onClick={retryOrder} type="button">
               {orderMutation.isPending ? "重试中…" : "Retry submission"}
-            </button>
-            <button
-              className="secondary-button"
+            </Button>
+            <Button
               disabled={orderMutation.isPending}
               onClick={startNewPreview}
               type="button"
+              variant="secondary"
             >
               重新获取 Preview
-            </button>
+            </Button>
           </div>
-        </section>
+        </Card>
       )}
 
       {!recovering && previewQuery.isLoading && (
-        <div className="loading-panel" role="status">
+        <div className={LOADING_PANEL} role="status">
           正在读取最新的购物车 Preview…
         </div>
       )}
       {!recovering && previewQuery.error && (
-        <section className="error-state standalone" role="alert">
+        <section className={ERROR_STATE} role="alert">
           <div>
-            <strong>Preview 暂时无法读取</strong>
-            <p>{errorMessage(previewQuery.error)}</p>
+            <strong className="text-text-primary">Preview 暂时无法读取</strong>
+            <p className="mt-0.5 text-sm">{errorMessage(previewQuery.error)}</p>
           </div>
-          <button className="text-button" onClick={startNewPreview} type="button">
+          <Button onClick={startNewPreview} type="button" variant="ghost">
             重新获取 Preview
-          </button>
+          </Button>
         </section>
       )}
       {!recovering && data && (
         <>
-          <section
-            className="checkout-preview-card"
+          <Card
+            as="section"
+            className="grid gap-4"
             data-testid="checkout-preview"
             aria-labelledby="checkout-preview-title"
           >
-            <div className="section-heading">
+            <div className={SECTION_HEADING}>
               <div>
-                <p className="eyebrow">SERVER PREVIEW</p>
-                <h2 id="checkout-preview-title">订单内容</h2>
+                <p className={EYEBROW}>SERVER PREVIEW</p>
+                <h2 id="checkout-preview-title" className="m-0 text-xl">
+                  订单内容
+                </h2>
               </div>
-              <span>
+              <span className="text-sm text-text-muted">
                 {data.item_count} 个 SKU · 共 {data.total_quantity} 件
               </span>
             </div>
             {items.length === 0 && (
-              <p className="empty-panel">购物车是空的，结算前请先添加商品。</p>
+              <p className={LOADING_PANEL}>购物车是空的，结算前请先添加商品。</p>
             )}
-            <div className="checkout-items">
+            <div className="grid gap-3">
               {items.map((item) => (
                 <PreviewItem item={item} key={item.cart_item_id} />
               ))}
             </div>
             {data.warnings?.length ? (
-              <div className="checkout-warnings" role="status">
-                <strong>需要留意的提示</strong>
+              <div
+                className="grid gap-1.5 rounded-md border border-solid border-[#f0dbb2] bg-warning-soft p-4"
+                role="status"
+              >
+                <strong className="text-sm text-warning">需要留意的提示</strong>
                 {data.warnings.map((warning, index) => (
-                  <span key={`${warning.code}-${warning.sku_id ?? index}`}>
+                  <span
+                    className="text-sm leading-relaxed text-[#7b5313]"
+                    key={`${warning.code}-${warning.sku_id ?? index}`}
+                  >
                     {warningLabel(warning)}
                   </span>
                 ))}
               </div>
             ) : null}
-            <div className="checkout-total">
-              <span>小计</span>
-              <strong>{data.subtotal ? formatMoney(data.subtotal) : "暂不可计算"}</strong>
-              <small>{data.currency ?? "存在多种币种"}</small>
+            <div className="grid grid-cols-[1fr_auto] items-baseline gap-1 border-t border-solid border-border pt-4">
+              <span className="text-sm text-text-muted">小计</span>
+              <strong className="text-[1.35rem] text-brand-strong">
+                {data.subtotal ? formatMoney(data.subtotal) : "暂不可计算"}
+              </strong>
+              <small className="col-start-2 text-right text-sm text-text-muted">
+                {data.currency ?? "存在多种币种"}
+              </small>
             </div>
-            <p className="checkout-revalidation">
+            <p className="m-0 rounded-sm border border-solid border-[#c9e9dd] bg-brand-soft p-3.5 text-sm leading-relaxed text-brand-strong">
               创建订单时后端会重新核实价格、库存、可售状态、购物车指纹和总额。
             </p>
             {!canCreate && (
-              <p className="checkout-blocked" role="alert">
+              <p className="m-0 text-sm text-danger" role="alert">
                 当前 Preview 已失效，暂时无法创建订单。
               </p>
             )}
             {needsRepreview && (
-              <button className="secondary-button" onClick={startNewPreview} type="button">
+              <Button onClick={startNewPreview} type="button" variant="secondary">
                 Get a new Preview
-              </button>
+              </Button>
             )}
-          </section>
+          </Card>
           {canCreate && (
-            <section className="checkout-confirm-card" data-testid="checkout-confirm">
+            <Card
+              as="section"
+              className="grid grid-cols-[1fr_auto] items-center gap-4"
+              data-testid="checkout-confirm"
+            >
               <div>
-                <p className="eyebrow">FINAL STEP</p>
-                <h2>确认创建订单</h2>
-                <p>这是明确的操作，会创建待支付订单。"返回购物"只会离开本页。</p>
+                <p className={EYEBROW}>FINAL STEP</p>
+                <h2 className="mt-1 text-lg">确认创建订单</h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-text-muted">
+                  这是明确的操作，会创建待支付订单。“返回购物”只会离开本页。
+                </p>
               </div>
-              <button
-                className="primary-button"
-                disabled={orderMutation.isPending}
-                onClick={submitOrder}
-                type="button"
-              >
+              <Button disabled={orderMutation.isPending} onClick={submitOrder} type="button">
                 {orderMutation.isPending ? "创建中…" : "Confirm order"}
-              </button>
-            </section>
+              </Button>
+            </Card>
           )}
           {submissionError && (
-            <section className="error-state standalone" role="alert">
+            <section className={ERROR_STATE} role="alert">
               <div>
-                <strong>订单提交需要处理</strong>
-                <p>{submissionError}</p>
+                <strong className="text-text-primary">订单提交需要处理</strong>
+                <p className="mt-0.5 text-sm">{submissionError}</p>
               </div>
               {attempt &&
                 !needsRepreview &&
                 errorCode(orderMutation.error) !== "idempotency_conflict" && (
                   <button
-                    className="text-button"
+                    className={TEXT_BUTTON}
                     disabled={orderMutation.isPending}
                     onClick={retryOrder}
                     type="button"
