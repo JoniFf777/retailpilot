@@ -163,13 +163,11 @@ def _assert_order_facts(
 
         reservations = list(
             session.scalars(
-                select(ShopMindInventoryReservation)
-                .where(
+                select(ShopMindInventoryReservation).where(
                     ShopMindInventoryReservation.order_item_id.in_(
                         [item.id for item in items]
                     )
                 )
-                .order_by(ShopMindInventoryReservation.id)
             )
         )
         if len(reservations) != len(items) or any(
@@ -177,10 +175,19 @@ def _assert_order_facts(
         ):
             raise DemoSmokeError("Every Order item must have one consumed reservation")
 
+        # Reservation ids and Order item ids are independent UUIDs, so pair them by
+        # the actual foreign key rather than by zipping two separately-sorted lists
+        # (which only happens to line up when an Order has a single item).
+        reservation_by_item_id = {
+            reservation.order_item_id: reservation for reservation in reservations
+        }
+
         inventory_facts: list[dict[str, Any]] = []
-        for item, reservation in zip(items, reservations, strict=True):
+        for item in items:
+            reservation = reservation_by_item_id.get(item.id)
             if (
-                reservation.sku_id != item.sku_id
+                reservation is None
+                or reservation.sku_id != item.sku_id
                 or reservation.quantity != item.quantity
             ):
                 raise DemoSmokeError("Reservation does not match its Order item")

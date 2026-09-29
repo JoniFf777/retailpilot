@@ -97,6 +97,40 @@ npm --prefix frontend run test:e2e:live
 
 The live config connects only to `SHOPMIND_FRONTEND_URL` and `SHOPMIND_BACKEND_URL` (defaults `127.0.0.1:5173` and `127.0.0.1:8000`). Demo Start builds the frontend with `VITE_SHOPMIND_DEMO_IDENTITY=true`.
 
+## Offline frontend demo (no backend)
+
+`frontend/src/demo/` is a separate, zero-backend demo: it replaces `fetch` in
+the browser with an in-memory mock covering the full shopping path (Catalog
+browse, Chat recommendation across five scenarios, PendingAction confirm,
+Cart, Checkout, Order, Mock Payment) plus persistent tasks and owner-data
+readiness/run inspection. It needs no PostgreSQL and no FastAPI process, so
+it is safe to deploy to any static host.
+
+```powershell
+$env:VITE_SHOPMIND_DEMO = "true"
+npm --prefix frontend run dev -- --host 127.0.0.1
+```
+
+For a static build:
+
+```powershell
+$env:VITE_SHOPMIND_DEMO = "true"
+npm --prefix frontend run build
+```
+
+`frontend/dist/` is then deployable as-is. This mode switches routing to
+`createHashRouter`, so deep links (`/#/tasks/...`) resolve without a
+server-side rewrite rule. A fixed corner badge ("演示数据 · 无真实后端") marks
+every screen as sample data.
+
+`src/demo/` is dynamic-import-gated on `VITE_SHOPMIND_DEMO`, so a normal
+build (the flag unset) never includes it — verified by
+`npm --prefix frontend run check:budget` staying unchanged with or without
+this code present.
+
+This flag is unrelated to `VITE_SHOPMIND_DEMO_IDENTITY` above, which only
+toggles a dev-identity input convenience on the real-backend Core Demo.
+
 ## Tests and acceptance
 
 Retrieval-only evaluation is independent from answer generation. Given a JSON
